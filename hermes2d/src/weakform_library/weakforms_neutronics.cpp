@@ -705,11 +705,656 @@ namespace WeakFormsNeutronics
             for (unsigned int g = 0; g < G; g++)
               D[Str_elem->first][g] = 1./(3.*Str_elem->second[g]);
         }
-      }      
+      }
+      
+      namespace SPN
+      {
+        void MaterialPropertyMaps::extend_to_rank3(const MaterialPropertyMap2& src, MaterialPropertyMap3* dest)
+        {
+          for (MaterialPropertyMap2::const_iterator src_it = src.begin(); src_it != src.end(); ++src_it)
+            for (unsigned int n = 0; n < N; n++)
+              (*dest)[src_it->first].push_back(src_it->second);
+        }
+        
+        void MaterialPropertyMaps::extend_to_rank3(const MaterialPropertyMap1& src, MaterialPropertyMap3* dest)
+        {
+          MaterialPropertyMap2 matrices = create_map2_by_diagonals(src);
+          extend_to_rank3(matrices, dest);
+        }
+        
+        MaterialPropertyMap3 MaterialPropertyMaps::create_map3_by_diagonals(const MaterialPropertyMap2& diags) const 
+        {
+          MaterialPropertyMap3 map3;
+          
+          MaterialPropertyMap2::const_iterator diags_it = diags.begin();
+          for ( ; diags_it != diags.end(); ++diags_it)
+          {
+            map3[diags_it->first].resize(N, rank2(G, rank1(G, 0.0)));
+            
+            for (unsigned int n = 0; n < N; n++)
+              for (unsigned int g = 0; g < G; g++)
+                map3[diags_it->first][n][g][g] = diags_it->second[n][g];
+          }
+          
+          return map3;
+        }
+        
+        void MaterialPropertyMaps::fill_with(double c, MaterialPropertyMap3 *mmmrmg_map)
+        {
+          std::set<std::string>::const_iterator it;
+          for (it = materials_list.begin(); it != materials_list.end(); ++it)
+            (*mmmrmg_map)[*it].assign(N, rank2(G, rank1(G, c)));
+        }
+                
+        void MaterialPropertyMaps::invert_odd_Sigma_rn()
+        {          
+          MaterialPropertyMap3::const_iterator Sr_mat = Sigma_rn.begin();
+          for ( ; Sr_mat != Sigma_rn.end(); ++Sr_mat)
+          {
+            std::string mat = Sr_mat->first;
+            odd_Sigma_rn_inv[mat].resize(N_odd, rank2(G, rank1(G, 0.0)));
+            
+            rank3 moment_matrices = Sr_mat->second;
+            rank3::const_iterator odd_moment_matrix = ++moment_matrices.begin();
+            rank3::iterator inverted_moment_matrix = odd_Sigma_rn_inv[mat].begin();
+            bool1::const_iterator moment_matrix_is_diagonal = ++Sigma_rn_is_diagonal[mat].begin();
+            for ( ; odd_moment_matrix != moment_matrices.end(); 
+                    odd_moment_matrix += 2, ++inverted_moment_matrix, moment_matrix_is_diagonal += 2)
+            {              
+              if (*moment_matrix_is_diagonal)
+              {
+                for (unsigned int g = 0; g < G; g++)
+                  (*inverted_moment_matrix)[g][g] = 1./(*odd_moment_matrix)[g][g];
+              }
+              else
+              {               
+                int lda = G;
+                int n = G;
+                int sz_dgetri_workspace = G*G;
+                int info;
+                
+                double *A = new double [n*n];
+                int *ipiv = new int [n+1];
+                double *dgetri_workspace = new double [sz_dgetri_workspace];
+                double *dgecon_double_workspace = new double [4*n];
+                int *dgecon_int_workspace = new int [n];
+                
+                rank2::const_iterator row = odd_moment_matrix->begin();  int gto = 0;
+                for ( ; row != odd_moment_matrix->end(); ++row, ++gto)
+                  std::copy(row->begin(), row->end(), &A[gto*G]);
+              
+                double anorm = dlange_("1", &n, &n, A, &lda, NULL); // array in the last argument is not referenced for "1"-norm
+                
+                dgetrf_(&n, &n, A, &lda, ipiv, &info);
+                if (info != 0) 
+                  error(E_LAPACK_ERROR, info);
+                
+                double rcond;
+                dgecon_("1", &n, A, &lda, &anorm, &rcond, 
+                        dgecon_double_workspace, dgecon_int_workspace, &info);
+                if (info != 0) 
+                  error(E_LAPACK_ERROR, info);
+                if (rcond > 1e12)
+                  warning(W_SINGULAR_MATRIX);
+                        
+                dgetri_(&n, A, &lda, ipiv, dgetri_workspace, &sz_dgetri_workspace, &info);
+                if (info != 0)
+                  error(E_LAPACK_ERROR);
+                                
+                rank2::iterator inv_mtx_row = inverted_moment_matrix->begin(); gto = 0;
+                for ( ; inv_mtx_row != inverted_moment_matrix->end(); ++inv_mtx_row, ++gto)
+                  std::copy(&A[gto*G], &A[gto*(G+1)], inv_mtx_row->begin());
+                
+                delete [] ipiv;
+                delete [] dgetri_workspace;
+                delete [] dgecon_double_workspace;
+                delete [] dgecon_int_workspace;
+                delete [] A;
+              }
+            }
+          }
+        }
+        
+        void MaterialPropertyMaps::validate()
+        {
+          if (Sigma_tn.empty())
+            error(E_SIGMA_T_REQUIRED);
+          
+          Common::MaterialPropertyMaps::validate();
+                    
+          if (Sigma_sn.empty())
+          {
+            warning(W_NO_SCATTERING);
+            fill_with(0.0, &Sigma_sn);
+          }
+          
+          std::for_each(Sigma_tn.begin(), Sigma_tn.end(), ValidationFunctors::ensure_size(G,G,N));
+          
+          MaterialPropertyMap3::const_iterator Stn_material = Sigma_tn.begin();
+          for ( ; Stn_material != Sigma_tn.end(); ++Stn_material)
+          {
+            std::string mat = Stn_material->first;
+            rank3 Ssn = Sigma_sn[mat];
+            rank3 Stn = Sigma_tn[mat];
+              
+            Sigma_rn_is_diagonal[mat].resize(N, true);
+            
+            if (Ssn.size() > N)
+            {
+              warning(W_SCATTERING_TRUNCATION, N);
+              Sigma_sn[mat].erase(Sigma_sn[mat].begin() + N, Sigma_sn[mat].end());
+              Ssn = Sigma_sn[mat];
+            }
+            
+            if (Ssn.size() == N)
+            {
+              Sigma_rn[mat] = Common::NDArrayMapOp::subtract<rank3>(Stn, Ssn);
+              
+              rank3 moment_matrices = Stn_material->second;
+              rank3::const_iterator moment_matrix = moment_matrices.begin();
+              bool1::iterator moment_matrix_is_diagonal = Sigma_rn_is_diagonal[mat].begin();
+              for ( ; moment_matrix != moment_matrices.end(); ++moment_matrix, ++moment_matrix_is_diagonal)
+              { 
+                if (moment_matrix->size() != G)
+                  error(E_INVALID_SIZE);
+                
+                for (unsigned int gto = 0; gto < G && *moment_matrix_is_diagonal; gto++)
+                {
+                  if (moment_matrix->at(gto).size() != G)
+                    error(E_INVALID_SIZE);
+                  
+                  for (unsigned int gfrom = 0; gfrom < G && *moment_matrix_is_diagonal; gfrom++)
+                    if (gfrom != gto && fabs((*moment_matrix)[gto][gfrom]) > 1e-12)
+                      *moment_matrix_is_diagonal = false;
+                }
+              }
+            }
+            else if (Ssn.size() < N)
+            {
+              Sigma_rn[mat] = Stn;
+             
+              // Totally absorbing material in case of Ssn.size() == 0.
+              for (unsigned int n = 0; n < Ssn.size(); n++)
+              {
+                Sigma_rn[mat][n] = Common::NDArrayMapOp::subtract<rank2>(Stn[n], Ssn[n]);
+                
+                bool isdiag = true;
+                for (unsigned int gto = 0; gto < G && isdiag; gto++)
+                {
+                  if (Ssn[n].size() != G)
+                    error(E_INVALID_SIZE);
+                  
+                  for (unsigned int gfrom = 0; gfrom < G && isdiag; gfrom++)
+                  {
+                    if (Ssn[n][gto].size() != G)
+                      error(E_INVALID_SIZE);
+                    
+                    if (gfrom != gto && fabs(Ssn[n][gto][gfrom]) > 1e-12)
+                      isdiag = false;
+                  }
+                }
+                
+                Sigma_rn_is_diagonal[mat][n] = isdiag;
+              }
+            }
+          }
+          
+          invert_odd_Sigma_rn();
+        }
+
+        const rank3& MaterialPropertyMaps::get_Sigma_rn(std::string material) const
+        {
+          MaterialPropertyMap3::const_iterator data = this->Sigma_rn.find(material);
+          if (data != this->Sigma_rn.end())
+            return data->second;
+          else
+          {
+            error(E_INVALID_MARKER);
+            return *(new rank3()); // To avoid MSVC problems; execution should never come to this point.
+          }
+        }
+        
+        const rank3& MaterialPropertyMaps::get_odd_Sigma_rn_inv(std::string material) const
+        {
+          MaterialPropertyMap3::const_iterator data = this->odd_Sigma_rn_inv.find(material);
+          if (data != this->odd_Sigma_rn_inv.end())
+            return data->second;
+          else
+          {
+            error(E_INVALID_MARKER);
+            return *(new rank3()); // To avoid MSVC problems; execution should never come to this point.
+          }
+        }
+        
+        const rank1& MaterialPropertyMaps::get_src0(std::string material) const
+        {
+          MaterialPropertyMap1::const_iterator data = this->src0.find(material);
+          if (data != this->src0.end())
+            return data->second;
+          else
+          {
+            error(E_INVALID_MARKER);
+            return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
+          }
+        }
+        
+        const bool1& MaterialPropertyMaps::is_Sigma_rn_diagonal(std::string material) const
+        {
+          std::map<std::string, bool1>::const_iterator data = this->Sigma_rn_is_diagonal.find(material);
+          if (data != this->Sigma_rn_is_diagonal.end())
+            return data->second;
+          else
+          {
+            error(E_INVALID_MARKER);
+            return *(new bool1()); // To avoid MSVC problems; execution should never come to this point.
+          }
+        }
+        
+        const bool1 MaterialPropertyMaps::is_Sigma_rn_diagonal() const
+        {
+          bool1 ret(N, true);
+          
+          for (unsigned int k = 0; k < N; k++)
+          {
+            std::map<std::string, bool1>::const_iterator data_it = Sigma_rn_is_diagonal.begin();
+            for ( ; data_it != Sigma_rn_is_diagonal.end(); ++data_it)
+            {
+              if (data_it->second[k] == false)
+              {
+                ret[k] = false;
+                break;
+              }
+            }
+          }
+           
+          return ret;    
+        }
+        
+        std::ostream& operator<<(std::ostream& os, const MaterialPropertyMaps& matprop)
+        {
+          using namespace std;
+          
+          os << static_cast<const Common::MaterialPropertyMaps&>(matprop) << endl;
+          
+          int gto_width = 12;
+          int total_width = gto_width + 2*8*matprop.G;
+          int label_width = 4*matprop.G-6;
+          int elem_width = 8;
+                              
+          MaterialPropertyMap3::const_iterator Srn_elem = matprop.Sigma_rn.begin();
+          MaterialPropertyMap3::const_iterator Srn_inv_elem = matprop.odd_Sigma_rn_inv.begin();
+          for ( ; Srn_elem != matprop.Sigma_rn.end(); ++Srn_elem, ++Srn_inv_elem)
+          {
+            string mat = Srn_elem->first;
+            rank3 Srn_moments = Srn_elem->second;
+            rank3 Srn_inv_moments = Srn_inv_elem->second;
+            
+            os << setw(total_width) << setfill('_') << ' ' << endl << setfill(' ');
+            os << setw(total_width/2-5) << uppercase << mat << nouppercase << endl;
+            
+            os << setw(gto_width/2) << "trgt group" << setw(gto_width/2) << ' ';
+            os << setw(label_width) << "Sigma_rn" << setw(label_width) << ' ';
+            os << setw(label_width) << "odd_Sigma_rn_inv" << setw(label_width) << ' ';
+            
+            rank3::const_iterator Srn_moment = Srn_moments.begin();
+            rank3::const_iterator Srn_inv_moment = Srn_inv_moments.begin();
+            int moment = 0;
+            for ( ; Srn_moment != Srn_moments.end(); ++Srn_moment, ++Srn_inv_moment, ++moment)
+            {
+              os << endl << setw(total_width/2-5) << moment << ". moment" << endl;
+
+              for (unsigned int gto = 0; gto < matprop.G; gto++)
+              {
+                os << setw(gto_width/2) << gto << setw(gto_width/2) << ' ';
+                for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
+                  os << setw(elem_width) << (*Srn_moment)[gto][gfrom];
+                os << "  |  ";
+                for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
+                  os << setw(elem_width) << (*Srn_inv_moment)[gto][gfrom];
+                
+                os << endl;
+              }
+            }
+            
+            if (!matprop.src0.empty())
+            {
+              os << endl << setw(total_width/2-10) << "isotropic ext. sources" << endl;
+              for (unsigned int gto = 0; gto < matprop.G; gto++)
+              {
+                os << setw(gto_width/2) << gto << setw(gto_width/2) << ' ';
+                os << setw(elem_width) << matprop.get_src0(mat)[gto];
+                os << endl;
+              }
+            }
+          }
+          
+          return os << endl;
+        }
+      }
     }
     
     namespace ElementaryForms
-    {             
+    {  
+      namespace SPN
+      {        
+        template<typename Real, typename Scalar>
+        Scalar VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                                              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const 
+        { 
+          Scalar result;
+          
+          double coeff = Coeffs::D_grad_F(mrow, mcol);
+          
+          if (geom_type == HERMES_PLANAR) 
+            result = coeff * int_u_v<Real, Scalar>(n, wt, u, v);
+          else if (geom_type == HERMES_AXISYM_X) 
+            result = coeff * int_y_u_v<Real, Scalar>(n, wt, u, v, e);
+          else 
+            result = coeff * int_x_u_v<Real, Scalar>(n, wt, u, v, e);
+          
+          return result;
+        }
+        template
+        scalar VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<scalar> *u_ext[], Func<double> *u,
+                                                              Func<double> *v, Geom<double> *e, ExtData<scalar> *ext) const;
+        template
+        Ord VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
+                                                           Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;                                                               
+        
+        template<typename Real, typename Scalar>
+        Scalar VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
+                                                              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const 
+        { 
+          Scalar result = 0;
+          
+          for (unsigned int mcol = 0; mcol < N_odd; mcol++)
+          {
+            double coeff = Coeffs::D_grad_F(mrow, mcol);
+            unsigned int i = mg.pos(mcol,g);
+            
+            if (geom_type == HERMES_PLANAR) 
+              result += coeff * int_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v);
+            else if (geom_type == HERMES_AXISYM_X) 
+              result += coeff * int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v, e);
+            else 
+              result += coeff * int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v, e);
+          }
+          
+          return result;
+        }
+        template
+        scalar VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<scalar> *u_ext[],
+                                                              Func<double> *v, Geom<double> *e, ExtData<scalar> *ext) const;
+        template
+        Ord VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<Ord> *u_ext[],
+                                                           Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;
+                                                           
+        template<typename Real, typename Scalar>
+        Scalar DiagonalStreamingAndReactions::Jacobian::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                                                    Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const
+        {
+          Scalar result;
+          
+          std::string mat = get_material(e->elem_marker, wf);     
+          
+          double Sigma_r_elem = 0.;
+          for (unsigned int k = 0; k <= mrow; k++)
+            Sigma_r_elem += Coeffs::system_matrix(mrow, mrow, k) * matprop.get_Sigma_rn(mat)[2*k][g][g];
+          
+          double D_elem = Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][g][g];
+          
+          if (geom_type == HERMES_PLANAR) 
+          {
+            result = D_elem * int_grad_u_grad_v<Real, Scalar>(n, wt, u, v) +
+                     Sigma_r_elem * int_u_v<Real, Scalar>(n, wt, u, v);
+          }
+          else 
+          {
+            if (geom_type == HERMES_AXISYM_X) 
+            {
+              result = D_elem * int_y_grad_u_grad_v<Real, Scalar>(n, wt, u, v, e) + 
+                       Sigma_r_elem * int_y_u_v<Real, Scalar>(n, wt, u, v, e);
+            }
+            else 
+            {
+              result = D_elem * int_x_grad_u_grad_v<Real, Scalar>(n, wt, u, v, e) + 
+                       Sigma_r_elem * int_x_u_v<Real, Scalar>(n, wt, u, v, e);
+            }
+          }
+          return result;
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar DiagonalStreamingAndReactions::Residual::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
+                                                                    Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const
+        { 
+          Scalar result;
+          
+          std::string mat = get_material(e->elem_marker, wf);     
+          
+          double Sigma_r_elem = 0.;
+          for (unsigned int k = 0; k <= mrow; k++)
+            Sigma_r_elem += Coeffs::system_matrix(mrow, mrow, k) * matprop.get_Sigma_rn(mat)[2*k][g][g];
+          
+          double D_elem = Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][g][g];
+          unsigned int i = mg.pos(mrow,g);
+          
+          if (geom_type == HERMES_PLANAR) 
+            result = D_elem * int_grad_u_ext_grad_v<Real, Scalar>(n, wt, u_ext[i], v) +
+                     Sigma_r_elem * int_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v);
+          else if (geom_type == HERMES_AXISYM_X) 
+            result = D_elem * int_y_grad_u_ext_grad_v<Real, Scalar>(n, wt, u_ext[i], v, e) + 
+                     Sigma_r_elem * int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v, e);
+          else 
+            result = D_elem * int_x_grad_u_ext_grad_v<Real, Scalar>(n, wt, u_ext[i], v, e) + 
+                     Sigma_r_elem * int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v, e);
+          
+          return result;
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar FissionYield::Jacobian::matrix_form( int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                                    Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext  ) const 
+        {
+          if (!matprop.get_fission_nonzero_structure()[gto])
+            return 0.0;
+          
+          Scalar result;
+          
+          if (geom_type == HERMES_PLANAR) 
+            result = int_u_v<Real, Scalar>(n, wt, u, v);
+          else if (geom_type == HERMES_AXISYM_X) 
+            result = int_y_u_v<Real, Scalar>(n, wt, u, v, e);
+          else 
+            result = int_x_u_v<Real, Scalar>(n, wt, u, v, e);
+          
+          std::string mat = get_material(e->elem_marker, wf);
+          rank1 nu_elem = matprop.get_nu(mat);
+          rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
+          rank1 chi_elem = matprop.get_chi(mat);
+          
+          return result * (-Coeffs::system_matrix(mrow, mcol, 0)) * chi_elem[gto] * nu_elem[gfrom] * Sigma_f_elem[gfrom];
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar FissionYield::OuterIterationForm::vector_form( int n, double *wt, Func<Scalar> *u_ext[],
+                                                              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext ) const 
+        { 
+          if (!matprop.get_fission_nonzero_structure()[g])
+            return 0.0;
+            
+          std::string mat = get_material(e->elem_marker, wf);
+          rank1 nu_elem = matprop.get_nu(mat);
+          rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
+          rank1 chi_elem = matprop.get_chi(mat);
+          
+          if ((unsigned)ext->nf != nu_elem.size() || (unsigned)ext->nf != Sigma_f_elem.size())
+            error(E_INVALID_GROUP_INDEX);
+          
+          Scalar result = 0;
+          for (int i = 0; i < n; i++) 
+          {
+            Scalar local_res = 0;
+            for (int gfrom = 0; gfrom < ext->nf; gfrom++)
+              local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[mg.pos(mrow,gfrom)]->val[i];
+            
+            local_res = local_res * wt[i] * v->val[i];
+            
+            if (geom_type == HERMES_AXISYM_X)
+              local_res = local_res * e->y[i];
+            else if (geom_type == HERMES_AXISYM_Y)
+              local_res = local_res * e->x[i];
+            
+            result += local_res;
+          }
+        
+          return result * Coeffs::even_moment(0, mrow) * chi_elem[g] / keff;
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar FissionYield::Residual::vector_form( int n, double *wt, Func<Scalar> *u_ext[],
+                                                    Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext ) const 
+        { 
+          if (!matprop.get_fission_nonzero_structure()[gto])
+            return 0.0;
+                   
+          std::string mat = get_material(e->elem_marker, wf);
+          rank1 nu_elem = matprop.get_nu(mat);
+          rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
+          rank1 chi_elem = matprop.get_chi(mat);
+          
+          Scalar result = 0;
+          for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
+          {
+            double nSf = nu_elem[gfrom] * Sigma_f_elem[gfrom];
+            
+            for (unsigned int mcol = 0; mcol <= N_odd; mcol++)
+            {
+              if (geom_type == HERMES_PLANAR) 
+                result += nSf * (-Coeffs::system_matrix(mrow, mcol, 0)) * int_u_ext_v<Real, Scalar>(n, wt, u_ext[mg.pos(mcol,gfrom)], v);
+              else if (geom_type == HERMES_AXISYM_X) 
+                result += nSf * (-Coeffs::system_matrix(mrow, mcol, 0)) * int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[mg.pos(mcol,gfrom)], v, e);
+              else 
+                result += nSf * (-Coeffs::system_matrix(mrow, mcol, 0)) * int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[mg.pos(mcol,gfrom)], v, e);
+            }
+          }
+          
+          return result * chi_elem[gto];
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar OffDiagonalStreaming::Jacobian::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                                           Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext  ) const
+        {
+          Scalar result = 0;
+          
+          if (geom_type == HERMES_PLANAR) 
+            result = int_grad_u_grad_v<Real, Scalar>(n, wt, u, v);
+          else if (geom_type == HERMES_AXISYM_X) 
+            result = int_y_grad_u_grad_v<Real, Scalar>(n, wt, u, v, e);
+          else 
+            result = int_x_grad_u_grad_v<Real, Scalar>(n, wt, u, v, e);
+          
+          std::string mat = get_material(e->elem_marker, wf);     
+          return result * Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto][gfrom];
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar OffDiagonalStreaming::Residual::vector_form( int n, double *wt, Func<Scalar> *u_ext[],
+                                                            Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext ) const 
+        { 
+          Scalar result = 0;
+          
+          std::string mat = get_material(e->elem_marker, wf);
+          rank1 D_elem = matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto];
+          
+          for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
+          {            
+            unsigned int i = mg.pos(mrow, gfrom);
+            
+            if (geom_type == HERMES_PLANAR) 
+              result += D_elem[gfrom] * int_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v);
+            else if (geom_type == HERMES_AXISYM_X) 
+              result += D_elem[gfrom] * int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v, e);
+            else 
+              result += D_elem[gfrom] * int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v, e);
+          }
+          
+          return result * Coeffs::D(mrow);
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar OffDiagonalReactions::Jacobian::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                                           Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext  ) const
+        {
+          Scalar result = 0;
+                              
+          if (geom_type == HERMES_PLANAR)
+            result = int_u_v<Real, Scalar>(n, wt, u, v);
+          else if (geom_type == HERMES_AXISYM_X) 
+            result = int_y_u_v<Real, Scalar>(n, wt, u, v, e);
+          else 
+            result = int_x_u_v<Real, Scalar>(n, wt, u, v, e);
+          
+          std::string mat = get_material(e->elem_marker, wf);
+          
+          double Sigma_rn_elem = 0.;
+          for (unsigned int k = 0; k <= mrow; k++)
+            Sigma_rn_elem += Coeffs::system_matrix(mrow, mcol, k) * matprop.get_Sigma_rn(mat)[2*k][gto][gfrom];
+          
+          return result * Sigma_rn_elem;
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar OffDiagonalReactions::Residual::vector_form( int n, double *wt, Func<Scalar> *u_ext[],
+                                                            Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext ) const 
+        { 
+          std::string mat = get_material(e->elem_marker, wf);
+          rank3 Sigma_rn_elem = matprop.get_Sigma_rn(mat);
+          
+          Scalar result = 0;
+          unsigned int i = mg.pos(mrow, gto);
+          for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
+          {            
+            for (unsigned int mcol = 0; mcol < N_odd; mcol++)
+            {
+              unsigned int j = mg.pos(mcol, gfrom);
+              
+              if (i != j)
+              {
+                for (unsigned int k = 0; k <= std::min(mrow, mcol); k++)
+                {
+                  if (geom_type == HERMES_PLANAR) 
+                    result += Coeffs::system_matrix(mrow, mcol, k) * int_u_ext_v<Real, Scalar>(n, wt, u_ext[j], v);
+                  else if (geom_type == HERMES_AXISYM_X) 
+                    result += Coeffs::system_matrix(mrow, mcol, k) * int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[j], v, e);
+                  else 
+                    result += Coeffs::system_matrix(mrow, mcol, k) * int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[j], v, e);
+                  
+                  result *= Sigma_rn_elem[2*k][gto][gfrom];
+                }
+              }
+            }
+          }
+          
+          return result;
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar ExternalSources::LinearForm::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
+                                                        Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const 
+        { 
+          std::string mat = get_material(e->elem_marker, wf);
+          
+          if (geom_type == HERMES_PLANAR) 
+            return Coeffs::even_moment(0, mrow) * matprop.get_src0(mat)[g] * int_v<Real>(n, wt, v);
+          else if (geom_type == HERMES_AXISYM_X) 
+            return Coeffs::even_moment(0, mrow) * matprop.get_src0(mat)[g] * int_y_v<Real>(n, wt, v, e);
+          else 
+            return Coeffs::even_moment(0, mrow) * matprop.get_src0(mat)[g] * int_x_v<Real>(n, wt, v, e);
+        }
+      }
+      
       namespace Diffusion
       { 
         template<typename Real, typename Scalar>
@@ -1091,6 +1736,186 @@ namespace WeakFormsNeutronics
             (*it)->update_keff(new_keff); 
         }
       }
+    
+      namespace SPN
+      {
+        void DefaultWeakFormFixedSource::lhs_init(unsigned int G, unsigned int N_odd,
+                                                  const MomentGroupFlattener& mg, const MaterialPropertyMaps& matprop,
+                                                  GeomType geom_type)
+        {
+          bool1 diagonal_moments = matprop.is_Sigma_rn_diagonal();
+          bool2 present(N_odd * G, bool1(N_odd * G, false));
+          bool2 sym(N_odd * G, bool1(N_odd * G, false));
+          
+          for (unsigned int m = 0; m < N_odd; m++)
+          {
+            for (unsigned int gto = 0; gto < G; gto++)
+            {
+              unsigned int i = mg.pos(m, gto);
+              
+              for (unsigned int n = m; n < N_odd; n++)
+              {
+                for (unsigned int gfrom = 0; gfrom < G; gfrom++)
+                {
+                  unsigned int j = mg.pos(n, gfrom);
+                  
+                  if ( (j-i)%G )
+                  {
+                    for (unsigned int k = 0; k < 2*m; k+=2)
+                    {
+                      if (!diagonal_moments[k])
+                      {
+                        present[j][i] = present[i][j] = true;
+                        break;
+                      }
+                    }
+                    
+                    if (!present[j][i])
+                    {
+                      if (j < (n+1)*G && diagonal_moments[2*m+1])
+                      {
+                        present[j][i] = present[i][j] = true;
+                      }
+                    }
+                  }
+                  else
+                  {
+                    present[j][i] = true;
+                    sym[j][i] = sym[i][j] = true;
+                  }
+                }
+              }
+            }
+          }
+          
+          bool1 chi_nnz = matprop.get_fission_nonzero_structure();
+          
+          for (unsigned int gto = 0; gto < G; gto++)
+          {
+            for (unsigned int m = 0; m < N_odd; m++)
+            {
+              unsigned int i = mg.pos(m, gto);
+              
+              add_matrix_form(new DiagonalStreamingAndReactions::Jacobian(m, gto, matprop, geom_type));
+              add_vector_form(new DiagonalStreamingAndReactions::Residual(m, gto, matprop, geom_type));
+              
+              if (chi_nnz[gto])
+                add_vector_form(new FissionYield::Residual(m, N_odd, gto, matprop, geom_type));
+              
+              add_vector_form(new OffDiagonalStreaming::Residual(m, gto, matprop, geom_type));
+              add_vector_form(new OffDiagonalReactions::Residual(m, N_odd, gto, matprop, geom_type));
+              
+              for (unsigned int gfrom = 0; gfrom < G; gfrom++)
+              {
+                add_matrix_form(new OffDiagonalStreaming::Jacobian(m, gto, gfrom, matprop, geom_type));
+                
+                for (unsigned int n = 0; n < N_odd; n++)
+                {
+                  unsigned int j = mg.pos(n, gfrom);
+                  
+                  if (i != j)
+                  {
+                    if (chi_nnz[gto])
+                      add_matrix_form( new FissionYield::Jacobian(m, n, gto, gfrom, matprop, geom_type) );
+                    
+                    if (present[i][j])
+                      add_matrix_form( new OffDiagonalReactions::Jacobian(m, n, gto, gfrom, matprop, geom_type, 
+                                                                          sym[i][j] ? HERMES_SYM : HERMES_NONSYM) );
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        DefaultWeakFormFixedSource::DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, unsigned int N,
+                                                               GeomType geom_type) 
+          : WeakForm(matprop.get_G())
+        {
+          unsigned int N_odd = (N + 1)/2;
+          unsigned int G = matprop.get_G();
+          
+          MomentGroupFlattener mg(G);
+          
+          lhs_init(G, N_odd, mg, matprop, geom_type);
+          for (unsigned int m = 0; m < N_odd; m++)
+            for (unsigned int gto = 0; gto < G; gto++)
+              add_vector_form(new ExternalSources::LinearForm(m, gto, matprop, geom_type));
+        }
+        
+        DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, unsigned int N, 
+                                                                DefaultFunction *f_src, std::string src_area,
+                                                                GeomType geom_type  )
+          : WeakForm(matprop.get_G())
+        {
+          unsigned int N_odd = (N + 1)/2;
+          unsigned int G = matprop.get_G();
+          
+          MomentGroupFlattener mg(G);
+          
+          lhs_init(G, N_odd, mg, matprop, geom_type);
+          for (unsigned int m = 0; m < N_odd; m++)
+            for (unsigned int gto = 0; gto < G; gto++)
+              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, -1.0, f_src, geom_type));
+        }
+        
+        DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, unsigned int N, 
+                                                                DefaultFunction *f_src,
+                                                                Hermes::vector<std::string> src_areas,
+                                                                GeomType geom_type  )
+          : WeakForm(matprop.get_G())
+        {
+          unsigned int N_odd = (N + 1)/2;
+          unsigned int G = matprop.get_G();
+          
+          MomentGroupFlattener mg(G);
+          
+          lhs_init(G, N_odd, mg, matprop, geom_type);
+          for (unsigned int m = 0; m < N_odd; m++)
+            for (unsigned int gto = 0; gto < G; gto++)
+              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, -1.0, f_src, geom_type));
+        }
+        
+        DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, unsigned int N, 
+                                                                const std::vector<DefaultFunction*>& f_src,
+                                                                std::string src_area, 
+                                                                GeomType geom_type )
+          : WeakForm(matprop.get_G())
+        {
+          unsigned int N_odd = (N + 1)/2;
+          unsigned int G = matprop.get_G();
+          
+          if (f_src.size() != G)
+            error(E_INVALID_SIZE);
+         
+          MomentGroupFlattener mg(G);
+          
+          lhs_init(G, N_odd, mg, matprop, geom_type);
+          for (unsigned int m = 0; m < N_odd; m++)
+            for (unsigned int gto = 0; gto < G; gto++)
+              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, -1.0, f_src[gto], geom_type));
+        }
+        
+        DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, unsigned int N, 
+                                                                const std::vector<DefaultFunction*>& f_src,
+                                                                Hermes::vector<std::string> src_areas,
+                                                                GeomType geom_type )
+          : WeakForm(matprop.get_G())
+        {
+          unsigned int N_odd = (N + 1)/2;
+          unsigned int G = matprop.get_G();
+          
+          if (f_src.size() != G)
+            error(E_INVALID_SIZE);
+          
+          MomentGroupFlattener mg(G);
+          
+          lhs_init(G, N_odd, mg, matprop, geom_type);
+          for (unsigned int m = 0; m < N_odd; m++)
+            for (unsigned int gto = 0; gto < G; gto++)
+              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, -1.0, f_src[gto], geom_type));
+        }
+      }
     }
     
     namespace SupportClasses
@@ -1113,6 +1938,151 @@ namespace WeakFormsNeutronics
                 result[i] += nu[j] * Sigma_f[j] * values.at(j)[i];
           }
         } 
+      }
+      
+      namespace SPN
+      {
+        const double Coeffs::SYSTEM_MATRIX[N_MAX][N_MAX][N_MAX] =            
+        {
+          {
+            {-1., 0, 0, 0, 0}, 
+            {2./3., 0, 0, 0, 0}, 
+            {-8./15., 0, 0, 0, 0}, 
+            {16./35., 0, 0, 0, 0}, 
+            {-128./315., 0, 0, 0, 0}
+          },
+          {
+            {-4./9., -5./9., 0, 0, 0}, 
+            {16./45., 4./9., 0, 0, 0}, 
+            {-32./105., -8./21., 0, 0, 0}, 
+            {256./945., 64./189., 0, 0, 0},
+            {0, 0, 0, 0, 0}
+          },
+          {
+            {-64./225., -16./45., -9./25., 0, 0}, 
+            {128./525., 32./105., 54./175., 0, 0}, 
+            {-1024./4725., -256./945., -48./175., 0, 0},
+            {0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0}
+          },
+          {
+            {-256./1225., -64./245., -324./1225., -13./49., 0}, 
+            {2048./11025., 512./2205., 288./1225., 104./441., 0},
+            {0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0}
+          },
+          {
+            {-16384./99225., -4096./19845., -256./1225., -832./3969., -17./81.},
+            {0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0}
+          }
+        };
+          
+        const double Coeffs::D_GRAD_F[N_MAX][N_MAX] = 
+        {
+          {-1./2., 1./8., -1./16., 5./128., -7./256.},
+          {-7./24, 41./384., -1./16., 131./3072., 0},
+          {-407./1920., 233./2560., -1777./30720., 0, 0},
+          {3023./17920., 90989./1146880., 0, 0, 0},
+          {-1456787./10321920., 0, 0, 0, 0}
+        };
+        
+        const double Coeffs::EVEN_MOMENTS[N_MAX][N_MAX] = 
+        {
+          {1., -2./3., 8./15., -16./35., 128./315.},
+          {1./3., -4./15., 8./35., -64./315., 0},
+          {1./5., -6./35., 16./105., 0, 0},
+          {1./7., -8./63., 0, 0, 0},
+          {1./9., 0, 0, 0, 0}
+        };
+            
+        double Coeffs::system_matrix(unsigned int m, unsigned int n, unsigned int k_of_Sigma_t2k)
+        {
+          if (m >= N_MAX || n >= N_MAX)
+            error("For the maximum implemented SPN order (N = %d), both m, n must lie in the range [0,%d]."
+                  "Entered (m,n) = (%d,%d).", 2*N_MAX-1, N_MAX-1, m, n);
+          
+          if (m > n) std::swap(m,n);
+          
+          if (k_of_Sigma_t2k > m)
+            error("In the m-th SPN equation, m = %d, the coefficients at the unknown generalized fluxes involve"
+                  "Sigma_tk with k up to %d. Entered k = %d.", m, 2*m, 2*k_of_Sigma_t2k);
+          
+          return SYSTEM_MATRIX[m][n-m][k_of_Sigma_t2k];
+        }
+        
+        double Coeffs::D_grad_F(unsigned int m, unsigned int n)
+        {
+          if (m >= N_MAX || n >= N_MAX)
+            error("For the maximum implemented SPN order (N = %d), both m, n must lie in the range [0,%d]."
+                  "Entered (m,n) = (%d,%d).", 2*N_MAX-1, N_MAX-1, m, n);
+          
+          if (m > n) std::swap(m,n); 
+          return D_GRAD_F[m][n-m];
+        }
+        
+        double Coeffs::even_moment(unsigned int m, unsigned int n)
+        {
+          if (m >= N_MAX)
+            error("For the maximum implemented SPN order (N = %d), there are %d even moments."
+                  "Tried to access %d. moment.", 2*N_MAX-1, N_MAX, m+1);
+          if (n >= N_MAX-m)
+            error("The %d. even moment may be expressed in terms of %d odd moments."
+                  "Tried to use %d. odd moment.", m, N_MAX-m, n+1);
+          
+          return EVEN_MOMENTS[m][n];
+        }
+        
+        MomentFilter::MomentFilter(unsigned int angular_moment, unsigned int group, unsigned int G,
+                                   const Hermes::vector<MeshFunction*>& solutions) 
+          : SimpleFilter(solutions, Hermes::vector<int>()),
+            odd_req_mom(false), g(group), mg(G)
+        {
+          if (angular_moment % 2)
+          { 
+            warning("Using MomentFilter to access the odd moments of flux is inefficient. "
+            "The vector of solutions itself contains these moments (for each energy group).");
+            req_mom_idx = (angular_moment-1)/2;
+            odd_req_mom = true;
+          }
+          else
+            req_mom_idx = angular_moment/2;
+        }
+        
+        MomentFilter::MomentFilter(unsigned int angular_moment, unsigned int group, unsigned int G,
+                                   const Hermes::vector<Solution*>& solutions) 
+          : SimpleFilter(solutions, Hermes::vector<int>()),
+            odd_req_mom(false), g(group), mg(G)
+        {
+          if (angular_moment % 2)
+          { 
+            warning("Using MomentFilter to access the odd moments of flux is inefficient. "
+            "The vector of solutions itself contains these moments (for each energy group).");
+            req_mom_idx = (angular_moment-1)/2;
+            odd_req_mom = true;
+          }
+          else
+            req_mom_idx = angular_moment/2;
+        }
+        
+        void MomentFilter::filter_fn(int n, Hermes::vector< scalar* > values, scalar* result)
+        {
+          if (odd_req_mom)
+            memcpy(result, values.at(req_mom_idx), n*sizeof(scalar));
+          else
+          {            
+            for (int i = 0; i < n; i++) 
+            {
+              result[i] = 0;
+              unsigned int exp_mom_idx = req_mom_idx;
+              for (unsigned int sol_idx = mg.pos(exp_mom_idx,g); sol_idx < values.size(); sol_idx = mg.pos(++exp_mom_idx,g))
+                result[i] += Coeffs::even_moment(req_mom_idx, exp_mom_idx) * values.at(sol_idx)[i];
+            }
+          }
+        }
       }
     }
   }
