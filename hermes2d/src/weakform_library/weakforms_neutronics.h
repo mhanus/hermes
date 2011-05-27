@@ -97,6 +97,18 @@ namespace WeakFormsNeutronics
         static const char* E_SG_SIGMA_R = 
           "Group-reduction cross-section (Sigma_r) is not defined for one-group (i.e. monoenergetic) problems."
           "Set Sigma_a instead.";
+        static const char* E_LAPACK_ERROR = 
+          "Failure of a LAPACK routine with error %d";
+        static const char* W_SINGULAR_MATRIX =
+          "Entered material properties make the Sigma_rn matrix almost singular. Its inversion will most likely fail.";
+        static const char* E_EVEN_SPN =
+          "The \"simplified P_N\" model may be used only with odd N.";
+        static const char* W_SCATTERING_TRUNCATION =
+          "Using SP_%d model - scattering data entered for N > %d will be ignored.";
+        static const char* E_MISMATCHED_ORDER_OF_ANISOTROPY =
+          "SP_%d model requires Sigma_tn for n = 0,...,%d.";
+        static const char* E_SIGMA_T_REQUIRED =
+          "SP_%d model requires Sigma_tn for n = 0,...,%d.";
       }
       
       namespace ValidationFunctors
@@ -112,10 +124,10 @@ namespace WeakFormsNeutronics
                 error(E_INVALID_COMBINATION);
           }
         };
-        
+                
         struct ensure_size { 
-          ensure_size(unsigned int nrows, unsigned int ncols = 0) 
-            : nrows(nrows), ncols(ncols) {};
+          ensure_size(unsigned int nrows, unsigned int ncols = 0, unsigned int npages = 0) 
+            : nrows(nrows), ncols(ncols), npages(npages) {};
           
           void operator() (MaterialPropertyMap1::value_type x) { 
             if (x.second.size() != nrows)
@@ -132,8 +144,25 @@ namespace WeakFormsNeutronics
                 error(E_INVALID_SIZE);
           }
           
+          void operator() (MaterialPropertyMap3::value_type x) {
+            if (x.second.size() != npages)
+              error(E_MISMATCHED_ORDER_OF_ANISOTROPY, npages);
+            
+            MaterialPropertyMap3::mapped_type::iterator matrix;
+            for (matrix = x.second.begin(); matrix != x.second.end(); ++matrix) 
+            {
+              if (matrix->size() != nrows)
+                error(E_INVALID_SIZE);
+              
+              rank2::iterator row;
+              for (row = matrix->begin(); row != matrix->end(); ++row) 
+                if (row->size() != nrows)
+                  error(E_INVALID_SIZE);
+            }
+          }
+          
           private:
-            unsigned int nrows, ncols;
+            unsigned int nrows, ncols, npages;
         };
       }
       
@@ -580,6 +609,115 @@ namespace WeakFormsNeutronics
         };
       }  
       
+      namespace SPN
+      {
+        using namespace Definitions;
+        using namespace Messages;
+        
+        extern "C" 
+        {
+          // LU decomoposition of a general matrix.
+          void dgetrf_(int* m, int *n, double* A, int* lda, int* ipiv, int* info);
+          
+          // Generate inverse of a matrix given its LU decomposition.
+          void dgetri_(int* n, double* A, int* lda, int* ipiv, double* work, int* lwork, int* info);
+          
+          // Compute the norm of A.
+          double dlange_(const char *norm, const int *m, const int *n, const double *a, const int *lda, double *work);
+          
+          // Compute the reciprocal of the condition number of A.
+          int dgecon_(const char *norm, const int *n, double *a, const int *lda, const double *anorm, double *rcond, 
+                      double *work, int *iwork, int *info);
+        }
+        
+        class MaterialPropertyMaps : public Common::MaterialPropertyMaps
+        {
+          protected:
+            
+            MaterialPropertyMap3 Sigma_rn;
+            MaterialPropertyMap3 odd_Sigma_rn_inv;
+            MaterialPropertyMap1 src0;
+            
+            MaterialPropertyMap3 Sigma_sn;
+            MaterialPropertyMap3 Sigma_tn;
+            
+            std::map<std::string, bool1> Sigma_rn_is_diagonal;
+            
+            void extend_to_rank3(const MaterialPropertyMap2& src, MaterialPropertyMap3* dest);
+            void extend_to_rank3(const MaterialPropertyMap1& src, MaterialPropertyMap3* dest);
+            MaterialPropertyMap3 create_map3_by_diagonals(const MaterialPropertyMap2& diags) const;
+            void fill_with(double c, MaterialPropertyMap3 *mmmrmg_map);
+            void invert_odd_Sigma_rn();
+            
+            unsigned int N, N_odd;
+            
+          public:
+            
+            MaterialPropertyMaps(unsigned int G, unsigned int N,
+                                 std::set<std::string> mat_list = std::set<std::string>()) 
+              : Common::MaterialPropertyMaps(G, mat_list), N(N), N_odd(N/2+1) 
+            {
+              if ((N % 2) == 0) error(E_EVEN_SPN);
+            };
+                                    
+            virtual void validate();
+            
+            virtual void set_src0(const MaterialPropertyMap1& src) {
+              this->src0 = src;
+            }
+            
+            virtual void set_src(const MaterialPropertyMap0& src) {
+              extend_to_multigroup(src, &this->src0);            
+            }
+            
+            virtual void set_src(const rank1& src) {
+              extend_to_multiregion(src, &this->src0);
+            }
+            
+            virtual void set_src(const double& src) {
+              extend_to_multiregion_multigroup(src, &this->src0);
+            }
+                        
+            virtual void set_Sigma_rn(const MaterialPropertyMap3& Sr) {
+              this->Sigma_rn = Sr;
+            }
+                        
+            virtual void set_Sigma_sn(const MaterialPropertyMap3& Ss) {
+              this->Sigma_sn = Ss;
+            }
+            
+            virtual void set_Sigma_tn(const MaterialPropertyMap3& St) {
+              this->Sigma_tn = St;
+            }
+            
+            virtual void set_Sigma_tn(const MaterialPropertyMap2& St) {              
+              this->Sigma_tn = create_map3_by_diagonals(St);
+            }
+            
+            virtual void set_Sigma_tn(const MaterialPropertyMap1& St) {
+              extend_to_rank3(St, &this->Sigma_tn);
+            }
+                         
+            const MaterialPropertyMap3& get_Sigma_sn() const {
+              return this->Sigma_sn;
+            }
+            const MaterialPropertyMap3& get_Sigma_rn() const {
+              return this->Sigma_rn;
+            }
+            const MaterialPropertyMap1& get_src0() const {
+              return this->src0;
+            }
+            
+            const bool1& is_Sigma_rn_diagonal(std::string material) const;
+            const bool1  is_Sigma_rn_diagonal() const;
+            const rank3& get_Sigma_rn(std::string material) const;
+            const rank3& get_odd_Sigma_rn_inv(std::string material) const;
+            const rank1& get_src0(std::string material) const;
+            
+            friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
+        };
+      }  
+      
       template <typename NDArrayType>
       class material_property_map
       {
@@ -688,6 +826,66 @@ namespace WeakFormsNeutronics
             std::set<std::string> source_regions;
             
             virtual void filter_fn(int n, Hermes::vector<scalar*> values, scalar* result);
+        };
+      }
+      
+      namespace SPN
+      {
+        using MaterialProperties::SPN::MaterialPropertyMaps;
+        using namespace MaterialProperties::Definitions;
+        
+        class Coeffs
+        {
+          private:
+            
+            static const unsigned int N_MAX = 5;
+            
+            static const double SYSTEM_MATRIX[N_MAX][N_MAX][N_MAX];
+            static const double D_GRAD_F[N_MAX][N_MAX];
+            static const double EVEN_MOMENTS[N_MAX][N_MAX];
+                        
+          public:
+            
+            static double system_matrix(unsigned int m, unsigned int n, unsigned int k_of_Sigma_t2k);
+            static double D_grad_F(unsigned int m, unsigned int n);
+            static double even_moment(unsigned int m, unsigned int n);
+            
+            static double D(unsigned int m) { 
+              return 1./(2*m+3); 
+            }
+            
+            static int max_order() { 
+              return N_MAX; 
+            }
+        };
+        
+        class MomentGroupFlattener
+        {
+          unsigned int G;
+          
+          public:
+            MomentGroupFlattener(unsigned int G) : G(G) {};
+            
+            unsigned int pos(unsigned int angular_moment, unsigned int group) const {
+              return angular_moment * G + group;
+            }
+        };
+        
+        class MomentFilter : public SimpleFilter
+        {
+          public: 
+            
+            MomentFilter(unsigned int angular_moment, unsigned int group, unsigned int G,
+                         const Hermes::vector<MeshFunction*>& solutions);
+            MomentFilter(unsigned int angular_moment, unsigned int group, unsigned int G,
+                         const Hermes::vector<Solution*>& solutions);
+            
+          private:
+            
+            unsigned int odd_req_mom, req_mom_idx, g;
+            MomentGroupFlattener mg;
+                        
+            void filter_fn(int n, Hermes::vector<scalar*> values, scalar* result);
         };
       }
     }
@@ -1152,6 +1350,593 @@ namespace WeakFormsNeutronics
             
       }                
     
+      namespace SPN
+      {
+        using namespace MaterialProperties::SPN;
+        using SupportClasses::SPN::Coeffs;
+        using SupportClasses::SPN::MomentGroupFlattener;
+        
+        //TODO: Make Diffusion::GenericForm only a GenericForm, which takes pointer to
+        // MaterialProperties::Common::MaterialPropertyMaps (hence all "matprop." will 
+        // have to be changed to "matprop->". The following class will then not be needed.
+        class GenericForm
+        {
+          protected:
+            const MaterialPropertyMaps& matprop;
+            GeomType geom_type;
+            MomentGroupFlattener mg;
+            
+            GenericForm(const MaterialPropertyMaps& matprop,
+                        GeomType geom_type = HERMES_PLANAR)
+              : matprop(matprop), geom_type(geom_type), mg(matprop.get_G())
+            {};
+            
+            std::string get_material(int elem_marker, WeakForm *wf) const 
+            { 
+              if (elem_marker == HERMES_DUMMY_ELEM_MARKER)
+                return matprop.get_Sigma_rn().begin()->first;
+              
+              return wf->get_element_markers_conversion()->get_user_marker(elem_marker); 
+            }
+        };
+        
+        struct VacuumBoundaryCondition
+        {
+          // TODO: General albedo boundary condition.
+          class Jacobian : public WeakForm::MatrixFormSurf, protected GenericForm
+          {
+            public:
+              Jacobian(unsigned int m, unsigned int n, unsigned int g, 
+                       const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
+                : WeakForm::MatrixFormSurf(mg.pos(m,g),mg.pos(n,g),HERMES_ANY), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), mcol(n), g(g)
+              {};
+              
+              Jacobian(unsigned int m, unsigned int n,  unsigned int g, std::string area, 
+                       const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
+                : WeakForm::MatrixFormSurf(i,j,area),
+                  GenericForm(matprop, geom_type),
+                  mrow(m), mcol(n), g(g)
+              {};
+              
+              template<typename Real, typename Scalar>
+              Scalar matrix_form( int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                  Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext ) const;
+              
+              virtual scalar value( int n, double *wt, Func<scalar> *u_ext[], Func<double> *u,
+                                    Func<double> *v, Geom<double> *e, ExtData<scalar> *ext ) const {
+                return matrix_form<double, scalar>(n, wt, u_ext, u, v, e, ext);
+              }
+
+              virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
+                              Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const {
+                return matrix_form<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
+              }
+              
+              // This is to make the form usable in rk_time_step().
+              virtual WeakForm::MatrixFormSurf* clone() {
+                return new Jacobian(*this);
+              }
+                            
+            private:
+              
+              unsigned int mrow, mcol;
+              unsigned int g;
+          };
+          
+          class Residual : public WeakForm::VectorFormSurf, protected GenericForm
+          {
+            public:
+              Residual(unsigned int m, unsigned int N, unsigned int g,
+                       const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
+                : WeakForm::VectorFormSurf(mg.pos(m,g),HERMES_ANY), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), N_odd(N/2+1), g(g)
+              {};
+              
+              Residual(unsigned int m, unsigned int N, unsigned int g, std::string area, 
+                       const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
+                : WeakForm::VectorFormSurf(mg.pos(m,g),area), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), N_odd(N/2+1), g(g)
+              {};
+              
+              template<typename Real, typename Scalar>
+              Scalar vector_form(int n, double *wt, Func<Scalar> *u_ext[],
+                                 Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
+              
+              virtual scalar value(int n, double *wt, Func<scalar> *u_ext[],
+                                   Func<double> *v, Geom<double> *e, ExtData<scalar> *ext) const {
+                return vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
+              }
+
+              virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[],
+                              Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const {
+                return vector_form<Ord, Ord>(n, wt, u_ext, v, e, ext);
+              }
+              
+              // This is to make the form usable in rk_time_step().
+              virtual WeakForm::VectorFormSurf* clone() {
+                return new Residual(*this);
+              }
+                            
+            private:
+              unsigned int mrow;
+              unsigned int N_odd;
+              unsigned int g;
+          };
+        };
+        
+        struct DiagonalStreamingAndReactions
+        {   
+          class Jacobian : public WeakForm::MatrixFormVol, protected GenericForm
+          {
+            public:            
+              Jacobian(unsigned int m, unsigned int g, 
+                       const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
+                : WeakForm::MatrixFormVol(mg.pos(m,g), mg.pos(m,g), HERMES_ANY, HERMES_SYM),
+                  GenericForm(matprop, geom_type),
+                  mrow(m), g(g)
+              {};
+                  
+              Jacobian(unsigned int m, unsigned int g, std::string area,
+                       const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
+                : WeakForm::MatrixFormVol(mg.pos(m,g), mg.pos(m,g), area, HERMES_SYM),
+                  GenericForm(matprop, geom_type),
+                  mrow(m), g(g)
+              {};
+              
+              template<typename Real, typename Scalar>
+              Scalar matrix_form( int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                  Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext  ) const;
+
+              virtual scalar value( int n, double *wt, Func<scalar> *u_ext[], Func<double> *u,
+                                    Func<double> *v, Geom<double> *e, ExtData<scalar> *ext  ) const { 
+                return  matrix_form<double, scalar> (n, wt, u_ext, u, v, e, ext);
+              }
+              
+              virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
+                              Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext  ) const { 
+                return  matrix_form<Ord, Ord> (n, wt, u_ext, u, v, e, ext);
+              }
+
+              // This is to make the form usable in rk_time_step().
+              virtual WeakForm::MatrixFormVol* clone() {
+                return new Jacobian(*this);
+              }
+
+            private:
+              
+              unsigned int mrow;
+              unsigned int g;
+          };
+          
+          class Residual : public WeakForm::VectorFormVol, protected GenericForm
+          {
+            public:
+              
+              Residual(unsigned int m, unsigned int g, 
+                        const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
+                : WeakForm::VectorFormVol(mg.pos(m,g), HERMES_ANY),
+                  GenericForm(matprop, geom_type),
+                  mrow(m), g(g)
+              {};
+                  
+              Residual(unsigned int m, unsigned int g, std::string area,
+                        const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
+                : WeakForm::VectorFormVol(mg.pos(m,g), area),
+                  GenericForm(matprop, geom_type), 
+                  mrow(m), g(g)
+              {};
+              
+              template<typename Real, typename Scalar>
+              Scalar vector_form(int n, double *wt, Func<Scalar> *u_ext[],
+                                Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
+              
+              virtual scalar value(int n, double *wt, Func<scalar> *u_ext[], Func<double> *v,
+                                    Geom<double> *e, ExtData<scalar> *ext) const  {
+                return vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
+              }
+
+              virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
+                              Geom<Ord> *e, ExtData<Ord> *ext) const  {
+                return vector_form<Ord, Ord>(n, wt, u_ext, v, e, ext);
+              }
+              
+              // This is to make the form usable in rk_time_step().
+              virtual WeakForm::VectorFormVol* clone() {
+                return new Residual(*this);
+              }
+              
+            private:
+              
+              unsigned int mrow;
+              unsigned int g;
+          };
+        };
+      
+        struct FissionYield
+        {
+          class Jacobian : public WeakForm::MatrixFormVol, protected GenericForm
+          {
+            public:
+              
+              Jacobian( unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
+                        const MaterialPropertyMaps& matprop,
+                        GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
+                : WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(n,gfrom), HERMES_ANY, sym), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), mcol(n), gto(gto), gfrom(gfrom)
+              {};
+              
+              Jacobian( unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
+                        std::string area, const MaterialPropertyMaps& matprop,
+                        GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
+                : WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(n,gfrom), area, sym), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), mcol(n), gto(gto), gfrom(gfrom)
+              {};
+              
+              template<typename Real, typename Scalar>
+              Scalar matrix_form( int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                  Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext  ) const;
+              
+              virtual scalar value( int n, double *wt, Func<scalar> *u_ext[], Func<double> *u,
+                                    Func<double> *v, Geom<double> *e, ExtData<scalar> *ext  ) const { 
+                return  -1.0 * matrix_form<double, scalar> (n, wt, u_ext, u, v, e, ext);
+              }
+              
+              virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
+                              Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext  ) const { 
+                return  matrix_form<Ord, Ord> (n, wt, u_ext, u, v, e, ext);
+              }
+              
+              // This is to make the form usable in rk_time_step().
+              virtual WeakForm::MatrixFormVol* clone() {
+                return new Jacobian(*this);
+              }
+              
+            private:
+              
+              unsigned int mrow, mcol;
+              unsigned int gto, gfrom;
+          };
+      
+          class OuterIterationForm : public WeakForm::VectorFormVol, protected GenericForm
+          {
+            public:
+              
+              OuterIterationForm( unsigned int m, unsigned int g,
+                                  const MaterialPropertyMaps& matprop,
+                                  Hermes::vector<MeshFunction*>& iterates,
+                                  double keff = 1.0,
+                                  GeomType geom_type = HERMES_PLANAR )
+                : WeakForm::VectorFormVol(mg.pos(m,g), HERMES_ANY, iterates),
+                  GenericForm(matprop, geom_type),
+                  mrow(m), g(g), keff(keff)
+              {
+                if (g >= iterates.size())
+                  error(E_INVALID_GROUP_INDEX);
+              }
+              
+              OuterIterationForm( unsigned int m, unsigned int g, std::string area,
+                                  const MaterialPropertyMaps& matprop,
+                                  Hermes::vector<MeshFunction*>& iterates,
+                                  double keff = 1.0,
+                                  GeomType geom_type = HERMES_PLANAR )
+                : WeakForm::VectorFormVol(mg.pos(m,g), area, iterates),
+                  GenericForm(matprop, geom_type),
+                  mrow(m), g(g), keff(keff)
+              {
+                if (g >= iterates.size())
+                  error(E_INVALID_GROUP_INDEX);
+              }
+              
+              template<typename Real, typename Scalar>
+              Scalar vector_form(int n, double *wt, Func<Scalar> *u_ext[],
+                                Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
+
+              virtual scalar value(int n, double *wt, Func<scalar> *u_ext[], Func<double> *v,
+                                  Geom<double> *e, ExtData<scalar> *ext) const {
+                return -1.0 * vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
+              }
+
+              virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
+                              Geom<Ord> *e, ExtData<Ord> *ext) const  {
+                return vector_form<Ord, Ord>(n, wt, u_ext, v, e, ext);
+              }
+
+              // This is to make the form usable in rk_time_step().
+              virtual WeakForm::VectorFormVol* clone() {
+                return new OuterIterationForm(*this);
+              }
+              
+              void update_keff(double new_keff) { keff = new_keff; }
+              
+            private:
+              
+              unsigned int mrow;
+              unsigned int g;
+              double keff;
+          };
+        
+          class Residual : public WeakForm::VectorFormVol, protected GenericForm
+          {
+            public:
+              Residual( unsigned int m, unsigned int N_odd, unsigned int gto,
+                        const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR )
+                : WeakForm::VectorFormVol(mg.pos(m,gto)), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), N_odd(N_odd), gto(gto)
+              {};
+              
+              Residual( unsigned int m, unsigned int N_odd, unsigned int gto,
+                        std::string area, const MaterialPropertyMaps& matprop, 
+                        GeomType geom_type = HERMES_PLANAR )
+                : WeakForm::VectorFormVol(mg.pos(m,gto), area), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), N_odd(N_odd), gto(gto)
+              {};
+              
+              template<typename Real, typename Scalar>
+              Scalar vector_form(int n, double *wt, Func<Scalar> *u_ext[],
+                                Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
+              
+              virtual scalar value(int n, double *wt, Func<scalar> *u_ext[], Func<double> *v,
+                                    Geom<double> *e, ExtData<scalar> *ext) const {
+                return -1.0 * vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
+              }
+
+              virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
+                              Geom<Ord> *e, ExtData<Ord> *ext) const {
+                return vector_form<Ord, Ord>(n, wt, u_ext, v, e, ext);
+              }
+              
+              // This is to make the form usable in rk_time_step().
+              virtual WeakForm::VectorFormVol* clone() {
+                return new Residual(*this);
+              }
+              
+            private:
+              
+              unsigned int mrow;
+              unsigned int N_odd;
+              unsigned int gto;
+          };
+        };
+        
+        struct OffDiagonalStreaming
+        {      
+          class Jacobian : public WeakForm::MatrixFormVol, protected GenericForm
+          {
+            public:
+              
+              Jacobian( unsigned int m, unsigned int gto, unsigned int gfrom,
+                        const MaterialPropertyMaps& matprop,
+                        GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
+                : WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(m,gfrom)), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), gto(gto), gfrom(gfrom)
+              {};
+              
+              Jacobian( unsigned int m, unsigned int gto, unsigned int gfrom,
+                        std::string area, const MaterialPropertyMaps& matprop,
+                        GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
+                : WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(m,gfrom), area), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), gto(gto), gfrom(gfrom)
+              {};
+              
+              template<typename Real, typename Scalar>
+              Scalar matrix_form( int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                  Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext  ) const;
+              
+              virtual scalar value( int n, double *wt, Func<scalar> *u_ext[], Func<double> *u,
+                                    Func<double> *v, Geom<double> *e, ExtData<scalar> *ext  ) const { 
+                return  -1.0 * matrix_form<double, scalar> (n, wt, u_ext, u, v, e, ext);
+              }
+              
+              virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
+                              Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext  ) const { 
+                return  matrix_form<Ord, Ord> (n, wt, u_ext, u, v, e, ext);
+              }
+              
+              // This is to make the form usable in rk_time_step().
+              virtual WeakForm::MatrixFormVol* clone() {
+                return new Jacobian(*this);
+              }
+              
+            private:
+              
+              unsigned int mrow;
+              unsigned int gto, gfrom;
+          };
+        
+          class Residual : public WeakForm::VectorFormVol, protected GenericForm
+          {
+            public:
+              Residual( unsigned int m, unsigned int gto,
+                        const MaterialPropertyMaps& matprop,
+                        GeomType geom_type = HERMES_PLANAR )
+                : WeakForm::VectorFormVol(mg.pos(m,gto)), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), gto(gto)
+              {};
+              
+              Residual( unsigned int m, unsigned int gto,
+                        std::string area, const MaterialPropertyMaps& matprop,
+                        GeomType geom_type = HERMES_PLANAR )
+                : WeakForm::VectorFormVol(mg.pos(m,gto), area), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), gto(gto)
+              {};
+              
+              template<typename Real, typename Scalar>
+              Scalar vector_form(int n, double *wt, Func<Scalar> *u_ext[],
+                                Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
+              
+              virtual scalar value(int n, double *wt, Func<scalar> *u_ext[], Func<double> *v,
+                                    Geom<double> *e, ExtData<scalar> *ext) const {
+                return -1.0 * vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
+              }
+
+              virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
+                              Geom<Ord> *e, ExtData<Ord> *ext) const {
+                return vector_form<Ord, Ord>(n, wt, u_ext, v, e, ext);
+              }
+              
+              // This is to make the form usable in rk_time_step().
+              virtual WeakForm::VectorFormVol* clone() {
+                return new Residual(*this);
+              }
+              
+            private:
+              
+              unsigned int mrow;
+              unsigned int gto;
+          };
+        };
+        
+        struct OffDiagonalReactions
+        {      
+          class Jacobian : public WeakForm::MatrixFormVol, protected GenericForm
+          {
+            public:
+              
+              Jacobian( unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
+                        const MaterialPropertyMaps& matprop,
+                        GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
+                : WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(n,gfrom)), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), mcol(n), gto(gto), gfrom(gfrom)
+              {};
+              
+              Jacobian( unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
+                        std::string area, const MaterialPropertyMaps& matprop,
+                        GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
+                : WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(n,gfrom), area), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), mcol(n), gto(gto), gfrom(gfrom)
+              {};
+              
+              template<typename Real, typename Scalar>
+              Scalar matrix_form( int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                  Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext  ) const;
+              
+              virtual scalar value( int n, double *wt, Func<scalar> *u_ext[], Func<double> *u,
+                                    Func<double> *v, Geom<double> *e, ExtData<scalar> *ext  ) const { 
+                return  -1.0 * matrix_form<double, scalar> (n, wt, u_ext, u, v, e, ext);
+              }
+              
+              virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
+                              Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext  ) const { 
+                return  matrix_form<Ord, Ord> (n, wt, u_ext, u, v, e, ext);
+              }
+              
+              // This is to make the form usable in rk_time_step().
+              virtual WeakForm::MatrixFormVol* clone() {
+                return new Jacobian(*this);
+              }
+              
+            private:
+              
+              unsigned int mrow, mcol;
+              unsigned int gto, gfrom;
+          };
+        
+          class Residual : public WeakForm::VectorFormVol, protected GenericForm
+          {
+            public:
+              Residual( unsigned int m, unsigned int N_odd, unsigned int gto,
+                        const MaterialPropertyMaps& matprop,
+                        GeomType geom_type = HERMES_PLANAR )
+                : WeakForm::VectorFormVol(mg.pos(m,gto)), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), N_odd(N_odd), gto(gto)
+              {};
+              
+              Residual( unsigned int m, unsigned int N_odd, unsigned int gto,
+                        std::string area, const MaterialPropertyMaps& matprop,
+                        GeomType geom_type = HERMES_PLANAR )
+                : WeakForm::VectorFormVol(mg.pos(m,gto), area), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), N_odd(N_odd), gto(gto)
+              {};
+              
+              template<typename Real, typename Scalar>
+              Scalar vector_form(int n, double *wt, Func<Scalar> *u_ext[],
+                                Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
+              
+              virtual scalar value(int n, double *wt, Func<scalar> *u_ext[], Func<double> *v,
+                                    Geom<double> *e, ExtData<scalar> *ext) const {
+                return -1.0 * vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
+              }
+
+              virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
+                              Geom<Ord> *e, ExtData<Ord> *ext) const {
+                return vector_form<Ord, Ord>(n, wt, u_ext, v, e, ext);
+              }
+              
+              // This is to make the form usable in rk_time_step().
+              virtual WeakForm::VectorFormVol* clone() {
+                return new Residual(*this);
+              }
+              
+            private:
+              
+              unsigned int mrow;
+              unsigned int N_odd;
+              unsigned int gto;
+          };
+        };
+        
+        struct ExternalSources
+        {
+          class LinearForm : public WeakForm::VectorFormVol, protected GenericForm
+          {
+            public:
+              
+              LinearForm( unsigned int m, unsigned int g,
+                          const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
+                : WeakForm::VectorFormVol(mg.pos(m,g)), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), g(g)
+              {};
+              
+              LinearForm( unsigned int m, unsigned int g, std::string area,
+                          const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
+                : WeakForm::VectorFormVol(mg.pos(m,g), area), 
+                  GenericForm(matprop, geom_type),
+                  mrow(m), g(g)
+              {};
+              
+              template<typename Real, typename Scalar>
+              Scalar vector_form(int n, double *wt, Func<Scalar> *u_ext[],
+                                Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
+              
+              virtual scalar value(int n, double *wt, Func<scalar> *u_ext[], Func<double> *v,
+                                    Geom<double> *e, ExtData<scalar> *ext) const {
+                return -1.0 * vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
+              }
+
+              virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
+                              Geom<Ord> *e, ExtData<Ord> *ext) const {
+                return vector_form<Ord, Ord>(n, wt, u_ext, v, e, ext);
+              }
+                              
+              // This is to make the form usable in rk_time_step().
+              virtual WeakForm::VectorFormVol* clone() {
+                return new LinearForm(*this);
+              }
+            
+            private:
+              
+              unsigned int mrow;
+              unsigned int g;      
+          }; 
+        };
+      }
     }
     
     namespace CompleteWeakForms
@@ -1217,6 +2002,44 @@ namespace WeakFormsNeutronics
             double get_keff() const { return keff; }
         };
         
+      }
+    
+      namespace SPN
+      {
+        using namespace MaterialProperties;
+        using namespace ElementaryForms::SPN;
+                
+        class DefaultWeakFormFixedSource : public WeakForm
+        {
+          protected:                  
+            void lhs_init(unsigned int G, unsigned int N_odd,
+                          const MomentGroupFlattener& mg, const MaterialPropertyMaps& matprop,
+                          GeomType geom_type);
+            
+          public:
+            DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, unsigned int N,
+                                       GeomType geom_type = HERMES_PLANAR);
+            
+            DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, unsigned int N,
+                                       DefaultFunction *f_src,
+                                       std::string src_area = HERMES_ANY,
+                                       GeomType geom_type = HERMES_PLANAR);
+            
+            DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, unsigned int N,
+                                       DefaultFunction *f_src,
+                                       Hermes::vector<std::string> src_areas,
+                                       GeomType geom_type = HERMES_PLANAR);
+            
+            DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, unsigned int N,
+                                       const std::vector<DefaultFunction*>& f_src,
+                                       std::string src_area = HERMES_ANY,
+                                       GeomType geom_type = HERMES_PLANAR);
+            
+            DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, unsigned int N,
+                                       const std::vector<DefaultFunction*>& f_src,
+                                       Hermes::vector<std::string> src_areas,
+                                       GeomType geom_type = HERMES_PLANAR);
+        };
       }
     }
   }
