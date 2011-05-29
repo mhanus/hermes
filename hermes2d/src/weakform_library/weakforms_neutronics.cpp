@@ -1844,7 +1844,7 @@ namespace WeakFormsNeutronics
         }
         
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, unsigned int N, 
-                                                                DefaultFunction *f_src, std::string src_area,
+                                                                HermesFunction *minus_f_src, std::string src_area,
                                                                 GeomType geom_type  )
           : WeakForm(matprop.get_G())
         {
@@ -1856,11 +1856,11 @@ namespace WeakFormsNeutronics
           lhs_init(G, N_odd, mg, matprop, geom_type);
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
-              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, -1.0, f_src, geom_type));
+              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, minus_f_src, geom_type));
         }
         
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, unsigned int N, 
-                                                                DefaultFunction *f_src,
+                                                                HermesFunction *minus_f_src,
                                                                 Hermes::vector<std::string> src_areas,
                                                                 GeomType geom_type  )
           : WeakForm(matprop.get_G())
@@ -1873,11 +1873,11 @@ namespace WeakFormsNeutronics
           lhs_init(G, N_odd, mg, matprop, geom_type);
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
-              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, -1.0, f_src, geom_type));
+              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, minus_f_src, geom_type));
         }
         
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, unsigned int N, 
-                                                                const std::vector<DefaultFunction*>& f_src,
+                                                                const std::vector<HermesFunction*>& minus_f_src,
                                                                 std::string src_area, 
                                                                 GeomType geom_type )
           : WeakForm(matprop.get_G())
@@ -1885,7 +1885,7 @@ namespace WeakFormsNeutronics
           unsigned int N_odd = (N + 1)/2;
           unsigned int G = matprop.get_G();
           
-          if (f_src.size() != G)
+          if (minus_f_src.size() != G)
             error(E_INVALID_SIZE);
          
           MomentGroupFlattener mg(G);
@@ -1893,11 +1893,11 @@ namespace WeakFormsNeutronics
           lhs_init(G, N_odd, mg, matprop, geom_type);
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
-              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, -1.0, f_src[gto], geom_type));
+              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, minus_f_src[gto], geom_type));
         }
         
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, unsigned int N, 
-                                                                const std::vector<DefaultFunction*>& f_src,
+                                                                const std::vector<HermesFunction*>& minus_f_src,
                                                                 Hermes::vector<std::string> src_areas,
                                                                 GeomType geom_type )
           : WeakForm(matprop.get_G())
@@ -1905,7 +1905,7 @@ namespace WeakFormsNeutronics
           unsigned int N_odd = (N + 1)/2;
           unsigned int G = matprop.get_G();
           
-          if (f_src.size() != G)
+          if (minus_f_src.size() != G)
             error(E_INVALID_SIZE);
           
           MomentGroupFlattener mg(G);
@@ -1913,7 +1913,7 @@ namespace WeakFormsNeutronics
           lhs_init(G, N_odd, mg, matprop, geom_type);
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
-              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, -1.0, f_src[gto], geom_type));
+              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, minus_f_src[gto], geom_type));
         }
       }
     }
