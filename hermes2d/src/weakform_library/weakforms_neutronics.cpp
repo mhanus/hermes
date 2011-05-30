@@ -902,7 +902,7 @@ namespace WeakFormsNeutronics
           invert_odd_Sigma_rn();
         }
 
-        const rank3& MaterialPropertyMaps::get_Sigma_rn(std::string material) const
+        const rank3& MaterialPropertyMaps::get_Sigma_rn_material(std::string material) const
         {
           MaterialPropertyMap3::const_iterator data = this->Sigma_rn.find(material);
           if (data != this->Sigma_rn.end())
@@ -914,7 +914,7 @@ namespace WeakFormsNeutronics
           }
         }
         
-        const rank3& MaterialPropertyMaps::get_odd_Sigma_rn_inv(std::string material) const
+        const rank3& MaterialPropertyMaps::get_odd_Sigma_rn_inv_material(std::string material) const
         {
           MaterialPropertyMap3::const_iterator data = this->odd_Sigma_rn_inv.find(material);
           if (data != this->odd_Sigma_rn_inv.end())
@@ -926,7 +926,7 @@ namespace WeakFormsNeutronics
           }
         }
         
-        const rank1& MaterialPropertyMaps::get_src0(std::string material) const
+        const rank1& MaterialPropertyMaps::get_src0_material(std::string material) const
         {
           MaterialPropertyMap1::const_iterator data = this->src0.find(material);
           if (data != this->src0.end())
@@ -938,7 +938,7 @@ namespace WeakFormsNeutronics
           }
         }
         
-        const bool1& MaterialPropertyMaps::is_Sigma_rn_diagonal(std::string material) const
+        const bool1& MaterialPropertyMaps::is_Sigma_rn_diagonal_material(std::string material) const
         {
           std::map<std::string, bool1>::const_iterator data = this->Sigma_rn_is_diagonal.find(material);
           if (data != this->Sigma_rn_is_diagonal.end())
@@ -948,6 +948,38 @@ namespace WeakFormsNeutronics
             error(E_INVALID_MARKER);
             return *(new bool1()); // To avoid MSVC problems; execution should never come to this point.
           }
+        }
+        
+        const rank3& MaterialPropertyMaps::get_Sigma_rn(std::string region) const
+        {
+          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+          if (material != this->region_material_map.end())
+            return get_Sigma_rn_material(material->second);
+          return get_Sigma_rn_material(region);
+        }
+        
+        const rank3& MaterialPropertyMaps::get_odd_Sigma_rn_inv(std::string region) const
+        {
+          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+          if (material != this->region_material_map.end())
+            return get_odd_Sigma_rn_inv_material(material->second);
+          return get_odd_Sigma_rn_inv_material(region);
+        }
+        
+        const rank1& MaterialPropertyMaps::get_src0(std::string region) const
+        {
+          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+          if (material != this->region_material_map.end())
+            return get_src0_material(material->second);
+          return get_src0_material(region);
+        }
+        
+        const bool1& MaterialPropertyMaps::is_Sigma_rn_diagonal(std::string region) const
+        {
+          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+          if (material != this->region_material_map.end())
+            return is_Sigma_rn_diagonal_material(material->second);
+          return is_Sigma_rn_diagonal_material(region);
         }
         
         const bool1 MaterialPropertyMaps::is_Sigma_rn_diagonal() const

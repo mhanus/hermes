@@ -658,7 +658,14 @@ namespace WeakFormsNeutronics
               : Common::MaterialPropertyMaps(G, mat_list), N(N), N_odd(N/2+1) 
             {
               if ((N % 2) == 0) error(E_EVEN_SPN);
-            };
+            }
+            
+            MaterialPropertyMaps(unsigned int G, unsigned int N, 
+                                 const RegionMaterialMap& reg_mat_map)
+              : Common::MaterialPropertyMaps(G, reg_mat_map), N(N), N_odd(N/2+1)  
+            { 
+              if ((N % 2) == 0) error(E_EVEN_SPN);
+            }
                                     
             virtual void validate();
             
@@ -708,11 +715,17 @@ namespace WeakFormsNeutronics
               return this->src0;
             }
             
-            const bool1& is_Sigma_rn_diagonal(std::string material) const;
             const bool1  is_Sigma_rn_diagonal() const;
-            const rank3& get_Sigma_rn(std::string material) const;
-            const rank3& get_odd_Sigma_rn_inv(std::string material) const;
-            const rank1& get_src0(std::string material) const;
+            
+            const bool1& is_Sigma_rn_diagonal_material(std::string material) const;
+            const rank3& get_Sigma_rn_material(std::string material) const;
+            const rank3& get_odd_Sigma_rn_inv_material(std::string material) const;
+            const rank1& get_src0_material(std::string material) const;
+            
+            const bool1& is_Sigma_rn_diagonal(std::string region) const;
+            const rank3& get_Sigma_rn(std::string region) const;
+            const rank3& get_odd_Sigma_rn_inv(std::string region) const;
+            const rank1& get_src0(std::string region) const;
             
             friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
         };
