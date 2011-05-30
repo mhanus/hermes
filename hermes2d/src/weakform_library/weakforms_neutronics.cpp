@@ -1009,9 +1009,8 @@ namespace WeakFormsNeutronics
           os << static_cast<const Common::MaterialPropertyMaps&>(matprop) << endl;
           
           int gto_width = 12;
-          int total_width = gto_width + 2*8*matprop.G;
-          int label_width = 4*matprop.G-6;
-          int elem_width = 8;
+          int elem_width = 14;
+          int total_width = 2*gto_width + 2*elem_width*matprop.G;          
                               
           MaterialPropertyMap3::const_iterator Srn_elem = matprop.Sigma_rn.begin();
           MaterialPropertyMap3::const_iterator Srn_inv_elem = matprop.odd_Sigma_rn_inv.begin();
@@ -1022,27 +1021,32 @@ namespace WeakFormsNeutronics
             rank3 Srn_inv_moments = Srn_inv_elem->second;
             
             os << setw(total_width) << setfill('_') << ' ' << endl << setfill(' ');
-            os << setw(total_width/2-5) << uppercase << mat << nouppercase << endl;
+            os << setw(total_width/2+mat.length()/2) << mat << endl << endl;
             
-            os << setw(gto_width/2) << "trgt group" << setw(gto_width/2) << ' ';
-            os << setw(label_width) << "Sigma_rn" << setw(label_width) << ' ';
-            os << setw(label_width) << "odd_Sigma_rn_inv" << setw(label_width) << ' ';
+            os << setw(gto_width)  << "trgt group";
+            os << setw(elem_width) << "Sigma_rn";
+            os << setw(elem_width) << "odd_Srn_inv";
             
             rank3::const_iterator Srn_moment = Srn_moments.begin();
             rank3::const_iterator Srn_inv_moment = Srn_inv_moments.begin();
             int moment = 0;
-            for ( ; Srn_moment != Srn_moments.end(); ++Srn_moment, ++Srn_inv_moment, ++moment)
+            for ( ; Srn_moment != Srn_moments.end(); ++Srn_moment, ++moment)
             {
-              os << endl << setw(total_width/2-5) << moment << ". moment" << endl;
+              os << endl << setw(total_width/2+2) << "moment " << moment << endl;
 
               for (unsigned int gto = 0; gto < matprop.G; gto++)
               {
-                os << setw(gto_width/2) << gto << setw(gto_width/2) << ' ';
+                os << setw(gto_width) << gto;
                 for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
                   os << setw(elem_width) << (*Srn_moment)[gto][gfrom];
-                os << "  |  ";
-                for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
-                  os << setw(elem_width) << (*Srn_inv_moment)[gto][gfrom];
+                
+                if (moment % 2)
+                {
+                  for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
+                    os << setw(elem_width) << (*Srn_inv_moment)[gto][gfrom];
+                  
+                  ++Srn_inv_moment;
+                }
                 
                 os << endl;
               }
@@ -1050,7 +1054,7 @@ namespace WeakFormsNeutronics
             
             if (!matprop.src0.empty())
             {
-              os << endl << setw(total_width/2-10) << "isotropic ext. sources" << endl;
+              os << endl << setw(total_width/2+10) << "isotropic ext. sources" << setw(total_width/2) << ' ' << endl;
               for (unsigned int gto = 0; gto < matprop.G; gto++)
               {
                 os << setw(gto_width/2) << gto << setw(gto_width/2) << ' ';
