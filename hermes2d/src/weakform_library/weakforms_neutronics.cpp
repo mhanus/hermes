@@ -54,10 +54,7 @@ namespace WeakFormsNeutronics
 
         void MaterialPropertyMaps::extend_to_multigroup(const MaterialPropertyMap0& mrsg_map, 
                                                         MaterialPropertyMap1 *mrmg_map)
-        {
-          if (G == 1)
-            warning(W_MG_EXTENSION);
-          
+        {          
           MaterialPropertyMap0::const_iterator it;
           for (it = mrsg_map.begin(); it != mrsg_map.end(); ++it)
             (*mrmg_map)[it->first].assign(G, it->second);
