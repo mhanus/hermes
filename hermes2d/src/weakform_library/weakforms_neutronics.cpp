@@ -1,980 +1,1114 @@
-// This file is part of Hermes2D.
-//
-// Hermes2D is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
-//
-// Hermes2D is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with Hermes2D.  If not, see <http://www.gnu.org/licenses/>.
-
-#include "weakform_library/weakforms_neutronics.h"
-#include "weakform_library/integrals_h1.h"
+#include "../hermes2d.h"
 
 #include <algorithm>
 #include <iomanip>
-namespace Hermes
+
+namespace WeakFormsNeutronics
 {
-  namespace Hermes2D
-  {
-    namespace WeakFormsNeutronics
+  namespace Monoenergetic
+  {    
+    namespace Diffusion 
     {
-      namespace Monoenergetic
+      DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( Hermes::vector<std::string> regions, 
+                                                              Hermes::vector<double> D_map, 
+                                                              Hermes::vector<double> Sigma_a_map, 
+                                                              Hermes::vector<double> Q_map ) : WeakForm(1) 
       {
-        namespace Diffusion
+        using namespace WeakFormsH1;
+        
+        for (unsigned int i = 0; i < regions.size(); i++)
         {
-          template<typename Scalar>
-          DefaultWeakFormFixedSource<Scalar>::DefaultWeakFormFixedSource(Hermes::vector<std::string> regions,
-            Hermes::vector<double> D_map,
-            Hermes::vector<double> Sigma_a_map,
-            Hermes::vector<double> Q_map) : WeakForm<Scalar>(1)
-          {
-              using namespace WeakFormsH1;
-
-              for (unsigned int i = 0; i < regions.size(); i++)
-              {
-                /* Jacobian */
-                // Diffusion.
-                this->add_matrix_form(new DefaultJacobianDiffusion<Scalar>(0, 0, regions[i], new Hermes1DFunction<Scalar>(D_map[i]),
-                  HERMES_SYM));
-                // Absorption.
-                this->add_matrix_form(new DefaultMatrixFormVol<Scalar>(0, 0, regions[i], new Hermes2DFunction<Scalar>(Sigma_a_map[i]),
-                  HERMES_SYM));
-
-                /* Residual */
-                // Diffusion.
-                this->add_vector_form(new DefaultResidualDiffusion<Scalar>(0, regions[i], new Hermes1DFunction<Scalar>(D_map[i])));
-                // Absorption.
-                this->add_vector_form(new DefaultResidualVol<Scalar>(0, regions[i], new Hermes2DFunction<Scalar>(Sigma_a_map[i])));
-                // Sources.
-                this->add_vector_form(new DefaultVectorFormVol<Scalar>(0, regions[i], new Hermes2DFunction<Scalar>(-Q_map[i])));
-              }
-            }
+          /* Jacobian */
+          // Diffusion.
+          add_matrix_form(new DefaultJacobianDiffusion(0, 0, regions[i], new HermesFunction(D_map[i]), 
+                                                       HERMES_SYM));
+          // Absorption.
+          add_matrix_form(new DefaultMatrixFormVol(0, 0, regions[i], new HermesFunction(Sigma_a_map[i]), 
+                                                   HERMES_SYM));
+          
+          /* Residual */
+          // Diffusion.
+          add_vector_form(new DefaultResidualDiffusion(0, regions[i], new HermesFunction(D_map[i])));
+          // Absorption.
+          add_vector_form(new DefaultResidualVol(0, regions[i], new HermesFunction(Sigma_a_map[i])));
+          // Sources.
+          add_vector_form(new DefaultVectorFormVol(0, regions[i], new HermesFunction(-Q_map[i])));
         }
       }
-
-      namespace Multigroup
+    }
+  }
+      
+  namespace Multigroup
+  { 
+    namespace MaterialProperties
+    {
+      namespace Common
       {
-        namespace MaterialProperties
+        MaterialPropertyMaps::MaterialPropertyMaps(unsigned int G, const RegionMaterialMap& reg_mat_map)
+          : region_material_map(reg_mat_map), G(G)
         {
-          namespace Common
+          RegionMaterialMap::const_iterator it = reg_mat_map.begin();
+          for ( ; it != reg_mat_map.end(); ++it)
+            materials_list.insert(it->second);
+        }
+
+        void MaterialPropertyMaps::extend_to_multigroup(const MaterialPropertyMap0& mrsg_map, 
+                                                        MaterialPropertyMap1 *mrmg_map)
+        {
+          if (G == 1)
+            warning(W_MG_EXTENSION);
+          
+          MaterialPropertyMap0::const_iterator it;
+          for (it = mrsg_map.begin(); it != mrsg_map.end(); ++it)
+            (*mrmg_map)[it->first].assign(G, it->second);
+          
+        }
+        
+        void MaterialPropertyMaps::extend_to_multiregion(const rank1& srmg_array, 
+                                                         MaterialPropertyMap1 *mrmg_map)
+        {
+          if (materials_list.empty())
+            error(E_MR_EXTENSION);
+          
+          std::set<std::string>::const_iterator it;
+          for (it = materials_list.begin(); it != materials_list.end(); ++it)
+            (*mrmg_map)[*it] = srmg_array;
+        }
+        
+        void MaterialPropertyMaps::extend_to_multiregion_multigroup(const rank0& srsg_value, 
+                                                                    MaterialPropertyMap1 *mrmg_map)
+        {
+          if (materials_list.empty())
+            error(E_MR_EXTENSION);
+          
+          std::set<std::string>::const_iterator it;
+          for (it = materials_list.begin(); it != materials_list.end(); ++it)
+            (*mrmg_map)[*it].assign(G, srsg_value);
+        }
+        
+        void MaterialPropertyMaps::fill_with(double c, MaterialPropertyMap1 *mrmg_map)
+        {
+          if (materials_list.empty())
+            error(E_MR_EXTENSION);
+          
+          std::set<std::string>::const_iterator it;
+          for (it = materials_list.begin(); it != materials_list.end(); ++it)
+            (*mrmg_map)[*it].assign(G, c);
+        }
+        
+        void MaterialPropertyMaps::fill_with(double c, MaterialPropertyMap2 *mrmg_map)
+        {
+          std::set<std::string>::const_iterator it;
+          for (it = materials_list.begin(); it != materials_list.end(); ++it)
+            (*mrmg_map)[*it].assign(G, rank1(G, c));
+        }
+        
+        MaterialPropertyMap1 MaterialPropertyMaps::extract_map2_diagonals(const MaterialPropertyMap2& map2) const
+        {
+          MaterialPropertyMap1 diags;
+          
+          MaterialPropertyMap2::const_iterator map2_it = map2.begin();
+          for ( ; map2_it != map2.end(); ++map2_it)
           {
-            void MaterialPropertyMaps::extend_to_multigroup(const MaterialPropertyMap0& mrsg_map,
-              MaterialPropertyMap1 *mrmg_map)
+            diags[map2_it->first].reserve(G);
+            for (unsigned int g = 0; g < G; g++)
+              diags[map2_it->first].push_back(map2_it->second[g][g]);    
+          }
+          
+          return diags;
+        }
+        
+        MaterialPropertyMap1 MaterialPropertyMaps::sum_map2_columns(const MaterialPropertyMap2& map2) const
+        {
+          MaterialPropertyMap1 summed;
+          
+          MaterialPropertyMap2::const_iterator map2_it = map2.begin();
+          for ( ; map2_it != map2.end(); ++map2_it)
+          {
+            summed[map2_it->first].reserve(G);
+            for (unsigned int gfrom = 0; gfrom < G; gfrom++)
             {
-              if (G == 1)
-                this->warn(W_MG_EXTENSION);
-
-              MaterialPropertyMap0::const_iterator it;
-              for (it = mrsg_map.begin(); it != mrsg_map.end(); ++it)
-                (*mrmg_map)[it->first].assign(G, it->second);
-            }
-
-            void MaterialPropertyMaps::extend_to_multiregion(const rank1& srmg_array,
-              MaterialPropertyMap1 *mrmg_map)
-            {
-              if (materials_list.empty())
-                throw Hermes::Exceptions::Exception(E_MR_EXTENSION);
-
-              std::set<std::string>::const_iterator it;
-              for (it = materials_list.begin(); it != materials_list.end(); ++it)
-                (*mrmg_map)[*it] = srmg_array;
-            }
-
-            void MaterialPropertyMaps::extend_to_multiregion_multigroup(const rank0& srsg_value,
-              MaterialPropertyMap1 *mrmg_map)
-            {
-              if (materials_list.empty())
-                throw Hermes::Exceptions::Exception(E_MR_EXTENSION);
-              if (G == 1)
-                this->warn(W_MG_EXTENSION);
-
-              std::set<std::string>::const_iterator it;
-              for (it = materials_list.begin(); it != materials_list.end(); ++it)
-                (*mrmg_map)[*it].assign(G, srsg_value);
-            }
-
-            void MaterialPropertyMaps::fill_with(double c, MaterialPropertyMap1 *mrmg_map)
-            {
-              if (materials_list.empty())
-                throw Hermes::Exceptions::Exception(E_MR_EXTENSION);
-
-              std::set<std::string>::const_iterator it;
-              for (it = materials_list.begin(); it != materials_list.end(); ++it)
-                (*mrmg_map)[*it].assign(G, c);
-            }
-
-            void MaterialPropertyMaps::validate()
-            {
-              using namespace ValidationFunctors;
-
-              if (fission_multigroup_structure.empty())
-                fission_multigroup_structure = bool1(G, true);
-
-              if (chi.empty())
-              {
-                fill_with(0.0, &chi);
-                MaterialPropertyMap1::iterator it = chi.begin();
-                for (; it != chi.end(); ++it)
-                  it->second[0] = 1.0;
-                fission_multigroup_structure = bool1(G, false);
-                fission_multigroup_structure[0] = true;
-              }
-
-              if (nu.empty() && !nuSigma_f.empty() && !Sigma_f.empty())
-                nu = NDArrayMapOp::divide<rank1>(nuSigma_f, Sigma_f);
-              else if (nuSigma_f.empty() && !nu.empty() && !Sigma_f.empty())
-                nuSigma_f = NDArrayMapOp::multiply<rank1>(nu, Sigma_f);
-              else if (Sigma_f.empty() && !nuSigma_f.empty() && !nu.empty())
-                Sigma_f = NDArrayMapOp::divide<rank1>(nuSigma_f, nu);
-              else if (!Sigma_f.empty() && !nuSigma_f.empty() && !nu.empty())
-              {
-                MaterialPropertyMap1 diff = NDArrayMapOp::subtract<rank1>(nuSigma_f,
-                  NDArrayMapOp::multiply<rank1>(nu, Sigma_f));
-                std::for_each(diff.begin(), diff.end(), ensure_trivial());
-              }
-              else
-              {
-                this->warn(W_NO_FISSION);
-                fill_with(0.0, &nu);
-                fill_with(0.0, &chi);
-                fill_with(0.0, &Sigma_f);
-              }
-
-              if ((nu.size() != Sigma_f.size()) || (nu.size() != chi.size()))
-                throw Hermes::Exceptions::Exception(E_NONMATCHING_PROPERTIES);
-
-              if (Sigma_f.size() > 0)
-              {
-                std::for_each(nu.begin(), nu.end(), ensure_size(G));
-                std::for_each(Sigma_f.begin(), Sigma_f.end(), ensure_size(G));
-                std::for_each(chi.begin(), chi.end(), ensure_size(G));
-              }
-
-              if (Sigma_a.size() > 0)
-              {
-                // Warn if \Sigma_a < \Sigma_f for any region (this indicates an unphysical situation, since
-                // by definition \Sigma_a = \Sigma_f + \Sigma_c + \Sigma_{n, p} + other possible reactions
-                // leading to neutron removal).
-                MaterialPropertyMap1::const_iterator ita = Sigma_a.begin();
-                MaterialPropertyMap1::const_iterator itf = Sigma_f.begin();
-                for (; ita != Sigma_a.end(); ++ita, ++itf)
-                {
-                  rank1::const_iterator a = ita->second.begin();
-                  rank1::const_iterator f = itf->second.begin();
-
-                  for (; a != ita->second.end(); ++a, ++f)
-                  if (*a < *f)
-                    this->warn(W_SA_LT_SF);
-                }
-              }
-            }
-
-            const rank1& MaterialPropertyMaps::get_Sigma_f(std::string material) const
-            {
-              if (material == "-999") return this->Sigma_f.begin()->second;
-
-              // Note that prop[e->elem_marker] cannot be used since 'prop' is a constant std::map for
-              // which operator[] is undefined.
-              MaterialPropertyMap1::const_iterator data = this->Sigma_f.find(material);
-              if (data != this->Sigma_f.end())
-                return data->second;
-              else
-              {
-                throw Hermes::Exceptions::Exception(E_INVALID_MARKER);
-                return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
-              }
-            }
-            const rank1& MaterialPropertyMaps::get_nu(std::string material) const
-            {
-              if (material == "-999") return this->nu.begin()->second;
-
-              MaterialPropertyMap1::const_iterator data = this->nu.find(material);
-              if (data != this->nu.end())
-                return data->second;
-              else
-              {
-                throw Hermes::Exceptions::Exception(E_INVALID_MARKER);
-                return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
-              }
-            }
-            const rank1& MaterialPropertyMaps::get_chi(std::string material) const
-            {
-              if (material == "-999") return this->chi.begin()->second;
-
-              MaterialPropertyMap1::const_iterator data = this->chi.find(material);
-              if (data != this->chi.end())
-                return data->second;
-              else
-              {
-                throw Hermes::Exceptions::Exception(E_INVALID_MARKER);
-                return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
-              }
-            }
-
-            std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop)
-            {
-              using namespace std;
-
-              os << std::endl;
-              os << setw(12) << "target group" << setw(10) << "chi" << setw(10) << "nu";
-              os << setw(10) << "Sigma_f" << std::endl;
-
-              MaterialPropertyMap1::const_iterator data_elem = matprop.chi.begin();
-              for (; data_elem != matprop.chi.end(); ++data_elem)
-              {
-                string mat = data_elem->first;
-
-                os << setw(80) << setfill('-') << ' ' << std::endl << setfill(' ');
-                os << setw(40) << mat << std::endl;
-                os << setw(80) << setfill('-') << ' ' << std::endl << setfill(' ');
-                for (unsigned int gto = 0; gto < matprop.G; gto++)
-                {
-                  os << setw(6) << gto << setw(6) << ' ';
-                  os << setw(10) << matprop.get_chi(mat)[gto];
-                  os << setw(10) << matprop.get_nu(mat)[gto];
-                  os << setw(10) << matprop.get_Sigma_f(mat)[gto];
-
-                  os << std::endl;
-                }
-              }
-
-              os << std::endl;
-              return os;
+              double sum = 0.0;
+              
+              for (unsigned int gto = 0; gto < G; gto++)
+                sum += map2_it->second[gto][gfrom];
+              
+              summed[map2_it->first].push_back(sum);    
             }
           }
-
-          namespace Diffusion
+          
+          return summed;
+        }
+        
+        MaterialPropertyMap1 MaterialPropertyMaps::sum_map2_rows(const MaterialPropertyMap2& map2) const
+        {
+          MaterialPropertyMap1 summed;
+          
+          MaterialPropertyMap2::const_iterator map2_it = map2.begin();
+          for ( ; map2_it != map2.end(); ++map2_it)
           {
-            MaterialPropertyMap1 MaterialPropertyMaps::extract_map2_diagonals(const MaterialPropertyMap2& map2)
+            summed[map2_it->first].reserve(G);
+            for (unsigned int gto = 0; gto < G; gto++)
             {
-              MaterialPropertyMap1 diags;
-
-              MaterialPropertyMap2::const_iterator map2_it = map2.begin();
-              for (; map2_it != map2.end(); ++map2_it)
-              {
-                diags[map2_it->first].reserve(G);
-                for (unsigned int g = 0; g < G; g++)
-                  diags[map2_it->first].push_back(map2_it->second[g][g]);
-              }
-
-              return diags;
+              double sum = 0.0;
+              
+              for (unsigned int gfrom = 0; gfrom < G; gfrom++)
+                sum += map2_it->second[gto][gfrom];
+              
+              summed[map2_it->first].push_back(sum);    
             }
-
-            MaterialPropertyMap1 MaterialPropertyMaps::sum_map2_columns(const MaterialPropertyMap2& map2)
+          }
+          
+          return summed;
+        }
+        
+        MaterialPropertyMap2 MaterialPropertyMaps::create_map2_by_diagonals(const MaterialPropertyMap1& diags) const 
+        {
+          MaterialPropertyMap2 map2;
+          
+          MaterialPropertyMap1::const_iterator diags_it = diags.begin();
+          for ( ; diags_it != diags.end(); ++diags_it)
+          {
+            map2[diags_it->first].resize(G, rank1(G, 0.0));
+            
+            for (unsigned int g = 0; g < G; g++)
+              map2[diags_it->first][g][g] = diags_it->second[g];
+          }
+          
+          return map2;
+        }
+                
+        void MaterialPropertyMaps::validate()
+        {       
+          using namespace ValidationFunctors;
+          
+          fission_nonzero_structure = bool1(G, false);
+          
+          if (chi.empty())
+          {
+            fill_with(0.0, &chi);
+            MaterialPropertyMap1::iterator it = chi.begin();
+            for ( ; it != chi.end(); ++it)
+              it->second[0] = 1.0;
+            fission_nonzero_structure[0] = true;
+          }
+          else
+          {
+            for (unsigned int g = 0; g < G; g++)
             {
-              MaterialPropertyMap1 summed;
-
-              MaterialPropertyMap2::const_iterator map2_it = map2.begin();
-              for (; map2_it != map2.end(); ++map2_it)
+              MaterialPropertyMap1::const_iterator it = chi.begin();
+              for ( ; it != chi.end(); ++it)
               {
-                summed[map2_it->first].reserve(G);
-                for (unsigned int gfrom = 0; gfrom < G; gfrom++)
+                if (fabs(it->second[g]) > 1e-14)
                 {
-                  double sum = 0.0;
-
-                  for (unsigned int gto = 0; gto < G; gto++)
-                    sum += map2_it->second[gto][gfrom];
-
-                  summed[map2_it->first].push_back(sum);
+                  fission_nonzero_structure[g] = true;
+                  break;
                 }
               }
-
-              return summed;
             }
-
-            MaterialPropertyMap2 MaterialPropertyMaps::create_map2_by_diagonals(const MaterialPropertyMap1& diags)
+          }
+          
+          if (nu.empty() && !nuSigma_f.empty() && !Sigma_f.empty())
+            nu = NDArrayMapOp::divide<rank1>(nuSigma_f, Sigma_f);
+          else if (nuSigma_f.empty() && !nu.empty() && !Sigma_f.empty())
+            nuSigma_f = NDArrayMapOp::multiply<rank1>(nu, Sigma_f);
+          else if (Sigma_f.empty() && !nuSigma_f.empty() && !nu.empty())
+            Sigma_f = NDArrayMapOp::divide<rank1>(nuSigma_f, nu);
+          else if (!Sigma_f.empty() && !nuSigma_f.empty() && !nu.empty())
+          {
+            MaterialPropertyMap1 diff = NDArrayMapOp::subtract<rank1>(nuSigma_f, 
+                                                                      NDArrayMapOp::multiply<rank1>(nu, Sigma_f) );
+            std::for_each(diff.begin(), diff.end(), ensure_trivial());
+          }
+          else
+          {
+            warning(W_NO_FISSION);
+            fill_with(0.0, &nu);
+            fill_with(0.0, &chi);
+            fill_with(0.0, &Sigma_f);
+            fission_nonzero_structure = bool1(G, false);
+          }
+          
+          if ((nu.size() != Sigma_f.size()) || (nu.size() != chi.size()))
+            error(E_NONMATCHING_PROPERTIES);
+          
+          if (Sigma_f.size() > 0)
+          {
+            std::for_each(nu.begin(), nu.end(), ensure_size(G));
+            std::for_each(Sigma_f.begin(), Sigma_f.end(), ensure_size(G));
+            std::for_each(chi.begin(), chi.end(), ensure_size(G));
+          }
+          
+          if (Sigma_a.size() > 0)
+          {
+            // Warn if \Sigma_a < \Sigma_f for any region (this indicates an unphysical situation, since
+            // by definition \Sigma_a = \Sigma_f + \Sigma_c + \Sigma_{n,p} + other possible reactions
+            // leading to neutron removal).
+            MaterialPropertyMap1::const_iterator ita = Sigma_a.begin();
+            MaterialPropertyMap1::const_iterator itf = Sigma_f.begin();
+            for ( ; ita != Sigma_a.end(); ++ita, ++itf)
             {
-              MaterialPropertyMap2 map2;
-
-              MaterialPropertyMap1::const_iterator diags_it = diags.begin();
-              for (; diags_it != diags.end(); ++diags_it)
-              {
-                map2[diags_it->first].resize(G, rank1(G, 0.0));
-
-                for (unsigned int g = 0; g < G; g++)
-                  map2[diags_it->first][g][g] = diags_it->second[g];
-              }
-
-              return map2;
+              rank1::const_iterator a = ita->second.begin();
+              rank1::const_iterator f = itf->second.begin();
+              
+              for ( ; a != ita->second.end(); ++a,++f)
+                if (*a < *f)
+                  warning(W_SA_LT_SF);
             }
-
-            void MaterialPropertyMaps::fill_with(double c, MaterialPropertyMap2 *mrmg_map)
+          }
+        }
+        
+        const rank1& MaterialPropertyMaps::get_Sigma_f_material(std::string material) const
+        {
+          // Note that prop[e->elem_marker] cannot be used since 'prop' is a constant std::map for
+          // which operator[] is undefined.
+          MaterialPropertyMap1::const_iterator data = this->Sigma_f.find(material);
+          if (data != this->Sigma_f.end())
+            return data->second;
+          else
+          {
+            error(E_INVALID_MARKER);
+            return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
+          }
+        }
+        const rank1& MaterialPropertyMaps::get_nu_material(std::string material) const
+        {
+          MaterialPropertyMap1::const_iterator data = this->nu.find(material);
+          if (data != this->nu.end())
+            return data->second;
+          else
+          {
+            error(E_INVALID_MARKER);
+            return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
+          }
+        }
+        const rank1& MaterialPropertyMaps::get_chi_material(std::string material) const
+        {
+          MaterialPropertyMap1::const_iterator data = this->chi.find(material);
+          if (data != this->chi.end())
+            return data->second;
+          else
+          {
+            error(E_INVALID_MARKER);
+            return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
+          }
+        }
+        
+        const rank1& MaterialPropertyMaps::get_Sigma_f(std::string region) const
+        {
+          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+          if (material != this->region_material_map.end())
+            return get_Sigma_f_material(material->second);
+          return get_Sigma_f_material(region); // There might be equivalence region <==> material, 
+                                               // in which case get_Sigma_f <==> get_Sigma_f_material.
+        }
+        const rank1& MaterialPropertyMaps::get_nu(std::string region) const
+        {
+          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+          if (material != this->region_material_map.end())
+            return get_nu_material(material->second);
+          return get_nu_material(region);
+        }
+        const rank1& MaterialPropertyMaps::get_chi(std::string region) const
+        {
+          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+          if (material != this->region_material_map.end())
+            return get_chi_material(material->second);
+          return get_chi_material(region);
+        }
+        
+        std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop)
+        {
+          using namespace std;
+          
+          os << endl;
+          os << setw(12) << "target group" << setw(10) << "chi" << setw(10) << "nu";
+          os << setw(10) << "Sigma_f" << endl; 
+          
+          MaterialPropertyMap1::const_iterator data_elem = matprop.chi.begin();
+          for ( ; data_elem != matprop.chi.end(); ++data_elem)
+          {
+            string mat = data_elem->first;
+            
+            os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+            os << setw(40) << mat << endl;
+            os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+            for (unsigned int gto = 0; gto < matprop.G; gto++)
             {
-              std::set<std::string>::const_iterator it;
-              for (it = materials_list.begin(); it != materials_list.end(); ++it)
-                (*mrmg_map)[*it].assign(G, rank1(G, c));
+              os << setw(6) << gto << setw(6) << ' ';
+              os << setw(10) << matprop.get_chi(mat)[gto];
+              os << setw(10) << matprop.get_nu(mat)[gto];
+              os << setw(10) << matprop.get_Sigma_f(mat)[gto];
+              
+              os << endl;
             }
-
-            void MaterialPropertyMaps::validate()
+          }
+          
+          os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+          os << "All-region fission spectrum: ";
+          
+          for (unsigned int g = 0; g < matprop.G; g++)
+            os << matprop.get_fission_nonzero_structure()[g] << ' ';
+          
+          return os << endl;
+        }
+      }
+      
+      namespace Diffusion
+      {        
+        void MaterialPropertyMaps::validate()
+        {
+          Common::MaterialPropertyMaps::validate();
+          
+          bool D_given = !D.empty();
+          bool Sigma_r_given = !Sigma_r.empty();
+          bool Sigma_s_given = !Sigma_s.empty();
+          bool Sigma_t_given = !Sigma_t.empty();
+          bool Sigma_a_given = !Sigma_a.empty();
+          bool Sigma_f_given = !Sigma_f.empty();
+          bool src_given = !src.empty();
+          
+          if (!Sigma_r_given)
+          {
+            // If Sigma_r is not given, we can calculate it from Sigma_t and Sigma_s.
+            
+            if (Sigma_t_given)
             {
-              Common::MaterialPropertyMaps::validate();
-
-              bool D_given = !D.empty();
-              bool Sigma_r_given = !Sigma_r.empty();
-              bool Sigma_s_given = !Sigma_s.empty();
-              bool Sigma_t_given = !Sigma_t.empty();
-              bool Sigma_a_given = !Sigma_a.empty();
-              bool Sigma_f_given = !Sigma_f.empty();
-              bool src_given = !src.empty();
-
-              if (!Sigma_r_given)
-              {
-                // If Sigma_r is not given, we can calculate it from Sigma_t and Sigma_s.
-
-                if (Sigma_t_given)
-                {
-                  if (!Sigma_s_given)
-                  {
-                    if (Sigma_a_given)
-                    {
-                      // If Sigma_s is not given, but Sigma_a is, we can calculate Sigma_s from Sigma_t and Sigma_a.
-                      Sigma_s = create_map2_by_diagonals(Common::NDArrayMapOp::subtract<rank1>(Sigma_t, Sigma_a));
-                    }
-                    else
-                    {
-                      // If only Sigma_t is given, we assume that all reaction terms are included in Sigma_t; all
-                      // other x-sections will be set to zero.
-                      this->warn(W_NO_SCATTERING);
-                      fill_with(0.0, &Sigma_s);
-                    }
-
-                    Sigma_s_given = true;
-                  }
-                }
-                else
-                {
-                  // If Sigma_t is not given, but Sigma_a and Sigma_s are, we can obtain Sigma_t from the latter two.
-
-                  if (!Sigma_s_given)
-                  {
-                    this->warn(W_NO_SCATTERING);
-                    fill_with(0.0, &Sigma_s);
-                    Sigma_s_given = true;
-                  }
-
-                  if (Sigma_a_given)
-                    Sigma_t = Common::NDArrayMapOp::add<rank1>(Sigma_a, sum_map2_columns(Sigma_s));
-                  else
-                  {
-                    // If neither Sigma_r, Sigma_t, Sigma_a are given, we may have a purely fissioning system.
-                    if (Sigma_f_given)
-                      Sigma_t = Sigma_f;
-                    else
-                      throw Hermes::Exceptions::Exception(E_INSUFFICIENT_DATA);
-                  }
-
-                  Sigma_t_given = true;
-                }
-
-                Sigma_r = Common::NDArrayMapOp::subtract<rank1>(Sigma_t, extract_map2_diagonals(Sigma_s));
-                Sigma_r_given = true;
-              }
-
-              // Now, we surely have Sigma_r ...
-
-              if (scattering_multigroup_structure.empty())
-                scattering_multigroup_structure = bool2(G, Hermes::vector<bool>(G, true));
-
               if (!Sigma_s_given)
               {
-                // If Sigma_s is not given, but Sigma_t is, we can obtain the former from the latter and from Sigma_r.
-                // Note that the execution will come here only if the user entered Sigma_r himself - otherwise, Sigma_s
-                // has been already set in the previous test case.
-
-                if (Sigma_t_given)
+                if (Sigma_a_given)
                 {
-                  Sigma_s = create_map2_by_diagonals(Common::NDArrayMapOp::subtract<rank1>(Sigma_t, Sigma_r));
-
-                  scattering_multigroup_structure = bool2(G, Hermes::vector<bool>(G, false));
-                  for (unsigned int gto = 0; gto < G; gto++)
-                  for (unsigned int gfrom = 0; gfrom < G; gfrom++)
-                  if (gto == gfrom)
-                    scattering_multigroup_structure[gto][gfrom] = true;
+                  // If Sigma_s is not given, but Sigma_a is, we can calculate Sigma_s from Sigma_t and Sigma_a.
+                  Sigma_s = create_map2_by_diagonals(Common::NDArrayMapOp::subtract<rank1>(Sigma_t, Sigma_a));
                 }
-                else
+                else 
                 {
-                  this->warn(W_NO_SCATTERING);
+                  // If only Sigma_t is given, we assume that all reaction terms are included in Sigma_t; all
+                  // other x-sections will be set to zero.
+                  warning(W_NO_SCATTERING);
                   fill_with(0.0, &Sigma_s);
-                  scattering_multigroup_structure = bool2(G, Hermes::vector<bool>(G, false));
                 }
-
+                
                 Sigma_s_given = true;
               }
-
-              // Now, we surely have Sigma_s and Sigma_r, one parameter to go ...
-
-              if (!D_given)
-              {
-                MaterialPropertyMap1::const_iterator Sr_elem = Sigma_r.begin();
-                for (; Sr_elem != Sigma_r.end(); ++Sr_elem)
-                for (unsigned int g = 0; g < G; g++)
-                  D[Sr_elem->first][g] = 1. / (3.*Sr_elem->second[g]);
-
-                D_given = true;
-              }
-
-              if ((D.size() != Sigma_r.size()) || (D.size() != Sigma_s.size()) || (src_given && D.size() != src.size()))
-                throw Hermes::Exceptions::Exception(E_NONMATCHING_PROPERTIES);
-
-              using ValidationFunctors::ensure_size;
-              std::for_each(Sigma_s.begin(), Sigma_s.end(), ensure_size(G, G));
-              std::for_each(Sigma_r.begin(), Sigma_r.end(), ensure_size(G));
-              std::for_each(src.begin(), src.end(), ensure_size(G));
-              std::for_each(D.begin(), D.end(), ensure_size(G));
             }
-
-            const rank2& MaterialPropertyMaps::get_Sigma_s(std::string material) const
+            else
             {
-              if (material == "-999") return this->Sigma_s.begin()->second;
-
-              // Note that prop[e->elem_marker] cannot be used since 'prop' is a constant std::map for
-              // which operator[] is undefined.
-              MaterialPropertyMap2::const_iterator data = this->Sigma_s.find(material);
-              if (data != this->Sigma_s.end())
-                return data->second;
-              else
+              // If Sigma_t is not given, but Sigma_a and Sigma_s are, we can obtain Sigma_t from the latter two.
+              
+              if (!Sigma_s_given)
               {
-                throw Hermes::Exceptions::Exception(E_INVALID_MARKER);
-                return *(new rank2()); // To avoid MSVC problems; execution should never come to this point.
+                warning(W_NO_SCATTERING);
+                fill_with(0.0, &Sigma_s);
+                Sigma_s_given = true;
               }
-            }
-            const rank1& MaterialPropertyMaps::get_Sigma_r(std::string material) const
-            {
-              if (material == "-999") return this->Sigma_r.begin()->second;
-
-              MaterialPropertyMap1::const_iterator data = this->Sigma_r.find(material);
-              if (data != this->Sigma_r.end())
-                return data->second;
-              else
+              
+              if (Sigma_a_given)
+                Sigma_t = Common::NDArrayMapOp::add<rank1>(Sigma_a, sum_map2_columns(Sigma_s));
+              else 
               {
-                throw Hermes::Exceptions::Exception(E_INVALID_MARKER);
-                return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
+                // If neither Sigma_r, Sigma_t, Sigma_a are given, we may have a purely fissioning system.
+                if (Sigma_f_given)
+                  Sigma_t = Sigma_f;
+                else
+                  error(E_INSUFFICIENT_DATA);
               }
+              
+              Sigma_t_given = true;
             }
-            const rank1& MaterialPropertyMaps::get_D(std::string material) const
-            {
-              if (material == "-999") return this->D.begin()->second;
-
-              MaterialPropertyMap1::const_iterator data = this->D.find(material);
-              if (data != this->D.end())
-                return data->second;
-              else
-              {
-                throw Hermes::Exceptions::Exception(E_INVALID_MARKER);
-                return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
-              }
-            }
-            const rank1& MaterialPropertyMaps::get_src(std::string material) const
-            {
-              if (material == "-999") return this->src.begin()->second;
-
-              MaterialPropertyMap1::const_iterator data = this->src.find(material);
-              if (data != this->src.end())
-                return data->second;
-              else
-              {
-                throw Hermes::Exceptions::Exception(E_INVALID_MARKER);
-                return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
-              }
-            }
-
-            HERMES_API std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop)
-            {
-              using namespace std;
-
-              os << static_cast<const Common::MaterialPropertyMaps&>(matprop) << std::endl;
-
-              os << setw(12) << "target group" << setw(10) << "D" << setw(10) << "Sigma_r";
-              os << setw(10) << "ext. src" << setw(22) << "Sigma_s" << std::endl;
-
-              MaterialPropertyMap1::const_iterator data_elem = matprop.Sigma_r.begin();
-              for (; data_elem != matprop.Sigma_r.end(); ++data_elem)
-              {
-                string mat = data_elem->first;
-
-                os << setw(80) << setfill('-') << ' ' << std::endl << setfill(' ');
-                os << setw(40) << mat << std::endl;
-                os << setw(80) << setfill('-') << ' ' << std::endl << setfill(' ');
-                for (unsigned int gto = 0; gto < matprop.G; gto++)
-                {
-                  os << setw(6) << gto << setw(6) << ' ';
-                  os << setw(10) << matprop.get_D(mat)[gto];
-                  os << setw(10) << matprop.get_Sigma_r(mat)[gto];
-                  os << setw(10);
-                  if (matprop.src.empty())
-                    os << "N/A";
-                  else
-                    os << matprop.get_src(mat)[gto];
-
-                  for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
-                    os << setw(8) << matprop.get_Sigma_s(mat)[gto][gfrom];
-
-                  os << std::endl;
-                }
-              }
-
-              return os << std::endl;
-            }
+            
+            Sigma_r = Common::NDArrayMapOp::subtract<rank1>(Sigma_t, extract_map2_diagonals(Sigma_s));
+            Sigma_r_given = true;
           }
-        }
-
-        namespace ElementaryForms
-        {
-          namespace Diffusion
+          
+          // Now, we surely have Sigma_r ...
+          
+          scattering_nonzero_structure = bool2(G, std::vector<bool>(G, false));
+          
+          if (!Sigma_s_given)
           {
-            template<typename ScalarClass>
-            template<typename Real, typename Scalar>
-            Scalar VacuumBoundaryCondition::Jacobian<ScalarClass>::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
-              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
+            // If Sigma_s is not given, but Sigma_t is, we can obtain the former from the latter and from Sigma_r.
+            // Note that the execution will come here only if the user entered Sigma_r himself - otherwise, Sigma_s
+            // has been already set in the previous test case.
+            
+            if (Sigma_t_given)
             {
-              Scalar result;
-
-              if (geom_type == HERMES_PLANAR)
-                result = 0.5 * int_u_v<Real, Scalar>(n, wt, u, v);
-              else if (geom_type == HERMES_AXISYM_X)
-                result = 0.5 * int_y_u_v<Real, Scalar>(n, wt, u, v, e);
-              else
-                result = 0.5 * int_x_u_v<Real, Scalar>(n, wt, u, v, e);
-
-              return result;
+              Sigma_s = create_map2_by_diagonals(Common::NDArrayMapOp::subtract<rank1>(Sigma_t, Sigma_r));
             }
-
-            template<typename ScalarClass>
-            template<typename Real, typename Scalar>
-            Scalar VacuumBoundaryCondition::Residual<ScalarClass>::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
-              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
+            else
             {
-              Scalar result;
-
-              if (geom_type == HERMES_PLANAR)
-                result = 0.5 * int_u_ext_v<Real, Scalar>(n, wt, u_ext[g], v);
-              else if (geom_type == HERMES_AXISYM_X)
-                result = 0.5 * int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[g], v, e);
-              else
-                result = 0.5 * int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[g], v, e);
-
-              return result;
+              warning(W_NO_SCATTERING);
+              fill_with(0.0, &Sigma_s);
             }
-
-            template<typename ScalarClass>
-            template<typename Real, typename Scalar>
-            Scalar DiffusionReaction::Jacobian<ScalarClass>::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
-              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
+            
+            Sigma_s_given = true;
+          }
+          
+          for (unsigned int gto = 0; gto < G; gto++)
+          {
+            for (unsigned int gfrom = 0; gfrom < G; gfrom++)
             {
-              Scalar result;
-
-              std::string mat = this->mesh->get_element_markers_conversion().get_user_marker(e->elem_marker).marker;
-              rank1 D_elem = matprop.get_D(mat);
-              rank1 Sigma_r_elem = matprop.get_Sigma_r(mat);
-
-              if (geom_type == HERMES_PLANAR)
+              MaterialPropertyMap2::const_iterator Ss_it = Sigma_s.begin();
+              for ( ; Ss_it != Sigma_s.end(); ++Ss_it)
               {
-                result = D_elem[g] * int_grad_u_grad_v<Real, Scalar>(n, wt, u, v) +
-                  Sigma_r_elem[g] * int_u_v<Real, Scalar>(n, wt, u, v);
-              }
-              else
-              {
-                if (geom_type == HERMES_AXISYM_X)
+                if (fabs(Ss_it->second[gto][gfrom]) > 1e-14)
                 {
-                  result = D_elem[g] * int_y_grad_u_grad_v<Real, Scalar>(n, wt, u, v, e) +
-                    Sigma_r_elem[g] * int_y_u_v<Real, Scalar>(n, wt, u, v, e);
+                  scattering_nonzero_structure[gto][gfrom] = true;
+                  break;
                 }
-                else
-                {
-                  result = D_elem[g] * int_x_grad_u_grad_v<Real, Scalar>(n, wt, u, v, e) +
-                    Sigma_r_elem[g] * int_x_u_v<Real, Scalar>(n, wt, u, v, e);
-                }
-              }
-              return result;
-            }
-
-            template<typename ScalarClass>
-            template<typename Real, typename Scalar>
-            Scalar DiffusionReaction::Residual<ScalarClass>::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
-              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
-            {
-              Scalar result;
-
-              std::string mat = this->mesh->get_element_markers_conversion().get_user_marker(e->elem_marker).marker;
-              rank1 D_elem = matprop.get_D(mat);
-              rank1 Sigma_r_elem = matprop.get_Sigma_r(mat);
-
-              if (geom_type == HERMES_PLANAR)
-              {
-                result = D_elem[g] * int_grad_u_ext_grad_v<Real, Scalar>(n, wt, u_ext[g], v) +
-                  Sigma_r_elem[g] * int_u_ext_v<Real, Scalar>(n, wt, u_ext[g], v);
-              }
-              else
-              {
-                if (geom_type == HERMES_AXISYM_X)
-                {
-                  result = D_elem[g] * int_y_grad_u_ext_grad_v<Real, Scalar>(n, wt, u_ext[g], v, e) +
-                    Sigma_r_elem[g] * int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[g], v, e);
-                }
-                else
-                {
-                  result = D_elem[g] * int_x_grad_u_ext_grad_v<Real, Scalar>(n, wt, u_ext[g], v, e) +
-                    Sigma_r_elem[g] * int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[g], v, e);
-                }
-              }
-              return result;
-            }
-
-            template<typename ScalarClass>
-            template<typename Real, typename Scalar>
-            Scalar FissionYield::Jacobian<ScalarClass>::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
-              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
-            {
-              if (!matprop.get_fission_multigroup_structure()[gto])
-                return Scalar(0.0);
-
-              Scalar result = Scalar(0);
-              if (geom_type == HERMES_PLANAR) result = int_u_v<Real, Scalar>(n, wt, u, v);
-              else
-              {
-                if (geom_type == HERMES_AXISYM_X) result = int_y_u_v<Real, Scalar>(n, wt, u, v, e);
-                else result = int_x_u_v<Real, Scalar>(n, wt, u, v, e);
-              }
-
-              std::string mat = this->mesh->get_element_markers_conversion().get_user_marker(e->elem_marker).marker;
-              rank1 nu_elem = matprop.get_nu(mat);
-              rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
-              rank1 chi_elem = matprop.get_chi(mat);
-
-              return result * chi_elem[gto] * nu_elem[gfrom] * Sigma_f_elem[gfrom];
-            }
-
-            template<typename ScalarClass>
-            template<typename Real, typename Scalar>
-            Scalar FissionYield::OuterIterationForm<ScalarClass>::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
-              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
-            {
-              if (!matprop.get_fission_multigroup_structure()[g])
-                return Scalar(0.0);
-
-              std::string mat = this->mesh->get_element_markers_conversion().get_user_marker(e->elem_marker).marker;
-              rank1 nu_elem = matprop.get_nu(mat);
-              rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
-              rank1 chi_elem = matprop.get_chi(mat);
-
-              Scalar result = Scalar(0);
-              for (int i = 0; i < n; i++)
-              {
-                Scalar local_res = Scalar(0);
-                for (int gfrom = 0; gfrom < this->wf->get_ext().size(); gfrom++)
-                  local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext[gfrom]->val[i];
-
-                local_res = local_res * wt[i] * v->val[i];
-
-                if (geom_type == HERMES_AXISYM_X)
-                  local_res = local_res * e->y[i];
-                else if (geom_type == HERMES_AXISYM_Y)
-                  local_res = local_res * e->x[i];
-
-                result += local_res;
-              }
-
-              return result * chi_elem[g] / keff;
-            }
-
-            template<typename ScalarClass>
-            template<typename Real, typename Scalar>
-            Scalar FissionYield::Residual<ScalarClass>::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
-              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
-            {
-              if (!matprop.get_fission_multigroup_structure()[gto])
-                return Scalar(0.0);
-
-              Scalar result = Scalar(0);
-              if (geom_type == HERMES_PLANAR) result = int_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v);
-              else
-              {
-                if (geom_type == HERMES_AXISYM_X) result = int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v, e);
-                else result = int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v, e);
-              }
-
-              std::string mat = this->mesh->get_element_markers_conversion().get_user_marker(e->elem_marker).marker;
-              rank1 nu_elem = matprop.get_nu(mat);
-              rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
-              rank1 chi_elem = matprop.get_chi(mat);
-
-              return result * chi_elem[gto] * nu_elem[gfrom] * Sigma_f_elem[gfrom];
-            }
-
-            template<typename ScalarClass>
-            template<typename Real, typename Scalar>
-            Scalar Scattering::Jacobian<ScalarClass>::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
-              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
-            {
-              Scalar result = Scalar(0);
-              if (geom_type == HERMES_PLANAR) result = int_u_v<Real, Scalar>(n, wt, u, v);
-              else
-              {
-                if (geom_type == HERMES_AXISYM_X) result = int_y_u_v<Real, Scalar>(n, wt, u, v, e);
-                else result = int_x_u_v<Real, Scalar>(n, wt, u, v, e);
-              }
-
-              return result * matprop.get_Sigma_s(this->mesh->get_element_markers_conversion().get_user_marker(e->elem_marker).marker)[gto][gfrom];
-            }
-
-            template<typename ScalarClass>
-            template<typename Real, typename Scalar>
-            Scalar Scattering::Residual<ScalarClass>::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
-              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
-            {
-              Scalar result = Scalar(0);
-              if (geom_type == HERMES_PLANAR) result = int_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v);
-              else
-              {
-                if (geom_type == HERMES_AXISYM_X) result = int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v, e);
-                else result = int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v, e);
-              }
-
-              return result * matprop.get_Sigma_s(this->mesh->get_element_markers_conversion().get_user_marker(e->elem_marker).marker)[gto][gfrom];
-            }
-
-            template<typename ScalarClass>
-            template<typename Real, typename Scalar>
-            Scalar ExternalSources::LinearForm<ScalarClass>::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
-              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
-            {
-              std::string mat = this->mesh->get_element_markers_conversion().get_user_marker(e->elem_marker).marker;
-
-              if (geom_type == HERMES_PLANAR)
-                return matprop.get_src(mat)[g] * int_v<Real>(n, wt, v);
-              else
-              {
-                if (geom_type == HERMES_AXISYM_X)
-                  return matprop.get_src(mat)[g] * int_y_v<Real>(n, wt, v, e);
-                else
-                  return matprop.get_src(mat)[g] * int_x_v<Real>(n, wt, v, e);
               }
             }
           }
-        }
-
-        namespace CompleteWeakForms
-        {
-          namespace Diffusion
+          
+          // Now, we surely have Sigma_s and Sigma_r, one parameter to go ...
+          
+          if (!D_given)
           {
-            template<typename Scalar>
-            void DefaultWeakFormFixedSource<Scalar>::lhs_init(unsigned int G, const MaterialPropertyMaps& matprop, MeshSharedPtr mesh,
-              GeomType geom_type)
-            {
-              bool2 Ss_nnz = matprop.get_scattering_multigroup_structure();
-              bool1 chi_nnz = matprop.get_fission_multigroup_structure();
-
-              for (unsigned int gto = 0; gto < G; gto++)
-              {
-                this->add_matrix_form(new DiffusionReaction::Jacobian<Scalar>(gto, matprop, mesh, geom_type));
-                this->add_vector_form(new DiffusionReaction::Residual<Scalar>(gto, matprop, mesh, geom_type));
-
-                for (unsigned int gfrom = 0; gfrom < G; gfrom++)
-                {
-                  if (Ss_nnz[gto][gfrom])
-                  {
-                    this->add_matrix_form(new Scattering::Jacobian<Scalar>(gto, gfrom, matprop, mesh, geom_type));
-                    this->add_vector_form(new Scattering::Residual<Scalar>(gto, gfrom, matprop, mesh, geom_type));
-                  }
-
-                  if (chi_nnz[gto])
-                  {
-                    this->add_matrix_form(new FissionYield::Jacobian<Scalar>(gto, gfrom, matprop, mesh, geom_type));
-                    this->add_vector_form(new FissionYield::Residual<Scalar>(gto, gfrom, matprop, mesh, geom_type));
-                  }
-                }
-              }
-            }
-
-            template<typename Scalar>
-            DefaultWeakFormFixedSource<Scalar>::DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, MeshSharedPtr mesh,
-              GeomType geom_type) : WeakForm<Scalar>(matprop.get_G())
-            {
-                lhs_init(matprop.get_G(), matprop, mesh, geom_type);
-                for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-                  this->add_vector_form(new ExternalSources::LinearForm<Scalar>(gto, matprop, mesh, geom_type));
-              }
-
-            template<typename Scalar>
-            DefaultWeakFormFixedSource<Scalar>::DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, MeshSharedPtr mesh,
-              Hermes2DFunction<Scalar>*f_src, std::string src_area,
-              GeomType geom_type) : WeakForm<Scalar>(matprop.get_G())
-            {
-                lhs_init(matprop.get_G(), matprop, mesh, geom_type);
-                for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-                  this->add_vector_form(new WeakFormsH1::DefaultVectorFormVol<Scalar>(gto, src_area, f_src, geom_type));
-              }
-
-            template<typename Scalar>
-            DefaultWeakFormFixedSource<Scalar>::DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, MeshSharedPtr mesh,
-              Hermes2DFunction<Scalar>*f_src,
-              Hermes::vector<std::string> src_areas,
-              GeomType geom_type) : WeakForm<Scalar>(matprop.get_G())
-            {
-                lhs_init(matprop.get_G(), matprop, mesh, geom_type);
-                for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-                  this->add_vector_form(new WeakFormsH1::DefaultVectorFormVol<Scalar>(gto, src_areas, f_src, geom_type));
-              }
-
-            template<typename Scalar>
-            DefaultWeakFormFixedSource<Scalar>::DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, MeshSharedPtr mesh,
-              const Hermes::vector<Hermes2DFunction<Scalar>*>& f_src,
-              std::string src_area,
-              GeomType geom_type) : WeakForm<Scalar>(matprop.get_G())
-            {
-                if (f_src.size() != matprop.get_G())
-                  throw Hermes::Exceptions::Exception(E_INVALID_SIZE);
-
-                lhs_init(matprop.get_G(), matprop, mesh, geom_type);
-                for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-                  this->add_vector_form(new WeakFormsH1::DefaultVectorFormVol<Scalar>(gto, src_area, f_src[gto], geom_type));
-              }
-
-            template<typename Scalar>
-            DefaultWeakFormFixedSource<Scalar>::DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, MeshSharedPtr mesh,
-              const Hermes::vector<Hermes2DFunction<Scalar>*>& f_src,
-              Hermes::vector<std::string> src_areas,
-              GeomType geom_type) : WeakForm<Scalar>(matprop.get_G())
-            {
-                if (f_src.size() != matprop.get_G())
-                  throw Hermes::Exceptions::Exception(E_INVALID_SIZE);
-
-                lhs_init(matprop.get_G(), matprop, mesh, geom_type);
-                for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-                  this->add_vector_form(new WeakFormsH1::DefaultVectorFormVol<Scalar>(gto, src_areas, f_src[gto], geom_type));
-              }
-
-            template<typename Scalar>
-            DefaultWeakFormSourceIteration<Scalar>::DefaultWeakFormSourceIteration(const MaterialPropertyMaps& matprop, MeshSharedPtr mesh,
-              Hermes::vector<MeshFunctionSharedPtr<Scalar> >& iterates,
-              double initial_keff_guess,
-              GeomType geom_type) : WeakForm<Scalar>(matprop.get_G())
-            {
-                bool2 Ss_nnz = matprop.get_scattering_multigroup_structure();
-
-                for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-                {
-                  this->add_matrix_form(new DiffusionReaction::Jacobian<Scalar>(gto, matprop, mesh, geom_type));
-                  this->add_vector_form(new DiffusionReaction::Residual<Scalar>(gto, matprop, mesh, geom_type));
-
-                  for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
-                  {
-                    if (Ss_nnz[gto][gfrom])
-                    {
-                      this->add_matrix_form(new Scattering::Jacobian<Scalar>(gto, gfrom, matprop, mesh, geom_type));
-                      this->add_vector_form(new Scattering::Residual<Scalar>(gto, gfrom, matprop, mesh, geom_type));
-                    }
-                  }
-
-                  FissionYield::OuterIterationForm<Scalar>* keff_iteration_form =
-                    new FissionYield::OuterIterationForm<Scalar>(gto, matprop, mesh, iterates, initial_keff_guess, geom_type);
-                  keff_iteration_forms.push_back(keff_iteration_form);
-                  this->add_vector_form(keff_iteration_form);
-                }
-              }
-
-            template<typename Scalar>
-            void DefaultWeakFormSourceIteration<Scalar>::update_keff(double new_keff)
-            {
-              /* Somehow does not work with templates. A bug / typo from me?
-              Hermes::vector<FissionYield::OuterIterationForm<Scalar> *>::iterator it = keff_iteration_forms.begin();
-              for ( ; it != keff_iteration_forms.end(); ++it)
-              (*it)->update_keff(new_keff);
-              */
-              for (int i = 0; i < keff_iteration_forms.size(); i++)
-                keff_iteration_forms[i]->update_keff(new_keff);
-            }
+            MaterialPropertyMap1::const_iterator Sr_elem = Sigma_r.begin();
+            for ( ; Sr_elem != Sigma_r.end(); ++Sr_elem)
+              for (unsigned int g = 0; g < G; g++)
+                D[Sr_elem->first][g] = 1./(3.*Sr_elem->second[g]);
+              
+            D_given = true;
+          }
+          
+          if ((D.size() != Sigma_r.size()) || (D.size() != Sigma_s.size()) || (src_given && D.size() != src.size()))
+            error(E_NONMATCHING_PROPERTIES);
+          
+          using ValidationFunctors::ensure_size;
+          std::for_each(Sigma_s.begin(), Sigma_s.end(), ensure_size(G,G));
+          std::for_each(Sigma_r.begin(), Sigma_r.end(), ensure_size(G));
+          std::for_each(src.begin(), src.end(), ensure_size(G));
+          std::for_each(D.begin(), D.end(), ensure_size(G));
+        }
+        
+        const rank2& MaterialPropertyMaps::get_Sigma_s_material(std::string material) const
+        {
+          // Note that prop[e->elem_marker] cannot be used since 'prop' is a constant std::map for
+          // which operator[] is undefined.
+          MaterialPropertyMap2::const_iterator data = this->Sigma_s.find(material);
+          if (data != this->Sigma_s.end())
+            return data->second;
+          else
+          {
+            error(E_INVALID_MARKER);
+            return *(new rank2()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-
-        namespace SupportClasses
+        const rank1& MaterialPropertyMaps::get_Sigma_r_material(std::string material) const
         {
-          void SourceFilter::filter_fn(int n, Hermes::vector<double*> values, double* result)
+          MaterialPropertyMap1::const_iterator data = this->Sigma_r.find(material);
+          if (data != this->Sigma_r.end())
+            return data->second;
+          else
           {
-            for (int i = 0; i < n; i++)
+            error(E_INVALID_MARKER);
+            return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
+          }
+        }
+        const rank1& MaterialPropertyMaps::get_D_material(std::string material) const
+        {
+          MaterialPropertyMap1::const_iterator data = this->D.find(material);
+          if (data != this->D.end())
+            return data->second;
+          else
+          {
+            error(E_INVALID_MARKER);
+            return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
+          }
+        }
+        const rank1& MaterialPropertyMaps::get_src_material(std::string material) const
+        {
+          MaterialPropertyMap1::const_iterator data = this->src.find(material);
+          if (data != this->src.end())
+            return data->second;
+          else
+          {
+            error(E_INVALID_MARKER);
+            return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
+          }
+        }
+        
+        const rank2& MaterialPropertyMaps::get_Sigma_s(std::string region) const
+        {
+          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+          if (material != this->region_material_map.end())
+            return get_Sigma_s_material(material->second);
+          return get_Sigma_s_material(region);
+        }
+        const rank1& MaterialPropertyMaps::get_Sigma_r(std::string region) const
+        {
+          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+          if (material != this->region_material_map.end())
+            return get_Sigma_r_material(material->second);
+          return get_Sigma_r_material(region);
+        }
+        const rank1& MaterialPropertyMaps::get_D(std::string region) const
+        {
+          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+          if (material != this->region_material_map.end())
+            return get_D_material(material->second);
+          return get_D_material(region);
+        }
+        const rank1& MaterialPropertyMaps::get_src(std::string region) const
+        {
+          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+          if (material != this->region_material_map.end())
+            return get_src_material(material->second);
+          return get_src_material(region);
+        }
+        
+        std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop)
+        {
+          using namespace std;
+          
+          os << static_cast<const Common::MaterialPropertyMaps&>(matprop) << endl;
+          
+          os << setw(12) << "target group" << setw(10) << "D" << setw(10) << "Sigma_r";
+          os << setw(10) << "ext. src" << setw(22) << "Sigma_s" << endl; 
+          
+          MaterialPropertyMap1::const_iterator data_elem = matprop.Sigma_r.begin();
+          for ( ; data_elem != matprop.Sigma_r.end(); ++data_elem)
+          {
+            string mat = data_elem->first;
+            
+            os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+            os << setw(40) << mat << endl;
+            os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+            for (unsigned int gto = 0; gto < matprop.G; gto++)
             {
-              result[i] = 0;
-              for (unsigned int j = 0; j < values.size(); j++)
-                result[i] += nu[j] * Sigma_f[j] * values.at(j)[i];
+              os << setw(6) << gto << setw(6) << ' ';
+              os << setw(10) << matprop.get_D(mat)[gto];
+              os << setw(10) << matprop.get_Sigma_r(mat)[gto];
+              os << setw(10);
+              if (matprop.src.empty())
+                os << "N/A";
+              else
+                os << matprop.get_src(mat)[gto];
+              
+              for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
+                os << setw(8) << matprop.get_Sigma_s(mat)[gto][gfrom];
+              
+              os << endl;
             }
+          }
+          
+          os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+          os << "All-region scattering spectrum: " << endl;
+          for (unsigned int gto = 0; gto < matprop.G; gto++)
+          {
+            for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
+              os << setw(10) << matprop.get_scattering_nonzero_structure()[gto][gfrom];
+            os << endl;
+          }
+          
+          return os << endl;
+        }
+        
+        TransportCorrectedMaterialPropertyMaps::TransportCorrectedMaterialPropertyMaps( unsigned int G, 
+                                                                                        const MaterialPropertyMap2& Ss_1,
+                                                                                        const RegionMaterialMap& reg_mat_map)
+          : MaterialPropertyMaps(G, reg_mat_map)
+        {
+          std::set<std::string> matlist;
+          MaterialPropertyMap2::const_iterator it = Ss_1.begin();
+          for( ; it != Ss_1.end(); ++it)
+            matlist.insert(it->first);
+          
+          set_materials_list(matlist);
+          
+          this->Sigma_s_1_out = sum_map2_columns(Ss_1);
+        }
+        
+        TransportCorrectedMaterialPropertyMaps::TransportCorrectedMaterialPropertyMaps( unsigned int G, 
+                                                                                        const MaterialPropertyMap1& mu_av,
+                                                                                        const RegionMaterialMap& reg_mat_map)
+          : MaterialPropertyMaps(G, reg_mat_map)
+        {
+          std::set<std::string> matlist;
+          MaterialPropertyMap1::const_iterator it = mu_av.begin();
+          for( ; it != mu_av.end(); ++it)
+            matlist.insert(it->first);
+          
+          set_materials_list(matlist);
+          
+          this->mu_av = mu_av;
+        }
+        
+        TransportCorrectedMaterialPropertyMaps::TransportCorrectedMaterialPropertyMaps( unsigned int G, 
+                                                                                        const MaterialPropertyMap0& mu_av,
+                                                                                        const RegionMaterialMap& reg_mat_map)
+          : MaterialPropertyMaps(G, reg_mat_map)
+        {
+          std::set<std::string> matlist;
+          MaterialPropertyMap0::const_iterator it = mu_av.begin();
+          for( ; it != mu_av.end(); ++it)
+            matlist.insert(it->first);
+          
+          set_materials_list(matlist);
+          
+          extend_to_multigroup(mu_av, &this->mu_av);
+        }
+        
+        TransportCorrectedMaterialPropertyMaps::TransportCorrectedMaterialPropertyMaps( unsigned int G,
+                                                                                        const RegionMaterialMap& reg_mat_map,
+                                                                                        const rank1& mu_av )
+          : MaterialPropertyMaps(G, reg_mat_map)
+        {
+          extend_to_multiregion(mu_av, &this->mu_av);
+        }
+        
+        TransportCorrectedMaterialPropertyMaps::TransportCorrectedMaterialPropertyMaps( unsigned int G,
+                                                                                        const RegionMaterialMap& reg_mat_map,
+                                                                                        const rank0& mu_av )
+          : MaterialPropertyMaps(G, reg_mat_map)
+        {
+          extend_to_multiregion_multigroup(mu_av, &this->mu_av);
+        }
+
+        TransportCorrectedMaterialPropertyMaps::TransportCorrectedMaterialPropertyMaps( unsigned int G,
+                                                                                        std::set<std::string> mat_list,
+                                                                                        const rank1& mu_av )
+          : MaterialPropertyMaps(G, mat_list)
+        {
+          extend_to_multiregion(mu_av, &this->mu_av);
+        }
+        
+        TransportCorrectedMaterialPropertyMaps::TransportCorrectedMaterialPropertyMaps( unsigned int G,
+                                                                                        std::set<std::string> mat_list,
+                                                                                        const rank0& mu_av )
+          : MaterialPropertyMaps(G, mat_list)
+        {
+          extend_to_multiregion_multigroup(mu_av, &this->mu_av);
+        }
+        
+        void TransportCorrectedMaterialPropertyMaps::validate()
+        {          
+          bool mu_av_given = !mu_av.empty();
+          bool Sigma_s_1_out_given = !Sigma_s_1_out.empty();
+          
+          if (mu_av_given)
+            D = mu_av;
+          else if (Sigma_s_1_out_given)
+            D = Sigma_s_1_out;
+          else
+            error(E_INSUFFICIENT_DATA);
+          
+          MaterialPropertyMaps::validate();
+         
+          if (!Sigma_t.empty())
+            error(E_INSUFFICIENT_DATA);
+          
+          if (!Sigma_s_1_out_given)
+            Sigma_s_1_out = Common::NDArrayMapOp::multiply<rank1>(mu_av, sum_map2_columns(Sigma_s));
+            
+          MaterialPropertyMap1 Sigma_tr = Common::NDArrayMapOp::subtract<rank1>(Sigma_t, Sigma_s_1_out);
+          MaterialPropertyMap1::const_iterator Str_elem = Sigma_tr.begin();
+          for ( ; Str_elem != Sigma_tr.end(); ++Str_elem)
+            for (unsigned int g = 0; g < G; g++)
+              D[Str_elem->first][g] = 1./(3.*Str_elem->second[g]);
+        }
+      }      
+    }
+    
+    namespace ElementaryForms
+    {             
+      namespace Diffusion
+      { 
+        template<typename Real, typename Scalar>
+        Scalar VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                                              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const 
+        { 
+          Scalar result;
+          
+          if (geom_type == HERMES_PLANAR) 
+            result = 0.5 * int_u_v<Real, Scalar>(n, wt, u, v);
+          else if (geom_type == HERMES_AXISYM_X) 
+            result = 0.5 * int_y_u_v<Real, Scalar>(n, wt, u, v, e);
+          else 
+            result = 0.5 * int_x_u_v<Real, Scalar>(n, wt, u, v, e);
+          
+          return result;
+        }
+        template
+        scalar VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<scalar> *u_ext[], Func<double> *u,
+                                                              Func<double> *v, Geom<double> *e, ExtData<scalar> *ext) const;
+        template
+        Ord VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
+                                                           Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;                                                               
+        
+        template<typename Real, typename Scalar>
+        Scalar VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
+                                                              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const 
+        { 
+          Scalar result;
+          
+          if (geom_type == HERMES_PLANAR) 
+            result = 0.5 * int_u_ext_v<Real, Scalar>(n, wt, u_ext[g], v);
+          else if (geom_type == HERMES_AXISYM_X) 
+            result = 0.5 * int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[g], v, e);
+          else 
+            result = 0.5 * int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[g], v, e);
+          
+          return result;
+        }
+        template
+        scalar VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<scalar> *u_ext[],
+                                                              Func<double> *v, Geom<double> *e, ExtData<scalar> *ext) const;
+        template
+        Ord VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<Ord> *u_ext[],
+                                                           Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;        
+       
+        template<typename Real, typename Scalar>
+        Scalar DiffusionReaction::Jacobian::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                                        Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const 
+        {
+          Scalar result;
+          
+          std::string mat = get_material(e->elem_marker, wf);     
+          rank1 D_elem = matprop.get_D(mat);
+          rank1 Sigma_r_elem = matprop.get_Sigma_r(mat);
+          
+          if (geom_type == HERMES_PLANAR) 
+          {
+            result = D_elem[g] * int_grad_u_grad_v<Real, Scalar>(n, wt, u, v) +
+                      Sigma_r_elem[g] * int_u_v<Real, Scalar>(n, wt, u, v);
+          }
+          else 
+          {
+            if (geom_type == HERMES_AXISYM_X) 
+            {
+              result = D_elem[g] * int_y_grad_u_grad_v<Real, Scalar>(n, wt, u, v, e) + 
+                        Sigma_r_elem[g] * int_y_u_v<Real, Scalar>(n, wt, u, v, e);
+            }
+            else 
+            {
+              result = D_elem[g] * int_x_grad_u_grad_v<Real, Scalar>(n, wt, u, v, e) + 
+                        Sigma_r_elem[g] * int_x_u_v<Real, Scalar>(n, wt, u, v, e);
+            }
+          }
+          return result;
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar DiffusionReaction::Residual::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
+                                                        Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const 
+        { 
+          Scalar result;
+          
+          std::string mat = get_material(e->elem_marker, wf);        
+          rank1 D_elem = matprop.get_D(mat);
+          rank1 Sigma_r_elem = matprop.get_Sigma_r(mat);
+          
+          if (geom_type == HERMES_PLANAR) 
+          {
+            result = D_elem[g] * int_grad_u_ext_grad_v<Real, Scalar>(n, wt, u_ext[g], v) +
+                     Sigma_r_elem[g] * int_u_ext_v<Real, Scalar>(n, wt, u_ext[g], v);
+          }
+          else 
+          {
+            if (geom_type == HERMES_AXISYM_X) 
+            {
+              result = D_elem[g] * int_y_grad_u_ext_grad_v<Real, Scalar>(n, wt, u_ext[g], v, e) + 
+                       Sigma_r_elem[g] * int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[g], v, e);
+            }
+            else 
+            {
+              result = D_elem[g] * int_x_grad_u_ext_grad_v<Real, Scalar>(n, wt, u_ext[g], v, e) + 
+                       Sigma_r_elem[g] * int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[g], v, e);
+            }
+          }
+          return result;
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar FissionYield::Jacobian::matrix_form( int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                                    Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext  ) const 
+        {
+          if (!matprop.get_fission_nonzero_structure()[gto])
+            return 0.0;
+          
+          Scalar result = 0;
+          if (geom_type == HERMES_PLANAR) result = int_u_v<Real, Scalar>(n, wt, u, v);
+          else 
+          {
+            if (geom_type == HERMES_AXISYM_X) result = int_y_u_v<Real, Scalar>(n, wt, u, v, e);
+            else result = int_x_u_v<Real, Scalar>(n, wt, u, v, e);
+          }
+          
+          std::string mat = get_material(e->elem_marker, wf);
+          rank1 nu_elem = matprop.get_nu(mat);
+          rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
+          rank1 chi_elem = matprop.get_chi(mat);
+          
+          return result * chi_elem[gto] * nu_elem[gfrom] * Sigma_f_elem[gfrom];
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar FissionYield::OuterIterationForm::vector_form( int n, double *wt, Func<Scalar> *u_ext[],
+                                                              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext ) const 
+        { 
+          if (!matprop.get_fission_nonzero_structure()[g])
+            return 0.0;
+            
+          std::string mat = get_material(e->elem_marker, wf);
+          rank1 nu_elem = matprop.get_nu(mat);
+          rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
+          rank1 chi_elem = matprop.get_chi(mat);
+          
+          if ((unsigned)ext->nf != nu_elem.size() || (unsigned)ext->nf != Sigma_f_elem.size())
+            error(E_INVALID_GROUP_INDEX);
+          
+          Scalar result = 0;
+          for (int i = 0; i < n; i++) 
+          {
+            Scalar local_res = 0;
+            for (int gfrom = 0; gfrom < ext->nf; gfrom++)
+              local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i];
+            
+            local_res = local_res * wt[i] * v->val[i];
+            
+            if (geom_type == HERMES_AXISYM_X)
+              local_res = local_res * e->y[i];
+            else if (geom_type == HERMES_AXISYM_Y)
+              local_res = local_res * e->x[i];
+            
+            result += local_res;
+          }
+        
+          return result * chi_elem[g] / keff;
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar FissionYield::Residual::vector_form( int n, double *wt, Func<Scalar> *u_ext[],
+                                                    Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext ) const 
+        { 
+          if (!matprop.get_fission_nonzero_structure()[gto])
+            return 0.0;
+          
+          Scalar result = 0;
+          if (geom_type == HERMES_PLANAR) result = int_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v);
+          else 
+          {
+            if (geom_type == HERMES_AXISYM_X) result = int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v, e);
+            else result = int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v, e);
+          }
+          
+          std::string mat = get_material(e->elem_marker, wf);
+          rank1 nu_elem = matprop.get_nu(mat);
+          rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
+          rank1 chi_elem = matprop.get_chi(mat);
+          
+          return result * chi_elem[gto] * nu_elem[gfrom] * Sigma_f_elem[gfrom];
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar Scattering::Jacobian::matrix_form( int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
+                                                  Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext  ) const  
+        {
+          Scalar result = 0;
+          if (geom_type == HERMES_PLANAR) result = int_u_v<Real, Scalar>(n, wt, u, v);
+          else 
+          {
+            if (geom_type == HERMES_AXISYM_X) result = int_y_u_v<Real, Scalar>(n, wt, u, v, e);
+            else result = int_x_u_v<Real, Scalar>(n, wt, u, v, e);
+          }
+          
+          return result * matprop.get_Sigma_s(get_material(e->elem_marker, wf))[gto][gfrom];
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar Scattering::Residual::vector_form( int n, double *wt, Func<Scalar> *u_ext[],
+                                                  Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext ) const 
+        { 
+          Scalar result = 0;
+          if (geom_type == HERMES_PLANAR) result = int_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v);
+          else 
+          {
+            if (geom_type == HERMES_AXISYM_X) result = int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v, e);
+            else result = int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v, e);
+          }
+          
+          return result * matprop.get_Sigma_s(get_material(e->elem_marker, wf))[gto][gfrom];
+        }
+        
+        template<typename Real, typename Scalar>
+        Scalar ExternalSources::LinearForm::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
+                                                        Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const 
+        { 
+          std::string mat = get_material(e->elem_marker, wf);
+          
+          if (geom_type == HERMES_PLANAR) 
+            return matprop.get_src(mat)[g] * int_v<Real>(n, wt, v);
+          else 
+          {
+            if (geom_type == HERMES_AXISYM_X) 
+              return matprop.get_src(mat)[g] * int_y_v<Real>(n, wt, v, e);
+            else 
+              return matprop.get_src(mat)[g] * int_x_v<Real>(n, wt, v, e);
           }
         }
       }
-      namespace Monoenergetic
-      {
-        namespace Diffusion
+    }
+    
+    namespace CompleteWeakForms
+    {             
+      namespace Diffusion
+      {   
+        void DefaultWeakFormFixedSource::lhs_init(unsigned int G, 
+                                                  const MaterialPropertyMaps& matprop, GeomType geom_type)
         {
-          template class HERMES_API DefaultWeakFormFixedSource<double>;
-          template class HERMES_API DefaultWeakFormFixedSource<std::complex<double> >;
+          bool2 Ss_nnz = matprop.get_scattering_nonzero_structure();
+          bool1 chi_nnz = matprop.get_fission_nonzero_structure();
+          
+          for (unsigned int gto = 0; gto < G; gto++)
+          {
+            add_matrix_form(new DiffusionReaction::Jacobian(gto, matprop, geom_type));
+            add_vector_form(new DiffusionReaction::Residual(gto, matprop, geom_type));
+            
+            for (unsigned int gfrom = 0; gfrom < G; gfrom++)
+            {
+              if (Ss_nnz[gto][gfrom] && gto != gfrom)
+              {
+                add_matrix_form(new Scattering::Jacobian(gto, gfrom, matprop, geom_type));
+                add_vector_form(new Scattering::Residual(gto, gfrom, matprop, geom_type));
+              }
+              
+              if (chi_nnz[gto])
+              {
+                add_matrix_form(new FissionYield::Jacobian(gto, gfrom, matprop, geom_type));
+                add_vector_form(new FissionYield::Residual(gto, gfrom, matprop, geom_type));
+              }
+            }
+          }
+        }
+        
+        DefaultWeakFormFixedSource::DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, 
+                                                               GeomType geom_type) : WeakForm(matprop.get_G())
+        {
+          lhs_init(matprop.get_G(), matprop, geom_type);
+          for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
+            add_vector_form(new ExternalSources::LinearForm(gto, matprop, geom_type));
+        }
+        
+        DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, 
+                                                                HermesFunction *minus_f_src, std::string src_area,
+                                                                GeomType geom_type  ) : WeakForm(matprop.get_G())
+        {
+          lhs_init(matprop.get_G(), matprop, geom_type);
+          for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
+            add_vector_form(new WeakFormsH1::DefaultVectorFormVol(gto, src_area, minus_f_src, geom_type));
+        }
+        
+        DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, 
+                                                                HermesFunction *minus_f_src,
+                                                                Hermes::vector<std::string> src_areas,
+                                                                GeomType geom_type  ) : WeakForm(matprop.get_G())
+        {
+          lhs_init(matprop.get_G(), matprop, geom_type);
+          for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
+            add_vector_form(new WeakFormsH1::DefaultVectorFormVol(gto, src_areas, minus_f_src, geom_type));
+        }
+        
+        DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, 
+                                                                const std::vector<HermesFunction*>& minus_f_src,
+                                                                std::string src_area, 
+                                                                GeomType geom_type ) : WeakForm(matprop.get_G())
+        {
+          if (minus_f_src.size() != matprop.get_G())
+            error(E_INVALID_SIZE);
+          
+          lhs_init(matprop.get_G(), matprop, geom_type);
+          for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
+            add_vector_form(new WeakFormsH1::DefaultVectorFormVol(gto, src_area, minus_f_src[gto], geom_type));
+        }
+        
+        DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, 
+                                                                const std::vector<HermesFunction*>& minus_f_src,
+                                                                Hermes::vector<std::string> src_areas,
+                                                                GeomType geom_type ) : WeakForm(matprop.get_G())
+        {
+          if (minus_f_src.size() != matprop.get_G())
+            error(E_INVALID_SIZE);
+          
+          lhs_init(matprop.get_G(), matprop, geom_type);
+          for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
+            add_vector_form(new WeakFormsH1::DefaultVectorFormVol(gto, src_areas, minus_f_src[gto], geom_type));
+        }
+        
+        DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
+                                                                        Hermes::vector<MeshFunction*>& iterates,
+                                                                        double initial_keff_guess, 
+                                                                        GeomType geom_type ) : WeakForm(matprop.get_G())
+        {      
+          init(matprop, iterates, initial_keff_guess, geom_type);
+        }
+        
+        DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
+                                                                        Hermes::vector<Solution*>& iterates,
+                                                                        double initial_keff_guess, 
+                                                                        GeomType geom_type ) : WeakForm(matprop.get_G())
+        {      
+          Hermes::vector<MeshFunction *> iterates_mf;
+          for (unsigned int i = 0; i < iterates.size(); i++)
+            iterates_mf.push_back(static_cast<MeshFunction*>(iterates[i]));
+          
+          init(matprop, iterates_mf, initial_keff_guess, geom_type);
+        }
+        
+        void DefaultWeakFormSourceIteration::init(const MaterialPropertyMaps& matprop,
+                                                  Hermes::vector<MeshFunction*>& iterates, double initial_keff_guess, 
+                                                  GeomType geom_type)
+        {
+          bool2 Ss_nnz = matprop.get_scattering_nonzero_structure();
+          
+          keff = initial_keff_guess;
+          
+          for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
+          {
+            add_matrix_form(new DiffusionReaction::Jacobian(gto, matprop, geom_type));
+            add_vector_form(new DiffusionReaction::Residual(gto, matprop, geom_type));
+            
+            for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
+            {
+              if (Ss_nnz[gto][gfrom] && gto != gfrom)
+              {
+                add_matrix_form(new Scattering::Jacobian(gto, gfrom, matprop, geom_type));
+                add_vector_form(new Scattering::Residual(gto, gfrom, matprop, geom_type));
+              }
+            }
+            
+            FissionYield::OuterIterationForm* keff_iteration_form = 
+              new FissionYield::OuterIterationForm( gto, matprop, iterates, initial_keff_guess, geom_type );
+            keff_iteration_forms.push_back(keff_iteration_form);
+            add_vector_form(keff_iteration_form);
+          }
+        }
+        
+        void DefaultWeakFormSourceIteration::update_keff(double new_keff) 
+        { 
+          keff = new_keff;
+          
+          std::vector<FissionYield::OuterIterationForm*>::iterator it = keff_iteration_forms.begin();
+          for ( ; it != keff_iteration_forms.end(); ++it)
+            (*it)->update_keff(new_keff); 
         }
       }
-      namespace Multigroup
+    }
+    
+    namespace SupportClasses
+    {
+      namespace Common
       {
-        namespace ElementaryForms
+        void SourceFilter::filter_fn(int n, Hermes::vector<scalar*> values, scalar* result)
         {
-          namespace Diffusion
+          for (int i = 0; i < n; i++) 
           {
-            template class HERMES_API FissionYield::Jacobian<double>;
-            template class HERMES_API FissionYield::Jacobian<std::complex<double> >;
-            template class HERMES_API FissionYield::OuterIterationForm<double>;
-            template class HERMES_API FissionYield::OuterIterationForm<std::complex<double> >;
-            template class HERMES_API FissionYield::Residual<double>;
-            template class HERMES_API FissionYield::Residual<std::complex<double> >;
-
-            template class HERMES_API VacuumBoundaryCondition::Jacobian<double>;
-            template class HERMES_API VacuumBoundaryCondition::Jacobian<std::complex<double> >;
-            template class HERMES_API VacuumBoundaryCondition::Residual<double>;
-            template class HERMES_API VacuumBoundaryCondition::Residual<std::complex<double> >;
-
-            template double VacuumBoundaryCondition::Jacobian<double>::matrix_form<double, double>(int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
-
-            template double VacuumBoundaryCondition::Residual<double>::vector_form<double, double>(int n, double *wt, Func<double> *u_ext[],
-              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
-
-            template double DiffusionReaction::Jacobian<double>::matrix_form<double, double>(int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
-
-            template double DiffusionReaction::Residual<double>::vector_form<double, double>(int n, double *wt, Func<double> *u_ext[],
-              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
-
-            template double FissionYield::Jacobian<double>::matrix_form<double, double>(int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
-
-            template double FissionYield::OuterIterationForm<double>::vector_form<double, double>(int n, double *wt, Func<double> *u_ext[],
-              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
-
-            template double FissionYield::Residual<double>::vector_form<double, double>(int n, double *wt, Func<double> *u_ext[],
-              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
-
-            template double Scattering::Jacobian<double>::matrix_form<double, double>(int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
-
-            template double Scattering::Residual<double>::vector_form<double, double>(int n, double *wt, Func<double> *u_ext[],
-              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
-
-            template double ExternalSources::LinearForm<double>::vector_form<double, double>(int n, double *wt, Func<double> *u_ext[],
-              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
+            result[i] = 0;
+            for (unsigned int j = 0; j < values.size(); j++)
+              result[i] += nu[j] * Sigma_f[j] * values.at(j)[i];
           }
-        }
-
-        namespace CompleteWeakForms
-        {
-          namespace Diffusion
-          {
-            template class HERMES_API DefaultWeakFormFixedSource<double>;
-            template class HERMES_API DefaultWeakFormFixedSource<std::complex<double> >;
-
-            template class HERMES_API DefaultWeakFormSourceIteration<double>;
-            template class HERMES_API DefaultWeakFormSourceIteration<std::complex<double> >;
-          }
-        }
+        } 
       }
     }
   }
