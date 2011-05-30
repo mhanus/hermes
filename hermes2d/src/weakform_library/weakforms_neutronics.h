@@ -72,8 +72,6 @@ namespace WeakFormsNeutronics
           "Attempt to set an infinite material property.";
         static const char* W_NEG_VALUE =
           "Entered material data lead to some negative properties.";
-        static const char* W_MG_EXTENSION = 
-          "Attempted to create a multigroup material-property map in a container for singlegroup maps.";
         static const char* W_SA_LT_SF =
           "Possible unphysical situation detected: Sigma_a < Sigma_f.";  
         static const char* E_MR_EXTENSION = 
