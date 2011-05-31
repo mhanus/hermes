@@ -1232,7 +1232,7 @@ namespace WeakFormsNeutronics
           {
             Scalar local_res = 0;
             for (int gfrom = 0; gfrom < ext->nf; gfrom++)
-              local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[mg.pos(mrow,gfrom)]->val[i];
+              local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i]; // scalar flux in group 'gfrom'
             
             local_res = local_res * wt[i] * v->val[i];
             
@@ -1775,10 +1775,13 @@ namespace WeakFormsNeutronics
     
       namespace SPN
       {
-        void DefaultWeakFormFixedSource::lhs_init(unsigned int G, unsigned int N_odd,
-                                                  const MomentGroupFlattener& mg, const MaterialPropertyMaps& matprop,
-                                                  GeomType geom_type)
+        WeakFormHomogeneous::WeakFormHomogeneous(unsigned int N, const MaterialPropertyMaps& matprop,
+                                                 GeomType geom_type, bool include_fission) 
+          : WeakForm(matprop.get_G()), G(matprop.get_G())
         {
+          N_odd = (N + 1)/2;
+          mg.set_G(G);
+         
           bool1 diagonal_moments = matprop.is_Sigma_rn_diagonal();
           bool2 present(N_odd * G, bool1(N_odd * G, false));
           bool2 sym(N_odd * G, bool1(N_odd * G, false));
@@ -1835,7 +1838,7 @@ namespace WeakFormsNeutronics
               add_matrix_form(new DiagonalStreamingAndReactions::Jacobian(m, gto, matprop, geom_type));
               add_vector_form(new DiagonalStreamingAndReactions::Residual(m, gto, matprop, geom_type));
               
-              if (chi_nnz[gto])
+              if (include_fission && chi_nnz[gto])
                 add_vector_form(new FissionYield::Residual(m, N_odd, gto, matprop, geom_type));
               
               add_vector_form(new OffDiagonalStreaming::Residual(m, gto, matprop, geom_type));
@@ -1851,7 +1854,7 @@ namespace WeakFormsNeutronics
                   
                   if (i != j)
                   {
-                    if (chi_nnz[gto])
+                    if (include_fission && chi_nnz[gto])
                       add_matrix_form( new FissionYield::Jacobian(m, n, gto, gfrom, matprop, geom_type) );
                     
                     if (present[i][j])
@@ -1866,14 +1869,8 @@ namespace WeakFormsNeutronics
         
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, unsigned int N,
                                                                GeomType geom_type) 
-          : WeakForm(matprop.get_G())
+          : WeakFormHomogeneous(N, matprop, geom_type, true)
         {
-          unsigned int N_odd = (N + 1)/2;
-          unsigned int G = matprop.get_G();
-          
-          MomentGroupFlattener mg(G);
-          
-          lhs_init(G, N_odd, mg, matprop, geom_type);
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
               add_vector_form(new ExternalSources::LinearForm(m, gto, matprop, geom_type));
@@ -1882,14 +1879,8 @@ namespace WeakFormsNeutronics
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, unsigned int N, 
                                                                 HermesFunction *minus_f_src, std::string src_area,
                                                                 GeomType geom_type  )
-          : WeakForm(matprop.get_G())
+          : WeakFormHomogeneous(N, matprop, geom_type, true)
         {
-          unsigned int N_odd = (N + 1)/2;
-          unsigned int G = matprop.get_G();
-          
-          MomentGroupFlattener mg(G);
-          
-          lhs_init(G, N_odd, mg, matprop, geom_type);
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
               add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, minus_f_src, geom_type));
@@ -1899,14 +1890,8 @@ namespace WeakFormsNeutronics
                                                                 HermesFunction *minus_f_src,
                                                                 Hermes::vector<std::string> src_areas,
                                                                 GeomType geom_type  )
-          : WeakForm(matprop.get_G())
+          : WeakFormHomogeneous(N, matprop, geom_type, true)
         {
-          unsigned int N_odd = (N + 1)/2;
-          unsigned int G = matprop.get_G();
-          
-          MomentGroupFlattener mg(G);
-          
-          lhs_init(G, N_odd, mg, matprop, geom_type);
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
               add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, minus_f_src, geom_type));
@@ -1916,17 +1901,11 @@ namespace WeakFormsNeutronics
                                                                 const std::vector<HermesFunction*>& minus_f_src,
                                                                 std::string src_area, 
                                                                 GeomType geom_type )
-          : WeakForm(matprop.get_G())
+          : WeakFormHomogeneous(N, matprop, geom_type, true)
         {
-          unsigned int N_odd = (N + 1)/2;
-          unsigned int G = matprop.get_G();
-          
           if (minus_f_src.size() != G)
             error(E_INVALID_SIZE);
          
-          MomentGroupFlattener mg(G);
-          
-          lhs_init(G, N_odd, mg, matprop, geom_type);
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
               add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, minus_f_src[gto], geom_type));
@@ -1936,20 +1915,63 @@ namespace WeakFormsNeutronics
                                                                 const std::vector<HermesFunction*>& minus_f_src,
                                                                 Hermes::vector<std::string> src_areas,
                                                                 GeomType geom_type )
-          : WeakForm(matprop.get_G())
+          : WeakFormHomogeneous(N, matprop, geom_type, true)
         {
-          unsigned int N_odd = (N + 1)/2;
-          unsigned int G = matprop.get_G();
-          
           if (minus_f_src.size() != G)
             error(E_INVALID_SIZE);
           
-          MomentGroupFlattener mg(G);
-          
-          lhs_init(G, N_odd, mg, matprop, geom_type);
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
               add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, minus_f_src[gto], geom_type));
+        }
+        
+        DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop, unsigned int N,
+                                                                        Hermes::vector<MeshFunction*>& iterates,
+                                                                        double initial_keff_guess, 
+                                                                        GeomType geom_type )
+          : WeakFormHomogeneous(N, matprop, geom_type, false)
+        {      
+          init(matprop, N, iterates, initial_keff_guess, geom_type);
+        }
+        
+        DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop, unsigned int N,
+                                                                        Hermes::vector<Solution*>& iterates,
+                                                                        double initial_keff_guess, 
+                                                                        GeomType geom_type )
+          : WeakFormHomogeneous(N, matprop, geom_type, false)
+        {      
+          Hermes::vector<MeshFunction *> iterates_mf;
+          for (unsigned int i = 0; i < iterates.size(); i++)
+            iterates_mf.push_back(static_cast<MeshFunction*>(iterates[i]));
+          
+          init(matprop, N, iterates_mf, initial_keff_guess, geom_type);
+        }
+        
+        void DefaultWeakFormSourceIteration::init(const MaterialPropertyMaps& matprop, unsigned int N,
+                                                  Hermes::vector<MeshFunction*>& iterates, double initial_keff_guess, 
+                                                  GeomType geom_type)
+        {
+          keff = initial_keff_guess;
+          
+          for (unsigned int m = 0; m < N_odd; m++)
+          {
+            for (unsigned int gto = 0; gto < G; gto++)
+            {            
+              FissionYield::OuterIterationForm* keff_iteration_form = 
+                new FissionYield::OuterIterationForm( m, gto, matprop, iterates, initial_keff_guess, geom_type );
+              keff_iteration_forms.push_back(keff_iteration_form);
+              add_vector_form(keff_iteration_form);
+            }
+          }
+        }
+        
+        void DefaultWeakFormSourceIteration::update_keff(double new_keff) 
+        { 
+          keff = new_keff;
+          
+          std::vector<FissionYield::OuterIterationForm*>::iterator it = keff_iteration_forms.begin();
+          for ( ; it != keff_iteration_forms.end(); ++it)
+            (*it)->update_keff(new_keff); 
         }
       }
     }
@@ -2118,6 +2140,16 @@ namespace WeakFormsNeutronics
                 result[i] += Coeffs::even_moment(req_mom_idx, exp_mom_idx) * values.at(sol_idx)[i];
             }
           }
+        }
+        
+        void MomentFilter::get_scalar_fluxes(const Hermes::vector< Solution* >& angular_fluxes, 
+                                             Hermes::vector< MeshFunction* >& scalar_fluxes)
+        {
+          unsigned int G = angular_fluxes.size();
+          
+          scalar_fluxes.reserve(G);
+          for (unsigned int g = 0; g < G; g++)
+            scalar_fluxes.push_back(new MomentFilter(0, g, G, angular_fluxes));
         }
       }
     }
