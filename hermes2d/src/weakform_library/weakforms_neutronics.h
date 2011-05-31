@@ -877,7 +877,10 @@ namespace WeakFormsNeutronics
           unsigned int G;
           
           public:
+            MomentGroupFlattener() : G(0) {};
             MomentGroupFlattener(unsigned int G) : G(G) {};
+            
+            void set_G(unsigned int G) { this->G = G; }
             
             unsigned int pos(unsigned int angular_moment, unsigned int group) const {
               return angular_moment * G + group;
@@ -899,6 +902,9 @@ namespace WeakFormsNeutronics
             MomentGroupFlattener mg;
                         
             void filter_fn(int n, Hermes::vector<scalar*> values, scalar* result);
+            
+            static void get_scalar_fluxes(const Hermes::vector<Solution*>& angular_fluxes,
+                                          Hermes::vector<MeshFunction*>& scalar_fluxes);
         };
       }
     }
@@ -2021,14 +2027,19 @@ namespace WeakFormsNeutronics
       {
         using namespace MaterialProperties;
         using namespace ElementaryForms::SPN;
-                
-        class DefaultWeakFormFixedSource : public WeakForm
+        
+        class WeakFormHomogeneous : public WeakForm
         {
-          protected:                  
-            void lhs_init(unsigned int G, unsigned int N_odd,
-                          const MomentGroupFlattener& mg, const MaterialPropertyMaps& matprop,
-                          GeomType geom_type);
+          protected:
+            MomentGroupFlattener mg;
+            unsigned int G, N_odd;
             
+            WeakFormHomogeneous(unsigned int N, const MaterialPropertyMaps& matprop,
+                                GeomType geom_type, bool include_fission);
+        };
+                
+        class DefaultWeakFormFixedSource : public WeakFormHomogeneous
+        {            
           public:
             DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, unsigned int N,
                                        GeomType geom_type = HERMES_PLANAR);
@@ -2052,6 +2063,32 @@ namespace WeakFormsNeutronics
                                        const std::vector<HermesFunction*>& minus_f_src,
                                        Hermes::vector<std::string> src_areas,
                                        GeomType geom_type = HERMES_PLANAR);
+        };
+        
+        class DefaultWeakFormSourceIteration : public WeakFormHomogeneous
+        {
+          protected:
+            double keff;
+            
+            std::vector<FissionYield::OuterIterationForm*> keff_iteration_forms;
+            
+            void init(const MaterialPropertyMaps& matprop, unsigned int N,
+                      Hermes::vector<MeshFunction*>& iterates, double initial_keff_guess, 
+                      GeomType geom_type);
+            
+          public:
+            DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop, unsigned int N,
+                                            Hermes::vector<MeshFunction*>& iterates,
+                                            double initial_keff_guess,
+                                            GeomType geom_type = HERMES_PLANAR );
+                                            
+            DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop, unsigned int N,
+                                            Hermes::vector<Solution*>& iterates,
+                                            double initial_keff_guess,
+                                            GeomType geom_type = HERMES_PLANAR );                                            
+            
+            void update_keff(double new_keff);
+            double get_keff() const { return keff; }
         };
       }
     }
