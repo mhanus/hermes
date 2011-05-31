@@ -1,1 +1,2 @@
-add_subdirectory(1-group)
+add_subdirectory(eigenvalue)
+#TODO: add_subdirectory(fixed-source)

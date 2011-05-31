@@ -1,4 +1,4 @@
-project(test-example-neutronics-spn-1-group)
+project(test-example-neutronics-spn-eigenvalue-1-group-hexagonal)
 
 add_executable(${PROJECT_NAME} main.cpp)
 include (${hermes2d_SOURCE_DIR}/CMake.common)
