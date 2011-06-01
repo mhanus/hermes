@@ -1,4 +1,5 @@
 #include "hermes2d.h"
+#include <sstream>
 
 using namespace WeakFormsNeutronics::Multigroup;
 using namespace CompleteWeakForms::SPN;
@@ -15,6 +16,13 @@ class CustomWeakForm : public DefaultWeakFormSourceIteration
 
 // Integral over the active core.
 double integrate(MeshFunction* sln, Mesh* mesh, const std::vector<std::string>& fission_regions);
+
+inline std::string itos(int t)
+{
+  std::stringstream ss;
+  ss << t;
+  return ss.str();
+}
 
 /// \brief Power iteration. 
 ///
