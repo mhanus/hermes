@@ -1131,7 +1131,7 @@ namespace WeakFormsNeutronics
         {
           Scalar result;
           
-          std::string mat = get_material(e->elem_marker, wf);     
+          std::string mat = matprop.get_material(e->elem_marker, wf);     
           
           double Sigma_r_elem = 0.;
           for (unsigned int k = 0; k <= mrow; k++)
@@ -1166,7 +1166,7 @@ namespace WeakFormsNeutronics
         { 
           Scalar result;
           
-          std::string mat = get_material(e->elem_marker, wf);     
+          std::string mat = matprop.get_material(e->elem_marker, wf);     
           
           double Sigma_r_elem = 0.;
           for (unsigned int k = 0; k <= mrow; k++)
@@ -1204,7 +1204,7 @@ namespace WeakFormsNeutronics
           else 
             result = int_x_u_v<Real, Scalar>(n, wt, u, v, e);
           
-          std::string mat = get_material(e->elem_marker, wf);
+          std::string mat = matprop.get_material(e->elem_marker, wf);
           rank1 nu_elem = matprop.get_nu(mat);
           rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
           rank1 chi_elem = matprop.get_chi(mat);
@@ -1219,29 +1219,23 @@ namespace WeakFormsNeutronics
           if (!matprop.get_fission_nonzero_structure()[g])
             return 0.0;
             
-          std::string mat = get_material(e->elem_marker, wf);
-          rank1 nu_elem = matprop.get_nu(mat);
-          rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
+          std::string mat = matprop.get_material(e->elem_marker, wf);
           rank1 chi_elem = matprop.get_chi(mat);
           
-          if ((unsigned)ext->nf != nu_elem.size() || (unsigned)ext->nf != Sigma_f_elem.size())
-            error(E_INVALID_GROUP_INDEX);
+          // Complete source is expected in ext->fn, i.e. sum over all groups of nu[g] * Sigma_f[g] * scalar_flux[g].
+          // This is ensured by passing a SourceFilter to the constructor of the SourceIterationWeakForm.
+          // Unlike the diffusion case, the use of a filter is inevitable here - it it was not the complete
+          // source filter, the scalar-flux filter would have to be used anyway.
           
           Scalar result = 0;
           for (int i = 0; i < n; i++) 
           {
-            Scalar local_res = 0;
-            for (int gfrom = 0; gfrom < ext->nf; gfrom++)
-              local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i]; // scalar flux in group 'gfrom'
-            
-            local_res = local_res * wt[i] * v->val[i];
-            
             if (geom_type == HERMES_AXISYM_X)
-              local_res = local_res * e->y[i];
+              result += ext->fn[0]->val[i] * wt[i] * v->val[i] * e->y[i];
             else if (geom_type == HERMES_AXISYM_Y)
-              local_res = local_res * e->x[i];
-            
-            result += local_res;
+              result += ext->fn[0]->val[i] * wt[i] * v->val[i] * e->x[i];
+            else
+              result += ext->fn[0]->val[i] * wt[i] * v->val[i];
           }
         
           return result * Coeffs::even_moment(0, mrow) * chi_elem[g] / keff;
@@ -1254,7 +1248,7 @@ namespace WeakFormsNeutronics
           if (!matprop.get_fission_nonzero_structure()[gto])
             return 0.0;
                    
-          std::string mat = get_material(e->elem_marker, wf);
+          std::string mat = matprop.get_material(e->elem_marker, wf);
           rank1 nu_elem = matprop.get_nu(mat);
           rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
           rank1 chi_elem = matprop.get_chi(mat);
@@ -1291,7 +1285,7 @@ namespace WeakFormsNeutronics
           else 
             result = int_x_grad_u_grad_v<Real, Scalar>(n, wt, u, v, e);
           
-          std::string mat = get_material(e->elem_marker, wf);     
+          std::string mat = matprop.get_material(e->elem_marker, wf);     
           return result * Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto][gfrom];
         }
         
@@ -1301,7 +1295,7 @@ namespace WeakFormsNeutronics
         { 
           Scalar result = 0;
           
-          std::string mat = get_material(e->elem_marker, wf);
+          std::string mat = matprop.get_material(e->elem_marker, wf);
           rank1 D_elem = matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto];
           
           for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
@@ -1332,7 +1326,7 @@ namespace WeakFormsNeutronics
           else 
             result = int_x_u_v<Real, Scalar>(n, wt, u, v, e);
           
-          std::string mat = get_material(e->elem_marker, wf);
+          std::string mat = matprop.get_material(e->elem_marker, wf);
           
           double Sigma_rn_elem = 0.;
           for (unsigned int k = 0; k <= mrow; k++)
@@ -1345,7 +1339,7 @@ namespace WeakFormsNeutronics
         Scalar OffDiagonalReactions::Residual::vector_form( int n, double *wt, Func<Scalar> *u_ext[],
                                                             Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext ) const 
         { 
-          std::string mat = get_material(e->elem_marker, wf);
+          std::string mat = matprop.get_material(e->elem_marker, wf);
           rank3 Sigma_rn_elem = matprop.get_Sigma_rn(mat);
           
           Scalar result = 0;
@@ -1380,7 +1374,7 @@ namespace WeakFormsNeutronics
         Scalar ExternalSources::LinearForm::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
                                                         Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const 
         { 
-          std::string mat = get_material(e->elem_marker, wf);
+          std::string mat = matprop.get_material(e->elem_marker, wf);
           
           if (geom_type == HERMES_PLANAR) 
             return Coeffs::even_moment(0, mrow) * matprop.get_src0(mat)[g] * int_v<Real>(n, wt, v);
@@ -1777,9 +1771,8 @@ namespace WeakFormsNeutronics
       {
         WeakFormHomogeneous::WeakFormHomogeneous(unsigned int N, const MaterialPropertyMaps& matprop,
                                                  GeomType geom_type, bool include_fission) 
-          : WeakForm(matprop.get_G()), G(matprop.get_G())
+          : WeakForm(matprop.get_G()), G(matprop.get_G()), N_odd((N+1)/2)
         {
-          N_odd = (N + 1)/2;
           mg.set_G(G);
          
           bool1 diagonal_moments = matprop.is_Sigma_rn_diagonal();
@@ -1926,31 +1919,14 @@ namespace WeakFormsNeutronics
         }
         
         DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop, unsigned int N,
-                                                                        Hermes::vector<MeshFunction*>& iterates,
+                                                                        Hermes::vector<Solution*>& iterates, 
+                                                                        const std::vector<std::string>& src_areas,
                                                                         double initial_keff_guess, 
                                                                         GeomType geom_type )
           : WeakFormHomogeneous(N, matprop, geom_type, false)
         {      
-          init(matprop, N, iterates, initial_keff_guess, geom_type);
-        }
-        
-        DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop, unsigned int N,
-                                                                        Hermes::vector<Solution*>& iterates,
-                                                                        double initial_keff_guess, 
-                                                                        GeomType geom_type )
-          : WeakFormHomogeneous(N, matprop, geom_type, false)
-        {      
-          Hermes::vector<MeshFunction *> iterates_mf;
-          for (unsigned int i = 0; i < iterates.size(); i++)
-            iterates_mf.push_back(static_cast<MeshFunction*>(iterates[i]));
+          latest_source = new SupportClasses::SPN::SourceFilter(iterates, matprop, src_areas);
           
-          init(matprop, N, iterates_mf, initial_keff_guess, geom_type);
-        }
-        
-        void DefaultWeakFormSourceIteration::init(const MaterialPropertyMaps& matprop, unsigned int N,
-                                                  Hermes::vector<MeshFunction*>& iterates, double initial_keff_guess, 
-                                                  GeomType geom_type)
-        {
           keff = initial_keff_guess;
           
           for (unsigned int m = 0; m < N_odd; m++)
@@ -1958,11 +1934,20 @@ namespace WeakFormsNeutronics
             for (unsigned int gto = 0; gto < G; gto++)
             {            
               FissionYield::OuterIterationForm* keff_iteration_form = 
-                new FissionYield::OuterIterationForm( m, gto, matprop, iterates, initial_keff_guess, geom_type );
+                new FissionYield::OuterIterationForm( m, gto, matprop, latest_source, initial_keff_guess, geom_type );
               keff_iteration_forms.push_back(keff_iteration_form);
               add_vector_form(keff_iteration_form);
             }
           }
+        }
+        
+        DefaultWeakFormSourceIteration::~DefaultWeakFormSourceIteration()
+        {
+          std::vector<FissionYield::OuterIterationForm*>::const_iterator it = keff_iteration_forms.begin();
+          for ( ; it != keff_iteration_forms.end(); ++it)
+            delete *it;
+          keff_iteration_forms.clear();
+          delete latest_source;
         }
         
         void DefaultWeakFormSourceIteration::update_keff(double new_keff) 
@@ -2143,13 +2128,48 @@ namespace WeakFormsNeutronics
         }
         
         void MomentFilter::get_scalar_fluxes(const Hermes::vector< Solution* >& angular_fluxes, 
-                                             Hermes::vector< MeshFunction* >& scalar_fluxes)
+                                             Hermes::vector< MeshFunction* >* scalar_fluxes)
         {
           unsigned int G = angular_fluxes.size();
           
-          scalar_fluxes.reserve(G);
+          scalar_fluxes->reserve(G);
           for (unsigned int g = 0; g < G; g++)
-            scalar_fluxes.push_back(new MomentFilter(0, g, G, angular_fluxes));
+            scalar_fluxes->push_back(new MomentFilter(0, g, G, angular_fluxes));
+        }
+        
+        void MomentFilter::clear_scalar_fluxes(Hermes::vector< MeshFunction* >* scalar_fluxes)
+        {
+          Hermes::vector< MeshFunction* >::const_iterator it = scalar_fluxes->begin();
+          for( ; it != scalar_fluxes->end(); ++it)
+            delete *it;
+          scalar_fluxes->clear();
+        }
+
+        void SourceFilter::filter_fn(int n, Hermes::vector< scalar* > values, scalar* result)
+        {
+          std::string source_region = matprop.get_material(this->get_active_element()->marker, mesh);
+          
+          memset(result, 0, n*sizeof(scalar));
+          
+          if (source_regions.empty() || source_regions.find(source_region) != source_regions.end())
+          {           
+            rank1 Sigma_f = matprop.get_Sigma_f(source_region);
+            rank1 nu = matprop.get_nu(source_region);
+            
+            for (int i = 0; i < n; i++) 
+            {
+              for (unsigned int g = 0; g < G; g++)
+              {
+                scalar group_scalar_flux = 0;
+                
+                unsigned int exp_mom_idx = 0;
+                for (unsigned int sol_idx = mg.pos(exp_mom_idx,g); sol_idx < values.size(); sol_idx = mg.pos(++exp_mom_idx,g))
+                  group_scalar_flux += Coeffs::even_moment(0, exp_mom_idx) * values.at(sol_idx)[i];
+                
+                result[i] += nu[g] * Sigma_f[g] * group_scalar_flux;
+              }
+            }
+          }
         }
       }
     }
