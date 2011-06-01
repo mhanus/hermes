@@ -655,14 +655,14 @@ namespace WeakFormsNeutronics
             
             MaterialPropertyMaps(unsigned int G, unsigned int N,
                                  std::set<std::string> mat_list = std::set<std::string>()) 
-              : Common::MaterialPropertyMaps(G, mat_list), N(N), N_odd(N/2+1) 
+              : Common::MaterialPropertyMaps(G, mat_list), N(N), N_odd((N+1)/2) 
             {
               if ((N % 2) == 0) error(E_EVEN_SPN);
             }
             
             MaterialPropertyMaps(unsigned int G, unsigned int N, 
                                  const RegionMaterialMap& reg_mat_map)
-              : Common::MaterialPropertyMaps(G, reg_mat_map), N(N), N_odd(N/2+1)  
+              : Common::MaterialPropertyMaps(G, reg_mat_map), N(N), N_odd((N+1)/2)  
             { 
               if ((N % 2) == 0) error(E_EVEN_SPN);
             }

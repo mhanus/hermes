@@ -712,7 +712,7 @@ namespace WeakFormsNeutronics
         void MaterialPropertyMaps::extend_to_rank3(const MaterialPropertyMap2& src, MaterialPropertyMap3* dest)
         {
           for (MaterialPropertyMap2::const_iterator src_it = src.begin(); src_it != src.end(); ++src_it)
-            for (unsigned int n = 0; n < N; n++)
+            for (unsigned int n = 0; n <= N; n++)
               (*dest)[src_it->first].push_back(src_it->second);
         }
         
@@ -729,9 +729,9 @@ namespace WeakFormsNeutronics
           MaterialPropertyMap2::const_iterator diags_it = diags.begin();
           for ( ; diags_it != diags.end(); ++diags_it)
           {
-            map3[diags_it->first].resize(N, rank2(G, rank1(G, 0.0)));
+            map3[diags_it->first].resize(N+1, rank2(G, rank1(G, 0.0)));
             
-            for (unsigned int n = 0; n < N; n++)
+            for (unsigned int n = 0; n <= N; n++)
               for (unsigned int g = 0; g < G; g++)
                 map3[diags_it->first][n][g][g] = diags_it->second[n][g];
           }
@@ -743,7 +743,7 @@ namespace WeakFormsNeutronics
         {
           std::set<std::string>::const_iterator it;
           for (it = materials_list.begin(); it != materials_list.end(); ++it)
-            (*mmmrmg_map)[*it].assign(N, rank2(G, rank1(G, c)));
+            (*mmmrmg_map)[*it].assign(N+1, rank2(G, rank1(G, c)));
         }
                 
         void MaterialPropertyMaps::invert_odd_Sigma_rn()
@@ -755,11 +755,11 @@ namespace WeakFormsNeutronics
             odd_Sigma_rn_inv[mat].resize(N_odd, rank2(G, rank1(G, 0.0)));
             
             rank3 moment_matrices = Sr_mat->second;
-            rank3::const_iterator odd_moment_matrix = ++moment_matrices.begin();
+            rank3::const_iterator odd_moment_matrix = moment_matrices.begin()+1;
             rank3::iterator inverted_moment_matrix = odd_Sigma_rn_inv[mat].begin();
-            bool1::const_iterator moment_matrix_is_diagonal = ++Sigma_rn_is_diagonal[mat].begin();
-            for ( ; odd_moment_matrix != moment_matrices.end(); 
-                    odd_moment_matrix += 2, ++inverted_moment_matrix, moment_matrix_is_diagonal += 2)
+            bool1::const_iterator moment_matrix_is_diagonal = Sigma_rn_is_diagonal[mat].begin()+1;
+            for (unsigned int num_visited = 0; num_visited < N_odd; num_visited++, 
+                 odd_moment_matrix += 2, ++inverted_moment_matrix, moment_matrix_is_diagonal += 2)
             {              
               if (*moment_matrix_is_diagonal)
               {
@@ -828,7 +828,7 @@ namespace WeakFormsNeutronics
             fill_with(0.0, &Sigma_sn);
           }
           
-          std::for_each(Sigma_tn.begin(), Sigma_tn.end(), ValidationFunctors::ensure_size(G,G,N));
+          std::for_each(Sigma_tn.begin(), Sigma_tn.end(), ValidationFunctors::ensure_size(G,G,N+1));
           
           MaterialPropertyMap3::const_iterator Stn_material = Sigma_tn.begin();
           for ( ; Stn_material != Sigma_tn.end(); ++Stn_material)
@@ -837,16 +837,16 @@ namespace WeakFormsNeutronics
             rank3 Ssn = Sigma_sn[mat];
             rank3 Stn = Sigma_tn[mat];
               
-            Sigma_rn_is_diagonal[mat].resize(N, true);
+            Sigma_rn_is_diagonal[mat].resize(N+1, true);
             
-            if (Ssn.size() > N)
+            if (Ssn.size() > N+1)
             {
-              warning(W_SCATTERING_TRUNCATION, N);
-              Sigma_sn[mat].erase(Sigma_sn[mat].begin() + N, Sigma_sn[mat].end());
+              warning(W_SCATTERING_TRUNCATION, N+1);
+              Sigma_sn[mat].erase(Sigma_sn[mat].begin() + N+1, Sigma_sn[mat].end());
               Ssn = Sigma_sn[mat];
             }
             
-            if (Ssn.size() == N)
+            if (Ssn.size() == N+1)
             {
               Sigma_rn[mat] = Common::NDArrayMapOp::subtract<rank3>(Stn, Ssn);
               
@@ -869,7 +869,7 @@ namespace WeakFormsNeutronics
                 }
               }
             }
-            else if (Ssn.size() < N)
+            else if (Ssn.size() < N+1)
             {
               Sigma_rn[mat] = Stn;
              
@@ -984,9 +984,9 @@ namespace WeakFormsNeutronics
         
         const bool1 MaterialPropertyMaps::is_Sigma_rn_diagonal() const
         {
-          bool1 ret(N, true);
+          bool1 ret(N+1, true);
           
-          for (unsigned int k = 0; k < N; k++)
+          for (unsigned int k = 0; k <= N; k++)
           {
             std::map<std::string, bool1>::const_iterator data_it = Sigma_rn_is_diagonal.begin();
             for ( ; data_it != Sigma_rn_is_diagonal.end(); ++data_it)
@@ -1771,7 +1771,7 @@ namespace WeakFormsNeutronics
       {
         WeakFormHomogeneous::WeakFormHomogeneous(unsigned int N, const MaterialPropertyMaps& matprop,
                                                  GeomType geom_type, bool include_fission) 
-          : WeakForm(matprop.get_G()), G(matprop.get_G()), N_odd((N+1)/2)
+          : WeakForm(matprop.get_G()*(N+1)/2), G(matprop.get_G()), N_odd((N+1)/2)
         {
           mg.set_G(G);
          
