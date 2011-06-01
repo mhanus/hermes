@@ -44,6 +44,10 @@ const RegionMaterialMap rm_map = region_material_map
   ("Assembly 23", "Mixture 3")
   ("Assembly 24", "Mixture 3");
 
+const Hermes::vector<std::string> fission_regions = Hermes::vector<std::string>(
+  "Assembly 1", "Assembly 2", "Assembly 3", "Assembly 4", "Assembly 5", "Assembly 6", "Assembly 8"
+);
+
 //////  Physical parameters.  /////////////////////////////////////////////////////////////////
 
 const MaterialPropertyMap1 St = material_property_map<rank1>
