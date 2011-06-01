@@ -2,27 +2,71 @@
 #include "definitions.h"
 #include "problem_data.h"
 
-// TODO
+using namespace RefinementSelectors;
+
+const unsigned int N_ODD_MOMENTS = (N_MOMENTS+1)/2;
+const unsigned int N_TOTAL = N_GROUPS * N_ODD_MOMENTS;
+
+const int INIT_REF_NUM[N_TOTAL] = {      // Initial uniform mesh refinement for the individual solution components.
+  2, 1                              
+};
+const int P_INIT[N_TOTAL] = {            // Initial polynomial orders for the individual solution components. 
+  1, 1                              
+};      
+const double THRESHOLD = 0.3;            // This is a quantitative parameter of the adapt(...) function and
+                                         // it has different meanings for various adaptive strategies (see below).
+const int STRATEGY = 1;                  // Adaptive strategy:
+                                         // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
+                                         //   error is processed. If more elements have similar errors, refine
+                                         //   all to keep the mesh symmetric.
+                                         // STRATEGY = 1 ... refine all elements whose error is larger
+                                         //   than THRESHOLD times maximum element error.
+                                         // STRATEGY = 2 ... refine all elements whose error is larger
+                                         //   than THRESHOLD.
+                                         // More adaptive strategies can be created in adapt_ortho_h1.cpp.
+const CandList CAND_LIST = H2D_HP_ANISO; // Predefined list of element refinement candidates. Possible values are
+                                         // H2D_P_ISO, H2D_P_ANISO, H2D_H_ISO, H2D_H_ANISO, H2D_HP_ISO,
+                                         // H2D_HP_ANISO_H, H2D_HP_ANISO_P, H2D_HP_ANISO.
+                                         // See User Documentation for details.
+const int MESH_REGULARITY = -1;          // Maximum allowed level of hanging nodes:
+                                         // MESH_REGULARITY = -1 ... arbitrary level hangning nodes (default),
+                                         // MESH_REGULARITY = 1 ... at most one-level hanging nodes,
+                                         // MESH_REGULARITY = 2 ... at most two-level hanging nodes, etc.
+                                         // Note that regular meshes are not supported, this is due to
+                                         // their notoriously bad performance.
+const double CONV_EXP = 1.0;             // Default value is 1.0. This parameter influences the selection of
+                                         // candidates in hp-adaptivity. See get_optimal_refinement() for details.
+const double ERR_STOP = 0.5;             // Stopping criterion for adaptivity (rel. error tolerance between the
+                                         // fine mesh and coarse mesh solution in percent).
+const int NDOF_STOP = 60000;             // Adaptivity process stops when the number of degrees of freedom grows over
+                                         // this limit. This is mainly to prevent h-adaptivity to go on forever.
+const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the number of adaptation steps grows over
+                                         // this limit.
+MatrixSolverType matrix_solver = SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
+                                                  // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
+                                                  
+const bool display_meshes = true;
+
+// Power iteration control.
+double k_eff = 1.0;         // Initial eigenvalue approximation.
+double TOL_PIT_CM = 5e-5;   // Tolerance for eigenvalue convergence on the coarse mesh.
+double TOL_PIT_RM = 5e-6;   // Tolerance for eigenvalue convergence on the fine mesh.
+
+// Macros for simpler reporting (four group case).
+#define report_num_dofs(spaces) Space::get_num_dofs(spaces[0]), Space::get_num_dofs(spaces[1]),\
+                                Space::get_num_dofs(spaces)
+#define report_errors(errors) errors[0],errors[1]
 
 int main(int argc, char* argv[])
 {
-  // Load the mesh.
-  Mesh mesh;
-  H2DReader mloader;
-  mloader.load("core.mesh", &mesh);
-
-  // Conversion between triangular and quadrilateral meshes (optional). 
-  //mesh.convert_quads_to_triangles();
-  //mesh.convert_triangles_to_quads();
-
-  // Refine mesh uniformly (optional).
-  mesh.refine_all_elements();          
-
-  // Display the mesh.
-  MeshView mview("Core mesh", new WinGeom(0, 0, 350, 350));
-  mview.show(&mesh);
+  // Instantiate a class with global functions.
+  Hermes2D hermes2d;
   
-  MaterialPropertyMaps matprop(G, N, rm_map);
+  // Time measurement.
+  TimePeriod cpu_time;
+  cpu_time.tick();
+   
+  MaterialPropertyMaps matprop(N_GROUPS, N_MOMENTS, rm_map);
   matprop.set_nuSigma_f(nSf);
   matprop.set_nu(nu);
   matprop.set_Sigma_tn(St);
@@ -32,7 +76,99 @@ int main(int argc, char* argv[])
   
   cout << matprop;
   
+  // Use multimesh, i.e. create one mesh for each energy group.
+  Hermes::vector<Mesh *> meshes;
+  for (unsigned int i = 0; i < N_TOTAL; i++) 
+    meshes.push_back(new Mesh());
+  
+  // Load the mesh on which the 1st solution component (1st group, 0th moment) will be approximated.
+  H2DReader mloader;
+  mloader.load(mesh_file.c_str(), meshes[0]);
+  
+  // Convert the mesh so that it has one type of elements (optional). 
+  //meshes[0].convert_quads_to_triangles();
+  //meshes[0].convert_triangles_to_quads();
+  
+  for (unsigned int i = 1; i < N_TOTAL; i++) 
+  {
+    // Obtain meshes for the subsequent components by cloning the mesh loaded for the 1st one.
+    meshes[i]->copy(meshes[0]);
+        
+    // Initial uniform refinements.
+    for (int j = 0; j < INIT_REF_NUM[i]; j++) 
+      meshes[i]->refine_all_elements();
+  }
+  for (int j = 0; j < INIT_REF_NUM[0]; j++) 
+    meshes[0]->refine_all_elements();
+  
+  MomentGroupFlattener mg(N_GROUPS);
+   
+  // Display the meshes.
+  if (display_meshes)
+  {
+    MeshView* mviews[N_TOTAL];  
+    std::string base_title = "Core mesh for group ";
+    for (unsigned int g = 0; g < N_GROUPS; g++)
+    {
+      std::string title = base_title + itos(g) + std::string(", moment ");
+      for (unsigned int m = 0; m < N_ODD_MOMENTS; m++)
+      {
+        unsigned int i = mg.pos(m,g);
+        mviews[i] = new MeshView((title + itos(m)).c_str(), new WinGeom(m*352, g*352, 350, 350));
+        mviews[i]->show(meshes[i]);
+      }
+    }
+    // Wait for the view to be closed.
+    View::wait();
+    
+    for (unsigned int i = 0; i < N_TOTAL; i++)
+      delete mviews[i];
+  }
+  
+  // Create pointers to solutions on coarse and fine meshes and from the latest power iteration, respectively.
+  Hermes::vector<Solution*> coarse_solutions, fine_solutions, power_iterates;
+  
+  // Initialize all the new solution variables.
+  for (unsigned int i = 0; i < N_TOTAL; i++) 
+  {
+    coarse_solutions.push_back(new Solution());
+    fine_solutions.push_back(new Solution());
+    power_iterates.push_back(new Solution(meshes[i], 1.0));   
+  }
+  
+  // Create the approximation spaces with the default shapeset.
+  Hermes::vector<Space *> spaces;
+  for (unsigned int i = 0; i < N_TOTAL; i++) 
+    spaces.push_back(new H1Space(meshes[i], P_INIT[i]));
+  
+  // Initialize the weak formulation.
+  CustomWeakForm wf(matprop, N_MOMENTS, power_iterates, fission_regions, k_eff, bdy_vacuum);
+  
+  // Initialize the discrete algebraic representation of the problem and its solver.
+  //
+  // Create the matrix and right-hand side vector for the solver.
+  SparseMatrix* mat = create_matrix(matrix_solver);
+  Vector* rhs = create_vector(matrix_solver);
+  // Instantiate the solver itself.
+  Solver* solver = create_linear_solver(matrix_solver, mat, rhs);
+  
+  ScalarView* views[N_TOTAL];
+  OrderView* oviews[N_TOTAL];
+  std::string base_title_flux = "Neutron flux: group ";
+  std::string base_title_order = "Polynomial orders: group ";
+  for (unsigned int g = 0; g < N_GROUPS; g++)
+  {
+    std::string title_flux = base_title_flux + itos(g) + std::string(", moment ");
+    std::string title_order = base_title_order + itos(g) + std::string(", moment ");
+    for (unsigned int m = 0; m < N_ODD_MOMENTS; m++)
+    {
+      unsigned int i = mg.pos(m,g);
+      views[i] = new ScalarView((title_flux + itos(m)).c_str(), new WinGeom(m*452, g*452, 450, 450));
+      oviews[i] = new OrderView((title_order + itos(m)).c_str(), new WinGeom(m*452, N_GROUPS*452 + g*452, 450, 450));
+    }
+  }
+    
   // Wait for the view to be closed.
-  View::wait();
+  //View::wait();
   return 0;
 }

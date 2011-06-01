@@ -6,8 +6,8 @@ using namespace WeakFormsNeutronics::Multigroup::MaterialProperties::SPN;
 const double REF_K_EFF = 1.000332; // SP3
 //const double REF_K_EFF = 1.001271; // SP5
 
-unsigned int G = 1; // Monoenergetic (single group) problem.
-unsigned int N = 3; // SP3 approximation
+const unsigned int N_GROUPS = 1;  // Monoenergetic (single group) problem.
+const unsigned int N_MOMENTS = 3; // SP3 approximation
 
 //////  Geometric parameters.  /////////////////////////////////////////////////////////////////
 
