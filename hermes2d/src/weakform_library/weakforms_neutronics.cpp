@@ -762,7 +762,7 @@ namespace WeakFormsNeutronics
         {
           Scalar result;
           
-          std::string mat = get_material(e->elem_marker, wf);     
+          std::string mat = matprop.get_material(e->elem_marker, wf);     
           rank1 D_elem = matprop.get_D(mat);
           rank1 Sigma_r_elem = matprop.get_Sigma_r(mat);
           
@@ -793,7 +793,7 @@ namespace WeakFormsNeutronics
         { 
           Scalar result;
           
-          std::string mat = get_material(e->elem_marker, wf);        
+          std::string mat = matprop.get_material(e->elem_marker, wf);        
           rank1 D_elem = matprop.get_D(mat);
           rank1 Sigma_r_elem = matprop.get_Sigma_r(mat);
           
@@ -833,7 +833,7 @@ namespace WeakFormsNeutronics
             else result = int_x_u_v<Real, Scalar>(n, wt, u, v, e);
           }
           
-          std::string mat = get_material(e->elem_marker, wf);
+          std::string mat = matprop.get_material(e->elem_marker, wf);
           rank1 nu_elem = matprop.get_nu(mat);
           rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
           rank1 chi_elem = matprop.get_chi(mat);
@@ -848,7 +848,7 @@ namespace WeakFormsNeutronics
           if (!matprop.get_fission_nonzero_structure()[g])
             return 0.0;
             
-          std::string mat = get_material(e->elem_marker, wf);
+          std::string mat = matprop.get_material(e->elem_marker, wf);
           rank1 nu_elem = matprop.get_nu(mat);
           rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
           rank1 chi_elem = matprop.get_chi(mat);
@@ -891,7 +891,7 @@ namespace WeakFormsNeutronics
             else result = int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v, e);
           }
           
-          std::string mat = get_material(e->elem_marker, wf);
+          std::string mat = matprop.get_material(e->elem_marker, wf);
           rank1 nu_elem = matprop.get_nu(mat);
           rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
           rank1 chi_elem = matprop.get_chi(mat);
@@ -911,7 +911,7 @@ namespace WeakFormsNeutronics
             else result = int_x_u_v<Real, Scalar>(n, wt, u, v, e);
           }
           
-          return result * matprop.get_Sigma_s(get_material(e->elem_marker, wf))[gto][gfrom];
+          return result * matprop.get_Sigma_s(matprop.get_material(e->elem_marker, wf))[gto][gfrom];
         }
         
         template<typename Real, typename Scalar>
@@ -926,14 +926,14 @@ namespace WeakFormsNeutronics
             else result = int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v, e);
           }
           
-          return result * matprop.get_Sigma_s(get_material(e->elem_marker, wf))[gto][gfrom];
+          return result * matprop.get_Sigma_s(matprop.get_material(e->elem_marker, wf))[gto][gfrom];
         }
         
         template<typename Real, typename Scalar>
         Scalar ExternalSources::LinearForm::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
                                                         Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const 
         { 
-          std::string mat = get_material(e->elem_marker, wf);
+          std::string mat = matprop.get_material(e->elem_marker, wf);
           
           if (geom_type == HERMES_PLANAR) 
             return matprop.get_src(mat)[g] * int_v<Real>(n, wt, v);
@@ -1099,11 +1099,18 @@ namespace WeakFormsNeutronics
       {
         void SourceFilter::filter_fn(int n, Hermes::vector<scalar*> values, scalar* result)
         {
-          for (int i = 0; i < n; i++) 
-          {
-            result[i] = 0;
-            for (unsigned int j = 0; j < values.size(); j++)
-              result[i] += nu[j] * Sigma_f[j] * values.at(j)[i];
+          std::string source_region = matprop.get_material(this->get_active_element()->marker, mesh);
+          
+          memset(result, 0, n*sizeof(scalar));
+          
+          if (source_regions.empty() || source_regions.find(source_region) != source_regions.end())
+          {           
+            rank1 Sigma_f = matprop.get_Sigma_f(source_region);
+            rank1 nu = matprop.get_nu(source_region);
+          
+            for (int i = 0; i < n; i++) 
+              for (unsigned int j = 0; j < values.size(); j++)
+                result[i] += nu[j] * Sigma_f[j] * values.at(j)[i];
           }
         } 
       }

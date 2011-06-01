@@ -360,6 +360,20 @@ namespace WeakFormsNeutronics
             
           public:
             
+            std::string get_material(int elem_marker, WeakForm *wf) const 
+            { 
+              if (elem_marker == HERMES_DUMMY_ELEM_MARKER)
+                return this->nu.begin()->first; 
+              return wf->get_element_markers_conversion()->get_user_marker(elem_marker); 
+            }
+            
+            std::string get_material(int elem_marker, Mesh *mesh) const 
+            { 
+              if (elem_marker == HERMES_DUMMY_ELEM_MARKER)
+                return this->nu.begin()->first; 
+              return mesh->get_element_markers_conversion().get_user_marker(elem_marker); 
+            }
+            
             virtual void set_nu(const MaterialPropertyMap1& nu) {
               this->nu = nu;
             }
@@ -646,26 +660,34 @@ namespace WeakFormsNeutronics
         class SourceFilter : public SimpleFilter
         {
           public: 
-            SourceFilter(Hermes::vector<MeshFunction*> solutions, const MaterialPropertyMaps* matprop,
-                         const std::string& source_area)
-              : SimpleFilter(solutions, Hermes::vector<int>())
-            {
-              nu = matprop->get_nu().at(source_area);
-              Sigma_f = matprop->get_Sigma_f().at(source_area);
+            SourceFilter(Hermes::vector<MeshFunction*> solutions, const MaterialPropertyMaps& matprop,
+                         const std::vector<std::string>& source_regions = std::vector<std::string>())
+              : SimpleFilter(solutions, Hermes::vector<int>()), matprop(matprop),
+                source_regions(source_regions.begin(), source_regions.end())
+            {};
+            SourceFilter(Hermes::vector<Solution*> solutions, const MaterialPropertyMaps& matprop,
+                         const std::vector<std::string>& source_regions = std::vector<std::string>())
+              : SimpleFilter(solutions, Hermes::vector<int>()), matprop(matprop),
+                source_regions(source_regions.begin(), source_regions.end())
+            {};
+            SourceFilter(Hermes::vector<MeshFunction*> solutions, const MaterialPropertyMaps& matprop,
+                         const std::string& source_region)
+              : SimpleFilter(solutions, Hermes::vector<int>()), matprop(matprop)
+            { 
+              source_regions.insert(source_region); 
             }
-            SourceFilter(Hermes::vector<Solution*> solutions, const MaterialPropertyMaps* matprop,
-                        const std::string& source_area)
-            : SimpleFilter(solutions, Hermes::vector<int>())
-            {
-              nu = matprop->get_nu().at(source_area);
-              Sigma_f = matprop->get_Sigma_f().at(source_area);
+            SourceFilter(Hermes::vector<Solution*> solutions, const MaterialPropertyMaps& matprop,
+                         const std::string& source_region)
+              : SimpleFilter(solutions, Hermes::vector<int>()), matprop(matprop)
+            { 
+              source_regions.insert(source_region); 
             }
             
-          private:
-            rank1 nu;
-            rank1 Sigma_f;
+          protected:
+            const MaterialPropertyMaps& matprop;
+            std::set<std::string> source_regions;
             
-            void filter_fn(int n, Hermes::vector<scalar*> values, scalar* result);
+            virtual void filter_fn(int n, Hermes::vector<scalar*> values, scalar* result);
         };
       }
     }
@@ -686,14 +708,6 @@ namespace WeakFormsNeutronics
                         GeomType geom_type = HERMES_PLANAR)
               : matprop(matprop), geom_type(geom_type) 
             {};
-            
-            std::string get_material(int elem_marker, WeakForm *wf) const 
-            { 
-              if (elem_marker == HERMES_DUMMY_ELEM_MARKER)
-                return matprop.get_D().begin()->first;
-              
-              return wf->get_element_markers_conversion()->get_user_marker(elem_marker); 
-            }
         };
         
         struct VacuumBoundaryCondition
