@@ -890,26 +890,59 @@ namespace WeakFormsNeutronics
             }
         };
         
-        class MomentFilter : public SimpleFilter
+        struct MomentFilter
         {
-          public: 
-            
-            MomentFilter(unsigned int angular_moment, unsigned int group, unsigned int G,
-                         const Hermes::vector<MeshFunction*>& solutions);
-            MomentFilter(unsigned int angular_moment, unsigned int group, unsigned int G,
-                         const Hermes::vector<Solution*>& solutions);
-            
-          private:
-            
-            unsigned int odd_req_mom, req_mom_idx, g;
-            MomentGroupFlattener mg;
-                        
-            void filter_fn(int n, Hermes::vector<scalar*> values, scalar* result);
-            
-            static void get_scalar_fluxes(const Hermes::vector<Solution*>& angular_fluxes,
-                                          Hermes::vector<MeshFunction*>* scalar_fluxes);
-            static void clear_scalar_fluxes(Hermes::vector<MeshFunction*>* scalar_fluxes);
+          class Common 
+          {
+            protected:
+              Common(unsigned int angular_moment, unsigned int group, unsigned int G);  
+              
+              unsigned int odd_req_mom, req_mom_idx, g;
+              MomentGroupFlattener mg;
+          };
+          
+          class Val : protected Common, public SimpleFilter
+          {
+            public:       
+              Val(unsigned int angular_moment, unsigned int group, unsigned int G, 
+                  const Hermes::vector<MeshFunction*>& solutions)
+                : Common(angular_moment, group, G), SimpleFilter(solutions, Hermes::vector<int>())
+              {};
+              Val(unsigned int angular_moment, unsigned int group, unsigned int G,
+                  const Hermes::vector<Solution*>& solutions)
+                : Common(angular_moment, group, G), SimpleFilter(solutions, Hermes::vector<int>())
+              {};
+              
+            protected:             
+              void filter_fn(int n, Hermes::vector<scalar*> values, scalar* result);
+          };
+          
+          class ValDxDy : protected Common, public DXDYFilter
+          {
+            public:
+              ValDxDy(unsigned int angular_moment, unsigned int group, unsigned int G, 
+                      const Hermes::vector<MeshFunction*>& solutions)
+                : Common(angular_moment, group, G), DXDYFilter(solutions)
+              {};
+              ValDxDy(unsigned int angular_moment, unsigned int group, unsigned int G,
+                      const Hermes::vector<Solution*>& solutions)
+                : Common(angular_moment, group, G), DXDYFilter(solutions)
+              {};
+              
+            protected:
+              void filter_fn(int n, 
+                             Hermes::vector<scalar *> values, Hermes::vector<scalar *> dx, Hermes::vector<scalar *> dy, 
+                             scalar* rslt, scalar* rslt_dx, scalar* rslt_dy);
+          };
+          
+          static void get_scalar_fluxes(const Hermes::vector<Solution*>& angular_fluxes,
+                                        Hermes::vector<MeshFunction*>* scalar_fluxes);
+          static void get_scalar_fluxes_with_derivatives(const Hermes::vector<Solution*>& angular_fluxes,
+                                                         Hermes::vector<MeshFunction*>* scalar_fluxes);                                        
+          static void clear_scalar_fluxes(Hermes::vector<MeshFunction*>* scalar_fluxes);
         };
+        
+        
         
         class SourceFilter : public Common::SourceFilter
         {
@@ -1652,21 +1685,31 @@ namespace WeakFormsNeutronics
               
               OuterIterationForm( unsigned int m, unsigned int g,
                                   const MaterialPropertyMaps& matprop,
-                                  MeshFunction* latest_source,
+                                  const Hermes::vector<MeshFunction*>& iterates,
                                   double keff = 1.0,
                                   GeomType geom_type = HERMES_PLANAR )
                 : GenericForm(matprop, geom_type),
-                  WeakForm::VectorFormVol(mg.pos(m,g), HERMES_ANY, Hermes::vector<MeshFunction*>(latest_source)),
+                  WeakForm::VectorFormVol(mg.pos(m,g), HERMES_ANY, iterates),
                   mrow(m), g(g), keff(keff)
               {};
               
-              OuterIterationForm( unsigned int m, unsigned int g, std::string area,
+              OuterIterationForm( unsigned int m, unsigned int g, const std::string& area,
                                   const MaterialPropertyMaps& matprop,
-                                  MeshFunction* latest_source,
+                                  const Hermes::vector<MeshFunction*>& iterates,
                                   double keff = 1.0,
                                   GeomType geom_type = HERMES_PLANAR )
                 : GenericForm(matprop, geom_type),
-                  WeakForm::VectorFormVol(mg.pos(m,g), area, Hermes::vector<MeshFunction*>(latest_source)),
+                  WeakForm::VectorFormVol(mg.pos(m,g), area, iterates),
+                  mrow(m), g(g), keff(keff)
+              {};
+              
+              OuterIterationForm( unsigned int m, unsigned int g, const Hermes::vector<std::string>& areas,
+                                  const MaterialPropertyMaps& matprop,
+                                  const Hermes::vector<MeshFunction*>& iterates,
+                                  double keff = 1.0,
+                                  GeomType geom_type = HERMES_PLANAR )
+                : GenericForm(matprop, geom_type),
+                  WeakForm::VectorFormVol(mg.pos(m,g), areas, iterates),
                   mrow(m), g(g), keff(keff)
               {};
               
@@ -2088,12 +2131,12 @@ namespace WeakFormsNeutronics
           protected:
             double keff;
             std::vector<FissionYield::OuterIterationForm*> keff_iteration_forms;
-            SupportClasses::SPN::SourceFilter *latest_source;
+            Hermes::vector<MeshFunction*> scalar_flux_iterates;
             
           public:
             DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop, unsigned int N,
-                                            Hermes::vector<Solution*>& iterates, 
-                                            const std::vector<std::string>& src_areas,
+                                            const Hermes::vector<Solution*>& iterates, 
+                                            const Hermes::vector<std::string>& src_areas,
                                             double initial_keff_guess,
                                             GeomType geom_type = HERMES_PLANAR );
             
@@ -2104,8 +2147,8 @@ namespace WeakFormsNeutronics
             double get_keff() const { 
               return keff; 
             }
-            SupportClasses::SPN::SourceFilter* get_sources_distribution() const { 
-              return latest_source; 
+            const Hermes::vector<MeshFunction*>& get_scalar_flux_iterates() const { 
+              return scalar_flux_iterates; 
             }
         };
       }
