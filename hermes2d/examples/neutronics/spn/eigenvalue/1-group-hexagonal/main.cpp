@@ -15,7 +15,7 @@ const int P_INIT[N_TOTAL] = {            // Initial polynomial orders for the in
 };      
 const double THRESHOLD = 0.3;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
-const int STRATEGY = 1;                  // Adaptive strategy:
+const int STRATEGY = -1;                 // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
                                          //   error is processed. If more elements have similar errors, refine
                                          //   all to keep the mesh symmetric.
@@ -45,7 +45,7 @@ const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the nu
 MatrixSolverType matrix_solver = SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
                                                   
-const bool display_meshes = true;
+const bool display_meshes = false;
 
 // Power iteration control.
 double k_eff = 1.0;         // Initial eigenvalue approximation.
@@ -53,7 +53,8 @@ double TOL_PIT_CM = 5e-5;   // Tolerance for eigenvalue convergence on the coars
 double TOL_PIT_RM = 5e-6;   // Tolerance for eigenvalue convergence on the fine mesh.
 
 // Macros for simpler reporting (four group case).
-#define report_num_dofs(spaces) Space::get_num_dofs(spaces[0]), Space::get_num_dofs(spaces[1]),\
+#define report_num_dofs(spaces) "%d + %d = %d",\
+                                Space::get_num_dofs(spaces[0]), Space::get_num_dofs(spaces[1]),\
                                 Space::get_num_dofs(spaces)
 #define report_errors(errors) errors[0],errors[1]
 
@@ -125,6 +126,24 @@ int main(int argc, char* argv[])
       delete mviews[i];
   }
   
+  ScalarView* sviews[N_TOTAL];
+  OrderView* oviews[N_TOTAL];
+  std::string base_title_flux = "Neutron flux: group ";
+  std::string base_title_order = "Polynomial orders: group ";
+  for (unsigned int g = 0; g < N_GROUPS; g++)
+  {
+    std::string title_flux = base_title_flux + itos(g) + std::string(", moment ");
+    std::string title_order = base_title_order + itos(g) + std::string(", moment ");
+    for (unsigned int m = 0; m < N_ODD_MOMENTS; m++)
+    {
+      unsigned int i = mg.pos(m,g);
+      sviews[i] = new ScalarView((title_flux + itos(m)).c_str(), new WinGeom(m*452, g*452, 450, 450));
+      oviews[i] = new OrderView((title_order + itos(m)).c_str(), new WinGeom(m*452, N_GROUPS*452 + g*452, 450, 450));
+      sviews[i]->show_mesh(false);
+      sviews[i]->set_3d_mode(true);
+    }
+  }
+  
   // Create pointers to solutions on coarse and fine meshes and from the latest power iteration, respectively.
   Hermes::vector<Solution*> coarse_solutions, fine_solutions, power_iterates;
   
@@ -152,23 +171,46 @@ int main(int argc, char* argv[])
   // Instantiate the solver itself.
   Solver* solver = create_linear_solver(matrix_solver, mat, rhs);
   
-  ScalarView* views[N_TOTAL];
-  OrderView* oviews[N_TOTAL];
-  std::string base_title_flux = "Neutron flux: group ";
-  std::string base_title_order = "Polynomial orders: group ";
-  for (unsigned int g = 0; g < N_GROUPS; g++)
+  // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
+  info("Coarse mesh power iteration, " report_num_dofs(spaces));
+  power_iteration(hermes2d, matprop, spaces, &wf, power_iterates, fission_regions, TOL_PIT_CM, mat, rhs, solver);
+  
+  if (STRATEGY >= 0)
   {
-    std::string title_flux = base_title_flux + itos(g) + std::string(", moment ");
-    std::string title_order = base_title_order + itos(g) + std::string(", moment ");
-    for (unsigned int m = 0; m < N_ODD_MOMENTS; m++)
+    // DOF and CPU convergence graphs
+    GnuplotGraph graph_dof("Error convergence", "NDOF", "log(error)");
+    graph_dof.add_row("H1 err. est. [%]", "r", "-", "o");
+    graph_dof.add_row("L2 err. est. [%]", "g", "-", "s");
+    graph_dof.add_row("Keff err. est. [milli-%]", "b", "-", "d");
+    graph_dof.set_log_y();
+    graph_dof.show_legend();
+    graph_dof.show_grid();
+    
+    GnuplotGraph graph_cpu("Error convergence", "CPU time [s]", "log(error)");
+    graph_cpu.add_row("H1 err. est. [%]", "r", "-", "o");
+    graph_cpu.add_row("L2 err. est. [%]", "g", "-", "s");
+    graph_cpu.add_row("Keff err. est. [milli-%]", "b", "-", "d");
+    graph_cpu.set_log_y();
+    graph_cpu.show_legend();
+    graph_cpu.show_grid();
+    
+    Hermes::vector<ProjNormType> proj_norms_h1, proj_norms_l2;
+    for (unsigned int i = 0; i< N_TOTAL; i++)
     {
-      unsigned int i = mg.pos(m,g);
-      views[i] = new ScalarView((title_flux + itos(m)).c_str(), new WinGeom(m*452, g*452, 450, 450));
-      oviews[i] = new OrderView((title_order + itos(m)).c_str(), new WinGeom(m*452, N_GROUPS*452 + g*452, 450, 450));
+      proj_norms_h1.push_back(HERMES_H1_NORM);
+      proj_norms_l2.push_back(HERMES_L2_NORM);
     }
   }
-    
+  else
+  {
+    for (unsigned int i = 0; i < N_TOTAL; i++)
+    {
+      sviews[i]->show(power_iterates[i]);
+      oviews[i]->show(spaces[i]);
+    }
+  }
+  
   // Wait for the view to be closed.
-  //View::wait();
+  View::wait();
   return 0;
 }
