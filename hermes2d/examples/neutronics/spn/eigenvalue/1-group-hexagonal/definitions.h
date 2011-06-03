@@ -9,8 +9,8 @@ class CustomWeakForm : public DefaultWeakFormSourceIteration
 {
   public:
     CustomWeakForm(const MaterialPropertyMaps& matprop, unsigned int N,
-                   Hermes::vector<Solution*>& iterates,
-                   const std::vector<std::string>& fission_regions,
+                   const Hermes::vector<Solution*>& iterates,
+                   const Hermes::vector<std::string>& fission_regions,
                    double init_keff, std::string bdy_vacuum);
 };
 
