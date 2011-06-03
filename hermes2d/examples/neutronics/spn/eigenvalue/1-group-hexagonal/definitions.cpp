@@ -5,8 +5,8 @@
 #include "definitions.h"
 
 CustomWeakForm::CustomWeakForm( const MaterialPropertyMaps& matprop, unsigned int N,
-                                Hermes::vector<Solution*>& iterates, 
-                                const std::vector<std::string>& fission_regions,
+                                const Hermes::vector<Solution*>& iterates, 
+                                const Hermes::vector<std::string>& fission_regions,
                                 double init_keff, std::string bdy_vacuum )
   : DefaultWeakFormSourceIteration(matprop, N, iterates, fission_regions, init_keff)
 {
@@ -91,7 +91,7 @@ int power_iteration(const Hermes2D& hermes2d, const MaterialPropertyMaps& matpro
   {
     memset(coeff_vec, 0.0, ndof*sizeof(scalar));
 
-    if (!hermes2d.solve_newton(coeff_vec, &dp, solver, mat, rhs, Jacobian_changed)) 
+    if (!hermes2d.solve_newton(coeff_vec, &dp, solver, mat, rhs, Jacobian_changed, 1e-8, 10, true)) 
       error("Newton's iteration failed.");
     
     // The matrix doesn't change within the power iteration loop, so it does not need to be reassembled again and 
@@ -104,10 +104,11 @@ int power_iteration(const Hermes2D& hermes2d, const MaterialPropertyMaps& matpro
 
     // Update fission sources.
     SupportClasses::SPN::SourceFilter new_source(new_solutions, matprop, fission_regions);
+    SupportClasses::SPN::SourceFilter old_source(solutions, matprop, fission_regions);
 
     // Compute the eigenvalue for current iteration.
     double k_new = wf->get_keff() * (integrate(&new_source, fission_regions) / 
-                                     integrate(wf->get_sources_distribution(), fission_regions));
+                                     integrate(&old_source, fission_regions));
 
     info("      dominant eigenvalue (est): %g, rel. difference: %g", k_new, fabs((wf->get_keff() - k_new) / k_new));
 
