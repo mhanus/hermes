@@ -1218,26 +1218,29 @@ namespace WeakFormsNeutronics
         { 
           if (!matprop.get_fission_nonzero_structure()[g])
             return 0.0;
-            
+          
           std::string mat = matprop.get_material(e->elem_marker, wf);
+          rank1 nu_elem = matprop.get_nu(mat);
+          rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
           rank1 chi_elem = matprop.get_chi(mat);
-          
-          // Complete source is expected in ext->fn, i.e. sum over all groups of nu[g] * Sigma_f[g] * scalar_flux[g].
-          // This is ensured by passing a SourceFilter to the constructor of the SourceIterationWeakForm.
-          // Unlike the diffusion case, the use of a filter is inevitable here - it it was not the complete
-          // source filter, the scalar-flux filter would have to be used anyway.
-          
+                    
           Scalar result = 0;
           for (int i = 0; i < n; i++) 
           {
+            Scalar local_res = 0;
+            for (int gfrom = 0; gfrom < ext->nf; gfrom++)
+              local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i]; // scalar flux in group 'gfrom'
+              
+            local_res = local_res * wt[i] * v->val[i];
+            
             if (geom_type == HERMES_AXISYM_X)
-              result += ext->fn[0]->val[i] * wt[i] * v->val[i] * e->y[i];
+              local_res = local_res * e->y[i];
             else if (geom_type == HERMES_AXISYM_Y)
-              result += ext->fn[0]->val[i] * wt[i] * v->val[i] * e->x[i];
-            else
-              result += ext->fn[0]->val[i] * wt[i] * v->val[i];
+              local_res = local_res * e->x[i];
+            
+            result += local_res;
           }
-        
+          
           return result * Coeffs::even_moment(0, mrow) * chi_elem[g] / keff;
         }
         
@@ -1919,13 +1922,13 @@ namespace WeakFormsNeutronics
         }
         
         DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop, unsigned int N,
-                                                                        Hermes::vector<Solution*>& iterates, 
-                                                                        const std::vector<std::string>& src_areas,
+                                                                        const Hermes::vector<Solution*>& iterates, 
+                                                                        const Hermes::vector<std::string>& src_areas,
                                                                         double initial_keff_guess, 
                                                                         GeomType geom_type )
           : WeakFormHomogeneous(N, matprop, geom_type, false)
         {      
-          latest_source = new SupportClasses::SPN::SourceFilter(iterates, matprop, src_areas);
+          SupportClasses::SPN::MomentFilter::get_scalar_fluxes_with_derivatives(iterates, &scalar_flux_iterates);
           
           keff = initial_keff_guess;
           
@@ -1934,7 +1937,8 @@ namespace WeakFormsNeutronics
             for (unsigned int gto = 0; gto < G; gto++)
             {            
               FissionYield::OuterIterationForm* keff_iteration_form = 
-                new FissionYield::OuterIterationForm( m, gto, matprop, latest_source, initial_keff_guess, geom_type );
+                new FissionYield::OuterIterationForm( m, gto, src_areas, matprop, 
+                                                      scalar_flux_iterates, initial_keff_guess, geom_type );
               keff_iteration_forms.push_back(keff_iteration_form);
               add_vector_form(keff_iteration_form);
             }
@@ -1947,7 +1951,8 @@ namespace WeakFormsNeutronics
           for ( ; it != keff_iteration_forms.end(); ++it)
             delete *it;
           keff_iteration_forms.clear();
-          delete latest_source;
+          
+          SupportClasses::SPN::MomentFilter::clear_scalar_fluxes(&scalar_flux_iterates);
         }
         
         void DefaultWeakFormSourceIteration::update_keff(double new_keff) 
@@ -2050,9 +2055,9 @@ namespace WeakFormsNeutronics
           
           if (m > n) std::swap(m,n);
           
-          if (k_of_Sigma_t2k > m)
+          if (k_of_Sigma_t2k > n)
             error("In the m-th SPN equation, m = %d, the coefficients at the unknown generalized fluxes involve"
-                  "Sigma_tk with k up to %d. Entered k = %d.", m, 2*m, 2*k_of_Sigma_t2k);
+                  "Sigma_tk with k up to %d. Entered k = %d.", n, 2*n, 2*k_of_Sigma_t2k);
           
           return SYSTEM_MATRIX[m][n-m][k_of_Sigma_t2k];
         }
@@ -2078,16 +2083,14 @@ namespace WeakFormsNeutronics
           
           return EVEN_MOMENTS[m][n];
         }
-        
-        MomentFilter::MomentFilter(unsigned int angular_moment, unsigned int group, unsigned int G,
-                                   const Hermes::vector<MeshFunction*>& solutions) 
-          : SimpleFilter(solutions, Hermes::vector<int>()),
-            odd_req_mom(false), g(group), mg(G)
+                
+        MomentFilter::Common::Common(unsigned int angular_moment, unsigned int group, unsigned int G) 
+          : odd_req_mom(false), g(group), mg(G)
         {
           if (angular_moment % 2)
           { 
             warning("Using MomentFilter to access the odd moments of flux is inefficient. "
-            "The vector of solutions itself contains these moments (for each energy group).");
+                    "The vector of solutions itself contains these moments (for each energy group).");
             req_mom_idx = (angular_moment-1)/2;
             odd_req_mom = true;
           }
@@ -2095,23 +2098,7 @@ namespace WeakFormsNeutronics
             req_mom_idx = angular_moment/2;
         }
         
-        MomentFilter::MomentFilter(unsigned int angular_moment, unsigned int group, unsigned int G,
-                                   const Hermes::vector<Solution*>& solutions) 
-          : SimpleFilter(solutions, Hermes::vector<int>()),
-            odd_req_mom(false), g(group), mg(G)
-        {
-          if (angular_moment % 2)
-          { 
-            warning("Using MomentFilter to access the odd moments of flux is inefficient. "
-            "The vector of solutions itself contains these moments (for each energy group).");
-            req_mom_idx = (angular_moment-1)/2;
-            odd_req_mom = true;
-          }
-          else
-            req_mom_idx = angular_moment/2;
-        }
-        
-        void MomentFilter::filter_fn(int n, Hermes::vector< scalar* > values, scalar* result)
+        void MomentFilter::Val::filter_fn(int n, Hermes::vector< scalar* > values, scalar* result)
         {
           if (odd_req_mom)
             memcpy(result, values.at(req_mom_idx), n*sizeof(scalar));
@@ -2127,6 +2114,33 @@ namespace WeakFormsNeutronics
           }
         }
         
+        void MomentFilter::ValDxDy::filter_fn(int n, Hermes::vector<scalar *> values, 
+                                              Hermes::vector<scalar *> dx, Hermes::vector<scalar *> dy, 
+                                              scalar* rslt, scalar* rslt_dx, scalar* rslt_dy)
+        {
+          if (odd_req_mom)
+          {
+            memcpy(rslt, values.at(req_mom_idx), n*sizeof(scalar));
+            memcpy(rslt_dx, dx.at(req_mom_idx), n*sizeof(scalar));
+            memcpy(rslt_dy, dy.at(req_mom_idx), n*sizeof(scalar));
+          }
+          else
+          {            
+            for (int i = 0; i < n; i++) 
+            {
+              rslt[i] = rslt_dx[i] = rslt_dy[i] = 0;
+              unsigned int exp_mom_idx = req_mom_idx;
+              for (unsigned int sol_idx = mg.pos(exp_mom_idx,g); sol_idx < values.size(); sol_idx = mg.pos(++exp_mom_idx,g))
+              {
+                rslt[i] += Coeffs::even_moment(req_mom_idx, exp_mom_idx) * values.at(sol_idx)[i];
+                rslt_dx[i] += Coeffs::even_moment(req_mom_idx, exp_mom_idx) * dx.at(sol_idx)[i];
+                rslt_dy[i] += Coeffs::even_moment(req_mom_idx, exp_mom_idx) * dy.at(sol_idx)[i];
+              }
+            }
+          }
+        }
+        
+        // TODO: Templatize.
         void MomentFilter::get_scalar_fluxes(const Hermes::vector< Solution* >& angular_fluxes, 
                                              Hermes::vector< MeshFunction* >* scalar_fluxes)
         {
@@ -2134,7 +2148,17 @@ namespace WeakFormsNeutronics
           
           scalar_fluxes->reserve(G);
           for (unsigned int g = 0; g < G; g++)
-            scalar_fluxes->push_back(new MomentFilter(0, g, G, angular_fluxes));
+            scalar_fluxes->push_back(new MomentFilter::Val(0, g, G, angular_fluxes));
+        }
+        
+        void MomentFilter::get_scalar_fluxes_with_derivatives(const Hermes::vector< Solution* >& angular_fluxes, 
+                                                              Hermes::vector< MeshFunction* >* scalar_fluxes)
+        {
+          unsigned int G = angular_fluxes.size();
+          
+          scalar_fluxes->reserve(G);
+          for (unsigned int g = 0; g < G; g++)
+            scalar_fluxes->push_back(new MomentFilter::ValDxDy(0, g, G, angular_fluxes));
         }
         
         void MomentFilter::clear_scalar_fluxes(Hermes::vector< MeshFunction* >* scalar_fluxes)
