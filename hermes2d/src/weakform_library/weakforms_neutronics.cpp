@@ -255,7 +255,41 @@ namespace WeakFormsNeutronics
           }
         }
         
-        const rank1& MaterialPropertyMaps::get_Sigma_f_material(std::string material) const
+        std::string MaterialPropertyMaps::get_material(int elem_marker, WeakForm *wf) const 
+        { 
+          std::string region;
+          
+          if (elem_marker == HERMES_DUMMY_ELEM_MARKER)
+            region = this->nu.begin()->first; 
+          else
+            region = wf->get_element_markers_conversion()->get_user_marker(elem_marker);
+          
+          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+          
+          if (material != this->region_material_map.end())
+            return material->second;
+          else
+            return region; // Corresponds to the case when region <==> material, 
+        }
+        
+        std::string MaterialPropertyMaps::get_material(int elem_marker, Mesh *mesh) const 
+        { 
+          std::string region;
+          
+          if (elem_marker == HERMES_DUMMY_ELEM_MARKER)
+            region = this->nu.begin()->first; 
+          else
+            region = mesh->get_element_markers_conversion().get_user_marker(elem_marker);
+          
+          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+          
+          if (material != this->region_material_map.end())
+            return material->second;
+          else
+            return region; // Corresponds to the case when region <==> material, 
+        }
+        
+        const rank1& MaterialPropertyMaps::get_Sigma_f(std::string material) const
         {
           // Note that prop[e->elem_marker] cannot be used since 'prop' is a constant std::map for
           // which operator[] is undefined.
@@ -268,7 +302,7 @@ namespace WeakFormsNeutronics
             return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-        const rank1& MaterialPropertyMaps::get_nu_material(std::string material) const
+        const rank1& MaterialPropertyMaps::get_nu(std::string material) const
         {
           MaterialPropertyMap1::const_iterator data = this->nu.find(material);
           if (data != this->nu.end())
@@ -279,7 +313,7 @@ namespace WeakFormsNeutronics
             return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-        const rank1& MaterialPropertyMaps::get_chi_material(std::string material) const
+        const rank1& MaterialPropertyMaps::get_chi(std::string material) const
         {
           MaterialPropertyMap1::const_iterator data = this->chi.find(material);
           if (data != this->chi.end())
@@ -289,29 +323,6 @@ namespace WeakFormsNeutronics
             error(E_INVALID_MARKER);
             return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
           }
-        }
-        
-        const rank1& MaterialPropertyMaps::get_Sigma_f(std::string region) const
-        {
-          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
-          if (material != this->region_material_map.end())
-            return get_Sigma_f_material(material->second);
-          return get_Sigma_f_material(region); // There might be equivalence region <==> material, 
-                                               // in which case get_Sigma_f <==> get_Sigma_f_material.
-        }
-        const rank1& MaterialPropertyMaps::get_nu(std::string region) const
-        {
-          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
-          if (material != this->region_material_map.end())
-            return get_nu_material(material->second);
-          return get_nu_material(region);
-        }
-        const rank1& MaterialPropertyMaps::get_chi(std::string region) const
-        {
-          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
-          if (material != this->region_material_map.end())
-            return get_chi_material(material->second);
-          return get_chi_material(region);
         }
         
         std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop)
@@ -479,7 +490,7 @@ namespace WeakFormsNeutronics
           std::for_each(D.begin(), D.end(), ensure_size(G));
         }
         
-        const rank2& MaterialPropertyMaps::get_Sigma_s_material(std::string material) const
+        const rank2& MaterialPropertyMaps::get_Sigma_s(std::string material) const
         {
           // Note that prop[e->elem_marker] cannot be used since 'prop' is a constant std::map for
           // which operator[] is undefined.
@@ -492,7 +503,7 @@ namespace WeakFormsNeutronics
             return *(new rank2()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-        const rank1& MaterialPropertyMaps::get_Sigma_r_material(std::string material) const
+        const rank1& MaterialPropertyMaps::get_Sigma_r(std::string material) const
         {
           MaterialPropertyMap1::const_iterator data = this->Sigma_r.find(material);
           if (data != this->Sigma_r.end())
@@ -503,7 +514,7 @@ namespace WeakFormsNeutronics
             return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-        const rank1& MaterialPropertyMaps::get_D_material(std::string material) const
+        const rank1& MaterialPropertyMaps::get_D(std::string material) const
         {
           MaterialPropertyMap1::const_iterator data = this->D.find(material);
           if (data != this->D.end())
@@ -514,7 +525,7 @@ namespace WeakFormsNeutronics
             return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-        const rank1& MaterialPropertyMaps::get_src_material(std::string material) const
+        const rank1& MaterialPropertyMaps::get_src(std::string material) const
         {
           MaterialPropertyMap1::const_iterator data = this->src.find(material);
           if (data != this->src.end())
@@ -524,35 +535,6 @@ namespace WeakFormsNeutronics
             error(E_INVALID_MARKER);
             return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
           }
-        }
-        
-        const rank2& MaterialPropertyMaps::get_Sigma_s(std::string region) const
-        {
-          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
-          if (material != this->region_material_map.end())
-            return get_Sigma_s_material(material->second);
-          return get_Sigma_s_material(region);
-        }
-        const rank1& MaterialPropertyMaps::get_Sigma_r(std::string region) const
-        {
-          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
-          if (material != this->region_material_map.end())
-            return get_Sigma_r_material(material->second);
-          return get_Sigma_r_material(region);
-        }
-        const rank1& MaterialPropertyMaps::get_D(std::string region) const
-        {
-          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
-          if (material != this->region_material_map.end())
-            return get_D_material(material->second);
-          return get_D_material(region);
-        }
-        const rank1& MaterialPropertyMaps::get_src(std::string region) const
-        {
-          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
-          if (material != this->region_material_map.end())
-            return get_src_material(material->second);
-          return get_src_material(region);
         }
         
         std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop)
@@ -902,7 +884,7 @@ namespace WeakFormsNeutronics
           invert_odd_Sigma_rn();
         }
 
-        const rank3& MaterialPropertyMaps::get_Sigma_rn_material(std::string material) const
+        const rank3& MaterialPropertyMaps::get_Sigma_rn(std::string material) const
         {
           MaterialPropertyMap3::const_iterator data = this->Sigma_rn.find(material);
           if (data != this->Sigma_rn.end())
@@ -914,7 +896,7 @@ namespace WeakFormsNeutronics
           }
         }
         
-        const rank3& MaterialPropertyMaps::get_odd_Sigma_rn_inv_material(std::string material) const
+        const rank3& MaterialPropertyMaps::get_odd_Sigma_rn_inv(std::string material) const
         {
           MaterialPropertyMap3::const_iterator data = this->odd_Sigma_rn_inv.find(material);
           if (data != this->odd_Sigma_rn_inv.end())
@@ -926,7 +908,7 @@ namespace WeakFormsNeutronics
           }
         }
         
-        const rank1& MaterialPropertyMaps::get_src0_material(std::string material) const
+        const rank1& MaterialPropertyMaps::get_src0(std::string material) const
         {
           MaterialPropertyMap1::const_iterator data = this->src0.find(material);
           if (data != this->src0.end())
@@ -938,7 +920,7 @@ namespace WeakFormsNeutronics
           }
         }
         
-        const bool1& MaterialPropertyMaps::is_Sigma_rn_diagonal_material(std::string material) const
+        const bool1& MaterialPropertyMaps::is_Sigma_rn_diagonal(std::string material) const
         {
           std::map<std::string, bool1>::const_iterator data = this->Sigma_rn_is_diagonal.find(material);
           if (data != this->Sigma_rn_is_diagonal.end())
@@ -949,39 +931,7 @@ namespace WeakFormsNeutronics
             return *(new bool1()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-        
-        const rank3& MaterialPropertyMaps::get_Sigma_rn(std::string region) const
-        {
-          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
-          if (material != this->region_material_map.end())
-            return get_Sigma_rn_material(material->second);
-          return get_Sigma_rn_material(region);
-        }
-        
-        const rank3& MaterialPropertyMaps::get_odd_Sigma_rn_inv(std::string region) const
-        {
-          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
-          if (material != this->region_material_map.end())
-            return get_odd_Sigma_rn_inv_material(material->second);
-          return get_odd_Sigma_rn_inv_material(region);
-        }
-        
-        const rank1& MaterialPropertyMaps::get_src0(std::string region) const
-        {
-          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
-          if (material != this->region_material_map.end())
-            return get_src0_material(material->second);
-          return get_src0_material(region);
-        }
-        
-        const bool1& MaterialPropertyMaps::is_Sigma_rn_diagonal(std::string region) const
-        {
-          RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
-          if (material != this->region_material_map.end())
-            return is_Sigma_rn_diagonal_material(material->second);
-          return is_Sigma_rn_diagonal_material(region);
-        }
-        
+
         const bool1 MaterialPropertyMaps::is_Sigma_rn_diagonal() const
         {
           bool1 ret(N+1, true);
@@ -1079,16 +1029,14 @@ namespace WeakFormsNeutronics
         { 
           Scalar result;
           
-          double coeff = Coeffs::D_grad_F(mrow, mcol);
-          
           if (geom_type == HERMES_PLANAR) 
-            result = coeff * int_u_v<Real, Scalar>(n, wt, u, v);
+            result = int_u_v<Real, Scalar>(n, wt, u, v);
           else if (geom_type == HERMES_AXISYM_X) 
-            result = coeff * int_y_u_v<Real, Scalar>(n, wt, u, v, e);
+            result = int_y_u_v<Real, Scalar>(n, wt, u, v, e);
           else 
-            result = coeff * int_x_u_v<Real, Scalar>(n, wt, u, v, e);
+            result = int_x_u_v<Real, Scalar>(n, wt, u, v, e);
           
-          return result;
+          return Coeffs::D_grad_F(mrow, mcol) * result;
         }
         template
         scalar VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<scalar> *u_ext[], Func<double> *u,
@@ -1106,6 +1054,7 @@ namespace WeakFormsNeutronics
           for (unsigned int mcol = 0; mcol < N_odd; mcol++)
           {
             double coeff = Coeffs::D_grad_F(mrow, mcol);
+
             unsigned int i = mg.pos(mcol,g);
             
             if (geom_type == HERMES_PLANAR) 
@@ -1137,8 +1086,10 @@ namespace WeakFormsNeutronics
           for (unsigned int k = 0; k <= mrow; k++)
             Sigma_r_elem += Coeffs::system_matrix(mrow, mrow, k) * matprop.get_Sigma_rn(mat)[2*k][g][g];
           
-          double D_elem = Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][g][g];
+          double D_elem = -Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][g][g];
           
+          // cout << "DiagonalStreamingAndReactions::Jacobian (mom. #" << mrow << ") | " << mat << " | Sigma_r = " << Sigma_r_elem << " | D = " << D_elem << endl;
+
           if (geom_type == HERMES_PLANAR) 
           {
             result = D_elem * int_grad_u_grad_v<Real, Scalar>(n, wt, u, v) +
@@ -1172,7 +1123,10 @@ namespace WeakFormsNeutronics
           for (unsigned int k = 0; k <= mrow; k++)
             Sigma_r_elem += Coeffs::system_matrix(mrow, mrow, k) * matprop.get_Sigma_rn(mat)[2*k][g][g];
           
-          double D_elem = Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][g][g];
+          double D_elem = -Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][g][g];
+          
+          // cout << "DiagonalStreamingAndReactions::Residual (mom. #" << mrow << ") | " << mat << " | Sigma_r = " << Sigma_r_elem << " | D = " << D_elem << endl;          
+          
           unsigned int i = mg.pos(mrow,g);
           
           if (geom_type == HERMES_PLANAR) 
@@ -1215,7 +1169,7 @@ namespace WeakFormsNeutronics
         template<typename Real, typename Scalar>
         Scalar FissionYield::OuterIterationForm::vector_form( int n, double *wt, Func<Scalar> *u_ext[],
                                                               Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext ) const 
-        { 
+        {  
           if (!matprop.get_fission_nonzero_structure()[g])
             return 0.0;
           
@@ -1230,7 +1184,9 @@ namespace WeakFormsNeutronics
             Scalar local_res = 0;
             for (int gfrom = 0; gfrom < ext->nf; gfrom++)
               local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i]; // scalar flux in group 'gfrom'
-              
+            
+            // cout << mat << " : " << local_res/keff << endl;
+            
             local_res = local_res * wt[i] * v->val[i];
             
             if (geom_type == HERMES_AXISYM_X)
@@ -1279,6 +1235,9 @@ namespace WeakFormsNeutronics
         Scalar OffDiagonalStreaming::Jacobian::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
                                                            Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext  ) const
         {
+          if (gfrom == gto)
+            return 0;
+          
           Scalar result = 0;
           
           if (geom_type == HERMES_PLANAR) 
@@ -1289,7 +1248,10 @@ namespace WeakFormsNeutronics
             result = int_x_grad_u_grad_v<Real, Scalar>(n, wt, u, v, e);
           
           std::string mat = matprop.get_material(e->elem_marker, wf);     
-          return result * Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto][gfrom];
+          
+          // cout << "OffDiagonalStreaming::Jacobian (mom. #" << mrow << ") | " << mat << " | D = " << Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto][gfrom] << endl;          
+          
+          return -result * Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto][gfrom];
         }
         
         template<typename Real, typename Scalar>
@@ -1302,26 +1264,34 @@ namespace WeakFormsNeutronics
           rank1 D_elem = matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto];
           
           for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
-          {            
-            unsigned int i = mg.pos(mrow, gfrom);
-            
-            if (geom_type == HERMES_PLANAR) 
-              result += D_elem[gfrom] * int_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v);
-            else if (geom_type == HERMES_AXISYM_X) 
-              result += D_elem[gfrom] * int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v, e);
-            else 
-              result += D_elem[gfrom] * int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v, e);
+          { 
+            if (gfrom != gto)
+            {
+              unsigned int i = mg.pos(mrow, gfrom);
+              
+              if (geom_type == HERMES_PLANAR) 
+                result += D_elem[gfrom] * int_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v);
+              else if (geom_type == HERMES_AXISYM_X) 
+                result += D_elem[gfrom] * int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v, e);
+              else 
+                result += D_elem[gfrom] * int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[i], v, e);
+            }
           }
           
-          return result * Coeffs::D(mrow);
+          // cout << "OffDiagonalStreaming::Residual (mom. #" << mrow << ") | " << mat << " | D = " << Coeffs::D(mrow) * D_elem[0] << endl;          
+          
+          return -result * Coeffs::D(mrow);
         }
         
         template<typename Real, typename Scalar>
         Scalar OffDiagonalReactions::Jacobian::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
                                                            Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext  ) const
         {
+          if (mrow == mcol)
+            return 0;
+          
           Scalar result = 0;
-                              
+                                        
           if (geom_type == HERMES_PLANAR)
             result = int_u_v<Real, Scalar>(n, wt, u, v);
           else if (geom_type == HERMES_AXISYM_X) 
@@ -1334,6 +1304,8 @@ namespace WeakFormsNeutronics
           double Sigma_rn_elem = 0.;
           for (unsigned int k = 0; k <= mrow; k++)
             Sigma_rn_elem += Coeffs::system_matrix(mrow, mcol, k) * matprop.get_Sigma_rn(mat)[2*k][gto][gfrom];
+          
+          // cout << "OffDiagonalReactions::Jacobian (mom. #(" << mrow << "," << mcol << ") | " << mat << " | Sigma_r = " << Sigma_rn_elem << endl;
           
           return result * Sigma_rn_elem;
         }
@@ -1355,17 +1327,16 @@ namespace WeakFormsNeutronics
               
               if (i != j)
               {
+                double coeff = 0.;
                 for (unsigned int k = 0; k <= std::min(mrow, mcol); k++)
-                {
-                  if (geom_type == HERMES_PLANAR) 
-                    result += Coeffs::system_matrix(mrow, mcol, k) * int_u_ext_v<Real, Scalar>(n, wt, u_ext[j], v);
-                  else if (geom_type == HERMES_AXISYM_X) 
-                    result += Coeffs::system_matrix(mrow, mcol, k) * int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[j], v, e);
-                  else 
-                    result += Coeffs::system_matrix(mrow, mcol, k) * int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[j], v, e);
-                  
-                  result *= Sigma_rn_elem[2*k][gto][gfrom];
-                }
+                  coeff += Sigma_rn_elem[2*k][gto][gfrom] * Coeffs::system_matrix(mrow, mcol, k);
+                
+                if (geom_type == HERMES_PLANAR) 
+                  result += coeff * int_u_ext_v<Real, Scalar>(n, wt, u_ext[j], v);
+                else if (geom_type == HERMES_AXISYM_X) 
+                  result += coeff * int_y_u_ext_v<Real, Scalar>(n, wt, u_ext[j], v, e);
+                else 
+                  result += coeff * int_x_u_ext_v<Real, Scalar>(n, wt, u_ext[j], v, e);
               }
             }
           }
@@ -1540,7 +1511,7 @@ namespace WeakFormsNeutronics
             Scalar local_res = 0;
             for (int gfrom = 0; gfrom < ext->nf; gfrom++)
               local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i];
-            
+                      
             local_res = local_res * wt[i] * v->val[i];
             
             if (geom_type == HERMES_AXISYM_X)
@@ -1550,7 +1521,7 @@ namespace WeakFormsNeutronics
             
             result += local_res;
           }
-        
+          
           return result * chi_elem[g] / keff;
         }
         
@@ -1837,22 +1808,27 @@ namespace WeakFormsNeutronics
               if (include_fission && chi_nnz[gto])
                 add_vector_form(new FissionYield::Residual(m, N_odd, gto, matprop, geom_type));
               
-              add_vector_form(new OffDiagonalStreaming::Residual(m, gto, matprop, geom_type));
               add_vector_form(new OffDiagonalReactions::Residual(m, N_odd, gto, matprop, geom_type));
+              
+              if (G > 1)
+                add_vector_form(new OffDiagonalStreaming::Residual(m, gto, matprop, geom_type));
               
               for (unsigned int gfrom = 0; gfrom < G; gfrom++)
               {
-                add_matrix_form(new OffDiagonalStreaming::Jacobian(m, gto, gfrom, matprop, geom_type));
+                if (gfrom != gto)
+                  add_matrix_form(new OffDiagonalStreaming::Jacobian(m, gto, gfrom, matprop, geom_type));
                 
                 for (unsigned int n = 0; n < N_odd; n++)
                 {
                   unsigned int j = mg.pos(n, gfrom);
                   
+                  if (include_fission && chi_nnz[gto])
+                    add_matrix_form( new FissionYield::Jacobian(m, n, gto, gfrom, matprop, geom_type) );
+                  
+                  //cout << "(" << i << "," << j << ") : P" << present[i][j] << " S" << sym[i][j] << endl;
+                  
                   if (i != j)
                   {
-                    if (include_fission && chi_nnz[gto])
-                      add_matrix_form( new FissionYield::Jacobian(m, n, gto, gfrom, matprop, geom_type) );
-                    
                     if (present[i][j])
                       add_matrix_form( new OffDiagonalReactions::Jacobian(m, n, gto, gfrom, matprop, geom_type, 
                                                                           sym[i][j] ? HERMES_SYM : HERMES_NONSYM) );
@@ -1972,14 +1948,16 @@ namespace WeakFormsNeutronics
       {
         void SourceFilter::filter_fn(int n, Hermes::vector<scalar*> values, scalar* result)
         {
-          std::string source_region = matprop.get_material(this->get_active_element()->marker, mesh);
+          int marker = this->get_active_element()->marker;
+          std::string material = matprop.get_material(marker, mesh);
+          std::string region = mesh->get_element_markers_conversion().get_user_marker(marker);
           
           memset(result, 0, n*sizeof(scalar));
           
-          if (source_regions.empty() || source_regions.find(source_region) != source_regions.end())
+          if (source_regions.empty() || source_regions.find(region) != source_regions.end())
           {           
-            rank1 Sigma_f = matprop.get_Sigma_f(source_region);
-            rank1 nu = matprop.get_nu(source_region);
+            rank1 Sigma_f = matprop.get_Sigma_f(material);
+            rank1 nu = matprop.get_nu(material);
           
             for (int i = 0; i < n; i++) 
               for (unsigned int j = 0; j < values.size(); j++)
@@ -2080,8 +2058,11 @@ namespace WeakFormsNeutronics
           if (n >= N_MAX-m)
             error("The %d. even moment may be expressed in terms of %d odd moments."
                   "Tried to use %d. odd moment.", m, N_MAX-m, n+1);
-          
-          return EVEN_MOMENTS[m][n];
+          if (m > n)
+            error("The %d. even moment may be expressed in terms of odd moments starting with %d."
+                  "Tried to use moment %d.", m, m, n+1);
+                  
+          return EVEN_MOMENTS[m][n-m];
         }
                 
         MomentFilter::Common::Common(unsigned int angular_moment, unsigned int group, unsigned int G) 
@@ -2171,14 +2152,16 @@ namespace WeakFormsNeutronics
 
         void SourceFilter::filter_fn(int n, Hermes::vector< scalar* > values, scalar* result)
         {
-          std::string source_region = matprop.get_material(this->get_active_element()->marker, mesh);
+          int marker = this->get_active_element()->marker;
+          std::string material = matprop.get_material(marker, mesh);
+          std::string region = mesh->get_element_markers_conversion().get_user_marker(marker);
           
           memset(result, 0, n*sizeof(scalar));
           
-          if (source_regions.empty() || source_regions.find(source_region) != source_regions.end())
+          if (source_regions.empty() || source_regions.find(region) != source_regions.end())
           {           
-            rank1 Sigma_f = matprop.get_Sigma_f(source_region);
-            rank1 nu = matprop.get_nu(source_region);
+            rank1 Sigma_f = matprop.get_Sigma_f(material);
+            rank1 nu = matprop.get_nu(material);
             
             for (int i = 0; i < n; i++) 
             {
