@@ -1,7 +1,4 @@
 #define HERMES_REPORT_ALL
-
-////// Weak formulation in axisymmetric coordinate system  ////////////////////////////////////
-
 #include "definitions.h"
 
 CustomWeakForm::CustomWeakForm( const MaterialPropertyMaps& matprop, unsigned int N,
@@ -91,9 +88,9 @@ int power_iteration(const Hermes2D& hermes2d, const MaterialPropertyMaps& matpro
   {
     memset(coeff_vec, 0.0, ndof*sizeof(scalar));
 
-    if (!hermes2d.solve_newton(coeff_vec, &dp, solver, mat, rhs, Jacobian_changed, 1e-8, 10, true)) 
+    if (!hermes2d.solve_newton(coeff_vec, &dp, solver, mat, rhs, Jacobian_changed, 1e-8, 100, true)) 
       error("Newton's iteration failed.");
-    
+        
     // The matrix doesn't change within the power iteration loop, so it does not need to be reassembled again and 
     // the first computed LU factorization may be completely reused in following iterations.
     Jacobian_changed = false;
@@ -101,10 +98,14 @@ int power_iteration(const Hermes2D& hermes2d, const MaterialPropertyMaps& matpro
     
     // Convert coefficients vector into a set of Solution pointers.
     Solution::vector_to_solutions(solver->get_solution(), spaces, new_solutions);
-
+/*
+for (int i = 0; i < solutions.size(); i++)  
+  solutions[i]->copy(new_solutions[i]); 
+break;
+*/
     // Update fission sources.
-    SupportClasses::SPN::SourceFilter new_source(new_solutions, matprop, fission_regions);
-    SupportClasses::SPN::SourceFilter old_source(solutions, matprop, fission_regions);
+    SourceFilter new_source(new_solutions, matprop, fission_regions);
+    SourceFilter old_source(solutions, matprop, fission_regions);
 
     // Compute the eigenvalue for current iteration.
     double k_new = wf->get_keff() * (integrate(&new_source, fission_regions) / 
