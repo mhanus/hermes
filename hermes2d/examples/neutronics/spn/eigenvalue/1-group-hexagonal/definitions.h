@@ -4,6 +4,7 @@
 using namespace WeakFormsNeutronics::Multigroup;
 using namespace CompleteWeakForms::SPN;
 using namespace ElementaryForms::SPN;
+using namespace SupportClasses::SPN;
 
 class CustomWeakForm : public DefaultWeakFormSourceIteration
 {

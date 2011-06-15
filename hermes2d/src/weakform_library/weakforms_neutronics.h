@@ -389,19 +389,8 @@ namespace WeakFormsNeutronics
             
           public:
             
-            std::string get_material(int elem_marker, WeakForm *wf) const 
-            { 
-              if (elem_marker == HERMES_DUMMY_ELEM_MARKER)
-                return this->nu.begin()->first; 
-              return wf->get_element_markers_conversion()->get_user_marker(elem_marker); 
-            }
-            
-            std::string get_material(int elem_marker, Mesh *mesh) const 
-            { 
-              if (elem_marker == HERMES_DUMMY_ELEM_MARKER)
-                return this->nu.begin()->first; 
-              return mesh->get_element_markers_conversion().get_user_marker(elem_marker); 
-            }
+            std::string get_material(int elem_marker, WeakForm *wf) const;
+            std::string get_material(int elem_marker, Mesh *mesh) const;
             
             virtual void set_nu(const MaterialPropertyMap1& nu) {
               this->nu = nu;
@@ -459,13 +448,9 @@ namespace WeakFormsNeutronics
               return this->materials_list;
             }
             
-            const rank1& get_Sigma_f_material(std::string material) const;
-            const rank1& get_nu_material(std::string material) const;
-            const rank1& get_chi_material(std::string material) const;
-            
-            const rank1& get_Sigma_f(std::string region) const;
-            const rank1& get_nu(std::string region) const;
-            const rank1& get_chi(std::string region) const;
+            const rank1& get_Sigma_f(std::string material) const;
+            const rank1& get_nu(std::string material) const;
+            const rank1& get_chi(std::string material) const;
             
             unsigned int get_G() const { return G; } 
             
@@ -556,15 +541,10 @@ namespace WeakFormsNeutronics
               return this->scattering_nonzero_structure;
             }
             
-            const rank2& get_Sigma_s_material(std::string material) const;
-            const rank1& get_Sigma_r_material(std::string material) const;
-            const rank1& get_D_material(std::string material) const;
-            const rank1& get_src_material(std::string material) const;
-            
-            const rank2& get_Sigma_s(std::string region) const;
-            const rank1& get_Sigma_r(std::string region) const;
-            const rank1& get_D(std::string region) const;
-            const rank1& get_src(std::string region) const;
+            const rank2& get_Sigma_s(std::string material) const;
+            const rank1& get_Sigma_r(std::string material) const;
+            const rank1& get_D(std::string material) const;
+            const rank1& get_src(std::string material) const;
             
             friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
         };
@@ -716,16 +696,11 @@ namespace WeakFormsNeutronics
             }
             
             const bool1  is_Sigma_rn_diagonal() const;
-                        
-            const bool1& is_Sigma_rn_diagonal_material(std::string material) const;
-            const rank3& get_Sigma_rn_material(std::string material) const;
-            const rank3& get_odd_Sigma_rn_inv_material(std::string material) const;
-            const rank1& get_src0_material(std::string material) const;
             
-            const bool1& is_Sigma_rn_diagonal(std::string region) const;
-            const rank3& get_Sigma_rn(std::string region) const;
-            const rank3& get_odd_Sigma_rn_inv(std::string region) const;
-            const rank1& get_src0(std::string region) const;
+            const bool1& is_Sigma_rn_diagonal(std::string material) const;
+            const rank3& get_Sigma_rn(std::string material) const;
+            const rank3& get_odd_Sigma_rn_inv(std::string material) const;
+            const rank1& get_src0(std::string material) const;
             
             unsigned int get_N() const { return N; }
             unsigned int get_N_odd() const { return N_odd; }
@@ -867,7 +842,7 @@ namespace WeakFormsNeutronics
             static double even_moment(unsigned int m, unsigned int n);
             
             static double D(unsigned int m) { 
-              return 1./(2*m+3); 
+              return 1./(4*m+3); 
             }
             
             static int max_order() { 
@@ -1660,7 +1635,7 @@ namespace WeakFormsNeutronics
               
               virtual scalar value( int n, double *wt, Func<scalar> *u_ext[], Func<double> *u,
                                     Func<double> *v, Geom<double> *e, ExtData<scalar> *ext  ) const { 
-                return  -1.0 * matrix_form<double, scalar> (n, wt, u_ext, u, v, e, ext);
+                return  matrix_form<double, scalar> (n, wt, u_ext, u, v, e, ext);
               }
               
               virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
@@ -1719,7 +1694,7 @@ namespace WeakFormsNeutronics
 
               virtual scalar value(int n, double *wt, Func<scalar> *u_ext[], Func<double> *v,
                                   Geom<double> *e, ExtData<scalar> *ext) const {
-                return -1.0 * vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
+                return vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
               }
 
               virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
@@ -1765,7 +1740,7 @@ namespace WeakFormsNeutronics
               
               virtual scalar value(int n, double *wt, Func<scalar> *u_ext[], Func<double> *v,
                                     Geom<double> *e, ExtData<scalar> *ext) const {
-                return -1.0 * vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
+                return vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
               }
 
               virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
@@ -1796,7 +1771,7 @@ namespace WeakFormsNeutronics
                         const MaterialPropertyMaps& matprop,
                         GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
                 : GenericForm(matprop, geom_type),
-                  WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(m,gfrom)), 
+                  WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(m,gfrom), HERMES_ANY, sym), 
                   mrow(m), gto(gto), gfrom(gfrom)
               {};
               
@@ -1804,7 +1779,7 @@ namespace WeakFormsNeutronics
                         std::string area, const MaterialPropertyMaps& matprop,
                         GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
                 : GenericForm(matprop, geom_type),
-                  WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(m,gfrom), area), 
+                  WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(m,gfrom), area, sym), 
                   mrow(m), gto(gto), gfrom(gfrom)
               {};
               
@@ -1814,7 +1789,7 @@ namespace WeakFormsNeutronics
               
               virtual scalar value( int n, double *wt, Func<scalar> *u_ext[], Func<double> *u,
                                     Func<double> *v, Geom<double> *e, ExtData<scalar> *ext  ) const { 
-                return  -1.0 * matrix_form<double, scalar> (n, wt, u_ext, u, v, e, ext);
+                return  matrix_form<double, scalar> (n, wt, u_ext, u, v, e, ext);
               }
               
               virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
@@ -1858,7 +1833,7 @@ namespace WeakFormsNeutronics
               
               virtual scalar value(int n, double *wt, Func<scalar> *u_ext[], Func<double> *v,
                                     Geom<double> *e, ExtData<scalar> *ext) const {
-                return -1.0 * vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
+                return vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
               }
 
               virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
@@ -1888,7 +1863,7 @@ namespace WeakFormsNeutronics
                         const MaterialPropertyMaps& matprop,
                         GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
                 : GenericForm(matprop, geom_type),
-                  WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(n,gfrom)), 
+                  WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(n,gfrom), HERMES_ANY, sym), 
                   mrow(m), mcol(n), gto(gto), gfrom(gfrom)
               {};
               
@@ -1896,7 +1871,7 @@ namespace WeakFormsNeutronics
                         std::string area, const MaterialPropertyMaps& matprop,
                         GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
                 : GenericForm(matprop, geom_type),
-                  WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(n,gfrom), area), 
+                  WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(n,gfrom), area, sym), 
                   mrow(m), mcol(n), gto(gto), gfrom(gfrom)
               {};
               
@@ -1906,7 +1881,7 @@ namespace WeakFormsNeutronics
               
               virtual scalar value( int n, double *wt, Func<scalar> *u_ext[], Func<double> *u,
                                     Func<double> *v, Geom<double> *e, ExtData<scalar> *ext  ) const { 
-                return  -1.0 * matrix_form<double, scalar> (n, wt, u_ext, u, v, e, ext);
+                return  matrix_form<double, scalar> (n, wt, u_ext, u, v, e, ext);
               }
               
               virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
@@ -1950,7 +1925,7 @@ namespace WeakFormsNeutronics
               
               virtual scalar value(int n, double *wt, Func<scalar> *u_ext[], Func<double> *v,
                                     Geom<double> *e, ExtData<scalar> *ext) const {
-                return -1.0 * vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
+                return vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
               }
 
               virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
