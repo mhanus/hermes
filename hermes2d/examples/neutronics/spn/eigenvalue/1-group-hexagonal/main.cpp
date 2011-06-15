@@ -4,14 +4,15 @@
 
 using namespace RefinementSelectors;
 
+const unsigned int N_MOMENTS = SPN_ORDER+1;
 const unsigned int N_ODD_MOMENTS = (N_MOMENTS+1)/2;
-const unsigned int N_TOTAL = N_GROUPS * N_ODD_MOMENTS;
+const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
 
-const int INIT_REF_NUM[N_TOTAL] = {      // Initial uniform mesh refinement for the individual solution components.
+const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
   2, 1                              
 };
-const int P_INIT[N_TOTAL] = {            // Initial polynomial orders for the individual solution components. 
-  1, 1                              
+const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
+  2, 1                             
 };      
 const double THRESHOLD = 0.3;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
@@ -49,8 +50,8 @@ const bool display_meshes = false;
 
 // Power iteration control.
 double k_eff = 1.0;         // Initial eigenvalue approximation.
-double TOL_PIT_CM = 5e-5;   // Tolerance for eigenvalue convergence on the coarse mesh.
-double TOL_PIT_RM = 5e-6;   // Tolerance for eigenvalue convergence on the fine mesh.
+double TOL_PIT_CM = 1e-8;   // Tolerance for eigenvalue convergence on the coarse mesh.
+double TOL_PIT_RM = 1e-9;   // Tolerance for eigenvalue convergence on the fine mesh.
 
 // Macros for simpler reporting (four group case).
 #define report_num_dofs(spaces) "%d + %d = %d",\
@@ -67,7 +68,7 @@ int main(int argc, char* argv[])
   TimePeriod cpu_time;
   cpu_time.tick();
    
-  MaterialPropertyMaps matprop(N_GROUPS, N_MOMENTS, rm_map);
+  MaterialPropertyMaps matprop(N_GROUPS, SPN_ORDER, rm_map);
   matprop.set_nuSigma_f(nSf);
   matprop.set_nu(nu);
   matprop.set_Sigma_tn(St);
@@ -79,7 +80,7 @@ int main(int argc, char* argv[])
   
   // Use multimesh, i.e. create one mesh for each energy group.
   Hermes::vector<Mesh *> meshes;
-  for (unsigned int i = 0; i < N_TOTAL; i++) 
+  for (unsigned int i = 0; i < N_EQUATIONS; i++) 
     meshes.push_back(new Mesh());
   
   // Load the mesh on which the 1st solution component (1st group, 0th moment) will be approximated.
@@ -87,10 +88,10 @@ int main(int argc, char* argv[])
   mloader.load(mesh_file.c_str(), meshes[0]);
   
   // Convert the mesh so that it has one type of elements (optional). 
-  //meshes[0].convert_quads_to_triangles();
-  //meshes[0].convert_triangles_to_quads();
+  //meshes[0]->convert_quads_to_triangles();
+  meshes[0]->convert_triangles_to_quads();
   
-  for (unsigned int i = 1; i < N_TOTAL; i++) 
+  for (unsigned int i = 1; i < N_EQUATIONS; i++) 
   {
     // Obtain meshes for the subsequent components by cloning the mesh loaded for the 1st one.
     meshes[i]->copy(meshes[0]);
@@ -107,7 +108,7 @@ int main(int argc, char* argv[])
   // Display the meshes.
   if (display_meshes)
   {
-    MeshView* mviews[N_TOTAL];  
+    MeshView* mviews[N_EQUATIONS];  
     std::string base_title = "Core mesh for group ";
     for (unsigned int g = 0; g < N_GROUPS; g++)
     {
@@ -122,25 +123,28 @@ int main(int argc, char* argv[])
     // Wait for the view to be closed.
     View::wait();
     
-    for (unsigned int i = 0; i < N_TOTAL; i++)
+    for (unsigned int i = 0; i < N_EQUATIONS; i++)
       delete mviews[i];
   }
   
-  ScalarView* sviews[N_TOTAL];
-  OrderView* oviews[N_TOTAL];
+  ScalarView* sviews[N_MOMENTS];
+  OrderView* oviews[N_EQUATIONS];
   std::string base_title_flux = "Neutron flux: group ";
   std::string base_title_order = "Polynomial orders: group ";
   for (unsigned int g = 0; g < N_GROUPS; g++)
   {
     std::string title_flux = base_title_flux + itos(g) + std::string(", moment ");
     std::string title_order = base_title_order + itos(g) + std::string(", moment ");
-    for (unsigned int m = 0; m < N_ODD_MOMENTS; m++)
+    for (unsigned int m = 0; m < N_MOMENTS; m++)
     {
       unsigned int i = mg.pos(m,g);
+      
       sviews[i] = new ScalarView((title_flux + itos(m)).c_str(), new WinGeom(m*452, g*452, 450, 450));
-      oviews[i] = new OrderView((title_order + itos(m)).c_str(), new WinGeom(m*452, N_GROUPS*452 + g*452, 450, 450));
       sviews[i]->show_mesh(false);
       sviews[i]->set_3d_mode(true);
+      
+      if (m%2) 
+        oviews[mg.pos((m-1)/2,g)] = new OrderView((title_order + itos(m)).c_str(), new WinGeom(m*452, N_GROUPS*452 + g*452, 450, 450));
     }
   }
   
@@ -148,7 +152,7 @@ int main(int argc, char* argv[])
   Hermes::vector<Solution*> coarse_solutions, fine_solutions, power_iterates;
   
   // Initialize all the new solution variables.
-  for (unsigned int i = 0; i < N_TOTAL; i++) 
+  for (unsigned int i = 0; i < N_EQUATIONS; i++) 
   {
     coarse_solutions.push_back(new Solution());
     fine_solutions.push_back(new Solution());
@@ -157,11 +161,11 @@ int main(int argc, char* argv[])
   
   // Create the approximation spaces with the default shapeset.
   Hermes::vector<Space *> spaces;
-  for (unsigned int i = 0; i < N_TOTAL; i++) 
+  for (unsigned int i = 0; i < N_EQUATIONS; i++) 
     spaces.push_back(new H1Space(meshes[i], P_INIT[i]));
   
   // Initialize the weak formulation.
-  CustomWeakForm wf(matprop, N_MOMENTS, power_iterates, fission_regions, k_eff, bdy_vacuum);
+  CustomWeakForm wf(matprop, SPN_ORDER, power_iterates, fission_regions, k_eff, bdy_vacuum);
   
   // Initialize the discrete algebraic representation of the problem and its solver.
   //
@@ -170,6 +174,22 @@ int main(int argc, char* argv[])
   Vector* rhs = create_vector(matrix_solver);
   // Instantiate the solver itself.
   Solver* solver = create_linear_solver(matrix_solver, mat, rhs);
+  
+  for (unsigned int g = 0; g < N_GROUPS; g++)
+  {
+    for (unsigned int m = 0; m < N_ODD_MOMENTS; m++)
+    {
+      unsigned int i = mg.pos(m,g);
+      unsigned int j = mg.pos(2*m,g);
+      unsigned int k = mg.pos(2*m+1,g);
+      
+      oviews[i]->show(spaces[i]);
+      sviews[j]->show(new MomentFilter::Val(2*m, g, N_GROUPS, power_iterates));
+      sviews[k]->show(power_iterates[i]);
+    }
+  }
+  
+  View::wait(HERMES_WAIT_KEYPRESS);
   
   // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
   info("Coarse mesh power iteration, " report_num_dofs(spaces));
@@ -195,7 +215,7 @@ int main(int argc, char* argv[])
     graph_cpu.show_grid();
     
     Hermes::vector<ProjNormType> proj_norms_h1, proj_norms_l2;
-    for (unsigned int i = 0; i< N_TOTAL; i++)
+    for (unsigned int i = 0; i< N_EQUATIONS; i++)
     {
       proj_norms_h1.push_back(HERMES_H1_NORM);
       proj_norms_l2.push_back(HERMES_L2_NORM);
@@ -203,14 +223,23 @@ int main(int argc, char* argv[])
   }
   else
   {
-    for (unsigned int i = 0; i < N_TOTAL; i++)
+    for (unsigned int g = 0; g < N_GROUPS; g++)
     {
-      sviews[i]->show(power_iterates[i]);
-      oviews[i]->show(spaces[i]);
+      for (unsigned int m = 0; m < N_ODD_MOMENTS; m++)
+      {
+        unsigned int i = mg.pos(m,g);
+        unsigned int j = mg.pos(2*m,g);
+        unsigned int k = mg.pos(2*m+1,g);
+        
+        oviews[i]->show(spaces[i]);
+        sviews[j]->show(new MomentFilter::Val(2*m, g, N_GROUPS, power_iterates));
+        sviews[k]->show(power_iterates[i]);
+      }
     }
   }
   
-  // Wait for the view to be closed.
+  // Wait for the view to be closed.  
   View::wait();
+  
   return 0;
 }
