@@ -1185,7 +1185,8 @@ namespace WeakFormsNeutronics
             for (int gfrom = 0; gfrom < ext->nf; gfrom++)
               local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i]; // scalar flux in group 'gfrom'
             
-            // cout << mat << " : " << local_res/keff << endl;
+            // cout << "FissionYield::OuterIterationForm (mom. #" << mrow << " (x, y) = (" << e->x[i] << ", " << e->y[i] << "), " << mat << ") : ";
+            // cout << (local_res * Coeffs::even_moment(0, mrow) * chi_elem[g] / keff) << endl;
             
             local_res = local_res * wt[i] * v->val[i];
             
@@ -1249,7 +1250,7 @@ namespace WeakFormsNeutronics
           
           std::string mat = matprop.get_material(e->elem_marker, wf);     
           
-          // cout << "OffDiagonalStreaming::Jacobian (mom. #" << mrow << ") | " << mat << " | D = " << Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto][gfrom] << endl;          
+          // cout << "OffDiagonalStreaming::Jacobian (mom. #" << mrow << ") | " << mat << " | D = " << -Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto][gfrom] << endl;          
           
           return -result * Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto][gfrom];
         }
@@ -1278,7 +1279,7 @@ namespace WeakFormsNeutronics
             }
           }
           
-          // cout << "OffDiagonalStreaming::Residual (mom. #" << mrow << ") | " << mat << " | D = " << Coeffs::D(mrow) * D_elem[0] << endl;          
+          // cout << "OffDiagonalStreaming::Residual (mom. #" << mrow << ") | " << mat << " | D = " << -Coeffs::D(mrow) * D_elem[0] << endl;          
           
           return -result * Coeffs::D(mrow);
         }
@@ -1330,6 +1331,8 @@ namespace WeakFormsNeutronics
                 double coeff = 0.;
                 for (unsigned int k = 0; k <= std::min(mrow, mcol); k++)
                   coeff += Sigma_rn_elem[2*k][gto][gfrom] * Coeffs::system_matrix(mrow, mcol, k);
+                
+                // cout << "OffDiagonalReactions::Residual (mom. #(" << mrow << "," << mcol << ") | " << mat << " | coeff = " << coeff << endl;
                 
                 if (geom_type == HERMES_PLANAR) 
                   result += coeff * int_u_ext_v<Real, Scalar>(n, wt, u_ext[j], v);
@@ -1825,7 +1828,7 @@ namespace WeakFormsNeutronics
                   if (include_fission && chi_nnz[gto])
                     add_matrix_form( new FissionYield::Jacobian(m, n, gto, gfrom, matprop, geom_type) );
                   
-                  //cout << "(" << i << "," << j << ") : P" << present[i][j] << " S" << sym[i][j] << endl;
+                  //// cout << "(" << i << "," << j << ") : P" << present[i][j] << " S" << sym[i][j] << endl;
                   
                   if (i != j)
                   {
@@ -1904,7 +1907,7 @@ namespace WeakFormsNeutronics
                                                                         GeomType geom_type )
           : WeakFormHomogeneous(N, matprop, geom_type, false)
         {      
-          SupportClasses::SPN::MomentFilter::get_scalar_fluxes_with_derivatives(iterates, &scalar_flux_iterates);
+          SupportClasses::SPN::MomentFilter::get_scalar_fluxes_with_derivatives(iterates, &scalar_flux_iterates, G);
           
           keff = initial_keff_guess;
           
@@ -2123,20 +2126,18 @@ namespace WeakFormsNeutronics
         
         // TODO: Templatize.
         void MomentFilter::get_scalar_fluxes(const Hermes::vector< Solution* >& angular_fluxes, 
-                                             Hermes::vector< MeshFunction* >* scalar_fluxes)
-        {
-          unsigned int G = angular_fluxes.size();
-          
+                                             Hermes::vector< MeshFunction* >* scalar_fluxes,
+                                             unsigned int G)
+        {          
           scalar_fluxes->reserve(G);
           for (unsigned int g = 0; g < G; g++)
             scalar_fluxes->push_back(new MomentFilter::Val(0, g, G, angular_fluxes));
         }
         
         void MomentFilter::get_scalar_fluxes_with_derivatives(const Hermes::vector< Solution* >& angular_fluxes, 
-                                                              Hermes::vector< MeshFunction* >* scalar_fluxes)
-        {
-          unsigned int G = angular_fluxes.size();
-          
+                                                              Hermes::vector< MeshFunction* >* scalar_fluxes,
+                                                              unsigned int G)
+        {          
           scalar_fluxes->reserve(G);
           for (unsigned int g = 0; g < G; g++)
             scalar_fluxes->push_back(new MomentFilter::ValDxDy(0, g, G, angular_fluxes));
