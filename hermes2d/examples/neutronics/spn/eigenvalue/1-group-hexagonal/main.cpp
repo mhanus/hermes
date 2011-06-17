@@ -9,10 +9,10 @@ const unsigned int N_ODD_MOMENTS = (N_MOMENTS+1)/2;
 const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
 
 const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
-  2, 1                              
+  2, 2                              
 };
 const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
-  2, 1                             
+  2, 2                             
 };      
 const double THRESHOLD = 0.3;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
@@ -46,18 +46,12 @@ const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the nu
 MatrixSolverType matrix_solver = SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
                                                   
-const bool display_meshes = false;
+const bool display_meshes = true;
 
 // Power iteration control.
 double k_eff = 1.0;         // Initial eigenvalue approximation.
-double TOL_PIT_CM = 1e-8;   // Tolerance for eigenvalue convergence on the coarse mesh.
-double TOL_PIT_RM = 1e-9;   // Tolerance for eigenvalue convergence on the fine mesh.
-
-// Macros for simpler reporting (four group case).
-#define report_num_dofs(spaces) "%d + %d = %d",\
-                                Space::get_num_dofs(spaces[0]), Space::get_num_dofs(spaces[1]),\
-                                Space::get_num_dofs(spaces)
-#define report_errors(errors) errors[0],errors[1]
+double TOL_PIT_CM = 1e-7;   // Tolerance for eigenvalue convergence on the coarse mesh.
+double TOL_PIT_RM = 1e-8;   // Tolerance for eigenvalue convergence on the fine mesh.
 
 int main(int argc, char* argv[])
 {
@@ -103,51 +97,9 @@ int main(int argc, char* argv[])
   for (int j = 0; j < INIT_REF_NUM[0]; j++) 
     meshes[0]->refine_all_elements();
   
-  MomentGroupFlattener mg(N_GROUPS);
-   
-  // Display the meshes.
-  if (display_meshes)
-  {
-    MeshView* mviews[N_EQUATIONS];  
-    std::string base_title = "Core mesh for group ";
-    for (unsigned int g = 0; g < N_GROUPS; g++)
-    {
-      std::string title = base_title + itos(g) + std::string(", moment ");
-      for (unsigned int m = 0; m < N_ODD_MOMENTS; m++)
-      {
-        unsigned int i = mg.pos(m,g);
-        mviews[i] = new MeshView((title + itos(m)).c_str(), new WinGeom(m*352, g*352, 350, 350));
-        mviews[i]->show(meshes[i]);
-      }
-    }
-    // Wait for the view to be closed.
-    View::wait();
-    
-    for (unsigned int i = 0; i < N_EQUATIONS; i++)
-      delete mviews[i];
-  }
-  
-  ScalarView* sviews[N_MOMENTS];
-  OrderView* oviews[N_EQUATIONS];
-  std::string base_title_flux = "Neutron flux: group ";
-  std::string base_title_order = "Polynomial orders: group ";
-  for (unsigned int g = 0; g < N_GROUPS; g++)
-  {
-    std::string title_flux = base_title_flux + itos(g) + std::string(", moment ");
-    std::string title_order = base_title_order + itos(g) + std::string(", moment ");
-    for (unsigned int m = 0; m < N_MOMENTS; m++)
-    {
-      unsigned int i = mg.pos(m,g);
-      
-      sviews[i] = new ScalarView((title_flux + itos(m)).c_str(), new WinGeom(m*452, g*452, 450, 450));
-      sviews[i]->show_mesh(false);
-      sviews[i]->set_3d_mode(true);
-      
-      if (m%2) 
-        oviews[mg.pos((m-1)/2,g)] = new OrderView((title_order + itos(m)).c_str(), new WinGeom(m*452, N_GROUPS*452 + g*452, 450, 450));
-    }
-  }
-  
+  Views views(SPN_ORDER, N_GROUPS, display_meshes);
+  views.inspect_meshes(meshes);
+
   // Create pointers to solutions on coarse and fine meshes and from the latest power iteration, respectively.
   Hermes::vector<Solution*> coarse_solutions, fine_solutions, power_iterates;
   
@@ -175,24 +127,13 @@ int main(int argc, char* argv[])
   // Instantiate the solver itself.
   Solver* solver = create_linear_solver(matrix_solver, mat, rhs);
   
-  for (unsigned int g = 0; g < N_GROUPS; g++)
-  {
-    for (unsigned int m = 0; m < N_ODD_MOMENTS; m++)
-    {
-      unsigned int i = mg.pos(m,g);
-      unsigned int j = mg.pos(2*m,g);
-      unsigned int k = mg.pos(2*m+1,g);
-      
-      oviews[i]->show(spaces[i]);
-      sviews[j]->show(new MomentFilter::Val(2*m, g, N_GROUPS, power_iterates));
-      sviews[k]->show(power_iterates[i]);
-    }
-  }
+  views.show_solutions(power_iterates);
+  views.show_orders(spaces);
   
   View::wait(HERMES_WAIT_KEYPRESS);
   
   // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
-  info("Coarse mesh power iteration, " report_num_dofs(spaces));
+  report_num_dof("Coarse mesh power iteration, ", spaces);
   power_iteration(hermes2d, matprop, spaces, &wf, power_iterates, fission_regions, TOL_PIT_CM, mat, rhs, solver);
   
   if (STRATEGY >= 0)
@@ -215,7 +156,7 @@ int main(int argc, char* argv[])
     graph_cpu.show_grid();
     
     Hermes::vector<ProjNormType> proj_norms_h1, proj_norms_l2;
-    for (unsigned int i = 0; i< N_EQUATIONS; i++)
+    for (unsigned int i = 0; i < N_EQUATIONS; i++)
     {
       proj_norms_h1.push_back(HERMES_H1_NORM);
       proj_norms_l2.push_back(HERMES_L2_NORM);
@@ -223,20 +164,15 @@ int main(int argc, char* argv[])
   }
   else
   {
-    for (unsigned int g = 0; g < N_GROUPS; g++)
-    {
-      for (unsigned int m = 0; m < N_ODD_MOMENTS; m++)
-      {
-        unsigned int i = mg.pos(m,g);
-        unsigned int j = mg.pos(2*m,g);
-        unsigned int k = mg.pos(2*m+1,g);
-        
-        oviews[i]->show(spaces[i]);
-        sviews[j]->show(new MomentFilter::Val(2*m, g, N_GROUPS, power_iterates));
-        sviews[k]->show(power_iterates[i]);
-      }
-    }
+    views.show_solutions(power_iterates);
+    views.show_orders(spaces);
+    // Millipercent eigenvalue error w.r.t. the reference value (see physical_parameters.cpp). 
+    double keff_err = 1e5*fabs(wf.get_keff() - REF_K_EFF)/REF_K_EFF;
+    info("K_eff error = %g pcm", keff_err);
   }
+  
+  cpu_time.tick();
+  verbose("Total running time: %g s", cpu_time.accumulated());
   
   // Wait for the view to be closed.  
   View::wait();
