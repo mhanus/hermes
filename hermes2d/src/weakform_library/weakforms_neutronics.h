@@ -911,9 +911,11 @@ namespace WeakFormsNeutronics
           };
           
           static void get_scalar_fluxes(const Hermes::vector<Solution*>& angular_fluxes,
-                                        Hermes::vector<MeshFunction*>* scalar_fluxes);
+                                        Hermes::vector<MeshFunction*>* scalar_fluxes,
+                                        unsigned int G);
           static void get_scalar_fluxes_with_derivatives(const Hermes::vector<Solution*>& angular_fluxes,
-                                                         Hermes::vector<MeshFunction*>* scalar_fluxes);                                        
+                                                         Hermes::vector<MeshFunction*>* scalar_fluxes,
+                                                         unsigned int G);
           static void clear_scalar_fluxes(Hermes::vector<MeshFunction*>* scalar_fluxes);
         };
         
