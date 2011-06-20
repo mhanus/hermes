@@ -9,10 +9,10 @@ const unsigned int N_ODD_MOMENTS = (N_MOMENTS+1)/2;
 const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
 
 const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
-  2, 2                              
+  2//, 2, 2                              
 };
 const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
-  2, 2                             
+  2//, 2, 2                             
 };      
 const double THRESHOLD = 0.3;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
