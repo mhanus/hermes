@@ -7,7 +7,7 @@ const double REF_K_EFF = 1.000332; // SP3
 //const double REF_K_EFF = 1.001271; // SP5
 
 const unsigned int N_GROUPS = 1;  // Monoenergetic (single group) problem.
-const unsigned int SPN_ORDER = 3; // SP3 approximation
+const unsigned int SPN_ORDER = 1; // SP3 approximation
 
 //////  Geometric parameters.  /////////////////////////////////////////////////////////////////
 
