@@ -1,5 +1,2 @@
-add_subdirectory(4-group)
-add_subdirectory(4-group-adapt)
-add_subdirectory(iron-water)
-add_subdirectory(saphir)
-add_subdirectory(spn)
+add_subdirectory(eigenvalue)
+add_subdirectory(fixed-source)
