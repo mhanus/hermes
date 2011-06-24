@@ -44,7 +44,9 @@ namespace WeakFormsNeutronics
   }
     
   namespace Multigroup
-  { 
+  {
+    enum NeutronicsMethod { NEUTRONICS_DIFFUSION, NEUTRONICS_SPN };
+    
     namespace MaterialProperties
     {
       namespace Definitions
@@ -783,46 +785,45 @@ namespace WeakFormsNeutronics
     {
       namespace Common
       {
-        using MaterialProperties::Common::MaterialPropertyMaps;
         using namespace MaterialProperties::Definitions;
         
         class SourceFilter : public SimpleFilter
         {
           public: 
-            SourceFilter(Hermes::vector<MeshFunction*> solutions, const MaterialPropertyMaps& matprop,
+            SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop,
                          const std::vector<std::string>& source_regions = std::vector<std::string>())
-              : SimpleFilter(solutions, Hermes::vector<int>()), matprop(matprop),
+              : SimpleFilter(), matprop(matprop),
                 source_regions(source_regions.begin(), source_regions.end())
-            {};
-            SourceFilter(Hermes::vector<Solution*> solutions, const MaterialPropertyMaps& matprop,
-                         const std::vector<std::string>& source_regions = std::vector<std::string>())
-              : SimpleFilter(solutions, Hermes::vector<int>()), matprop(matprop),
-                source_regions(source_regions.begin(), source_regions.end())
-            {};
-            SourceFilter(Hermes::vector<MeshFunction*> solutions, const MaterialPropertyMaps& matprop,
+            {
+              pre_init();
+            };
+            SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop,
                          const std::string& source_region)
-              : SimpleFilter(solutions, Hermes::vector<int>()), matprop(matprop)
+              : SimpleFilter(), matprop(matprop)
             { 
-              source_regions.insert(source_region); 
-            }
-            SourceFilter(Hermes::vector<Solution*> solutions, const MaterialPropertyMaps& matprop,
-                         const std::string& source_region)
-              : SimpleFilter(solutions, Hermes::vector<int>()), matprop(matprop)
-            { 
-              source_regions.insert(source_region); 
+              source_regions.insert(source_region);
+              pre_init();
             }
             
+            virtual void assign_solutions(const Hermes::vector<Solution*>& solutions);
+            virtual void assign_solutions(const Hermes::vector<MeshFunction*>& solutions);
+            
+            double integrate();
+                        
           protected:
-            const MaterialPropertyMaps& matprop;
+            const MaterialProperties::Common::MaterialPropertyMaps& matprop;
             std::set<std::string> source_regions;
+            std::set<int> markers;
+            bool have_solutions;
             
             virtual void filter_fn(int n, Hermes::vector<scalar*> values, scalar* result);
+            virtual void pre_init();
+            virtual void post_init();
         };
       }
       
       namespace SPN
       {
-        using MaterialProperties::SPN::MaterialPropertyMaps;
         using namespace MaterialProperties::Definitions;
         
         class Coeffs
@@ -919,34 +920,31 @@ namespace WeakFormsNeutronics
           static void clear_scalar_fluxes(Hermes::vector<MeshFunction*>* scalar_fluxes);
         };
         
-        
-        
         class SourceFilter : public Common::SourceFilter
         {
           public: 
-            SourceFilter(Hermes::vector<MeshFunction*> solutions, const MaterialPropertyMaps& matprop,
+            SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop,
                          const std::vector<std::string>& source_regions = std::vector<std::string>())
-              : Common::SourceFilter(solutions, matprop, source_regions), G(matprop.get_G()), mg(G)
+              : Common::SourceFilter(matprop, source_regions), G(matprop.get_G()), mg(G)
             {};
-            SourceFilter(Hermes::vector<Solution*> solutions, const MaterialPropertyMaps& matprop,
-                         const std::vector<std::string>& source_regions = std::vector<std::string>())
-              : Common::SourceFilter(solutions, matprop, source_regions), G(matprop.get_G()), mg(G) 
+            SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop, const std::string& source_region)
+              : Common::SourceFilter(matprop, source_region), G(matprop.get_G()), mg(G) 
             {};
-            SourceFilter(Hermes::vector<MeshFunction*> solutions, const MaterialPropertyMaps& matprop,
-                         const std::string& source_region)
-              : Common::SourceFilter(solutions, matprop, source_region), G(matprop.get_G()), mg(G) 
-            {};
-            SourceFilter(Hermes::vector<Solution*> solutions, const MaterialPropertyMaps& matprop,
-                        const std::string& source_region)
-              : Common::SourceFilter(solutions, matprop, source_region), G(matprop.get_G()), mg(G) 
-            {};
-            
-            
-            virtual void filter_fn(int n, Hermes::vector<scalar*> values, scalar* result);
+                        
+            virtual void assign_solutions(const Hermes::vector<Solution*>& solutions) {
+              num = solutions.size();
+              Common::SourceFilter::assign_solutions(solutions);
+            }
+            virtual void assign_solutions(const Hermes::vector<MeshFunction*>& solutions) {
+              num = solutions.size();
+              Common::SourceFilter::assign_solutions(solutions);
+            }
             
           protected:
             unsigned int G;
             MomentGroupFlattener mg;
+            
+            virtual void filter_fn(int n, Hermes::vector<scalar*> values, scalar* result);
         };
       }
     }
@@ -1194,12 +1192,25 @@ namespace WeakFormsNeutronics
                   error(E_INVALID_GROUP_INDEX);
               }
               
-              OuterIterationForm( unsigned int g, std::string area,
+              OuterIterationForm( unsigned int g, const std::string& area,
                                   const MaterialPropertyMaps& matprop,
-                                  Hermes::vector<MeshFunction*>& iterates,
+                                  const Hermes::vector<MeshFunction*>& iterates,
                                   double keff = 1.0,
                                   GeomType geom_type = HERMES_PLANAR )
                 : WeakForm::VectorFormVol(g, area, iterates),
+                  GenericForm(matprop, geom_type),
+                  g(g), keff(keff)
+              {
+                if (g >= iterates.size())
+                  error(E_INVALID_GROUP_INDEX);
+              }
+              
+              OuterIterationForm( unsigned int g, const Hermes::vector<std::string>& areas,
+                                  const MaterialPropertyMaps& matprop,
+                                  const Hermes::vector<MeshFunction*>& iterates,
+                                  double keff = 1.0,
+                                  GeomType geom_type = HERMES_PLANAR )
+                : WeakForm::VectorFormVol(g, areas, iterates),
                   GenericForm(matprop, geom_type),
                   g(g), keff(keff)
               {
@@ -2005,7 +2016,25 @@ namespace WeakFormsNeutronics
     }
     
     namespace CompleteWeakForms
-    {             
+    {
+      namespace Common
+      {
+        class WeakFormSourceIteration
+        {
+          protected:
+            double keff;
+            
+            // TODO: source_areas and keff_iteration_forms initialization also belongs here. 
+            WeakFormSourceIteration(double initial_keff_guess) : keff(initial_keff_guess) {};
+            
+          public:
+            virtual void update_keff(double new_keff) = 0; //TODO: Define a common FissionYield::OuterIteration class,
+                                                           // so that this method may be defined here instead of in both
+                                                           // SPN and Diffusion DefaultWeakFormSourceIteration.
+            double get_keff() const { return keff; }
+        };
+      }
+      
       namespace Diffusion
       {      
         using namespace MaterialProperties;
@@ -2041,16 +2070,13 @@ namespace WeakFormsNeutronics
                                        GeomType geom_type = HERMES_PLANAR);
         };
                 
-        class DefaultWeakFormSourceIteration : public WeakForm
+        class DefaultWeakFormSourceIteration : public WeakForm, public Common::WeakFormSourceIteration
         {
-          protected:
-            double keff;
-            
+          protected:            
             std::vector<FissionYield::OuterIterationForm*> keff_iteration_forms;
             
-            void init(const MaterialPropertyMaps& matprop,
-                      const Hermes::vector<MeshFunction*>& iterates, double initial_keff_guess, 
-                      GeomType geom_type);
+            void init(const MaterialPropertyMaps& matprop, const Hermes::vector<MeshFunction*>& iterates, 
+                      GeomType geom_type, const Hermes::vector<std::string>& areas = Hermes::vector<std::string>());
             
           public:
             DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
@@ -2061,10 +2087,21 @@ namespace WeakFormsNeutronics
             DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
                                             const Hermes::vector<Solution*>& iterates,
                                             double initial_keff_guess,
+                                            GeomType geom_type = HERMES_PLANAR );    
+                                            
+            DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
+                                            const Hermes::vector<MeshFunction*>& iterates, 
+                                            const Hermes::vector<std::string>& src_areas,
+                                            double initial_keff_guess,
+                                            GeomType geom_type = HERMES_PLANAR );
+                                            
+            DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
+                                            const Hermes::vector<Solution*>& iterates, 
+                                            const Hermes::vector<std::string>& src_areas,
+                                            double initial_keff_guess,
                                             GeomType geom_type = HERMES_PLANAR );                                            
-            
+                                            
             void update_keff(double new_keff);
-            double get_keff() const { return keff; }
         };
         
       }
@@ -2111,10 +2148,9 @@ namespace WeakFormsNeutronics
                                        GeomType geom_type = HERMES_PLANAR);
         };
         
-        class DefaultWeakFormSourceIteration : public WeakFormHomogeneous
+        class DefaultWeakFormSourceIteration : public WeakFormHomogeneous, public Common::WeakFormSourceIteration
         {
           protected:
-            double keff;
             std::vector<FissionYield::OuterIterationForm*> keff_iteration_forms;
             Hermes::vector<MeshFunction*> scalar_flux_iterates;
             
@@ -2129,14 +2165,53 @@ namespace WeakFormsNeutronics
             
             void update_keff(double new_keff);
             
-            double get_keff() const { 
-              return keff; 
-            }
             const Hermes::vector<MeshFunction*>& get_scalar_flux_iterates() const { 
               return scalar_flux_iterates; 
             }
         };
       }
+    }
+    
+    namespace SupportClasses
+    {
+      class SourceIteration
+      {
+        const Hermes2D& hermes2d;
+        DiscreteProblem& dp;
+        const std::vector<std::string>& fission_regions;
+        
+        CompleteWeakForms::Common::WeakFormSourceIteration *wf;
+        
+        Common::SourceFilter *new_source, *old_source;
+        
+        public:
+          /// \param[in] fission_regions  Strings specifiying the parts of the solution domain where fission occurs.
+          /// \param[in]     hermes2d     Class encapsulating global Hermes2D functions.
+          /// \param[in]     spaces       Pointers to spaces on which the solutions are defined (one space for each energy group).
+          /// \param[in]     wf           Pointer to the weak form of the problem.
+          SourceIteration(NeutronicsMethod method, const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                          const std::vector<std::string>& fission_regions, 
+                          const Hermes2D& hermes2d, DiscreteProblem& dp);
+                          
+          ~SourceIteration() { delete new_source; delete old_source; }
+                          
+          // \brief Power iteration method for finding the dominant eigenvalue. 
+          ///
+          /// Starts from an initial guess stored in the argument 'solutions' and updates it by the final result after the iteration
+          /// has converged, also updating the global eigenvalue 'k_eff'.
+          ///
+          /// \param[in,out] solution     A set of Solution* pointers to solution components (neutron fluxes in each group). 
+          ///                             Initial guess for the iteration on input, converged result on output.
+          /// \param[in]     tol          Relative difference between two successive eigenvalue approximations that stops the iteration.
+          /// \param[in]    matrix_solver Solver for the resulting matrix problem.
+          ///
+          /// \return  number of iterations needed for convergence within the specified tolerance.
+          ///
+          int eigenvalue_iteration(const Hermes::vector<Solution *>& solutions, 
+                                   double tol = 1e-6, MatrixSolverType matrix_solver = SOLVER_UMFPACK);
+                              
+          double integrate_over_fission_regions(MeshFunction* sln);
+      };
     }
   }
 }
