@@ -448,9 +448,9 @@ namespace WeakFormsNeutronics
               return this->materials_list;
             }
             
-            const rank1& get_Sigma_f(std::string material) const;
-            const rank1& get_nu(std::string material) const;
-            const rank1& get_chi(std::string material) const;
+            const rank1& get_Sigma_f(const std::string& material) const;
+            const rank1& get_nu(const std::string& material) const;
+            const rank1& get_chi(const std::string& material) const;
             
             unsigned int get_G() const { return G; } 
             
@@ -541,10 +541,10 @@ namespace WeakFormsNeutronics
               return this->scattering_nonzero_structure;
             }
             
-            const rank2& get_Sigma_s(std::string material) const;
-            const rank1& get_Sigma_r(std::string material) const;
-            const rank1& get_D(std::string material) const;
-            const rank1& get_src(std::string material) const;
+            const rank2& get_Sigma_s(const std::string& material) const;
+            const rank1& get_Sigma_r(const std::string& material) const;
+            const rank1& get_D(const std::string& material) const;
+            const rank1& get_src(const std::string& material) const;
             
             friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
         };
@@ -697,10 +697,10 @@ namespace WeakFormsNeutronics
             
             const bool1  is_Sigma_rn_diagonal() const;
             
-            const bool1& is_Sigma_rn_diagonal(std::string material) const;
-            const rank3& get_Sigma_rn(std::string material) const;
-            const rank3& get_odd_Sigma_rn_inv(std::string material) const;
-            const rank1& get_src0(std::string material) const;
+            const bool1& is_Sigma_rn_diagonal(const std::string& material) const;
+            const rank3& get_Sigma_rn(const std::string& material) const;
+            const rank3& get_odd_Sigma_rn_inv(const std::string& material) const;
+            const rank1& get_src0(const std::string& material) const;
             
             unsigned int get_N() const { return N; }
             unsigned int get_N_odd() const { return N_odd; }
@@ -980,7 +980,7 @@ namespace WeakFormsNeutronics
                 g(g), geom_type(geom_type)
               {};
               
-              Jacobian(unsigned int g, std::string area, GeomType geom_type = HERMES_PLANAR) 
+              Jacobian(unsigned int g, const std::string& area, GeomType geom_type = HERMES_PLANAR) 
                 : WeakForm::MatrixFormSurf(g,g,area),
                 g(g), geom_type(geom_type)
               {};
@@ -1017,7 +1017,7 @@ namespace WeakFormsNeutronics
                 g(g), geom_type(geom_type)
               {};
               
-              Residual(unsigned int g, std::string area, GeomType geom_type = HERMES_PLANAR) 
+              Residual(unsigned int g, const std::string& area, GeomType geom_type = HERMES_PLANAR) 
                 : WeakForm::VectorFormSurf(g,area),
                 g(g), geom_type(geom_type)
               {};
@@ -1059,7 +1059,7 @@ namespace WeakFormsNeutronics
                   g(g)
               {};
                   
-              Jacobian(unsigned int g, std::string area,
+              Jacobian(unsigned int g, const std::string& area,
                        const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
                 : WeakForm::MatrixFormVol(g, g, area, HERMES_SYM),
                   GenericForm(matprop, geom_type),
@@ -1101,7 +1101,7 @@ namespace WeakFormsNeutronics
                   g(g)
               {};
                   
-              Residual(unsigned int g, std::string area,
+              Residual(unsigned int g, const std::string& area,
                         const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
                 : WeakForm::VectorFormVol(g, area),
                   GenericForm(matprop, geom_type), 
@@ -1146,7 +1146,7 @@ namespace WeakFormsNeutronics
                   gto(gto), gfrom(gfrom)
               {};
               
-              Jacobian( unsigned int gto, unsigned int gfrom, std::string area,
+              Jacobian( unsigned int gto, unsigned int gfrom, const std::string& area,
                         const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR )
                 : WeakForm::MatrixFormVol(gto, gfrom, area), 
                   GenericForm(matprop, geom_type),
@@ -1183,7 +1183,7 @@ namespace WeakFormsNeutronics
               
               OuterIterationForm( unsigned int g, 
                                   const MaterialPropertyMaps& matprop,
-                                  Hermes::vector<MeshFunction*>& iterates,
+                                  const Hermes::vector<MeshFunction*>& iterates,
                                   double keff = 1.0,
                                   GeomType geom_type = HERMES_PLANAR )
                 : WeakForm::VectorFormVol(g, HERMES_ANY, iterates),
@@ -1244,7 +1244,7 @@ namespace WeakFormsNeutronics
                   gto(gto), gfrom(gfrom)
               {};
               
-              Residual( unsigned int gto, unsigned int gfrom, std::string area,
+              Residual( unsigned int gto, unsigned int gfrom, const std::string& area,
                         const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR )
                 : WeakForm::VectorFormVol(gto, area), 
                   GenericForm(matprop, geom_type),
@@ -1287,14 +1287,18 @@ namespace WeakFormsNeutronics
                 : WeakForm::MatrixFormVol(gto, gfrom), 
                   GenericForm(matprop, geom_type),
                   gto(gto), gfrom(gfrom)
-              {};
+              {
+                this->scaling_factor = (gto != gfrom) ? -1 : 0;
+              };
               
-              Jacobian( unsigned int gto, unsigned int gfrom, std::string area,
+              Jacobian( unsigned int gto, unsigned int gfrom, const std::string& area,
                         const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR )
                 : WeakForm::MatrixFormVol(gto, gfrom, area), 
                   GenericForm(matprop, geom_type),
                   gto(gto), gfrom(gfrom)
-              {};
+              {
+                this->scaling_factor = (gto != gfrom) ? -1 : 0;
+              };
               
               template<typename Real, typename Scalar>
               Scalar matrix_form( int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
@@ -1302,7 +1306,7 @@ namespace WeakFormsNeutronics
               
               virtual scalar value( int n, double *wt, Func<scalar> *u_ext[], Func<double> *u,
                                     Func<double> *v, Geom<double> *e, ExtData<scalar> *ext  ) const { 
-                return  -1.0 * matrix_form<double, scalar> (n, wt, u_ext, u, v, e, ext);
+                return  matrix_form<double, scalar> (n, wt, u_ext, u, v, e, ext);
               }
               
               virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
@@ -1329,15 +1333,19 @@ namespace WeakFormsNeutronics
                 : WeakForm::VectorFormVol(gto), 
                   GenericForm(matprop, geom_type),
                   gto(gto), gfrom(gfrom)
-              {};
+              {
+                this->scaling_factor = (gto != gfrom) ? -1 : 0;
+              };
               
-              Residual( unsigned int gto, unsigned int gfrom, std::string area,
+              Residual( unsigned int gto, unsigned int gfrom, const std::string& area,
                         const MaterialPropertyMaps& matprop,
                         GeomType geom_type = HERMES_PLANAR )
                 : WeakForm::VectorFormVol(gto, area), 
                   GenericForm(matprop, geom_type),
                   gto(gto), gfrom(gfrom)
-              {};
+              {
+                this->scaling_factor = (gto != gfrom) ? -1 : 0;
+              };
               
               template<typename Real, typename Scalar>
               Scalar vector_form(int n, double *wt, Func<Scalar> *u_ext[],
@@ -1345,7 +1353,7 @@ namespace WeakFormsNeutronics
               
               virtual scalar value(int n, double *wt, Func<scalar> *u_ext[], Func<double> *v,
                                     Geom<double> *e, ExtData<scalar> *ext) const {
-                return -1.0 * vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
+                return vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
               }
 
               virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
@@ -1377,7 +1385,7 @@ namespace WeakFormsNeutronics
                   g(g)
               {};
               
-              LinearForm( unsigned int g, std::string area,
+              LinearForm( unsigned int g, const std::string& area,
                           const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
                 : WeakForm::VectorFormVol(g, area), 
                   GenericForm(matprop, geom_type),
@@ -1446,7 +1454,7 @@ namespace WeakFormsNeutronics
                   mrow(m), mcol(n), g(g)
               {};
               
-              Jacobian(unsigned int m, unsigned int n,  unsigned int g, std::string area, 
+              Jacobian(unsigned int m, unsigned int n,  unsigned int g, const std::string& area, 
                        const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
                 : GenericForm(matprop, geom_type),
                   WeakForm::MatrixFormSurf(mg.pos(m,g),mg.pos(n,g),area),
@@ -1488,7 +1496,7 @@ namespace WeakFormsNeutronics
                   mrow(m), N_odd((N+1)/2), g(g)
               {};
               
-              Residual(unsigned int m, unsigned int N, unsigned int g, std::string area, 
+              Residual(unsigned int m, unsigned int N, unsigned int g, const std::string& area, 
                        const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
                 : GenericForm(matprop, geom_type),
                   WeakForm::VectorFormSurf(mg.pos(m,g),area), 
@@ -1533,7 +1541,7 @@ namespace WeakFormsNeutronics
                   mrow(m), g(g)
               {};
                   
-              Jacobian(unsigned int m, unsigned int g, std::string area,
+              Jacobian(unsigned int m, unsigned int g, const std::string& area,
                        const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
                 : GenericForm(matprop, geom_type),
                   WeakForm::MatrixFormVol(mg.pos(m,g), mg.pos(m,g), area, HERMES_SYM),
@@ -1576,7 +1584,7 @@ namespace WeakFormsNeutronics
                   mrow(m), g(g)
               {};
                   
-              Residual(unsigned int m, unsigned int g, std::string area,
+              Residual(unsigned int m, unsigned int g, const std::string& area,
                         const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
                 : GenericForm(matprop, geom_type), 
                   WeakForm::VectorFormVol(mg.pos(m,g), area),
@@ -1624,7 +1632,7 @@ namespace WeakFormsNeutronics
               {};
               
               Jacobian( unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
-                        std::string area, const MaterialPropertyMaps& matprop,
+                        const std::string& area, const MaterialPropertyMaps& matprop,
                         GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
                 : GenericForm(matprop, geom_type),
                   WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(n,gfrom), area, sym), 
@@ -1729,7 +1737,7 @@ namespace WeakFormsNeutronics
               {};
               
               Residual( unsigned int m, unsigned int N_odd, unsigned int gto,
-                        std::string area, const MaterialPropertyMaps& matprop, 
+                        const std::string& area, const MaterialPropertyMaps& matprop, 
                         GeomType geom_type = HERMES_PLANAR )
                 : GenericForm(matprop, geom_type),
                   WeakForm::VectorFormVol(mg.pos(m,gto), area), 
@@ -1778,7 +1786,7 @@ namespace WeakFormsNeutronics
               {};
               
               Jacobian( unsigned int m, unsigned int gto, unsigned int gfrom,
-                        std::string area, const MaterialPropertyMaps& matprop,
+                        const std::string& area, const MaterialPropertyMaps& matprop,
                         GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
                 : GenericForm(matprop, geom_type),
                   WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(m,gfrom), area, sym), 
@@ -1822,7 +1830,7 @@ namespace WeakFormsNeutronics
               {};
               
               Residual( unsigned int m, unsigned int gto,
-                        std::string area, const MaterialPropertyMaps& matprop,
+                        const std::string& area, const MaterialPropertyMaps& matprop,
                         GeomType geom_type = HERMES_PLANAR )
                 : GenericForm(matprop, geom_type),
                   WeakForm::VectorFormVol(mg.pos(m,gto), area), 
@@ -1870,7 +1878,7 @@ namespace WeakFormsNeutronics
               {};
               
               Jacobian( unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
-                        std::string area, const MaterialPropertyMaps& matprop,
+                        const std::string& area, const MaterialPropertyMaps& matprop,
                         GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
                 : GenericForm(matprop, geom_type),
                   WeakForm::MatrixFormVol(mg.pos(m,gto), mg.pos(n,gfrom), area, sym), 
@@ -1914,7 +1922,7 @@ namespace WeakFormsNeutronics
               {};
               
               Residual( unsigned int m, unsigned int N_odd, unsigned int gto,
-                        std::string area, const MaterialPropertyMaps& matprop,
+                        const std::string& area, const MaterialPropertyMaps& matprop,
                         GeomType geom_type = HERMES_PLANAR )
                 : GenericForm(matprop, geom_type),
                   WeakForm::VectorFormVol(mg.pos(m,gto), area), 
@@ -1961,7 +1969,7 @@ namespace WeakFormsNeutronics
                   mrow(m), g(g)
               {};
               
-              LinearForm( unsigned int m, unsigned int g, std::string area,
+              LinearForm( unsigned int m, unsigned int g, const std::string& area,
                           const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
                 : GenericForm(matprop, geom_type),
                   WeakForm::VectorFormVol(mg.pos(m,g), area), 
@@ -2014,22 +2022,22 @@ namespace WeakFormsNeutronics
             
             DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, 
                                        HermesFunction *minus_f_src,
-                                       std::string src_area = HERMES_ANY,
+                                       const std::string& src_area = HERMES_ANY,
                                        GeomType geom_type = HERMES_PLANAR);
             
             DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, 
                                        HermesFunction *minus_f_src,
-                                       Hermes::vector<std::string> src_areas,
+                                       const Hermes::vector<std::string>& src_areas,
                                        GeomType geom_type = HERMES_PLANAR);
             
             DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, 
                                        const std::vector<HermesFunction*>& minus_f_src,
-                                       std::string src_area = HERMES_ANY,
+                                       const std::string& src_area = HERMES_ANY,
                                        GeomType geom_type = HERMES_PLANAR);
             
             DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, 
                                        const std::vector<HermesFunction*>& minus_f_src,
-                                       Hermes::vector<std::string> src_areas,
+                                       const Hermes::vector<std::string>& src_areas,
                                        GeomType geom_type = HERMES_PLANAR);
         };
                 
@@ -2041,17 +2049,17 @@ namespace WeakFormsNeutronics
             std::vector<FissionYield::OuterIterationForm*> keff_iteration_forms;
             
             void init(const MaterialPropertyMaps& matprop,
-                      Hermes::vector<MeshFunction*>& iterates, double initial_keff_guess, 
+                      const Hermes::vector<MeshFunction*>& iterates, double initial_keff_guess, 
                       GeomType geom_type);
             
           public:
             DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
-                                            Hermes::vector<MeshFunction*>& iterates,
+                                            const Hermes::vector<MeshFunction*>& iterates,
                                             double initial_keff_guess,
                                             GeomType geom_type = HERMES_PLANAR );
                                             
             DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
-                                            Hermes::vector<Solution*>& iterates,
+                                            const Hermes::vector<Solution*>& iterates,
                                             double initial_keff_guess,
                                             GeomType geom_type = HERMES_PLANAR );                                            
             
