@@ -1696,30 +1696,54 @@ namespace WeakFormsNeutronics
         DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
                                                                         const Hermes::vector<MeshFunction*>& iterates,
                                                                         double initial_keff_guess, 
-                                                                        GeomType geom_type ) : WeakForm(matprop.get_G())
+                                                                        GeomType geom_type ) 
+          : WeakForm(matprop.get_G()), Common::WeakFormSourceIteration(initial_keff_guess)
         {      
-          init(matprop, iterates, initial_keff_guess, geom_type);
+          init(matprop, iterates, geom_type);
         }
         
         DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
                                                                         const Hermes::vector<Solution*>& iterates,
                                                                         double initial_keff_guess, 
-                                                                        GeomType geom_type ) : WeakForm(matprop.get_G())
+                                                                        GeomType geom_type ) 
+          : WeakForm(matprop.get_G()), Common::WeakFormSourceIteration(initial_keff_guess)
         {      
           Hermes::vector<MeshFunction *> iterates_mf;
           for (unsigned int i = 0; i < iterates.size(); i++)
             iterates_mf.push_back(static_cast<MeshFunction*>(iterates[i]));
           
-          init(matprop, iterates_mf, initial_keff_guess, geom_type);
+          init(matprop, iterates_mf, geom_type);
+        }
+        
+        DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
+                                                                        const Hermes::vector<MeshFunction*>& iterates, 
+                                                                        const Hermes::vector<std::string>& src_areas,
+                                                                        double initial_keff_guess, 
+                                                                        GeomType geom_type )
+          : WeakForm(matprop.get_G()), Common::WeakFormSourceIteration(initial_keff_guess)
+        {
+          init(matprop, iterates, geom_type, src_areas);
+        }
+        
+        DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
+                                                                        const Hermes::vector<Solution*>& iterates, 
+                                                                        const Hermes::vector<std::string>& src_areas,
+                                                                        double initial_keff_guess, 
+                                                                        GeomType geom_type ) 
+          : WeakForm(matprop.get_G()), Common::WeakFormSourceIteration(initial_keff_guess)
+        {
+          Hermes::vector<MeshFunction *> iterates_mf;
+          for (unsigned int i = 0; i < iterates.size(); i++)
+            iterates_mf.push_back(static_cast<MeshFunction*>(iterates[i]));
+          
+          init(matprop, iterates_mf, geom_type, src_areas);
         }
         
         void DefaultWeakFormSourceIteration::init(const MaterialPropertyMaps& matprop,
-                                                  const Hermes::vector<MeshFunction*>& iterates, double initial_keff_guess, 
-                                                  GeomType geom_type)
+                                                  const Hermes::vector<MeshFunction*>& iterates, 
+                                                  GeomType geom_type, const Hermes::vector<std::string>& areas)
         {
           bool2 Ss_nnz = matprop.get_scattering_nonzero_structure();
-          
-          keff = initial_keff_guess;
           
           for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
           {
@@ -1735,8 +1759,13 @@ namespace WeakFormsNeutronics
               }
             }
             
-            FissionYield::OuterIterationForm* keff_iteration_form = 
-              new FissionYield::OuterIterationForm( gto, matprop, iterates, initial_keff_guess, geom_type );
+            FissionYield::OuterIterationForm* keff_iteration_form;
+            
+            if (areas.size() > 0) 
+              keff_iteration_form = new FissionYield::OuterIterationForm( gto, areas, matprop, iterates, keff, geom_type );
+            else
+              keff_iteration_form = new FissionYield::OuterIterationForm( gto, matprop, iterates, keff, geom_type );
+            
             keff_iteration_forms.push_back(keff_iteration_form);
             add_vector_form(keff_iteration_form);
           }
@@ -1913,19 +1942,23 @@ namespace WeakFormsNeutronics
                                                                         const Hermes::vector<std::string>& src_areas,
                                                                         double initial_keff_guess, 
                                                                         GeomType geom_type )
-          : WeakFormHomogeneous(N, matprop, geom_type, false)
+          : WeakFormHomogeneous(N, matprop, geom_type, false), Common::WeakFormSourceIteration(initial_keff_guess)
         {      
           SupportClasses::SPN::MomentFilter::get_scalar_fluxes_with_derivatives(iterates, &scalar_flux_iterates, G);
-          
-          keff = initial_keff_guess;
           
           for (unsigned int m = 0; m < N_odd; m++)
           {
             for (unsigned int gto = 0; gto < G; gto++)
             {            
-              FissionYield::OuterIterationForm* keff_iteration_form = 
-                new FissionYield::OuterIterationForm( m, gto, src_areas, matprop, 
-                                                      scalar_flux_iterates, initial_keff_guess, geom_type );
+              FissionYield::OuterIterationForm* keff_iteration_form;
+              
+              if (src_areas.size() > 0) 
+                keff_iteration_form = new FissionYield::OuterIterationForm( m, gto, src_areas, matprop, scalar_flux_iterates, 
+                                                                            initial_keff_guess, geom_type );
+              else
+                keff_iteration_form = new FissionYield::OuterIterationForm( m, gto, matprop, scalar_flux_iterates, 
+                                                                            initial_keff_guess, geom_type );
+              
               keff_iteration_forms.push_back(keff_iteration_form);
               add_vector_form(keff_iteration_form);
             }
@@ -1961,11 +1994,10 @@ namespace WeakFormsNeutronics
         {
           int marker = this->get_active_element()->marker;
           std::string material = matprop.get_material(marker, mesh);
-          std::string region = mesh->get_element_markers_conversion().get_user_marker(marker);
           
           memset(result, 0, n*sizeof(scalar));
           
-          if (source_regions.empty() || source_regions.find(region) != source_regions.end())
+          if (markers.empty() || markers.find(marker) != markers.end())
           {           
             rank1 Sigma_f = matprop.get_Sigma_f(material);
             rank1 nu = matprop.get_nu(material);
@@ -1974,7 +2006,89 @@ namespace WeakFormsNeutronics
               for (unsigned int j = 0; j < values.size(); j++)
                 result[i] += nu[j] * Sigma_f[j] * values.at(j)[i];
           }
-        } 
+        }
+        
+        void SourceFilter::pre_init()
+        {
+          num = matprop.get_G();
+          if(num > 10)
+            error("Unable to create an instance of SourceFilter: Hermes is currently able to handle"
+                  "only 10 functions in filters.");
+          
+          for (int i = 0; i < 10; i++)
+          {
+            item[i] = H2D_FN_VAL & H2D_FN_COMPONENT_0;
+            tables[i] = NULL;
+            sln[i] = NULL;
+          }
+          
+          num_components = 1;
+          have_solutions = false;
+        }
+
+        void SourceFilter::assign_solutions(const Hermes::vector< Solution* >& solutions)
+        {
+          if (solutions.size() != (unsigned) num)
+            error("SourceFilter: Number of solutions does not match the size of data.");
+         
+          free();
+          for (int i = 0; i < num; i++)
+            sln[i] = solutions[i];
+          init();
+          post_init();
+        }
+
+        void SourceFilter::assign_solutions(const Hermes::vector< MeshFunction* >& solutions)
+        {
+          if (solutions.size() != (unsigned) num)
+            error("SourceFilter: Number of solutions does not match the size of data.");
+          
+          free();
+          for (int i = 0; i < num; i++)
+            sln[i] = solutions[i];
+          init();
+          post_init();
+        }
+        
+        void SourceFilter::post_init()
+        {
+          set_quad_2d(&g_quad_2d_std);
+          have_solutions = true;
+          
+          std::set<std::string>::const_iterator it = source_regions.begin();
+          for ( ; it != source_regions.end(); ++it)
+            markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it));
+        }
+        
+        double SourceFilter::integrate()
+        {
+          if (!have_solutions)
+            return 0.0;
+                              
+          Quad2D* quad = get_quad_2d(); // Needed for h1_integrate_expression.
+          double integral = 0.0;
+          Element* e;
+                    
+          for_all_active_elements(e, mesh)
+          {
+            if (markers.empty() || markers.find(e->marker) != markers.end())
+            {
+              update_limit_table(e->get_mode());
+              this->set_active_element(e);
+              RefMap* ru = this->get_refmap();
+              int o = this->get_fn_order() + ru->get_inv_ref_order();
+              limit_order(o);
+              this->set_quad_order(o, H2D_FN_VAL);
+              scalar *uval = this->get_fn_values();
+              double result = 0.0;
+              h1_integrate_expression(uval[i]);
+              integral += result;
+            }
+          }
+          
+          return integral;
+        }
+
       }
       
       namespace SPN
@@ -2158,16 +2272,15 @@ namespace WeakFormsNeutronics
             delete *it;
           scalar_fluxes->clear();
         }
-
+        
         void SourceFilter::filter_fn(int n, Hermes::vector< scalar* > values, scalar* result)
         {
           int marker = this->get_active_element()->marker;
           std::string material = matprop.get_material(marker, mesh);
-          std::string region = mesh->get_element_markers_conversion().get_user_marker(marker);
           
           memset(result, 0, n*sizeof(scalar));
           
-          if (source_regions.empty() || source_regions.find(region) != source_regions.end())
+          if (markers.empty() || markers.find(marker) != markers.end())
           {           
             rank1 Sigma_f = matprop.get_Sigma_f(material);
             rank1 nu = matprop.get_nu(material);
@@ -2187,6 +2300,99 @@ namespace WeakFormsNeutronics
             }
           }
         }
+      }
+      
+      SourceIteration::SourceIteration(NeutronicsMethod method, const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
+                                      const std::vector< string >& fission_regions, 
+                                      const Hermes2D& hermes2d, DiscreteProblem& dp)
+        : hermes2d(hermes2d), dp(dp), fission_regions(fission_regions)
+      {
+        if (method == NEUTRONICS_DIFFUSION)
+        {
+          new_source = new Common::SourceFilter(matprop, fission_regions);
+          old_source = new Common::SourceFilter(matprop, fission_regions);
+          wf = static_cast<CompleteWeakForms::Diffusion::DefaultWeakFormSourceIteration*>(dp.get_weak_formulation());
+        }
+        else if (method == NEUTRONICS_SPN)
+        {
+          new_source = new SPN::SourceFilter(matprop, fission_regions);
+          old_source = new SPN::SourceFilter(matprop, fission_regions);
+          wf = static_cast<CompleteWeakForms::SPN::DefaultWeakFormSourceIteration*>(dp.get_weak_formulation());
+        }
+      }
+      
+      int SourceIteration::eigenvalue_iteration(const Hermes::vector<Solution *>& solutions,
+                                                double tol, MatrixSolverType matrix_solver)
+      {
+        // Sanity checks.
+        if (dp.get_spaces().size() != solutions.size()) 
+          error("Spaces and solutions supplied to power_iteration do not match.");
+                          
+        // The following variables will store pointers to solutions obtained at each iteration and will be needed for 
+        // updating the eigenvalue. 
+        Hermes::vector<Solution*> new_solutions;
+        for (unsigned int i = 0; i < solutions.size(); i++) 
+          new_solutions.push_back(new Solution(solutions[i]->get_mesh()));
+        
+        // Assign the solution vectors to fission source calculators.
+        new_source->assign_solutions(new_solutions);
+        old_source->assign_solutions(solutions);
+        
+        // Create a matrix solver according to the user's preference. Note that the matrix doesn't change within the 
+        // power iteration loop, so the first computed LU factorization may be completely reused in following iterations.
+        SparseMatrix* mat = create_matrix(matrix_solver);
+        Vector* rhs = create_vector(matrix_solver);
+        Solver* solver = create_linear_solver(matrix_solver, mat, rhs);
+        solver->set_factorization_scheme(HERMES_REUSE_FACTORIZATION_COMPLETELY);
+        
+        // Initial coefficient vector for the Newton's method.
+        int ndof = Space::get_num_dofs(dp.get_spaces());
+        scalar* coeff_vec = new scalar[ndof];
+        
+        // Force the Jacobian assembling in the first iteration.
+        bool Jacobian_changed = true;
+        
+        bool eigen_done = false; int it = 0;
+        do 
+        {
+          memset(coeff_vec, 0.0, ndof*sizeof(scalar));
+
+          if (!hermes2d.solve_newton(coeff_vec, &dp, solver, mat, rhs, Jacobian_changed, 1e-8, 3, true)) 
+            error("Newton's iteration failed.");
+              
+          // The matrix doesn't change within the power iteration loop, so it does not need to be reassembled again.
+          Jacobian_changed = false;
+          
+          // Convert coefficients vector into a set of Solution pointers.
+          Solution::vector_to_solutions(solver->get_solution(), dp.get_spaces(), new_solutions);
+
+          // Compute the eigenvalue for current iteration.
+          double k_new = wf->get_keff() * new_source->integrate() / old_source->integrate();
+          
+          info("      dominant eigenvalue (est): %g, rel. difference: %g", k_new, fabs((wf->get_keff() - k_new) / k_new));
+
+          // Stopping criterion.
+          if (fabs((wf->get_keff() - k_new) / k_new) < tol) eigen_done = true;
+
+          // Update the final eigenvalue.
+          wf->update_keff(k_new);
+
+          it++;
+              
+          // Store the new eigenvector approximation in the result.
+          for (unsigned int i = 0; i < solutions.size(); i++)  
+            solutions[i]->copy(new_solutions[i]); 
+        }
+        while (!eigen_done);
+        
+        // Free memory.
+        delete mat;
+        delete rhs;
+        delete solver;
+        for (unsigned int i = 0; i < solutions.size(); i++) 
+          delete new_solutions[i];
+        
+        return it;
       }
     }
   }

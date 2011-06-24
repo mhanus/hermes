@@ -3,16 +3,20 @@
 #include "problem_data.h"
 
 using namespace RefinementSelectors;
+using namespace WeakFormsNeutronics::Multigroup::MaterialProperties::SPN;
+
+const unsigned int N_GROUPS = 1;  // Monoenergetic (single group) problem.
+const unsigned int SPN_ORDER = 3; // SP3 approximation
 
 const unsigned int N_MOMENTS = SPN_ORDER+1;
 const unsigned int N_ODD_MOMENTS = (N_MOMENTS+1)/2;
 const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
 
 const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
-  2//, 2, 2                              
+  2, 2//, 2                              
 };
 const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
-  2//, 2, 2                             
+  2, 2//, 2                             
 };      
 const double THRESHOLD = 0.3;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
@@ -46,7 +50,7 @@ const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the nu
 MatrixSolverType matrix_solver = SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
                                                   
-const bool display_meshes = true;
+const bool display_meshes = false;
 
 // Power iteration control.
 double k_eff = 1.0;         // Initial eigenvalue approximation.
@@ -119,22 +123,15 @@ int main(int argc, char* argv[])
   // Initialize the weak formulation.
   CustomWeakForm wf(matprop, SPN_ORDER, power_iterates, fission_regions, k_eff, bdy_vacuum);
   
-  // Initialize the discrete algebraic representation of the problem and its solver.
-  //
-  // Create the matrix and right-hand side vector for the solver.
-  SparseMatrix* mat = create_matrix(matrix_solver);
-  Vector* rhs = create_vector(matrix_solver);
-  // Instantiate the solver itself.
-  Solver* solver = create_linear_solver(matrix_solver, mat, rhs);
+  // Initialize the discrete algebraic representation of the problem.
+  DiscreteProblem dp(&wf, spaces);
   
-  views.show_solutions(power_iterates);
-  views.show_orders(spaces);
-  
-  View::wait(HERMES_WAIT_KEYPRESS);
-  
+  // Initialize the eigenvalue iterator.
+  SupportClasses::SourceIteration si(NEUTRONICS_SPN, matprop, fission_regions, hermes2d, dp);
+      
   // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
   report_num_dof("Coarse mesh power iteration, ", spaces);
-  power_iteration(hermes2d, matprop, spaces, &wf, power_iterates, fission_regions, TOL_PIT_CM, mat, rhs, solver);
+  si.eigenvalue_iteration(power_iterates, TOL_PIT_CM, matrix_solver);
   
   if (STRATEGY >= 0)
   {
