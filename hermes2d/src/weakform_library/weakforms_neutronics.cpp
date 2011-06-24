@@ -474,8 +474,16 @@ namespace WeakFormsNeutronics
           {
             MaterialPropertyMap1::const_iterator Sr_elem = Sigma_r.begin();
             for ( ; Sr_elem != Sigma_r.end(); ++Sr_elem)
+            {
+              D[Sr_elem->first].resize(G);
               for (unsigned int g = 0; g < G; g++)
-                D[Sr_elem->first][g] = 1./(3.*Sr_elem->second[g]);
+              {
+                if (Sigma_t_given)
+                  D[Sr_elem->first][g] = 1./(3.*Sigma_t[Sr_elem->first][g]);
+                else
+                  D[Sr_elem->first][g] = 1./(3.*Sr_elem->second[g]);
+              }
+            }
               
             D_given = true;
           }
@@ -675,7 +683,7 @@ namespace WeakFormsNeutronics
           
           MaterialPropertyMaps::validate();
          
-          if (!Sigma_t.empty())
+          if (Sigma_t.empty())
             error(E_INSUFFICIENT_DATA);
           
           if (!Sigma_s_1_out_given)
