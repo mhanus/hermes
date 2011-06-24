@@ -289,7 +289,7 @@ namespace WeakFormsNeutronics
             return region; // Corresponds to the case when region <==> material, 
         }
         
-        const rank1& MaterialPropertyMaps::get_Sigma_f(std::string material) const
+        const rank1& MaterialPropertyMaps::get_Sigma_f(const std::string& material) const
         {
           // Note that prop[e->elem_marker] cannot be used since 'prop' is a constant std::map for
           // which operator[] is undefined.
@@ -302,7 +302,7 @@ namespace WeakFormsNeutronics
             return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-        const rank1& MaterialPropertyMaps::get_nu(std::string material) const
+        const rank1& MaterialPropertyMaps::get_nu(const std::string& material) const
         {
           MaterialPropertyMap1::const_iterator data = this->nu.find(material);
           if (data != this->nu.end())
@@ -313,7 +313,7 @@ namespace WeakFormsNeutronics
             return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-        const rank1& MaterialPropertyMaps::get_chi(std::string material) const
+        const rank1& MaterialPropertyMaps::get_chi(const std::string& material) const
         {
           MaterialPropertyMap1::const_iterator data = this->chi.find(material);
           if (data != this->chi.end())
@@ -490,7 +490,7 @@ namespace WeakFormsNeutronics
           std::for_each(D.begin(), D.end(), ensure_size(G));
         }
         
-        const rank2& MaterialPropertyMaps::get_Sigma_s(std::string material) const
+        const rank2& MaterialPropertyMaps::get_Sigma_s(const std::string& material) const
         {
           // Note that prop[e->elem_marker] cannot be used since 'prop' is a constant std::map for
           // which operator[] is undefined.
@@ -503,7 +503,7 @@ namespace WeakFormsNeutronics
             return *(new rank2()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-        const rank1& MaterialPropertyMaps::get_Sigma_r(std::string material) const
+        const rank1& MaterialPropertyMaps::get_Sigma_r(const std::string& material) const
         {
           MaterialPropertyMap1::const_iterator data = this->Sigma_r.find(material);
           if (data != this->Sigma_r.end())
@@ -514,7 +514,7 @@ namespace WeakFormsNeutronics
             return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-        const rank1& MaterialPropertyMaps::get_D(std::string material) const
+        const rank1& MaterialPropertyMaps::get_D(const std::string& material) const
         {
           MaterialPropertyMap1::const_iterator data = this->D.find(material);
           if (data != this->D.end())
@@ -525,7 +525,7 @@ namespace WeakFormsNeutronics
             return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-        const rank1& MaterialPropertyMaps::get_src(std::string material) const
+        const rank1& MaterialPropertyMaps::get_src(const std::string& material) const
         {
           MaterialPropertyMap1::const_iterator data = this->src.find(material);
           if (data != this->src.end())
@@ -884,7 +884,7 @@ namespace WeakFormsNeutronics
           invert_odd_Sigma_rn();
         }
 
-        const rank3& MaterialPropertyMaps::get_Sigma_rn(std::string material) const
+        const rank3& MaterialPropertyMaps::get_Sigma_rn(const std::string& material) const
         {
           MaterialPropertyMap3::const_iterator data = this->Sigma_rn.find(material);
           if (data != this->Sigma_rn.end())
@@ -896,7 +896,7 @@ namespace WeakFormsNeutronics
           }
         }
         
-        const rank3& MaterialPropertyMaps::get_odd_Sigma_rn_inv(std::string material) const
+        const rank3& MaterialPropertyMaps::get_odd_Sigma_rn_inv(const std::string& material) const
         {
           MaterialPropertyMap3::const_iterator data = this->odd_Sigma_rn_inv.find(material);
           if (data != this->odd_Sigma_rn_inv.end())
@@ -908,7 +908,7 @@ namespace WeakFormsNeutronics
           }
         }
         
-        const rank1& MaterialPropertyMaps::get_src0(std::string material) const
+        const rank1& MaterialPropertyMaps::get_src0(const std::string& material) const
         {
           MaterialPropertyMap1::const_iterator data = this->src0.find(material);
           if (data != this->src0.end())
@@ -920,7 +920,7 @@ namespace WeakFormsNeutronics
           }
         }
         
-        const bool1& MaterialPropertyMaps::is_Sigma_rn_diagonal(std::string material) const
+        const bool1& MaterialPropertyMaps::is_Sigma_rn_diagonal(const std::string& material) const
         {
           std::map<std::string, bool1>::const_iterator data = this->Sigma_rn_is_diagonal.find(material);
           if (data != this->Sigma_rn_is_diagonal.end())
@@ -1641,7 +1641,7 @@ namespace WeakFormsNeutronics
         }
         
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, 
-                                                                HermesFunction *minus_f_src, std::string src_area,
+                                                                HermesFunction *minus_f_src, const std::string& src_area,
                                                                 GeomType geom_type  ) : WeakForm(matprop.get_G())
         {
           lhs_init(matprop.get_G(), matprop, geom_type);
@@ -1651,7 +1651,7 @@ namespace WeakFormsNeutronics
         
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, 
                                                                 HermesFunction *minus_f_src,
-                                                                Hermes::vector<std::string> src_areas,
+                                                                const Hermes::vector<std::string>& src_areas,
                                                                 GeomType geom_type  ) : WeakForm(matprop.get_G())
         {
           lhs_init(matprop.get_G(), matprop, geom_type);
@@ -1661,7 +1661,7 @@ namespace WeakFormsNeutronics
         
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, 
                                                                 const std::vector<HermesFunction*>& minus_f_src,
-                                                                std::string src_area, 
+                                                                const std::string& src_area, 
                                                                 GeomType geom_type ) : WeakForm(matprop.get_G())
         {
           if (minus_f_src.size() != matprop.get_G())
@@ -1674,7 +1674,7 @@ namespace WeakFormsNeutronics
         
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, 
                                                                 const std::vector<HermesFunction*>& minus_f_src,
-                                                                Hermes::vector<std::string> src_areas,
+                                                                const Hermes::vector<std::string>& src_areas,
                                                                 GeomType geom_type ) : WeakForm(matprop.get_G())
         {
           if (minus_f_src.size() != matprop.get_G())
@@ -1686,7 +1686,7 @@ namespace WeakFormsNeutronics
         }
         
         DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
-                                                                        Hermes::vector<MeshFunction*>& iterates,
+                                                                        const Hermes::vector<MeshFunction*>& iterates,
                                                                         double initial_keff_guess, 
                                                                         GeomType geom_type ) : WeakForm(matprop.get_G())
         {      
@@ -1694,7 +1694,7 @@ namespace WeakFormsNeutronics
         }
         
         DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop,
-                                                                        Hermes::vector<Solution*>& iterates,
+                                                                        const Hermes::vector<Solution*>& iterates,
                                                                         double initial_keff_guess, 
                                                                         GeomType geom_type ) : WeakForm(matprop.get_G())
         {      
@@ -1706,7 +1706,7 @@ namespace WeakFormsNeutronics
         }
         
         void DefaultWeakFormSourceIteration::init(const MaterialPropertyMaps& matprop,
-                                                  Hermes::vector<MeshFunction*>& iterates, double initial_keff_guess, 
+                                                  const Hermes::vector<MeshFunction*>& iterates, double initial_keff_guess, 
                                                   GeomType geom_type)
         {
           bool2 Ss_nnz = matprop.get_scattering_nonzero_structure();
