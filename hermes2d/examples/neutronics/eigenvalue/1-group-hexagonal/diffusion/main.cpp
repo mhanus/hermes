@@ -1,6 +1,6 @@
 #define HERMES_REPORT_ALL
 #include "definitions.h"
-#include "problem_data.h"
+#include "../problem_data.h"
 
 using namespace RefinementSelectors;
 using namespace WeakFormsNeutronics::Multigroup::MaterialProperties::Diffusion;
@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
   
   // Load the mesh on which the 1st solution component (1st group, 0th moment) will be approximated.
   H2DReader mloader;
-  mloader.load(mesh_file.c_str(), meshes[0]);
+  mloader.load((std::string("../") + mesh_file).c_str(), meshes[0]);
   
   // Convert the mesh so that it has one type of elements (optional). 
   //meshes[0]->convert_quads_to_triangles();
@@ -139,18 +139,18 @@ int main(int argc, char* argv[])
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
     spaces.push_back(new H1Space(meshes[i], P_INIT[i]));
   
+  // Initialize the eigenvalue iterator.
+  SupportClasses::SourceIteration si(NEUTRONICS_DIFFUSION, *matprop, hermes2d, fission_regions);
+  
   // Initialize the weak formulation.
   CustomWeakForm wf(*matprop, power_iterates, fission_regions, k_eff, bdy_vacuum);
   
   // Initialize the discrete algebraic representation of the problem.
   DiscreteProblem dp(&wf, spaces);
   
-  // Initialize the eigenvalue iterator.
-  SupportClasses::SourceIteration si(NEUTRONICS_DIFFUSION, *matprop, fission_regions, hermes2d, dp);
-  
   // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
   report_num_dof("Coarse mesh power iteration, ", spaces);
-  si.eigenvalue_iteration(power_iterates, TOL_PIT_CM, matrix_solver);
+  si.eigenvalue_iteration(power_iterates, dp, TOL_PIT_CM, matrix_solver);
   
   if (STRATEGY >= 0)
   {
