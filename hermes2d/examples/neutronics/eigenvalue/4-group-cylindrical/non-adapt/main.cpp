@@ -1,6 +1,8 @@
 #define HERMES_REPORT_ALL
-#include "definitions.h"
-#include "problem_data.h"
+#include "../weak_formulation.h"
+#include "../problem_data.h"
+
+using namespace WeakFormsNeutronics::Multigroup;
 
 // This example solves a 4-group neutron diffusion equation in the reactor core.
 // The eigenproblem is solved using power interations.
@@ -67,7 +69,7 @@ int main(int argc, char* argv[])
   // Load the mesh.
   Mesh mesh;
   H2DReader mloader;
-  mloader.load(mesh_file.c_str(), &mesh);
+  mloader.load((std::string("../") + mesh_file).c_str(), &mesh);
 
   // Perform initial mesh refinements.
   for (int i = 0; i < INIT_REF_NUM; i++) mesh.refine_all_elements();
@@ -83,7 +85,7 @@ int main(int argc, char* argv[])
   iter2.set_const(&mesh, 1.00);
   iter3.set_const(&mesh, 1.00);
   iter4.set_const(&mesh, 1.00);
-  Hermes::vector<MeshFunction*> iterates(&iter1, &iter2, &iter3, &iter4);
+  Hermes::vector<Solution*> iterates(&iter1, &iter2, &iter3, &iter4);
 
   // Create H1 spaces with default shapesets.
   H1Space space1(&mesh, P_INIT_1);
@@ -173,13 +175,11 @@ int main(int argc, char* argv[])
     view3.show(&sln3);    
     view4.show(&sln4);
     
-    // Compute eigenvalue.
+    // Compute eigenvalue.    
+    SupportClasses::Common::SourceFilter source(solutions, matprop, fission_regions);
+    SupportClasses::Common::SourceFilter source_prev(iterates, matprop, fission_regions);
     
-    using WeakFormsNeutronics::Multigroup::SupportClasses::Common::SourceFilter;
-    SourceFilter source(solutions, matprop, core);
-    SourceFilter source_prev(iterates, matprop, core);
-    
-    double k_new = k_eff * (integrate(&source, core) / integrate(&source_prev, core));
+    double k_new = k_eff * (source.integrate(HERMES_AXISYM_Y) / source_prev.integrate(HERMES_AXISYM_Y));
     info("Largest eigenvalue: %.8g, rel. difference from previous it.: %g", k_new, fabs((k_eff - k_new) / k_new));
     
     // Stopping criterion.
