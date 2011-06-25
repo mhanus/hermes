@@ -40,11 +40,11 @@ const int MESH_REGULARITY = -1;          // Maximum allowed level of hanging nod
                                          // their notoriously bad performance.
 const double CONV_EXP = 1.0;             // Default value is 1.0. This parameter influences the selection of
                                          // candidates in hp-adaptivity. See get_optimal_refinement() for details.
-const double ERR_STOP = 0.5;             // Stopping criterion for adaptivity (rel. error tolerance between the
+const double ERR_STOP = 1e-1;             // Stopping criterion for adaptivity (rel. error tolerance between the
                                          // fine mesh and coarse mesh solution in percent).
 const int NDOF_STOP = 60000;             // Adaptivity process stops when the number of degrees of freedom grows over
                                          // this limit. This is mainly to prevent h-adaptivity to go on forever.
-const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the number of adaptation steps grows over
+const int MAX_ADAPT_NUM = 10;            // Adaptivity process stops when the number of adaptation steps grows over
                                          // this limit.
 MatrixSolverType matrix_solver = SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
@@ -369,29 +369,27 @@ int main(int argc, char* argv[])
       graph_dof_evol.add_values(g, as, Space::get_num_dofs(spaces[g]));
 
     cpu_time.tick(HERMES_SKIP);
-
+        
     // If err_est too large, adapt the mesh (L2 norm chosen since (weighted integrals of) solution values
-    // are more important for further analyses than the derivatives. 
-    if (l2_err_est < ERR_STOP) 
+    // are more important for further analyses than the derivatives.
+    if (as == MAX_ADAPT_NUM || l2_err_est < ERR_STOP) 
       done = true;
-    else 
+    else
     {
       info("Adapting the coarse mesh.");
       done = adapt_h1.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);
       if (Space::get_num_dofs(spaces) >= NDOF_STOP) 
         done = true;
     }
-
+    
     // Free reference meshes and spaces.
     for (unsigned int g = 0; g < matprop.get_G(); g++) 
     {
       delete ref_spaces[g];
       delete ref_meshes[g];
     }
-
+    
     as++;
-        
-    if (as >= MAX_ADAPT_NUM) done = true;
   }
   while(done == false);
   verbose("Total running time: %g s", cpu_time.accumulated());
@@ -418,20 +416,16 @@ int main(int argc, char* argv[])
     delete coarse_solutions[g], delete fine_solutions[g]; delete power_iterates[g];
   }
   
-  // Test the results.
-  
-  TestSubject<int> num_iter(2);
-  num_iter.test_overshoot(as, 10);
-  
+  // Test the results. 
   TestSubject<double> eigenvalue(1e-5);
-  eigenvalue.test_equality(wf.get_keff(), 1.140910);
+  eigenvalue.test_equality(wf.get_keff(), 1.14088);
   
   TestSubject<double> error_estimate(1e-5);
-  error_estimate.test_overshoot(l2_err_est, 0.398144);
+  error_estimate.test_overshoot(l2_err_est, 0.396539);
 
   TestSubject<int> ndof(100);
   const int expected_ndofs[N_GROUPS] = {
-    580, 419, 444, 434
+    594, 430, 407, 435
   };
   for (unsigned int g = 0; g < matprop.get_G(); g++) 
   {
@@ -441,14 +435,14 @@ int main(int argc, char* argv[])
 
   TestSubject<Extremum> peak(Extremum(1e-3, 1e-3, 1e-3));
   const Extremum expected_maxima[N_GROUPS] = {
-    Extremum(1.019493, 1.794896, 5.481176),
-    Extremum(2.275702, 1.897030, 5.438284),
-    Extremum(0.338603, 1.897030, 5.438284),
-    Extremum(4.609233, 1.110000, 5.438284)
+    Extremum(1.019116, 1.794896, 5.481176),
+    Extremum(2.274883, 1.897030, 5.438284),
+    Extremum(0.338487, 1.897030, 5.438284),
+    Extremum(4.607789, 1.110000, 5.438284)
   };
   for (unsigned int g = 0; g < matprop.get_G(); g++) peak.test_equality(maxima[g], expected_maxima[g]);
   
-  if (ndof.passed && peak.passed && eigenvalue.passed && num_iter.passed && error_estimate.passed) 
+  if (ndof.passed && peak.passed && eigenvalue.passed && error_estimate.passed) 
   {
     printf("Success!\n");
     return ERR_SUCCESS;
@@ -459,7 +453,6 @@ int main(int argc, char* argv[])
     if (!ndof.passed) printf("NDOF test failed.\n");
     if (!peak.passed) printf("Peak flux test failed.\n");
     if (!eigenvalue.passed) printf("Eigenvalue test failed.\n");
-    if (!num_iter.passed) printf("Number of iterations test failed.\n");
     if (!error_estimate.passed) printf("Error estimate test failed.\n");
     return ERR_FAILURE;
   }

@@ -70,7 +70,7 @@ const int MESH_REGULARITY = -1;          // Maximum allowed level of hanging nod
                                          // their notoriously bad performance.
 const double CONV_EXP = 1.0;             // Default value is 1.0. This parameter influences the selection of
                                          // candidates in hp-adaptivity. See get_optimal_refinement() for details.
-const double ERR_STOP = 0.5;             // Stopping criterion for adaptivity (rel. error tolerance between the
+const double ERR_STOP = 1e-1;            // Stopping criterion for adaptivity (rel. error tolerance between the
                                          // fine mesh and coarse mesh solution in percent).
 const int NDOF_STOP = 60000;             // Adaptivity process stops when the number of degrees of freedom grows over
                                          // this limit. This is mainly to prevent h-adaptivity to go on forever.
@@ -347,7 +347,7 @@ int main(int argc, char* argv[])
 
     // If err_est too large, adapt the mesh (L2 norm chosen since (weighted integrals of) solution values
     // are more important for further analyses than the derivatives. 
-    if (l2_err_est < ERR_STOP) 
+    if (as == MAX_ADAPT_NUM || l2_err_est < ERR_STOP) 
       done = true;
     else 
     {
@@ -365,8 +365,6 @@ int main(int argc, char* argv[])
     }
 
     as++;
-        
-    if (as >= MAX_ADAPT_NUM) done = true;
   }
   while(done == false);
 
