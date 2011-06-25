@@ -85,9 +85,9 @@ void report_errors(const std::string& msg, const Hermes::vector< double > errors
   ss << msg;
   
   for (unsigned int i = 0; i < errors.size()-1; i++)
-    ss << errors[i] << "%%, ";
+    ss << errors[i]*100 << "%%, ";
   
-  ss << errors.back() << "%%";
+  ss << errors.back()*100 << "%%";
   
   info(ss.str().c_str());
 }
