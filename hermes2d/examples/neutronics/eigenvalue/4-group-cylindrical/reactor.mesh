@@ -48,12 +48,7 @@ boundaries = [
   [ 13, 12, "vacuum boundary" ],
   [ 12,  8, "symmetry plane"  ],
   [  8,  4, "symmetry plane"  ],
-  [  4,  0, "symmetry plane"  ],
-
-  [ 5, 6, -1 ],
-  [ 6, 10, -1 ],
-  [ 10, 9, -1 ],
-  [ 9, 5, -1 ]
+  [  4,  0, "symmetry plane"  ]
 ]
 
 refinements = [
