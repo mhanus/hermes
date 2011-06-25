@@ -2060,7 +2060,7 @@ namespace WeakFormsNeutronics
             markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it));
         }
         
-        double SourceFilter::integrate()
+        double SourceFilter::integrate(GeomType geom_type)
         {
           if (!have_solutions)
             return 0.0;
@@ -2081,10 +2081,28 @@ namespace WeakFormsNeutronics
               this->set_quad_order(o, H2D_FN_VAL);
               scalar *uval = this->get_fn_values();
               double result = 0.0;
-              h1_integrate_expression(uval[i]);
+              
+              if (geom_type == HERMES_PLANAR)
+              {
+                h1_integrate_expression(uval[i]);
+              }
+              else if (geom_type == HERMES_AXISYM_X)
+              {
+                double* y = ru->get_phys_y(o);
+                h1_integrate_expression(y[i] * uval[i]);
+              }
+              else
+              {
+                double* x = ru->get_phys_x(o);
+                h1_integrate_expression(x[i] * uval[i]);
+              }
+              
               integral += result;
             }
           }
+          
+          if (geom_type == HERMES_AXISYM_X || geom_type == HERMES_AXISYM_Y)
+            integral *= 2*M_PI;
           
           return integral;
         }
@@ -2302,37 +2320,47 @@ namespace WeakFormsNeutronics
         }
       }
       
-      SourceIteration::SourceIteration(NeutronicsMethod method, const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                      const std::vector< string >& fission_regions, 
-                                      const Hermes2D& hermes2d, DiscreteProblem& dp)
-        : hermes2d(hermes2d), dp(dp), fission_regions(fission_regions)
+      SourceIteration::SourceIteration( NeutronicsMethod method, const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
+                                        const Hermes2D& hermes2d, const std::vector< string >& fission_regions, GeomType geom_type )
+        : hermes2d(hermes2d), method(method), fission_regions(fission_regions), geom_type(geom_type)
       {
         if (method == NEUTRONICS_DIFFUSION)
         {
           new_source = new Common::SourceFilter(matprop, fission_regions);
           old_source = new Common::SourceFilter(matprop, fission_regions);
-          wf = static_cast<CompleteWeakForms::Diffusion::DefaultWeakFormSourceIteration*>(dp.get_weak_formulation());
         }
         else if (method == NEUTRONICS_SPN)
         {
           new_source = new SPN::SourceFilter(matprop, fission_regions);
           old_source = new SPN::SourceFilter(matprop, fission_regions);
-          wf = static_cast<CompleteWeakForms::SPN::DefaultWeakFormSourceIteration*>(dp.get_weak_formulation());
         }
       }
       
-      int SourceIteration::eigenvalue_iteration(const Hermes::vector<Solution *>& solutions,
+      int SourceIteration::eigenvalue_iteration(const Hermes::vector<Solution *>& solutions, DiscreteProblem& dp,
                                                 double tol, MatrixSolverType matrix_solver)
       {
         // Sanity checks.
         if (dp.get_spaces().size() != solutions.size()) 
           error("Spaces and solutions supplied to power_iteration do not match.");
-                          
+        
+        CompleteWeakForms::Common::WeakFormSourceIteration *wf;
+        
+        if (method == NEUTRONICS_DIFFUSION)
+          wf = static_cast<CompleteWeakForms::Diffusion::DefaultWeakFormSourceIteration*>(dp.get_weak_formulation());
+        else if (method == NEUTRONICS_SPN)
+          wf = static_cast<CompleteWeakForms::SPN::DefaultWeakFormSourceIteration*>(dp.get_weak_formulation());
+                                  
         // The following variables will store pointers to solutions obtained at each iteration and will be needed for 
         // updating the eigenvalue. 
+        bool meshes_changed;
         Hermes::vector<Solution*> new_solutions;
         for (unsigned int i = 0; i < solutions.size(); i++) 
-          new_solutions.push_back(new Solution(solutions[i]->get_mesh()));
+        {
+          Mesh *m = dp.get_space(i)->get_mesh();
+          if (solutions[i]->get_mesh()->get_seq() != m->get_seq())
+             meshes_changed = true;
+          new_solutions.push_back(new Solution(m));
+        }
         
         // Assign the solution vectors to fission source calculators.
         new_source->assign_solutions(new_solutions);
@@ -2367,7 +2395,7 @@ namespace WeakFormsNeutronics
           Solution::vector_to_solutions(solver->get_solution(), dp.get_spaces(), new_solutions);
 
           // Compute the eigenvalue for current iteration.
-          double k_new = wf->get_keff() * new_source->integrate() / old_source->integrate();
+          double k_new = wf->get_keff() * new_source->integrate(geom_type) / old_source->integrate(geom_type);
           
           info("      dominant eigenvalue (est): %g, rel. difference: %g", k_new, fabs((wf->get_keff() - k_new) / k_new));
 
@@ -2376,12 +2404,19 @@ namespace WeakFormsNeutronics
 
           // Update the final eigenvalue.
           wf->update_keff(k_new);
-
-          it++;
-              
+    
           // Store the new eigenvector approximation in the result.
           for (unsigned int i = 0; i < solutions.size(); i++)  
-            solutions[i]->copy(new_solutions[i]); 
+            solutions[i]->copy(new_solutions[i]);
+          
+          if (meshes_changed)
+          {
+            old_source->assign_solutions(solutions);
+            // meshes_changed = false; should be here in principle, since meshes do not change
+            // during the iteration, but it fails after some iteration
+          }
+          
+          it++;
         }
         while (!eigen_done);
         
