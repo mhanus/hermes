@@ -790,6 +790,9 @@ namespace WeakFormsNeutronics
         class SourceFilter : public SimpleFilter
         {
           public: 
+            
+            /* Lazy constructors: the vector of solutions to be filtered will be added by 'assign_solutions'. */
+            
             SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop,
                          const std::vector<std::string>& source_regions = std::vector<std::string>())
               : SimpleFilter(), matprop(matprop),
@@ -805,10 +808,45 @@ namespace WeakFormsNeutronics
               pre_init();
             }
             
+            /* Immediate constructors: the vector of solutions to be filtered is given by the first argument.  */
+            
+            SourceFilter(Hermes::vector<MeshFunction*> solutions, 
+                         const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                         const std::vector<std::string>& source_regions = std::vector<std::string>())
+              : SimpleFilter(solutions, Hermes::vector<int>()), matprop(matprop),
+                source_regions(source_regions.begin(), source_regions.end())
+            {
+              post_init();
+            };
+            SourceFilter(Hermes::vector<Solution*> solutions,
+                         const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                         const std::vector<std::string>& source_regions = std::vector<std::string>())
+              : SimpleFilter(solutions, Hermes::vector<int>()), matprop(matprop),
+                source_regions(source_regions.begin(), source_regions.end())
+            {
+              post_init();
+            };
+            SourceFilter(Hermes::vector<MeshFunction*> solutions,
+                         const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                         const std::string& source_region)
+              : SimpleFilter(solutions, Hermes::vector<int>()), matprop(matprop)
+            { 
+              source_regions.insert(source_region); 
+              post_init();
+            }
+            SourceFilter(Hermes::vector<Solution*> solutions,
+                         const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                         const std::string& source_region)
+              : SimpleFilter(solutions, Hermes::vector<int>()), matprop(matprop)
+            { 
+              source_regions.insert(source_region); 
+              post_init();
+            }
+            
             virtual void assign_solutions(const Hermes::vector<Solution*>& solutions);
             virtual void assign_solutions(const Hermes::vector<MeshFunction*>& solutions);
             
-            double integrate();
+            double integrate(GeomType geom_type = HERMES_PLANAR);
                         
           protected:
             const MaterialProperties::Common::MaterialPropertyMaps& matprop;
@@ -817,6 +855,7 @@ namespace WeakFormsNeutronics
             bool have_solutions;
             
             virtual void filter_fn(int n, Hermes::vector<scalar*> values, scalar* result);
+            
             virtual void pre_init();
             virtual void post_init();
         };
@@ -923,12 +962,38 @@ namespace WeakFormsNeutronics
         class SourceFilter : public Common::SourceFilter
         {
           public: 
+            
+            /* Lazy constructors: the vector of solutions to be filtered will be added by 'assign_solutions'. */
+            
             SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop,
                          const std::vector<std::string>& source_regions = std::vector<std::string>())
               : Common::SourceFilter(matprop, source_regions), G(matprop.get_G()), mg(G)
             {};
             SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop, const std::string& source_region)
               : Common::SourceFilter(matprop, source_region), G(matprop.get_G()), mg(G) 
+            {};
+            
+            /* Immediate constructors: the vector of solutions to be filtered is given by the first argument.  */
+            
+            SourceFilter(Hermes::vector<MeshFunction*> solutions, 
+                         const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                         const std::vector<std::string>& source_regions = std::vector<std::string>())
+              : Common::SourceFilter(solutions, matprop, source_regions), G(matprop.get_G()), mg(G)
+            {};
+            SourceFilter(Hermes::vector<Solution*> solutions,
+                         const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                         const std::vector<std::string>& source_regions = std::vector<std::string>())
+              : Common::SourceFilter(solutions, matprop, source_regions), G(matprop.get_G()), mg(G) 
+            {};
+            SourceFilter(Hermes::vector<MeshFunction*> solutions,
+                         const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                         const std::string& source_region)
+              : Common::SourceFilter(solutions, matprop, source_region), G(matprop.get_G()), mg(G) 
+            {};
+            SourceFilter(Hermes::vector<Solution*> solutions,
+                         const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                         const std::string& source_region)
+              : Common::SourceFilter(solutions, matprop, source_region), G(matprop.get_G()), mg(G) 
             {};
                         
             virtual void assign_solutions(const Hermes::vector<Solution*>& solutions) {
@@ -2177,11 +2242,10 @@ namespace WeakFormsNeutronics
       class SourceIteration
       {
         const Hermes2D& hermes2d;
-        DiscreteProblem& dp;
+        NeutronicsMethod method;
         const std::vector<std::string>& fission_regions;
-        
-        CompleteWeakForms::Common::WeakFormSourceIteration *wf;
-        
+        GeomType geom_type;
+                
         Common::SourceFilter *new_source, *old_source;
         
         public:
@@ -2190,8 +2254,8 @@ namespace WeakFormsNeutronics
           /// \param[in]     spaces       Pointers to spaces on which the solutions are defined (one space for each energy group).
           /// \param[in]     wf           Pointer to the weak form of the problem.
           SourceIteration(NeutronicsMethod method, const MaterialProperties::Common::MaterialPropertyMaps& matprop,
-                          const std::vector<std::string>& fission_regions, 
-                          const Hermes2D& hermes2d, DiscreteProblem& dp);
+                          const Hermes2D& hermes2d, const std::vector<std::string>& fission_regions = std::vector<std::string>(),
+                          GeomType geom_type = HERMES_PLANAR);
                           
           ~SourceIteration() { delete new_source; delete old_source; }
                           
@@ -2207,10 +2271,8 @@ namespace WeakFormsNeutronics
           ///
           /// \return  number of iterations needed for convergence within the specified tolerance.
           ///
-          int eigenvalue_iteration(const Hermes::vector<Solution *>& solutions, 
+          int eigenvalue_iteration(const Hermes::vector<Solution *>& solutions, DiscreteProblem& dp,
                                    double tol = 1e-6, MatrixSolverType matrix_solver = SOLVER_UMFPACK);
-                              
-          double integrate_over_fission_regions(MeshFunction* sln);
       };
     }
   }
