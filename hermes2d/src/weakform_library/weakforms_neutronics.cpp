@@ -2355,6 +2355,90 @@ namespace WeakFormsNeutronics
         }
       }
       
+      double PostProcessor::integrate(MeshFunction* solution, const Hermes::vector<std::string>& areas) const
+      {
+        Quad2D* quad = &g_quad_2d_std;
+        solution->set_quad_2d(quad);
+        Mesh* mesh = solution->get_mesh();
+        
+        std::set<int> markers;
+        Hermes::vector<std::string>::const_iterator it = areas.begin();
+        for ( ; it != areas.end(); ++it)
+          markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it));
+        
+        double integral = 0.0;
+        Element* e;
+        for_all_active_elements(e, mesh)
+        {
+          if (markers.empty() || markers.find(e->marker) != markers.end())
+          {
+            update_limit_table(e->get_mode());
+            solution->set_active_element(e);
+            RefMap* ru = solution->get_refmap();
+            int o = solution->get_fn_order() + ru->get_inv_ref_order();
+            limit_order(o);
+            solution->set_quad_order(o, H2D_FN_VAL);
+            scalar *uval = solution->get_fn_values();
+            double result = 0.0;
+            
+            if (geom_type == HERMES_PLANAR)
+            {
+              h1_integrate_expression(uval[i]);
+            }
+            else if (geom_type == HERMES_AXISYM_X)
+            {
+              double* y = ru->get_phys_y(o);
+              h1_integrate_expression(y[i] * uval[i]);
+            }
+            else
+            {
+              double* x = ru->get_phys_x(o);
+              h1_integrate_expression(x[i] * uval[i]);
+            }
+            
+            integral += result;
+          }
+        }
+        
+        if (geom_type == HERMES_AXISYM_X || geom_type == HERMES_AXISYM_Y)
+          integral *= 2.0*M_PI;
+        
+        return integral;
+      }
+
+      void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution* >* solutions, double integrated_fission_source) const
+      {
+        if (integrated_fission_source < 1e-12)
+          error("PostProcessor::normalize_to_unit_fission_source : Invalid fission source.");
+        
+        Hermes::vector< Solution* >::iterator sln = solutions->begin();
+        for ( ; sln != solutions->end(); ++sln)
+          (*sln)->multiply(1./integrated_fission_source);
+      }
+
+      void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution* >* solutions, 
+                                                           const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
+                                                           const Hermes::vector< std::string >& src_areas) const
+      {
+        Common::SourceFilter *sf;
+        
+        if (method == NEUTRONICS_DIFFUSION)
+          sf = new Common::SourceFilter(*solutions, matprop, src_areas);
+        else if (method == NEUTRONICS_SPN)
+          sf = new SPN::SourceFilter(*solutions, matprop, src_areas);
+        
+        normalize_to_unit_fission_source(solutions, sf->integrate(geom_type));
+        
+        delete sf;
+      }
+
+      void PostProcessor::normalize_to_unit_power(Hermes::vector< Solution* >& solutions, 
+                                                  const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
+                                                  double power_per_fission, const Hermes::vector< std::string >& src_areas) const
+      {
+        // TODO
+      }
+      
       SourceIteration::SourceIteration( NeutronicsMethod method, const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
                                         const Hermes2D& hermes2d, const std::vector< string >& fission_regions, GeomType geom_type )
         : hermes2d(hermes2d), method(method), fission_regions(fission_regions), geom_type(geom_type)
