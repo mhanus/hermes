@@ -846,6 +846,8 @@ namespace WeakFormsNeutronics
             virtual void assign_solutions(const Hermes::vector<Solution*>& solutions);
             virtual void assign_solutions(const Hermes::vector<MeshFunction*>& solutions);
             
+            virtual void set_active_element(Element* e);
+            
             double integrate(GeomType geom_type = HERMES_PLANAR);
                         
           protected:
@@ -928,6 +930,8 @@ namespace WeakFormsNeutronics
                 : Common(angular_moment, group, G), SimpleFilter(solutions, Hermes::vector<int>())
               {};
               
+              virtual void set_active_element(Element* e);
+              
             protected:             
               void filter_fn(int n, Hermes::vector<scalar*> values, scalar* result);
           };
@@ -943,6 +947,8 @@ namespace WeakFormsNeutronics
                       const Hermes::vector<Solution*>& solutions)
                 : Common(angular_moment, group, G), DXDYFilter(solutions)
               {};
+              
+              virtual void set_active_element(Element* e);
               
             protected:
               void filter_fn(int n, 
