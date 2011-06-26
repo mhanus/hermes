@@ -2088,6 +2088,8 @@ namespace WeakFormsNeutronics
               this->set_active_element(e);
               RefMap* ru = this->get_refmap();
               int o = this->get_fn_order() + ru->get_inv_ref_order();
+              if (geom_type == HERMES_AXISYM_X || geom_type == HERMES_AXISYM_Y)
+                o++;
               limit_order(o);
               this->set_quad_order(o, H2D_FN_VAL);
               scalar *uval = this->get_fn_values();
@@ -2456,7 +2458,7 @@ namespace WeakFormsNeutronics
       }
       
       int SourceIteration::eigenvalue_iteration(const Hermes::vector<Solution *>& solutions, DiscreteProblem& dp,
-                                                double tol, MatrixSolverType matrix_solver)
+                                                double tol_keff, double tol_flux, MatrixSolverType matrix_solver)
       {
         // Sanity checks.
         if (dp.get_spaces().size() != solutions.size()) 
@@ -2499,6 +2501,19 @@ namespace WeakFormsNeutronics
         // Force the Jacobian assembling in the first iteration.
         bool Jacobian_changed = true;
         
+        // NOTE:
+        //  According to the 'physical' definitions of keff as a fraction of neutron sources and sinks, keff should be 
+        //  determined in an iteration like this: 
+        //    k_new = k_old * src_new/src_old.  (1)
+        //  This iteration can be expanded into the following form:
+        //    k_new = k_0 * src_new/src_0,      (2)
+        //  so if k_0 is set to src_0 at the beginning, we could potentially save one integration (of src_old) in each 
+        //  iteration. Although the results are the same for both approaches (1) and (2) (up to a different eigenvector
+        //  scaling), the calculation is slower surprisingly in case (2), even if compared to (1) where both old and new 
+        //  sources are integrated in each iteration (this is actually not neccessary as you can see in the implementation
+        //  below).
+        //        
+        double src_new = old_source->integrate(geom_type);
         bool eigen_done = false; int it = 0;
         do 
         {
@@ -2514,12 +2529,45 @@ namespace WeakFormsNeutronics
           Solution::vector_to_solutions(solver->get_solution(), dp.get_spaces(), new_solutions);
 
           // Compute the eigenvalue for current iteration.
-          double k_new = wf->get_keff() * new_source->integrate(geom_type) / old_source->integrate(geom_type);
+          double src_old = src_new;
+          src_new = new_source->integrate(geom_type);
+          double k_new = wf->get_keff() * src_new / src_old;
           
-          info("      dominant eigenvalue (est): %g, rel. difference: %g", k_new, fabs((wf->get_keff() - k_new) / k_new));
+          double diff_keff = fabs(wf->get_keff() - k_new) / k_new;
+          info("      dominant eigenvalue (est): %g, rel. difference: %g", k_new, diff_keff);
+          
+          // Stopping criteria.
+          if (diff_keff < tol_keff) 
+            eigen_done = true;
 
-          // Stopping criterion.
-          if (fabs((wf->get_keff() - k_new) / k_new) < tol) eigen_done = true;
+          // cout << "Iteration: " << it << ", flux diffces: " << endl; 
+          
+          if (tol_flux > 0)
+          {
+            for (unsigned int i = 0; i < solutions.size(); i++)
+            {
+              PostProcessor pp(method, geom_type);
+              
+              // Normalize both flux iterates with the same criterion (unit integrated fission source).
+              solutions[i]->multiply(1./src_old);
+              new_solutions[i]->multiply(1./src_new);
+              
+              //cout << i << " = " << fabs(pp.integrate(new_solutions[i]) - pp.integrate(solutions[i])) << ", ";
+              
+              // Compare the two solutions.
+              if (fabs(pp.integrate(new_solutions[i]) - pp.integrate(solutions[i])) >= tol_flux * pp.integrate(new_solutions[i]))
+                eigen_done = false;
+              
+              // Go back to unnormalized fluxes.
+              solutions[i]->multiply(src_old);
+              new_solutions[i]->multiply(src_new);
+              
+              if (eigen_done == false)
+                break;
+            }
+          }
+          
+          //cout << endl;
 
           // Update the final eigenvalue.
           wf->update_keff(k_new);
