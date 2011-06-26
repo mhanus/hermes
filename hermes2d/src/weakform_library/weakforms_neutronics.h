@@ -2299,7 +2299,7 @@ namespace WeakFormsNeutronics
           /// \return  number of iterations needed for convergence within the specified tolerance.
           ///
           int eigenvalue_iteration(const Hermes::vector<Solution *>& solutions, DiscreteProblem& dp,
-                                   double tol = 1e-6, MatrixSolverType matrix_solver = SOLVER_UMFPACK);
+                                   double tol_keff = 1e-6, double tol_flux = 0, MatrixSolverType matrix_solver = SOLVER_UMFPACK);
       };
     }
   }
