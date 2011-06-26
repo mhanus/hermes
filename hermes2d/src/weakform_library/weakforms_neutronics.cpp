@@ -2060,6 +2060,17 @@ namespace WeakFormsNeutronics
             markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it));
         }
         
+        void SourceFilter::set_active_element(Element* e)
+        {
+          SimpleFilter::set_active_element(e);
+          
+          order = sln[0]->get_fn_order();
+          for (int i = 1; i < num; i++)
+            if (sln[i]->get_fn_order() > order)
+              order = sln[i]->get_fn_order();
+        }
+
+        
         double SourceFilter::integrate(GeomType geom_type)
         {
           if (!have_solutions)
@@ -2238,6 +2249,18 @@ namespace WeakFormsNeutronics
           }
         }
         
+        void MomentFilter::Val::set_active_element(Element* e)
+        {
+          SimpleFilter::set_active_element(e);
+
+          order = -1;
+          
+          unsigned int exp_mom_idx = req_mom_idx;
+          for (int sol_idx = mg.pos(exp_mom_idx,g); sol_idx < num; sol_idx = mg.pos(++exp_mom_idx,g))
+            if (sln[sol_idx]->get_fn_order() > order)
+              order = sln[sol_idx]->get_fn_order();
+        }
+        
         void MomentFilter::ValDxDy::filter_fn(int n, Hermes::vector<scalar *> values, 
                                               Hermes::vector<scalar *> dx, Hermes::vector<scalar *> dy, 
                                               scalar* rslt, scalar* rslt_dx, scalar* rslt_dy)
@@ -2262,6 +2285,18 @@ namespace WeakFormsNeutronics
               }
             }
           }
+        }
+        
+        void MomentFilter::ValDxDy::set_active_element(Element* e)
+        {
+          DXDYFilter::set_active_element(e);
+          
+          order = -1;
+          
+          unsigned int exp_mom_idx = req_mom_idx;
+          for (int sol_idx = mg.pos(exp_mom_idx,g); sol_idx < num; sol_idx = mg.pos(++exp_mom_idx,g))
+            if (sln[sol_idx]->get_fn_order() > order)
+              order = sln[sol_idx]->get_fn_order();
         }
         
         // TODO: Templatize.
