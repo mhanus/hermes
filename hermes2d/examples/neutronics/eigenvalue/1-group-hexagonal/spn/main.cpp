@@ -175,7 +175,7 @@ int main(int argc, char* argv[])
   
   // Test the unit source normalization.
   SupportClasses::PostProcessor pp(NEUTRONICS_SPN);
-  pp.normalize_to_unit_fission_source(&power_iterates, wf.get_keff());
+  pp.normalize_to_unit_fission_source(&power_iterates, matprop);
   views.show_solutions(power_iterates);
   
   SupportClasses::SPN::SourceFilter sf(power_iterates, matprop, fission_regions);
