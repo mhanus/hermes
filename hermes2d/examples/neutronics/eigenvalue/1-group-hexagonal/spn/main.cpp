@@ -171,6 +171,16 @@ int main(int argc, char* argv[])
   cpu_time.tick();
   verbose("Total running time: %g s", cpu_time.accumulated());
   
+  View::wait(HERMES_WAIT_KEYPRESS);
+  
+  // Test the unit source normalization.
+  SupportClasses::PostProcessor pp(NEUTRONICS_SPN);
+  pp.normalize_to_unit_fission_source(&power_iterates, wf.get_keff());
+  views.show_solutions(power_iterates);
+  
+  SupportClasses::SPN::SourceFilter sf(power_iterates, matprop, fission_regions);
+  info("Total fission source by normalized flux: %g.", sf.integrate());
+    
   // Wait for the view to be closed.  
   View::wait();
   

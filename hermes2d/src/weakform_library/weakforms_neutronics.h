@@ -2245,6 +2245,27 @@ namespace WeakFormsNeutronics
     
     namespace SupportClasses
     {
+      class PostProcessor
+      {
+        NeutronicsMethod method;
+        GeomType geom_type;
+        
+        public:
+          PostProcessor(NeutronicsMethod method, GeomType geom_type = HERMES_PLANAR) : method(method), geom_type(geom_type) {};
+          
+          double integrate(MeshFunction* solution, const Hermes::vector<std::string>& areas = Hermes::vector<std::string>()) const;
+          
+          void normalize_to_unit_fission_source(Hermes::vector<Solution*>* solutions, 
+                                                double integrated_fission_source) const;
+          void normalize_to_unit_fission_source(Hermes::vector<Solution*>* solutions,
+                                                const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                                const Hermes::vector<std::string>& src_areas = Hermes::vector<std::string>()) const;
+          void normalize_to_unit_power(Hermes::vector<Solution*>& solutions,
+                                       const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                       double power_per_fission,
+                                       const Hermes::vector<std::string>& src_areas = Hermes::vector<std::string>()) const;
+      };
+      
       class SourceIteration
       {
         const Hermes2D& hermes2d;
