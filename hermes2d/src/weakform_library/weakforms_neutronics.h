@@ -751,16 +751,16 @@ namespace WeakFormsNeutronics
       };
       
       template <typename NDArrayType>
-      class MultiArray
+      class StdMultiArray
       {
         private:
           std::vector<NDArrayType> m_data;
         public:
-          MultiArray(const NDArrayType& val) {
+          StdMultiArray(const NDArrayType& val) {
             m_data.push_back(val);
           }
           
-          MultiArray<NDArrayType>& operator()(const NDArrayType& val) {
+          StdMultiArray<NDArrayType>& operator()(const NDArrayType& val) {
             m_data.push_back(val);
             return *this;
           }
@@ -770,14 +770,34 @@ namespace WeakFormsNeutronics
           }
       };
       
+      template <typename NDArrayType>
+      class HermesMultiArray
+      {
+        private:
+          Hermes::vector<NDArrayType> m_data;
+        public:
+          HermesMultiArray(const NDArrayType& val) {
+            m_data.push_back(val);
+          }
+          
+          HermesMultiArray<NDArrayType>& operator()(const NDArrayType& val) {
+            m_data.push_back(val);
+            return *this;
+          }
+          
+          operator Hermes::vector<NDArrayType>() {
+            return m_data;
+          }
+      };
+      
       namespace Definitions
       {
-        typedef MultiArray<rank0> row;
-        typedef MultiArray<rank1> matrix;
-        typedef MultiArray<rank2> page;
-        typedef MultiArray<bool> bool_row;
-        typedef MultiArray< std::vector<bool> > bool_matrix;
-        typedef MultiArray< std::vector< std::vector<bool> > > bool_page;
+        typedef StdMultiArray<rank0> row;
+        typedef StdMultiArray<rank1> matrix;
+        typedef StdMultiArray<rank2> page;
+        typedef StdMultiArray<bool> bool_row;
+        typedef StdMultiArray< std::vector<bool> > bool_matrix;
+        typedef StdMultiArray< std::vector< std::vector<bool> > > bool_page;
       }
     }
     
