@@ -219,7 +219,8 @@ namespace WeakFormsNeutronics
           }
           else
           {
-            warning(W_NO_FISSION);
+            if (src0.empty())
+              warning(W_NO_FISSION);
             fill_with(0.0, &nu);
             fill_with(0.0, &chi);
             fill_with(0.0, &Sigma_f);
@@ -229,14 +230,17 @@ namespace WeakFormsNeutronics
           if ((nu.size() != Sigma_f.size()) || (nu.size() != chi.size()))
             error(E_NONMATCHING_PROPERTIES);
           
-          if (Sigma_f.size() > 0)
+          if (!Sigma_f.empty())
           {
             std::for_each(nu.begin(), nu.end(), ensure_size(G));
             std::for_each(Sigma_f.begin(), Sigma_f.end(), ensure_size(G));
             std::for_each(chi.begin(), chi.end(), ensure_size(G));
           }
           
-          if (Sigma_a.size() > 0)
+          if (!src0.empty())
+            std::for_each(src0.begin(), src0.end(), ensure_size(G));
+          
+          if (!Sigma_a.empty())
           {
             // Warn if \Sigma_a < \Sigma_f for any region (this indicates an unphysical situation, since
             // by definition \Sigma_a = \Sigma_f + \Sigma_c + \Sigma_{n,p} + other possible reactions
@@ -324,6 +328,17 @@ namespace WeakFormsNeutronics
             return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
+        const rank1& MaterialPropertyMaps::get_iso_src(const std::string& material) const
+        {
+          MaterialPropertyMap1::const_iterator data = this->src0.find(material);
+          if (data != this->src0.end())
+            return data->second;
+          else
+          {
+            error(E_INVALID_MARKER);
+            return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
+          }
+        }
         
         std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop)
         {
@@ -331,7 +346,7 @@ namespace WeakFormsNeutronics
           
           os << endl;
           os << setw(12) << "target group" << setw(10) << "chi" << setw(10) << "nu";
-          os << setw(10) << "Sigma_f" << endl; 
+          os << setw(10) << "Sigma_f" << setw(14) << "iso. ext. src" << endl; 
           
           MaterialPropertyMap1::const_iterator data_elem = matprop.chi.begin();
           for ( ; data_elem != matprop.chi.end(); ++data_elem)
@@ -347,6 +362,11 @@ namespace WeakFormsNeutronics
               os << setw(10) << matprop.get_chi(mat)[gto];
               os << setw(10) << matprop.get_nu(mat)[gto];
               os << setw(10) << matprop.get_Sigma_f(mat)[gto];
+              os << setw(14);
+              if (matprop.src0.empty())
+                os << "N/A";
+              else
+                os << matprop.get_iso_src(mat)[gto];
               
               os << endl;
             }
@@ -374,7 +394,6 @@ namespace WeakFormsNeutronics
           bool Sigma_t_given = !Sigma_t.empty();
           bool Sigma_a_given = !Sigma_a.empty();
           bool Sigma_f_given = !Sigma_f.empty();
-          bool src_given = !src.empty();
           
           if (!Sigma_r_given)
           {
@@ -488,13 +507,12 @@ namespace WeakFormsNeutronics
             D_given = true;
           }
           
-          if ((D.size() != Sigma_r.size()) || (D.size() != Sigma_s.size()) || (src_given && D.size() != src.size()))
+          if ((D.size() != Sigma_r.size()) || (D.size() != Sigma_s.size()))
             error(E_NONMATCHING_PROPERTIES);
           
           using ValidationFunctors::ensure_size;
           std::for_each(Sigma_s.begin(), Sigma_s.end(), ensure_size(G,G));
           std::for_each(Sigma_r.begin(), Sigma_r.end(), ensure_size(G));
-          std::for_each(src.begin(), src.end(), ensure_size(G));
           std::for_each(D.begin(), D.end(), ensure_size(G));
         }
         
@@ -533,17 +551,6 @@ namespace WeakFormsNeutronics
             return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-        const rank1& MaterialPropertyMaps::get_src(const std::string& material) const
-        {
-          MaterialPropertyMap1::const_iterator data = this->src.find(material);
-          if (data != this->src.end())
-            return data->second;
-          else
-          {
-            error(E_INVALID_MARKER);
-            return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
-          }
-        }
         
         std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop)
         {
@@ -552,7 +559,7 @@ namespace WeakFormsNeutronics
           os << static_cast<const Common::MaterialPropertyMaps&>(matprop) << endl;
           
           os << setw(12) << "target group" << setw(10) << "D" << setw(10) << "Sigma_r";
-          os << setw(10) << "ext. src" << setw(22) << "Sigma_s" << endl; 
+          os << setw(22) << "Sigma_s" << endl; 
           
           MaterialPropertyMap1::const_iterator data_elem = matprop.Sigma_r.begin();
           for ( ; data_elem != matprop.Sigma_r.end(); ++data_elem)
@@ -567,11 +574,6 @@ namespace WeakFormsNeutronics
               os << setw(6) << gto << setw(6) << ' ';
               os << setw(10) << matprop.get_D(mat)[gto];
               os << setw(10) << matprop.get_Sigma_r(mat)[gto];
-              os << setw(10);
-              if (matprop.src.empty())
-                os << "N/A";
-              else
-                os << matprop.get_src(mat)[gto];
               
               for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
                 os << setw(8) << matprop.get_Sigma_s(mat)[gto][gfrom];
@@ -915,19 +917,7 @@ namespace WeakFormsNeutronics
             return *(new rank3()); // To avoid MSVC problems; execution should never come to this point.
           }
         }
-        
-        const rank1& MaterialPropertyMaps::get_src0(const std::string& material) const
-        {
-          MaterialPropertyMap1::const_iterator data = this->src0.find(material);
-          if (data != this->src0.end())
-            return data->second;
-          else
-          {
-            error(E_INVALID_MARKER);
-            return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
-          }
-        }
-        
+
         const bool1& MaterialPropertyMaps::is_Sigma_rn_diagonal(const std::string& material) const
         {
           std::map<std::string, bool1>::const_iterator data = this->Sigma_rn_is_diagonal.find(material);
@@ -1006,17 +996,6 @@ namespace WeakFormsNeutronics
                   ++Srn_inv_moment;
                 }
                 
-                os << endl;
-              }
-            }
-            
-            if (!matprop.src0.empty())
-            {
-              os << endl << setw(total_width/2+10) << "isotropic ext. sources" << setw(total_width/2) << ' ' << endl;
-              for (unsigned int gto = 0; gto < matprop.G; gto++)
-              {
-                os << setw(gto_width/2) << gto << setw(gto_width/2) << ' ';
-                os << setw(elem_width) << matprop.get_src0(mat)[gto];
                 os << endl;
               }
             }
@@ -1362,11 +1341,11 @@ namespace WeakFormsNeutronics
           std::string mat = matprop.get_material(e->elem_marker, wf);
           
           if (geom_type == HERMES_PLANAR) 
-            return Coeffs::even_moment(0, mrow) * matprop.get_src0(mat)[g] * int_v<Real>(n, wt, v);
+            return Coeffs::even_moment(0, mrow) * matprop.get_iso_src(mat)[g] * int_v<Real>(n, wt, v);
           else if (geom_type == HERMES_AXISYM_X) 
-            return Coeffs::even_moment(0, mrow) * matprop.get_src0(mat)[g] * int_y_v<Real>(n, wt, v, e);
+            return Coeffs::even_moment(0, mrow) * matprop.get_iso_src(mat)[g] * int_y_v<Real>(n, wt, v, e);
           else 
-            return Coeffs::even_moment(0, mrow) * matprop.get_src0(mat)[g] * int_x_v<Real>(n, wt, v, e);
+            return Coeffs::even_moment(0, mrow) * matprop.get_iso_src(mat)[g] * int_x_v<Real>(n, wt, v, e);
         }
       }
       
@@ -1596,13 +1575,13 @@ namespace WeakFormsNeutronics
           std::string mat = matprop.get_material(e->elem_marker, wf);
           
           if (geom_type == HERMES_PLANAR) 
-            return matprop.get_src(mat)[g] * int_v<Real>(n, wt, v);
+            return matprop.get_iso_src(mat)[g] * int_v<Real>(n, wt, v);
           else 
           {
             if (geom_type == HERMES_AXISYM_X) 
-              return matprop.get_src(mat)[g] * int_y_v<Real>(n, wt, v, e);
+              return matprop.get_iso_src(mat)[g] * int_y_v<Real>(n, wt, v, e);
             else 
-              return matprop.get_src(mat)[g] * int_x_v<Real>(n, wt, v, e);
+              return matprop.get_iso_src(mat)[g] * int_x_v<Real>(n, wt, v, e);
           }
         }
       }
@@ -1889,52 +1868,80 @@ namespace WeakFormsNeutronics
         }
         
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, unsigned int N, 
-                                                                HermesFunction *minus_f_src, std::string src_area,
+                                                                HermesFunction *minus_isotropic_source, std::string src_area,
                                                                 GeomType geom_type  )
           : WeakFormHomogeneous(N, matprop, geom_type, true)
         {
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
-              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, minus_f_src, geom_type));
+            {
+              VectorFormVol *src = new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, minus_isotropic_source, geom_type);
+              src->scaling_factor = Coeffs::even_moment(0, m);
+              source_terms.push_back(src);
+              add_vector_form(src);
+            }
         }
         
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, unsigned int N, 
-                                                                HermesFunction *minus_f_src,
+                                                                HermesFunction *minus_isotropic_source,
                                                                 Hermes::vector<std::string> src_areas,
                                                                 GeomType geom_type  )
           : WeakFormHomogeneous(N, matprop, geom_type, true)
         {
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
-              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, minus_f_src, geom_type));
+            {
+              VectorFormVol *src = new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, minus_isotropic_source, geom_type);
+              src->scaling_factor = Coeffs::even_moment(0, m);
+              source_terms.push_back(src);
+              add_vector_form(src);
+            }
         }
         
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, unsigned int N, 
-                                                                const std::vector<HermesFunction*>& minus_f_src,
+                                                                const std::vector<HermesFunction*>& minus_isotropic_sources,
                                                                 std::string src_area, 
                                                                 GeomType geom_type )
           : WeakFormHomogeneous(N, matprop, geom_type, true)
         {
-          if (minus_f_src.size() != G)
+          if (minus_isotropic_sources.size() != G)
             error(E_INVALID_SIZE);
          
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
-              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, minus_f_src[gto], geom_type));
+            {
+              VectorFormVol *src = new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, minus_isotropic_sources[gto], geom_type);
+              src->scaling_factor = Coeffs::even_moment(0, m);
+              source_terms.push_back(src);
+              add_vector_form(src);
+            }
         }
         
         DefaultWeakFormFixedSource::DefaultWeakFormFixedSource( const MaterialPropertyMaps& matprop, unsigned int N, 
-                                                                const std::vector<HermesFunction*>& minus_f_src,
+                                                                const std::vector<HermesFunction*>& minus_isotropic_sources,
                                                                 Hermes::vector<std::string> src_areas,
                                                                 GeomType geom_type )
           : WeakFormHomogeneous(N, matprop, geom_type, true)
         {
-          if (minus_f_src.size() != G)
+          if (minus_isotropic_sources.size() != G)
             error(E_INVALID_SIZE);
           
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
-              add_vector_form(new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, minus_f_src[gto], geom_type));
+            {
+              VectorFormVol *src = new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, minus_isotropic_sources[gto], geom_type);
+              src->scaling_factor = Coeffs::even_moment(0, m);
+              source_terms.push_back(src);
+              add_vector_form(src);
+            }
+        }
+        
+        DefaultWeakFormFixedSource::~DefaultWeakFormFixedSource()
+        {
+          std::vector<VectorFormVol*>::const_iterator it = source_terms.begin();
+          for ( ; it != source_terms.end(); ++it)
+            delete *it;
+          source_terms.clear();
         }
         
         DefaultWeakFormSourceIteration::DefaultWeakFormSourceIteration( const MaterialPropertyMaps& matprop, unsigned int N,
