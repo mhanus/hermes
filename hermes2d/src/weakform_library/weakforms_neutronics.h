@@ -50,6 +50,9 @@ namespace WeakFormsNeutronics
   namespace Multigroup
   {
     enum NeutronicsMethod { NEUTRONICS_DIFFUSION, NEUTRONICS_SPN };
+    enum ReactionType { 
+      ABSORPTION, TOTAL, IN_SCATTERING, SELF_SCATTERING, OUT_SCATTERING, FISSION, NU_FISSION 
+    };
     
     namespace MaterialProperties
     {
@@ -180,7 +183,7 @@ namespace WeakFormsNeutronics
         class NDArrayMapOp
         {
           //
-          // NOTE: Could be perhaps combined with the classes material_property_map and MultiArray below
+          // NOTE: Could be perhaps combined with the classes material_property_map and StdMultiArray below
           // and moved to hermes_common as a general way of handling maps with multidimensional mapped types.
           //
           
@@ -372,6 +375,12 @@ namespace WeakFormsNeutronics
             unsigned int G;
             
             bool1 fission_nonzero_structure;
+            
+            rank1 extract_rank2_diagonal(const rank2& x) const {
+              rank1 result; result.reserve(G);
+              for (unsigned int g = 0; g < G; g++) result.push_back(x[g][g]);
+              return result;
+            }
                   
             void extend_to_multigroup(const MaterialPropertyMap0& mrsg_map, MaterialPropertyMap1 *mrmg_map);     
             void extend_to_multiregion(const rank1& srmg_array, MaterialPropertyMap1 *mrmg_map);
@@ -455,6 +464,9 @@ namespace WeakFormsNeutronics
               this->materials_list = mat_list;
             }
             
+            const MaterialPropertyMap1& get_Sigma_a() const {
+              return this->Sigma_a;
+            }
             const MaterialPropertyMap1& get_Sigma_f() const {
               return this->Sigma_f;
             }
@@ -466,6 +478,7 @@ namespace WeakFormsNeutronics
             }
             const MaterialPropertyMap1& get_iso_src() const {
               return this->src0;
+            }
             const bool1& get_fission_nonzero_structure() const {
               return this->fission_nonzero_structure;
             }
@@ -473,6 +486,11 @@ namespace WeakFormsNeutronics
               return this->materials_list;
             }
             
+            virtual rank1 compute_Sigma_a(const std::string& material) const { return get_Sigma_a(material); }
+            virtual rank2 compute_Sigma_s(const std::string& material) const = 0;
+            virtual rank1 compute_Sigma_t(const std::string& material) const = 0;
+            
+            const rank1& get_Sigma_a(const std::string& material) const;
             const rank1& get_Sigma_f(const std::string& material) const;
             const rank1& get_nu(const std::string& material) const;
             const rank1& get_chi(const std::string& material) const;
@@ -532,7 +550,10 @@ namespace WeakFormsNeutronics
             virtual void set_Sigma_s(const MaterialPropertyMap2& Ss) {
               this->Sigma_s = Ss;
             }
-                         
+            
+            const MaterialPropertyMap1& get_Sigma_t() const {
+              return this->Sigma_t;
+            }            
             const MaterialPropertyMap2& get_Sigma_s() const {
               return this->Sigma_s;
             }
@@ -545,6 +566,10 @@ namespace WeakFormsNeutronics
             const bool2& get_scattering_nonzero_structure() const {
               return this->scattering_nonzero_structure;
             }
+            
+            virtual rank1 compute_Sigma_a(const std::string& material) const;
+            virtual rank2 compute_Sigma_s(const std::string& material) const { return get_Sigma_s(material); }
+            virtual rank1 compute_Sigma_t(const std::string& material) const;
             
             const rank2& get_Sigma_s(const std::string& material) const;
             const rank1& get_Sigma_r(const std::string& material) const;
@@ -679,6 +704,9 @@ namespace WeakFormsNeutronics
               return this->Sigma_rn;
             }
             
+            virtual rank1 compute_Sigma_a(const std::string& material) const;
+            virtual rank2 compute_Sigma_s(const std::string& material) const;
+            virtual rank1 compute_Sigma_t(const std::string& material) const;
             
             const bool1  is_Sigma_rn_diagonal() const;
             
@@ -960,10 +988,10 @@ namespace WeakFormsNeutronics
           
           static void get_scalar_fluxes(const Hermes::vector<Solution*>& angular_fluxes,
                                         Hermes::vector<MeshFunction*>* scalar_fluxes,
-                                        unsigned int G);
+                                        unsigned int G);               
           static void get_scalar_fluxes_with_derivatives(const Hermes::vector<Solution*>& angular_fluxes,
                                                          Hermes::vector<MeshFunction*>* scalar_fluxes,
-                                                         unsigned int G);
+                                                         unsigned int G);                                                       
           static void clear_scalar_fluxes(Hermes::vector<MeshFunction*>* scalar_fluxes);
         };
         
@@ -2257,20 +2285,79 @@ namespace WeakFormsNeutronics
         NeutronicsMethod method;
         GeomType geom_type;
         
+        double get_integrated_group_reaction_rates_internal(ReactionType reaction, MeshFunction* solution,
+                                                            const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                                            const Hermes::vector<std::string>& regions,
+                                                            unsigned int this_group, int other_group = -1) const;
+        double get_integrated_group_reaction_rates_internal(ReactionType reaction, MeshFunction* solution,
+                                                            const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                                            const std::string& region,
+                                                            unsigned int this_group, int other_group = -1) const 
+        {
+          return get_integrated_group_reaction_rates_internal(reaction, solution, matprop,
+                                                              Hermes::vector<std::string>(region), this_group, other_group);
+        }
+        
         public:
           PostProcessor(NeutronicsMethod method, GeomType geom_type = HERMES_PLANAR) : method(method), geom_type(geom_type) {};
           
           double integrate(MeshFunction* solution, const Hermes::vector<std::string>& areas = Hermes::vector<std::string>()) const;
+          double integrate(MeshFunction* solution, const std::string& area) const {
+            return integrate(solution, Hermes::vector<std::string>(area));
+          }
+          
+
           
           void normalize_to_unit_fission_source(Hermes::vector<Solution*>* solutions, 
                                                 double integrated_fission_source) const;
+                                                
           void normalize_to_unit_fission_source(Hermes::vector<Solution*>* solutions,
                                                 const MaterialProperties::Common::MaterialPropertyMaps& matprop,
                                                 const Hermes::vector<std::string>& src_areas = Hermes::vector<std::string>()) const;
-          void normalize_to_unit_power(Hermes::vector<Solution*>& solutions,
+                                                
+          void normalize_to_unit_power(Hermes::vector<Solution*>* solutions,
                                        const MaterialProperties::Common::MaterialPropertyMaps& matprop,
                                        double power_per_fission,
                                        const Hermes::vector<std::string>& src_areas = Hermes::vector<std::string>()) const;
+          
+                                       
+                                       
+          void get_integrated_group_reaction_rates( ReactionType reaction, 
+                                                    const Hermes::vector<Solution*>& solutions, Hermes::vector<double>* results,
+                                                    const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                                    unsigned int group, const Hermes::vector<std::string>& regions) const;
+                                                    
+          void get_integrated_group_scalar_fluxes(const Hermes::vector<Solution*>& solutions, Hermes::vector<double>* results, 
+                                                  unsigned int group, unsigned int G, 
+                                                  const Hermes::vector<std::string>& regions) const;
+                                                  
+          void get_integrated_reaction_rates( ReactionType reaction, 
+                                              const Hermes::vector<Solution*>& solutions, Hermes::vector<double>* results,
+                                              const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                              const Hermes::vector<std::string>& regions) const;
+                                              
+          void get_integrated_scalar_fluxes(const Hermes::vector<Solution*>& solutions, Hermes::vector<double>* results, 
+                                            unsigned int G, const Hermes::vector<std::string>& regions) const;                                                                             
+          
+          void get_areas(Mesh *mesh, const Hermes::vector<std::string>& regions, Hermes::vector<double>* results) const;
+                                            
+                                            
+          double get_integrated_group_reaction_rates( ReactionType reaction, const Hermes::vector<Solution*>& solutions,
+                                                      const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                                      unsigned int group,
+                                                      const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
+                                                      
+          double get_integrated_group_scalar_fluxes(const Hermes::vector<Solution*>& solutions, unsigned int group, unsigned int G,
+                                                    const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
+                                                    
+          double get_integrated_reaction_rates( ReactionType reaction, const Hermes::vector<Solution*>& solutions,
+                                                const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                                const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
+                                                
+          double get_integrated_scalar_fluxes(const Hermes::vector<Solution*>& solutions,
+                                              unsigned int G, const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
+                                              
+          double get_area(Mesh *mesh, const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
       };
       
       class SourceIteration
