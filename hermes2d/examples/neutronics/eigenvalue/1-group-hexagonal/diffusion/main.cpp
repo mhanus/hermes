@@ -48,8 +48,12 @@ const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the nu
 MatrixSolverType matrix_solver = SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
                                                   
-const bool display_meshes = false;
-const bool use_transport_corrected_cross_sections = true;
+                                                  
+const bool HERMES_VISUALIZATION = true;  // Set to "true" to enable Hermes OpenGL visualization. 
+const bool VTK_VISUALIZATION = true;     // Set to "true" to enable VTK output.
+const bool DISPLAY_MESHES = false;       // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
+
+const bool USE_TRANSPORT_CORRECTED_CROSS_SECTIONS = true;
 
 // Power iteration control.
 double k_eff = 1.0;         // Initial eigenvalue approximation.
@@ -67,7 +71,7 @@ int main(int argc, char* argv[])
   
   MaterialPropertyMaps *matprop;
   
-  if (use_transport_corrected_cross_sections)
+  if (USE_TRANSPORT_CORRECTED_CROSS_SECTIONS)
   {
     MaterialPropertyMap2 Ss1;
     MaterialPropertyMap3::const_iterator it = Ssn.begin();
@@ -120,8 +124,9 @@ int main(int argc, char* argv[])
   for (int j = 0; j < INIT_REF_NUM[0]; j++) 
     meshes[0]->refine_all_elements();
   
-  Views views(N_GROUPS, display_meshes);
-  views.inspect_meshes(meshes);
+  SupportClasses::Diffusion::Views views(N_GROUPS, DISPLAY_MESHES);
+  if (DISPLAY_MESHES && HERMES_VISUALIZATION)
+    views.inspect_meshes(meshes);
 
   // Create pointers to solutions on coarse and fine meshes and from the latest power iteration, respectively.
   Hermes::vector<Solution*> coarse_solutions, fine_solutions, power_iterates;
@@ -180,8 +185,17 @@ int main(int argc, char* argv[])
   }
   else
   {
-    views.show_solutions(power_iterates);
-    views.show_orders(spaces);
+    if (HERMES_VISUALIZATION)
+    {
+      views.show_solutions(power_iterates);
+      views.show_orders(spaces);
+    }
+    if (VTK_VISUALIZATION)
+    {
+      views.save_solutions_vtk("flux", "flux", power_iterates);
+      views.save_orders_vtk("space", spaces);
+    }
+    
     // Millipercent eigenvalue error w.r.t. the reference value (see physical_parameters.cpp). 
     double keff_err = 1e5*fabs(wf.get_keff() - REF_K_EFF)/REF_K_EFF;
     info("K_eff error = %g pcm", keff_err);
