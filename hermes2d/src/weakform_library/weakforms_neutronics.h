@@ -86,7 +86,7 @@ namespace WeakFormsNeutronics
           "Not all required material properties have been set.";
         static const char* W_NO_FISSION =
           "Not all required fission properties have been set or could be determined automatically."
-          "Assuming a non-fissioning system.";
+          "In addition, external neutron sources were not specified => expect trivial solution.";
         static const char* W_NO_SCATTERING =
           "Not all required scattering properties have been set or could be determined automatically."
           "Assuming a purely absorbing system.";
@@ -361,7 +361,8 @@ namespace WeakFormsNeutronics
             MaterialPropertyMap1 Sigma_f;
             MaterialPropertyMap1 nu;
             MaterialPropertyMap1 chi;
-            
+            MaterialPropertyMap1 src0;
+                        
             MaterialPropertyMap1 Sigma_a;
             MaterialPropertyMap1 nuSigma_f;
             
@@ -397,6 +398,22 @@ namespace WeakFormsNeutronics
             
             std::string get_material(int elem_marker, WeakForm *wf) const;
             std::string get_material(int elem_marker, Mesh *mesh) const;
+            
+            virtual void set_iso_src(const MaterialPropertyMap1& src) {
+              this->src0 = src;
+            }
+            
+            virtual void set_iso_src(const MaterialPropertyMap0& src) {
+              extend_to_multigroup(src, &this->src0);            
+            }
+            
+            virtual void set_iso_src(const rank1& src) {
+              extend_to_multiregion(src, &this->src0);
+            }
+            
+            virtual void set_iso_src(const double& src) {
+              extend_to_multiregion_multigroup(src, &this->src0);
+            }
             
             virtual void set_nu(const MaterialPropertyMap1& nu) {
               this->nu = nu;
@@ -447,6 +464,8 @@ namespace WeakFormsNeutronics
             const MaterialPropertyMap1& get_chi() const {
               return this->chi;
             }
+            const MaterialPropertyMap1& get_iso_src() const {
+              return this->src0;
             const bool1& get_fission_nonzero_structure() const {
               return this->fission_nonzero_structure;
             }
@@ -457,6 +476,7 @@ namespace WeakFormsNeutronics
             const rank1& get_Sigma_f(const std::string& material) const;
             const rank1& get_nu(const std::string& material) const;
             const rank1& get_chi(const std::string& material) const;
+            const rank1& get_iso_src(const std::string& material) const;
             
             unsigned int get_G() const { return G; } 
             
@@ -477,8 +497,6 @@ namespace WeakFormsNeutronics
             MaterialPropertyMap1 Sigma_r;
             MaterialPropertyMap2 Sigma_s;
             
-            MaterialPropertyMap1 src;
-            
             MaterialPropertyMap1 Sigma_t;
             
             bool2 scattering_nonzero_structure;
@@ -498,23 +516,7 @@ namespace WeakFormsNeutronics
             // user may sometimes not satisfy the common relations, as some empirical corrections may have been 
             // already included in them.
             virtual void validate();
-            
-            virtual void set_src(const MaterialPropertyMap1& src) {
-              this->src = src;
-            }
-            
-            virtual void set_src(const MaterialPropertyMap0& src) {
-              extend_to_multigroup(src, &this->src);            
-            }
-            
-            virtual void set_src(const rank1& src) {
-              extend_to_multiregion(src, &this->src);
-            }
-            
-            virtual void set_src(const double& src) {
-              extend_to_multiregion_multigroup(src, &this->src);
-            }
-            
+                        
             virtual void set_D(const MaterialPropertyMap1& D) {
               this->D = D;
             }
@@ -540,9 +542,6 @@ namespace WeakFormsNeutronics
             const MaterialPropertyMap1& get_D() const {
               return this->D;
             }
-            const MaterialPropertyMap1& get_src() const {
-              return this->src;
-            }
             const bool2& get_scattering_nonzero_structure() const {
               return this->scattering_nonzero_structure;
             }
@@ -550,7 +549,6 @@ namespace WeakFormsNeutronics
             const rank2& get_Sigma_s(const std::string& material) const;
             const rank1& get_Sigma_r(const std::string& material) const;
             const rank1& get_D(const std::string& material) const;
-            const rank1& get_src(const std::string& material) const;
             
             friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
         };
@@ -622,7 +620,6 @@ namespace WeakFormsNeutronics
             
             MaterialPropertyMap3 Sigma_rn;
             MaterialPropertyMap3 odd_Sigma_rn_inv;
-            MaterialPropertyMap1 src0;
             
             MaterialPropertyMap3 Sigma_sn;
             MaterialPropertyMap3 Sigma_tn;
@@ -654,22 +651,6 @@ namespace WeakFormsNeutronics
             }
                                     
             virtual void validate();
-            
-            virtual void set_src0(const MaterialPropertyMap1& src) {
-              this->src0 = src;
-            }
-            
-            virtual void set_src(const MaterialPropertyMap0& src) {
-              extend_to_multigroup(src, &this->src0);            
-            }
-            
-            virtual void set_src(const rank1& src) {
-              extend_to_multiregion(src, &this->src0);
-            }
-            
-            virtual void set_src(const double& src) {
-              extend_to_multiregion_multigroup(src, &this->src0);
-            }
                         
             virtual void set_Sigma_rn(const MaterialPropertyMap3& Sr) {
               this->Sigma_rn = Sr;
@@ -697,16 +678,13 @@ namespace WeakFormsNeutronics
             const MaterialPropertyMap3& get_Sigma_rn() const {
               return this->Sigma_rn;
             }
-            const MaterialPropertyMap1& get_src0() const {
-              return this->src0;
-            }
+            
             
             const bool1  is_Sigma_rn_diagonal() const;
             
             const bool1& is_Sigma_rn_diagonal(const std::string& material) const;
             const rank3& get_Sigma_rn(const std::string& material) const;
             const rank3& get_odd_Sigma_rn_inv(const std::string& material) const;
-            const rank1& get_src0(const std::string& material) const;
             
             unsigned int get_N() const { return N; }
             unsigned int get_N_odd() const { return N_odd; }
@@ -2088,7 +2066,7 @@ namespace WeakFormsNeutronics
               
               virtual scalar value(int n, double *wt, Func<scalar> *u_ext[], Func<double> *v,
                                     Geom<double> *e, ExtData<scalar> *ext) const {
-                return -1.0 * vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
+                return vector_form<double, scalar>(n, wt, u_ext, v, e, ext);
               }
 
               virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
@@ -2217,30 +2195,35 @@ namespace WeakFormsNeutronics
         };
                 
         class DefaultWeakFormFixedSource : public WeakFormHomogeneous
-        {            
+        {
+          protected:
+            std::vector<VectorFormVol*> source_terms;
+            
           public:
             DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, unsigned int N,
                                        GeomType geom_type = HERMES_PLANAR);
             
             DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, unsigned int N,
-                                       HermesFunction *minus_f_src,
+                                       HermesFunction *minus_isotropic_source,
                                        std::string src_area = HERMES_ANY,
                                        GeomType geom_type = HERMES_PLANAR);
             
             DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, unsigned int N,
-                                       HermesFunction *minus_f_src,
+                                       HermesFunction *minus_isotropic_source,
                                        Hermes::vector<std::string> src_areas,
                                        GeomType geom_type = HERMES_PLANAR);
             
             DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, unsigned int N,
-                                       const std::vector<HermesFunction*>& minus_f_src,
+                                       const std::vector<HermesFunction*>& minus_isotropic_sources,
                                        std::string src_area = HERMES_ANY,
                                        GeomType geom_type = HERMES_PLANAR);
             
             DefaultWeakFormFixedSource(const MaterialPropertyMaps& matprop, unsigned int N,
-                                       const std::vector<HermesFunction*>& minus_f_src,
+                                       const std::vector<HermesFunction*>& minus_isotropic_sources,
                                        Hermes::vector<std::string> src_areas,
                                        GeomType geom_type = HERMES_PLANAR);
+                                       
+            virtual ~DefaultWeakFormFixedSource();
         };
         
         class DefaultWeakFormSourceIteration : public WeakFormHomogeneous, public Common::WeakFormSourceIteration
