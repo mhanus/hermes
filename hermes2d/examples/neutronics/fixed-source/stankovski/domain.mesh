@@ -1,0 +1,285 @@
+vertices = [
+  [0, 0],                                   # vertex 0
+  [0.625, 0],                               # vertex 1
+  [1.25, 0],                                # vertex 2
+  [1.875, 0],                               # vertex 3
+  [2.5, 0],                                 # vertex 4
+  [3.125, 0],                               # vertex 5
+  [3.75, 0],                                # vertex 6
+  [4.375, 0],                               # vertex 7
+  [0.625, 0.625],                           # vertex 8
+  [1.25, 0.625],                            # vertex 9 
+  [1.875, 0.625],                           # vertex 10 
+  [2.5, 0.625],                             # vertex 11 
+  [3.125, 0.625],                           # vertex 12 
+  [3.75, 0.625],                            # vertex 13 
+  [4.375, 0.625],                           # vertex 14 
+  [1.25, 1.25],                             # vertex 15 
+  [1.875, 1.25],                            # vertex 16 
+  [2.5, 1.25],                              # vertex 17 
+  [3.125, 1.25],                            # vertex 18 
+  [3.75, 1.25],                             # vertex 19 
+  [4.375, 1.25],                            # vertex 20 
+  [1.875, 1.875],                           # vertex 21 
+  [2.5, 1.875],                             # vertex 22 
+  [3.125, 1.875],                           # vertex 23 
+  [3.75, 1.875],                            # vertex 24 
+  [4.375, 1.875],                           # vertex 25 
+  [2.5, 2.5],                               # vertex 26 
+  [3.125, 2.5],                             # vertex 27 
+  [3.75, 2.5],                              # vertex 28 
+  [4.375, 2.5],                             # vertex 29 
+  [3.125, 3.125],                           # vertex 30 
+  [3.75, 3.125],                            # vertex 31 
+  [4.375, 3.125],                           # vertex 32 
+  [3.75, 3.75],                             # vertex 33 
+  [4.375, 3.75],                            # vertex 34 
+  [4.375, 4.375],                           # vertex 35 
+  [0.45, 0],                                # vertex 36 
+  [0.318198051533946, 0.318198051533946],   # vertex 37 
+  [1.7, 0],                                 # vertex 38 
+  [1.56819805153395, 0.318198051533946],    # vertex 39 
+  [1.25, 0.45],                             # vertex 40 
+  [0.931801948466054, 0.318198051533946],   # vertex 41 
+  [0.8, 0],                                 # vertex 42 
+  [2.95, 0],                                # vertex 43 
+  [2.81819805153395, 0.318198051533946],    # vertex 44 
+  [2.5, 0.45],                              # vertex 45 
+  [2.18180194846605, 0.318198051533946],    # vertex 46 
+  [2.05, 0],                                # vertex 47 
+  [4.2, 0],                                 # vertex 48 
+  [4.06819805153395, 0.318198051533946],    # vertex 49 
+  [3.75, 0.45],                             # vertex 50 
+  [3.43180194846605, 0.318198051533946],    # vertex 51 
+  [3.3, 0],                                 # vertex 52 
+  [0.931801948466054, 0.931801948466054],   # vertex 53 
+  [1.25, 0.8],                              # vertex 54 
+  [1.56819805153395, 0.931801948466054],    # vertex 55 
+  [1.7, 1.25],                              # vertex 56 
+  [1.56819805153395, 1.56819805153395],     # vertex 57 
+  [2.95, 1.25],                             # vertex 58 
+  [2.81819805153395, 1.56819805153395],     # vertex 59 
+  [2.5, 1.7],                               # vertex 60 
+  [2.18180194846605, 1.56819805153395],     # vertex 61 
+  [2.05, 1.25],                             # vertex 62 
+  [2.18180194846605, 0.931801948466054],    # vertex 63 
+  [2.5, 0.8],                               # vertex 64 
+  [2.81819805153395, 0.931801948466054],    # vertex 65 
+  [4.2, 1.25],                              # vertex 66 
+  [4.06819805153395, 1.56819805153395],     # vertex 67 
+  [3.75, 1.7],                              # vertex 68 
+  [3.43180194846605, 1.56819805153395],     # vertex 69 
+  [3.3, 1.25],                              # vertex 70 
+  [3.43180194846605, 0.931801948466054],    # vertex 71 
+  [3.75, 0.8],                              # vertex 72 
+  [4.06819805153395, 0.931801948466054],    # vertex 73 
+  [2.18180194846605, 2.18180194846605],     # vertex 74 
+  [2.5, 2.05],                              # vertex 75 
+  [2.81819805153395, 2.18180194846605],     # vertex 76 
+  [2.95, 2.5],                              # vertex 77 
+  [2.81819805153395, 2.81819805153395],     # vertex 78 
+  [4.2, 2.5],                               # vertex 79 
+  [4.06819805153395, 2.81819805153395],     # vertex 80 
+  [3.75, 2.95],                             # vertex 81 
+  [3.43180194846605, 2.81819805153395],     # vertex 82 
+  [3.3, 2.5],                               # vertex 83 
+  [3.43180194846605, 2.18180194846605],     # vertex 84 
+  [3.75, 2.05],                             # vertex 85 
+  [4.06819805153395, 2.18180194846605],     # vertex 86 
+  [3.43180194846605, 3.43180194846605],     # vertex 87 
+  [3.75, 3.3],                              # vertex 88 
+  [4.06819805153395, 3.43180194846605],     # vertex 89 
+  [4.2, 3.75],                              # vertex 90 
+  [4.06819805153395, 4.06819805153395]      # vertex 91 
+]
+
+elements = [
+  [36, 1, 8, 37, "cell 0"],                 # element 0                 
+  [0, 36, 37, "pin 0"],                     # element 1
+  [38, 3, 10, 39, "cell 1"],                # element 2                
+  [39, 10, 9, 40, "cell 1"],                # element 3                
+  [40, 9, 8, 41, "cell 1"],                 # element 4                 
+  [41, 8, 1, 42, "cell 1"],                 # element 5                 
+  [2, 38, 39, "pin 1"],                     # element 6
+  [2, 39, 40, "pin 1"],                     # element 7
+  [2, 40, 41, "pin 1"],                     # element 8
+  [2, 41, 42, "pin 1"],                     # element 9
+  [43, 5, 12, 44, "cell 2"],                # element 10                
+  [44, 12, 11, 45, "cell 2"],               # element 11               
+  [45, 11, 10, 46, "cell 2"],               # element 12               
+  [46, 10, 3, 47, "cell 2"],                # element 13                
+  [4, 43, 44, "pin 2"],                     # element 14
+  [4, 44, 45, "pin 2"],                     # element 15
+  [4, 45, 46, "pin 2"],                     # element 16
+  [4, 46, 47, "pin 2"],                     # element 17
+  [48, 7, 14, 49, "cell 3"],                # element 18                
+  [49, 14, 13, 50, "cell 3"],               # element 19               
+  [50, 13, 12, 51, "cell 3"],               # element 20               
+  [51, 12, 5, 52, "cell 3"],                # element 21                
+  [6, 48, 49, "pin 3"],                     # element 22
+  [6, 49, 50, "pin 3"],                     # element 23
+  [6, 50, 51, "pin 3"],                     # element 24
+  [6, 51, 52, "pin 3"],                     # element 25
+  [8, 9, 54, 53, "cell 4"],                 # element 26                 
+  [9, 10, 55, 54, "cell 4"],                # element 27                
+  [55, 10, 16, 56, "cell 4"],               # element 28               
+  [56, 16, 21, 57, "cell 4"],               # element 29               
+  [15, 53, 54, "pin 4"],                    # element 30
+  [15, 54, 55, "pin 4"],                    # element 31
+  [15, 55, 56, "pin 4"],                    # element 32
+  [15, 56, 57, "pin 4"],                    # element 33
+  [58, 18, 23, 59, "cell 5"],               # element 34               
+  [59, 23, 22, 60, "cell 5"],               # element 35               
+  [60, 22, 21, 61, "cell 5"],               # element 36               
+  [61, 21, 16, 62, "cell 5"],               # element 37               
+  [62, 16, 10, 63, "cell 5"],               # element 38               
+  [63, 10, 11, 64, "cell 5"],               # element 39               
+  [64, 11, 12, 65, "cell 5"],               # element 40               
+  [65, 12, 18, 58, "cell 5"],               # element 41               
+  [17, 58, 59, "pin 5"],                    # element 42
+  [17, 59, 60, "pin 5"],                    # element 43
+  [17, 60, 61, "pin 5"],                    # element 44
+  [17, 61, 62, "pin 5"],                    # element 45
+  [17, 62, 63, "pin 5"],                    # element 46
+  [17, 63, 64, "pin 5"],                    # element 47
+  [17, 64, 65, "pin 5"],                    # element 48
+  [17, 65, 58, "pin 5"],                    # element 49
+  [66, 20, 25, 67, "cell 6"],               # element 50               
+  [67, 25, 24, 68, "cell 6"],               # element 51               
+  [68, 24, 23, 69, "cell 6"],               # element 52               
+  [69, 23, 18, 70, "cell 6"],               # element 53               
+  [70, 18, 12, 71, "cell 6"],               # element 54               
+  [71, 12, 13, 72, "cell 6"],               # element 55               
+  [72, 13, 14, 73, "cell 6"],               # element 56               
+  [73, 14, 20, 66, "cell 6"],               # element 57               
+  [19, 66, 67, "pin 6"],                    # element 58
+  [19, 67, 68, "pin 6"],                    # element 59
+  [19, 68, 69, "pin 6"],                    # element 60
+  [19, 69, 70, "pin 6"],                    # element 61
+  [19, 70, 71, "pin 6"],                    # element 62
+  [19, 71, 72, "pin 6"],                    # element 63
+  [19, 72, 73, "pin 6"],                    # element 64
+  [19, 73, 66, "pin 6"],                    # element 65
+  [21, 22, 75, 74, "cell 7"],               # element 66               
+  [22, 23, 76, 75, "cell 7"],               # element 67               
+  [76, 23, 27, 77, "cell 7"],               # element 68               
+  [77, 27, 30, 78, "cell 7"],               # element 69               
+  [26, 74, 75, "pin 7"],                    # element 70
+  [26, 75, 76, "pin 7"],                    # element 71
+  [26, 76, 77, "pin 7"],                    # element 72
+  [26, 77, 78, "pin 7"],                    # element 73
+  [79, 29, 32, 80, "cell 8"],               # element 74               
+  [80, 32, 31, 81, "cell 8"],               # element 75               
+  [81, 31, 30, 82, "cell 8"],               # element 76               
+  [82, 30, 27, 83, "cell 8"],               # element 77               
+  [83, 27, 23, 84, "cell 8"],               # element 78               
+  [84, 23, 24, 85, "cell 8"],               # element 79               
+  [85, 24, 25, 86, "cell 8"],               # element 80               
+  [86, 25, 29, 79, "cell 8"],               # element 81               
+  [28, 79, 80, "pin 8"],                    # element 82
+  [28, 80, 81, "pin 8"],                    # element 83
+  [28, 81, 82, "pin 8"],                    # element 84
+  [28, 82, 83, "pin 8"],                    # element 85
+  [28, 83, 84, "pin 8"],                    # element 86
+  [28, 84, 85, "pin 8"],                    # element 87
+  [28, 85, 86, "pin 8"],                    # element 88
+  [28, 86, 79, "pin 8"],                    # element 89
+  [30, 31, 88, 87, "cell 9"],               # element 90               
+  [31, 32, 89, 88, "cell 9"],               # element 91               
+  [89, 32, 34, 90, "cell 9"],               # element 92               
+  [90, 34, 35, 91, "cell 9"],               # element 93               
+  [33, 87, 88, "pin 9"],                     # element 94
+  [33, 88, 89, "pin 9"],                     # element 95
+  [33, 89, 90, "pin 9"],                     # element 96
+  [33, 90, 91, "pin 9"]                      # element 97
+]
+
+boundaries = [
+  [  0, 36, "reflective" ],                 # boundary 0
+  [ 36,  1, "reflective" ],                 # boundary 1
+  [  1, 42, "reflective" ],                 # boundary 2
+  [ 42,  2, "reflective" ],                 # boundary 3
+  [  2, 38, "reflective" ],                 # boundary 4
+  [ 38,  3, "reflective" ],                 # boundary 5
+  [  3, 47, "reflective" ],                 # boundary 6
+  [ 47,  4, "reflective" ],                 # boundary 7
+  [  4, 43, "reflective" ],                 # boundary 8
+  [ 43,  5, "reflective" ],                 # boundary 9
+  [  5, 52, "reflective" ],                 # boundary 10
+  [ 52,  6, "reflective" ],                 # boundary 11
+  [  6, 48, "reflective" ],                 # boundary 12
+  [ 48,  7, "reflective" ],                 # boundary 13
+  [  7, 14, "reflective" ],                 # boundary 14
+  [ 14, 20, "reflective" ],                 # boundary 15
+  [ 20, 25, "reflective" ],                 # boundary 16
+  [ 25, 29, "reflective" ],                 # boundary 17
+  [ 29, 32, "reflective" ],                 # boundary 18
+  [ 32, 34, "reflective" ],                 # boundary 19
+  [ 34, 35, "reflective" ],                 # boundary 20
+  [ 35, 91, "reflective" ],                 # boundary 21
+  [ 91, 33, "reflective" ],                 # boundary 22
+  [ 33, 87, "reflective" ],                 # boundary 23
+  [ 87, 30, "reflective" ],                 # boundary 24
+  [ 30, 78, "reflective" ],                 # boundary 25
+  [ 78, 26, "reflective" ],                 # boundary 26
+  [ 26, 74, "reflective" ],                 # boundary 27
+  [ 74, 21, "reflective" ],                 # boundary 28
+  [ 21, 57, "reflective" ],                 # boundary 29
+  [ 57, 15, "reflective" ],                 # boundary 30
+  [ 15, 53, "reflective" ],                 # boundary 31
+  [ 53,  8, "reflective" ],                 # boundary 32
+  [ 8,  37, "reflective" ],                 # boundary 33
+  [ 37,  0, "reflective" ]                  # boundary 34
+]
+
+curves = [
+  [ 36, 37, 45 ],                           # curve 0
+  [ 38, 39, 45 ],                           # curve 1
+  [ 39, 40, 45 ],                           # curve 2
+  [ 40, 41, 45 ],                           # curve 3
+  [ 41, 42, 45 ],                           # curve 4
+  [ 43, 44, 45 ],                           # curve 5
+  [ 44, 45, 45 ],                           # curve 6
+  [ 45, 46, 45 ],                           # curve 7
+  [ 46, 47, 45 ],                           # curve 8
+  [ 48, 49, 45 ],                           # curve 9
+  [ 49, 50, 45 ],                           # curve 10
+  [ 50, 51, 45 ],                           # curve 11
+  [ 51, 52, 45 ],                           # curve 12
+  [ 53, 54, 45 ],                           # curve 13
+  [ 54, 55, 45 ],                           # curve 14
+  [ 55, 56, 45 ],                           # curve 15
+  [ 56, 57, 45 ],                           # curve 16
+  [ 58, 59, 45 ],                           # curve 17
+  [ 59, 60, 45 ],                           # curve 18
+  [ 60, 61, 45 ],                           # curve 19
+  [ 61, 62, 45 ],                           # curve 20
+  [ 62, 63, 45 ],                           # curve 21
+  [ 63, 64, 45 ],                           # curve 22
+  [ 64, 65, 45 ],                           # curve 23
+  [ 65, 58, 45 ],                           # curve 24
+  [ 66, 67, 45 ],                           # curve 25
+  [ 67, 68, 45 ],                           # curve 26
+  [ 68, 69, 45 ],                           # curve 27
+  [ 69, 70, 45 ],                           # curve 28
+  [ 70, 71, 45 ],                           # curve 29
+  [ 71, 72, 45 ],                           # curve 30
+  [ 72, 73, 45 ],                           # curve 31
+  [ 73, 66, 45 ],                           # curve 32
+  [ 74, 75, 45 ],                           # curve 33
+  [ 75, 76, 45 ],                           # curve 34
+  [ 76, 77, 45 ],                           # curve 35
+  [ 77, 78, 45 ],                           # curve 36
+  [ 79, 80, 45 ],                           # curve 37
+  [ 80, 81, 45 ],                           # curve 38
+  [ 81, 82, 45 ],                           # curve 39
+  [ 82, 83, 45 ],                           # curve 40
+  [ 83, 84, 45 ],                           # curve 41
+  [ 84, 85, 45 ],                           # curve 42
+  [ 85, 86, 45 ],                           # curve 43
+  [ 86, 79, 45 ],                           # curve 44
+  [ 87, 88, 45 ],                           # curve 45
+  [ 88, 89, 45 ],                           # curve 46
+  [ 89, 90, 45 ],                           # curve 47
+  [ 90, 91, 45 ]                            # curve 48 
+]
