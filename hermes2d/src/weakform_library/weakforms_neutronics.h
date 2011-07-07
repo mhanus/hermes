@@ -4,6 +4,10 @@
 #include "weakforms_h1.h"
 #include "../function/forms.h"
 #include "../function/filter.h"
+#include "../views/mesh_view.h"
+#include "../views/scalar_view.h"
+#include "../views/order_view.h"
+#include <sstream>
 
 namespace WeakFormsNeutronics
 {
@@ -2321,6 +2325,101 @@ namespace WeakFormsNeutronics
           int eigenvalue_iteration(const Hermes::vector<Solution *>& solutions, DiscreteProblem& dp,
                                    double tol_keff = 1e-6, double tol_flux = 0, MatrixSolverType matrix_solver = SOLVER_UMFPACK);
       };
+      
+      namespace Common
+      {
+        class Views
+        {
+          protected:
+            unsigned int n_unknowns, n_equations, n_groups;
+            bool display_meshes;
+            
+            ScalarView** sviews;
+            OrderView** oviews;
+            MeshView** mviews;
+            
+            static const std::string  base_title_flux;
+            static const std::string  base_title_order;
+            static const std::string  base_title_mesh;
+            
+            std::string itos(int t)
+            {
+              std::stringstream ss; ss << t;
+              return ss.str();
+            }
+            
+            void init(unsigned int nu, unsigned int ne, unsigned int ng);
+            
+          public:
+            Views(bool display_meshes = false) : display_meshes(display_meshes) { init(0,0,0); }
+            Views(unsigned int n_unknowns, unsigned int n_equations, unsigned int n_groups, 
+                  bool display_meshes = false) : display_meshes(display_meshes) { init(n_unknowns, n_equations, n_groups); }
+            
+            virtual ~Views();
+            
+            virtual void show_meshes(Hermes::vector<Mesh*> meshes) = 0;
+            virtual void show_solutions(Hermes::vector< Solution* > solutions) = 0;
+            virtual void show_orders(Hermes::vector<Space*> spaces) = 0;
+            
+            void inspect_meshes(Hermes::vector<Mesh*> meshes);
+            void inspect_solutions(Hermes::vector< Solution* > solutions);
+            void inspect_orders(Hermes::vector<Space*> spaces);
+        };
+      }
+      
+      namespace Diffusion
+      {
+        class Views : public Common::Views
+        {
+          public:
+            Views(unsigned int G, bool display_meshes = false);
+            
+            void show_meshes(Hermes::vector<Mesh*> meshes);
+            void show_solutions(Hermes::vector< Solution* > solutions);
+            void show_orders(Hermes::vector<Space*> spaces);     
+            
+            void save_solutions_vtk(const std::string& base_filename, const std::string& base_varname,
+                                    Hermes::vector< Solution* > solutions,  bool mode_3D = false);
+            void save_orders_vtk(const std::string& base_filename, Hermes::vector<Space*> spaces);
+            
+        };
+      }
+      
+      namespace SPN
+      {
+        class Views : public Common::Views
+        {
+          unsigned int n_moments, n_odd_moments;
+          
+          static const unsigned int MAX_SOLUTIONS_SETS = 10;
+          
+          MomentGroupFlattener mg;
+          MomentFilter::Val*** moment_filters[MAX_SOLUTIONS_SETS];
+          
+          void show_solutions_internal(Hermes::vector< Solution* > solutions, unsigned int solutions_set);
+          
+          
+          public:
+            Views(unsigned int spn_order, unsigned int G, bool display_meshes = false);
+            ~Views();
+            
+            void show_meshes(Hermes::vector<Mesh*> meshes);
+            void show_solutions(Hermes::vector< Solution* > solutions) { 
+              show_solutions_internal(solutions, 0); 
+            }
+            void show_solutions(Hermes::vector< Solution* > solutions, unsigned int solutions_set) {
+              show_solutions_internal(solutions, solutions_set);
+            }
+            void show_orders(Hermes::vector<Space*> spaces);
+            
+            void save_solutions_vtk(const std::string& base_filename, const std::string& base_varname,
+                                    Hermes::vector< Solution* > solutions, unsigned int solutions_set = 0,
+                                    bool mode_3D = false);                   
+            void save_orders_vtk(const std::string& base_filename, Hermes::vector<Space*> spaces);
+            
+            void inspect_solutions(Hermes::vector< Solution* > solutions, unsigned int solutions_set);
+        };
+      }
     }
   }
 }
