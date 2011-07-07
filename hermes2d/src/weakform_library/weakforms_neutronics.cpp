@@ -2596,6 +2596,319 @@ namespace WeakFormsNeutronics
         
         return it;
       }
+      
+      namespace Common
+      {
+        const std::string Views::base_title_flux = "Neutron flux: group ";
+        const std::string Views::base_title_order = "Polynomial orders: group ";
+        const std::string Views::base_title_mesh = "Core mesh for group ";
+        
+        void Views::init(unsigned int nu, unsigned int ne, unsigned int ng) 
+        {
+          n_unknowns = nu; n_equations = ne; n_groups = ng;
+          
+          if (nu > 0 && ne > 0 && ng > 0)
+          {
+            sviews = new ScalarView* [n_unknowns];
+            oviews = new OrderView* [n_equations];
+            if (display_meshes)
+              mviews = new MeshView* [n_equations];
+          }
+          else
+          {
+            sviews = NULL;
+            oviews = NULL;
+            mviews = NULL;
+          }
+        }
+        
+        Views::~Views()
+        {
+          if (sviews != NULL)
+          {
+            for (unsigned int i = 0; i < n_unknowns; i++)
+              delete sviews[i];
+            delete [] sviews;
+          }
+          
+          if (oviews != NULL)
+          {
+            for (unsigned int i = 0; i < n_equations; i++)
+              delete oviews[i];
+            delete [] oviews;
+          }
+          
+          if (mviews != NULL)
+          {
+            for (unsigned int i = 0; i < n_equations; i++)
+              delete mviews[i];
+            delete [] mviews;
+          }
+        }
+        
+        void Views::inspect_meshes(Hermes::vector< Mesh* > meshes)
+        {
+          if (display_meshes)
+          {
+            show_meshes(meshes);
+            View::wait();
+            
+            for (unsigned int i = 0; i < n_equations; i++)
+              delete mviews[i];
+            delete [] mviews;
+            
+            mviews = NULL;
+          }
+        }
+        
+        void Views::inspect_solutions(Hermes::vector< Solution* > solutions)
+        {
+          show_solutions(solutions);
+          View::wait();
+          
+          for (unsigned int i = 0; i < n_unknowns; i++)
+            delete sviews[i];
+          delete [] sviews;
+          
+          sviews = NULL;
+        }
+        
+        void Views::inspect_orders(Hermes::vector< Space* > spaces)
+        {
+          show_orders(spaces);
+          View::wait();
+          
+          for (unsigned int i = 0; i < n_equations; i++)
+            delete oviews[i];
+          delete [] oviews;
+          
+          oviews = NULL;
+        }
+      }
+      
+      namespace Diffusion
+      {
+        Views::Views(unsigned int G, bool display_meshes) : Common::Views(G, G, G, display_meshes)
+        {
+          for (unsigned int g = 0; g < n_groups; g++)
+          {
+            std::string title_flux = base_title_flux + itos(g);
+            std::string title_order = base_title_order + itos(g);
+            
+            sviews[g] = new ScalarView(title_flux.c_str(), new WinGeom(0, g*452, 450, 450));
+            sviews[g]->show_mesh(false);
+            sviews[g]->set_3d_mode(true);
+            oviews[g] = new OrderView(title_order.c_str(), new WinGeom(0, n_groups*452 + g*452, 450, 450));
+          }
+          
+          if (display_meshes)
+            for (unsigned int g = 0; g < n_groups; g++)
+            {
+              std::string title = base_title_mesh + itos(g);
+              mviews[g] = new MeshView(title.c_str(), new WinGeom(0, g*352, 350, 350));
+            }
+        }
+        
+        void Views::show_meshes(Hermes::vector< Mesh* > meshes)
+        {
+          if (display_meshes)
+            for (unsigned int g = 0; g < n_groups; g++)
+              mviews[g]->show(meshes[g]);
+        }
+        
+        void Views::show_solutions(Hermes::vector< Solution* > solutions)
+        {
+          for (unsigned int g = 0; g < n_groups; g++)
+            sviews[g]->show(solutions[g]);
+        }
+        
+        void Views::show_orders(Hermes::vector< Space* > spaces)
+        {
+          for (unsigned int g = 0; g < n_groups; g++)
+            oviews[g]->show(spaces[g]);
+        }
+        
+        void Views::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
+                                       Hermes::vector< Solution* > solutions, bool mode_3D)
+        {
+          Linearizer lin;
+          for (unsigned int g = 0; g < n_groups; g++)
+          {
+            std::string appendix = std::string("_group_") + itos(g);
+            std::string file = base_filename + appendix + std::string(".vtk");
+            std::string var = base_varname + appendix;
+            lin.save_solution_vtk(solutions[g], file.c_str(), var.c_str(), mode_3D);
+            info("Scalar flux in group %d saved in VTK format to file %s.", g, file.c_str());
+          }
+        }
+        
+        void Views::save_orders_vtk(const std::string& base_filename, Hermes::vector< Space* > spaces)
+        {
+          Orderizer ord;
+          for (unsigned int g = 0; g < n_groups; g++)
+          {
+            std::string file = base_filename + std::string("_group_") + itos(g) + std::string(".vtk");
+            ord.save_orders_vtk(spaces[g], file.c_str());
+            info("Information about approximation space for group %d saved in VTK format to file %s.", g, file.c_str());
+          }
+        }
+      }
+      
+      namespace SPN
+      {
+        Views::Views(unsigned int spn_order, unsigned int G, bool display_meshes) : Common::Views(display_meshes), mg(G)
+        {
+          n_moments = spn_order+1;
+          n_odd_moments = (n_moments+1)/2;
+          Common::Views::init(G * n_moments, G * n_odd_moments, G);
+          
+          for (unsigned int g = 0; g < n_groups; g++)
+          {
+            std::string title_flux = base_title_flux + itos(g) + std::string(", moment ");
+            std::string title_order = base_title_order + itos(g) + std::string(", moment ");
+            for (unsigned int m = 0; m < n_moments; m++)
+            {
+              unsigned int i = mg.pos(m,g);
+              
+              sviews[i] = new ScalarView((title_flux + itos(m)).c_str(), new WinGeom(m*452, g*452, 450, 450));
+              sviews[i]->show_mesh(false);
+              sviews[i]->set_3d_mode(true);
+              
+              if (m%2) 
+                oviews[mg.pos((m-1)/2,g)] = new OrderView((title_order + itos(m)).c_str(), new WinGeom(m*452, n_groups*452 + g*452, 450, 450));
+            }
+          }
+          
+          if (display_meshes)
+          {
+            for (unsigned int g = 0; g < n_groups; g++)
+            {
+              std::string title = base_title_mesh + itos(g) + std::string(", moment ");
+              for (unsigned int m = 0; m < n_odd_moments; m++)
+                mviews[mg.pos(m,g)] = new MeshView((title + itos(m)).c_str(), new WinGeom(m*352, g*352, 350, 350));
+            }
+          }
+          
+          for (unsigned int i = 0; i < MAX_SOLUTIONS_SETS; i++)
+          {
+            moment_filters[i] = new MomentFilter::Val** [n_odd_moments];
+            for (unsigned int m = 0; m < n_odd_moments; m++)
+            {
+              moment_filters[i][m] = new MomentFilter::Val* [n_groups];
+              
+              for (unsigned int g = 0; g < n_groups; g++)
+                moment_filters[i][m][g] = NULL;
+            }
+          }
+        }
+        
+        Views::~Views()
+        { 
+          for (unsigned int i = 0; i < MAX_SOLUTIONS_SETS; i++)
+          {
+            for (unsigned int m = 0; m < n_odd_moments; m++)
+            {
+              for (unsigned int g = 0; g < n_groups; g++)
+                if (moment_filters[i][m][g])
+                  delete moment_filters[i][m][g];
+                
+              delete [] moment_filters[i][m];
+            }
+            delete [] moment_filters[i];
+          }
+        }
+        
+        void Views::show_meshes(Hermes::vector< Mesh* > meshes)
+        {
+          if (display_meshes)
+            for (unsigned int g = 0; g < n_groups; g++)
+              for (unsigned int m = 0; m < n_odd_moments; m++)
+                mviews[mg.pos(m,g)]->show(meshes[mg.pos(m,g)]);
+        }
+        
+        void Views::show_solutions_internal(Hermes::vector< Solution* > solutions, unsigned int solutions_set)
+        {
+          if (solutions_set > MAX_SOLUTIONS_SETS)
+            error("Change Views::MAX_SOLUTIONS_SETS and rebuild to allow visualizing more than 10 solutions sets.");
+          
+          for (unsigned int g = 0; g < n_groups; g++)
+          {
+            for (unsigned int m = 0; m < n_odd_moments; m++)
+            {
+              unsigned int i = mg.pos(m,g);
+              unsigned int j = mg.pos(2*m,g);
+              unsigned int k = mg.pos(2*m+1,g);
+              
+              if (moment_filters[solutions_set][m][g] == NULL)
+                moment_filters[solutions_set][m][g] = new MomentFilter::Val(2*m, g, n_groups, solutions);
+              else
+                moment_filters[solutions_set][m][g]->reinit();
+              
+              sviews[j]->show(moment_filters[solutions_set][m][g]);
+              sviews[k]->show(solutions[i]);
+            }
+          }
+        }
+        
+        void Views::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
+                                       Hermes::vector< Solution* > solutions, unsigned int solutions_set, bool mode_3D)
+        {
+          if (solutions_set > MAX_SOLUTIONS_SETS)
+            error("Change Views::MAX_SOLUTIONS_SETS and rebuild to allow visualizing more than 10 solutions sets.");
+          
+          Linearizer lin;
+          for (unsigned int g = 0; g < n_groups; g++)
+          {
+            std::string appendix = std::string("_group_") + itos(g);
+            for (unsigned int m = 0; m < n_odd_moments; m++)
+            {
+              if (moment_filters[solutions_set][m][g] == NULL)
+                moment_filters[solutions_set][m][g] = new MomentFilter::Val(2*m, g, n_groups, solutions);
+              
+              std::string file = base_filename + std::string("_moment_") + itos(2*m) + appendix + std::string(".vtk");
+              std::string var = base_varname + std::string("_moment_") + itos(2*m) + appendix;
+              lin.save_solution_vtk(moment_filters[solutions_set][m][g], file.c_str(), var.c_str(), mode_3D);
+              info("SP%d moment #%d of solution in group %d saved in VTK format to file %s.", n_moments-1, 2*m, g, file.c_str());
+              
+              file = base_filename + std::string("_moment_") + itos(2*m+1) + appendix + std::string(".vtk");
+              var = base_varname + std::string("_moment_") + itos(2*m+1) + appendix;
+              lin.save_solution_vtk(solutions[mg.pos(m,g)], file.c_str(), var.c_str(), mode_3D);
+              info("SP%d moment #%d of solution in group %d saved in VTK format to file %s.", n_moments-1, 2*m+1, g, file.c_str());
+            }
+          }
+        }
+        
+        void Views::save_orders_vtk(const std::string& base_filename, Hermes::vector< Space* > spaces)
+        {
+          Orderizer ord;
+          for (unsigned int g = 0; g < n_groups; g++)
+            for (unsigned int m = 0; m < n_odd_moments; m++)
+            {
+              std::string file = base_filename + std::string("_moment_") + itos(2*m+1) + std::string("_group_") + itos(g) + std::string(".vtk");
+              ord.save_orders_vtk(spaces[mg.pos(m,g)], file.c_str());
+              info("Information about approximation space for moment %d, group %d saved in VTK format to file %s.", 2*m+1, g, file.c_str());
+            }
+        }
+        
+        void Views::inspect_solutions(Hermes::vector< Solution* > solutions, unsigned int solutions_set)
+        {
+          show_solutions(solutions, solutions_set);
+          View::wait();
+          
+          for (unsigned int i = 0; i < n_unknowns; i++)
+            delete sviews[i];
+          delete [] sviews;
+          
+          sviews = NULL;
+        }
+
+        void Views::show_orders(Hermes::vector< Space* > spaces)
+        {
+          for (unsigned int g = 0; g < n_groups; g++)
+            for (unsigned int m = 0; m < n_odd_moments; m++)
+              oviews[mg.pos(m,g)]->show(spaces[mg.pos(m,g)]);
+        }
+      }
     }
   }
 }
