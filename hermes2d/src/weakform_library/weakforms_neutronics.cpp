@@ -3206,36 +3206,8 @@ namespace WeakFormsNeutronics
                 mviews[mg.pos(m,g)] = new MeshView((title + itos(m)).c_str(), new WinGeom(m*352, g*352, 350, 350));
             }
           }
-          
-          for (unsigned int i = 0; i < MAX_SOLUTIONS_SETS; i++)
-          {
-            moment_filters[i] = new MomentFilter::Val** [n_odd_moments];
-            for (unsigned int m = 0; m < n_odd_moments; m++)
-            {
-              moment_filters[i][m] = new MomentFilter::Val* [n_groups];
-              
-              for (unsigned int g = 0; g < n_groups; g++)
-                moment_filters[i][m][g] = NULL;
-            }
-          }
         }
-        
-        Views::~Views()
-        { 
-          for (unsigned int i = 0; i < MAX_SOLUTIONS_SETS; i++)
-          {
-            for (unsigned int m = 0; m < n_odd_moments; m++)
-            {
-              for (unsigned int g = 0; g < n_groups; g++)
-                if (moment_filters[i][m][g])
-                  delete moment_filters[i][m][g];
                 
-              delete [] moment_filters[i][m];
-            }
-            delete [] moment_filters[i];
-          }
-        }
-        
         void Views::show_meshes(Hermes::vector< Mesh* > meshes)
         {
           if (display_meshes)
@@ -3244,11 +3216,8 @@ namespace WeakFormsNeutronics
                 mviews[mg.pos(m,g)]->show(meshes[mg.pos(m,g)]);
         }
         
-        void Views::show_solutions_internal(Hermes::vector< Solution* > solutions, unsigned int solutions_set)
+        void Views::show_solutions(Hermes::vector< Solution* > solutions)
         {
-          if (solutions_set > MAX_SOLUTIONS_SETS)
-            error("Change Views::MAX_SOLUTIONS_SETS and rebuild to allow visualizing more than 10 solutions sets.");
-          
           for (unsigned int g = 0; g < n_groups; g++)
           {
             for (unsigned int m = 0; m < n_odd_moments; m++)
@@ -3257,35 +3226,28 @@ namespace WeakFormsNeutronics
               unsigned int j = mg.pos(2*m,g);
               unsigned int k = mg.pos(2*m+1,g);
               
-              if (moment_filters[solutions_set][m][g] == NULL)
-                moment_filters[solutions_set][m][g] = new MomentFilter::Val(2*m, g, n_groups, solutions);
-              else
-                moment_filters[solutions_set][m][g]->reinit();
+              MomentFilter::Val mf(2*m, g, n_groups, solutions);
               
-              sviews[j]->show(moment_filters[solutions_set][m][g]);
+              sviews[j]->show(&mf);
               sviews[k]->show(solutions[i]);
             }
           }
         }
         
         void Views::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
-                                       Hermes::vector< Solution* > solutions, unsigned int solutions_set, bool mode_3D)
-        {
-          if (solutions_set > MAX_SOLUTIONS_SETS)
-            error("Change Views::MAX_SOLUTIONS_SETS and rebuild to allow visualizing more than 10 solutions sets.");
-          
+                                       Hermes::vector< Solution* > solutions, bool mode_3D)
+        { 
           Linearizer lin;
           for (unsigned int g = 0; g < n_groups; g++)
           {
             std::string appendix = std::string("_group_") + itos(g);
             for (unsigned int m = 0; m < n_odd_moments; m++)
             {
-              if (moment_filters[solutions_set][m][g] == NULL)
-                moment_filters[solutions_set][m][g] = new MomentFilter::Val(2*m, g, n_groups, solutions);
+              MomentFilter::Val mf(2*m, g, n_groups, solutions);
               
               std::string file = base_filename + std::string("_moment_") + itos(2*m) + appendix + std::string(".vtk");
               std::string var = base_varname + std::string("_moment_") + itos(2*m) + appendix;
-              lin.save_solution_vtk(moment_filters[solutions_set][m][g], file.c_str(), var.c_str(), mode_3D);
+              lin.save_solution_vtk(&mf, file.c_str(), var.c_str(), mode_3D);
               info("SP%d moment #%d of solution in group %d saved in VTK format to file %s.", n_moments-1, 2*m, g, file.c_str());
               
               file = base_filename + std::string("_moment_") + itos(2*m+1) + appendix + std::string(".vtk");
@@ -3308,9 +3270,9 @@ namespace WeakFormsNeutronics
             }
         }
         
-        void Views::inspect_solutions(Hermes::vector< Solution* > solutions, unsigned int solutions_set)
+        void Views::inspect_solutions(Hermes::vector< Solution* > solutions)
         {
-          show_solutions(solutions, solutions_set);
+          show_solutions(solutions);
           View::wait();
           
           for (unsigned int i = 0; i < n_unknowns; i++)
