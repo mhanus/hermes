@@ -2318,14 +2318,11 @@ namespace WeakFormsNeutronics
         double Coeffs::even_moment(unsigned int m, unsigned int n)
         {
           if (m >= N_MAX)
-            error("For the maximum implemented SPN order (N = %d), there are %d even moments."
-                  "Tried to access %d. moment.", 2*N_MAX-1, N_MAX, m+1);
-          if (n >= N_MAX-m)
-            error("The %d. even moment may be expressed in terms of %d odd moments."
-                  "Tried to use %d. odd moment.", m, N_MAX-m, n+1);
-          if (m > n)
-            error("The %d. even moment may be expressed in terms of odd moments starting with %d."
-                  "Tried to use moment %d.", m, m, n+1);
+            error("For the maximum implemented SPN order (N = %d), there are %d even moment(s)."
+                  "Tried to access moment #%d.", 2*N_MAX-1, N_MAX, m+1);
+          if (n > N_MAX || n < m)
+            error("The even moment #%d must be expressed in terms of %d odd moment(s), starting with %d."
+                  "Tried to use odd moment #%d.", m+1, N_MAX-m, m+1, n+1);
                   
           return EVEN_MOMENTS[m][n-m];
         }
