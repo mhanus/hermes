@@ -54,10 +54,10 @@ const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the nu
 MatrixSolverType matrix_solver = SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
 
-const bool HERMES_VISUALIZATION = true;  // Set to "true" to enable Hermes OpenGL visualization. 
-const bool VTK_VISUALIZATION = false;     // Set to "true" to enable VTK output.
-const bool DISPLAY_MESHES = true;       // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
-const int VIEW_COARSE_SOLUTIONS = 0, VIEW_FINE_SOLUTIONS = 1; // Solution sets for optimized visualization of SPN moments.
+const bool HERMES_VISUALIZATION = true;       // Set to "true" to enable Hermes OpenGL visualization. 
+const bool VTK_VISUALIZATION = false;         // Set to "true" to enable VTK output.
+const bool DISPLAY_MESHES = false;            // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
+const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
 
 void report_num_dof(const std::string& msg, const Hermes::vector< Space* > spaces)
 {
@@ -206,10 +206,11 @@ int main(int argc, char* argv[])
       OGProjection::project_global(spaces, solutions, coarse_solutions, matrix_solver);
       
       // View the coarse-mesh solutions and polynomial orders.
-      if (HERMES_VISUALIZATION)
+      if (HERMES_VISUALIZATION && INTERMEDIATE_VISUALIZATION)
       {
+        info("Visualizing.");
         cpu_time.tick();
-        views.show_solutions(coarse_solutions, VIEW_COARSE_SOLUTIONS);
+        views.show_solutions(coarse_solutions);
         views.show_orders(spaces);
         cpu_time.tick(HERMES_SKIP);
       }
@@ -302,7 +303,7 @@ int main(int argc, char* argv[])
   
   if (HERMES_VISUALIZATION)
   {
-    views.show_solutions(solutions, VIEW_FINE_SOLUTIONS);
+    views.show_solutions(solutions);
     views.show_orders(spaces);
   }
   if (VTK_VISUALIZATION)
