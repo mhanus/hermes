@@ -2460,34 +2460,20 @@ namespace WeakFormsNeutronics
         class Views : public Common::Views
         {
           unsigned int n_moments, n_odd_moments;
-          
-          static const unsigned int MAX_SOLUTIONS_SETS = 10;
-          
           MomentGroupFlattener mg;
-          MomentFilter::Val*** moment_filters[MAX_SOLUTIONS_SETS];
-          
-          void show_solutions_internal(Hermes::vector< Solution* > solutions, unsigned int solutions_set);
-          
           
           public:
             Views(unsigned int spn_order, unsigned int G, bool display_meshes = false);
-            ~Views();
             
             void show_meshes(Hermes::vector<Mesh*> meshes);
-            void show_solutions(Hermes::vector< Solution* > solutions) { 
-              show_solutions_internal(solutions, 0); 
-            }
-            void show_solutions(Hermes::vector< Solution* > solutions, unsigned int solutions_set) {
-              show_solutions_internal(solutions, solutions_set);
-            }
+            void show_solutions(Hermes::vector< Solution* > solutions);
             void show_orders(Hermes::vector<Space*> spaces);
             
             void save_solutions_vtk(const std::string& base_filename, const std::string& base_varname,
-                                    Hermes::vector< Solution* > solutions, unsigned int solutions_set = 0,
-                                    bool mode_3D = false);                   
+                                    Hermes::vector< Solution* > solutions, bool mode_3D = false);                   
             void save_orders_vtk(const std::string& base_filename, Hermes::vector<Space*> spaces);
             
-            void inspect_solutions(Hermes::vector< Solution* > solutions, unsigned int solutions_set);
+            void inspect_solutions(Hermes::vector< Solution* > solutions);
         };
       }
     }
