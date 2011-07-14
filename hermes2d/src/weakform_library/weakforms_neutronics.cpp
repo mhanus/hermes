@@ -358,7 +358,7 @@ namespace WeakFormsNeutronics
           MaterialPropertyMap1::const_iterator data_elem = matprop.chi.begin();
           for ( ; data_elem != matprop.chi.end(); ++data_elem)
           {
-            string mat = data_elem->first;
+            std::string mat = data_elem->first;
             
             os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
             os << setw(40) << mat << endl;
@@ -615,7 +615,7 @@ namespace WeakFormsNeutronics
           MaterialPropertyMap1::const_iterator data_elem = matprop.Sigma_r.begin();
           for ( ; data_elem != matprop.Sigma_r.end(); ++data_elem)
           {
-            string mat = data_elem->first;
+            std::string mat = data_elem->first;
             
             os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
             os << setw(40) << mat << endl;
@@ -1066,7 +1066,7 @@ namespace WeakFormsNeutronics
           MaterialPropertyMap3::const_iterator Srn_inv_elem = matprop.odd_Sigma_rn_inv.begin();
           for ( ; Srn_elem != matprop.Sigma_rn.end(); ++Srn_elem, ++Srn_inv_elem)
           {
-            string mat = Srn_elem->first;
+            std::string mat = Srn_elem->first;
             rank3 Srn_moments = Srn_elem->second;
             rank3 Srn_inv_moments = Srn_inv_elem->second;
             
@@ -2549,7 +2549,7 @@ namespace WeakFormsNeutronics
       
       double PostProcessor::get_integrated_group_reaction_rates_internal( ReactionType reaction, MeshFunction* solution, 
                                                                           const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                                                          const Hermes::vector< string >& regions,
+                                                                          const Hermes::vector< std::string >& regions,
                                                                           unsigned int this_group, int other_group) const
       {
         using namespace MaterialProperties::Messages;
@@ -2682,7 +2682,7 @@ namespace WeakFormsNeutronics
       
       double PostProcessor::get_integrated_group_reaction_rates(ReactionType reaction, const Hermes::vector< Solution* >& solutions, 
                                                                 const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                                                unsigned int group, const Hermes::vector< string >& regions) const
+                                                                unsigned int group, const Hermes::vector< std::string >& regions) const
       {
         Hermes::vector<MeshFunction*> scalar_fluxes;
         
@@ -2716,7 +2716,7 @@ namespace WeakFormsNeutronics
       void PostProcessor::get_integrated_reaction_rates(ReactionType reaction, const Hermes::vector< Solution* >& solutions, 
                                                         Hermes::vector< double >* results, 
                                                         const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                                        const Hermes::vector< string >& regions) const
+                                                        const Hermes::vector< std::string >& regions) const
       {
         Hermes::vector<MeshFunction*> scalar_fluxes;
         
@@ -2756,7 +2756,7 @@ namespace WeakFormsNeutronics
       
       double PostProcessor::get_integrated_reaction_rates(ReactionType reaction, const Hermes::vector< Solution* >& solutions, 
                                                           const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                                          const Hermes::vector< string >& regions) const
+                                                          const Hermes::vector< std::string >& regions) const
       {
         double result = 0.0;
         for (unsigned int group = 0; group < matprop.get_G(); group++)
@@ -2830,7 +2830,7 @@ namespace WeakFormsNeutronics
       }
 
       double PostProcessor::get_integrated_scalar_fluxes(const Hermes::vector< Solution* >& solutions, unsigned int G,
-                                                         const Hermes::vector< string >& regions) const
+                                                         const Hermes::vector< std::string >& regions) const
       {
         double result = 0.0;
         for (unsigned int group = 0; group < G; group++)
@@ -2857,7 +2857,7 @@ namespace WeakFormsNeutronics
 
 
       SourceIteration::SourceIteration( NeutronicsMethod method, const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                        const Hermes2D& hermes2d, const std::vector< string >& fission_regions, GeomType geom_type )
+                                        const Hermes2D& hermes2d, const std::vector< std::string >& fission_regions, GeomType geom_type )
         : hermes2d(hermes2d), method(method), fission_regions(fission_regions), geom_type(geom_type)
       {
         if (method == NEUTRONICS_DIFFUSION)
