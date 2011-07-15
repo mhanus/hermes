@@ -511,16 +511,16 @@ namespace Hermes
       assemble_sanity_checks(block_weights);
 
       // Time measurement.
-      profiling.current_record.reset();
-      profiling.total_time.tick();
-      profiling.assemble_util_time.tick();
+      // profiling.current_record.reset();
+      // profiling.total_time.tick();
+      // profiling.assemble_util_time.tick();
 
       // Creating matrix sparse structure.
       create_sparse_structure(mat, rhs, force_diagonal_blocks, block_weights);
 
       // Time measurement.
-      profiling.assemble_util_time.tick();
-      profiling.current_record.create_sparse_structure = profiling.assemble_util_time.last();
+      // profiling.assemble_util_time.tick();
+      // profiling.current_record.create_sparse_structure = // profiling.assemble_util_time.last();
 
       // Convert the coefficient vector 'coeff_vec' into solutions Hermes::vector 'u_ext'.
       Hermes::vector<Solution<Scalar>*> u_ext = Hermes::vector<Solution<Scalar>*>();
@@ -550,8 +550,8 @@ namespace Hermes
       wf->get_stages(spaces, u_ext, stages, want_matrix, want_vector);
 
       // Time measurement.
-      profiling.assemble_util_time.tick();
-      profiling.current_record.initialization = profiling.assemble_util_time.last();
+      // profiling.assemble_util_time.tick();
+      // profiling.current_record.initialization = // profiling.assemble_util_time.last();
 
       // Loop through all assembling stages -- the purpose of this is increased performance
       // in multi-mesh calculations, where, e.g., only the right hand side uses two meshes.
@@ -586,9 +586,9 @@ namespace Hermes
         delete *it;
 
       // Time measurement.
-      profiling.total_time.tick();
-      profiling.current_record.total = profiling.total_time.last();
-      profiling.profile.push_back(profiling.current_record);
+      // profiling.total_time.tick();
+      // profiling.current_record.total = // profiling.total_time.last();
+      // profiling.profile.push_back(// profiling.current_record);
     }
 
     template<typename Scalar>
@@ -746,7 +746,7 @@ namespace Hermes
     {
       _F_;
       // Time measurement.
-      profiling.assemble_util_time.tick();
+      // profiling.assemble_util_time.tick();
 
       // Assembly list vector.
       Hermes::vector<AsmList<Scalar>*> al;
@@ -771,11 +771,11 @@ namespace Hermes
       init_cache();
 
       // Time measurement.
-      profiling.assemble_util_time.tick();
-      profiling.current_record.state_init += profiling.assemble_util_time.last();
+      // profiling.assemble_util_time.tick();
+      // profiling.current_record.state_init += // profiling.assemble_util_time.last();
 
       // Time measurement.
-      profiling.assemble_util_time.reset();
+      // profiling.assemble_util_time.reset();
 
       // Assemble volume matrix forms.
       assemble_volume_matrix_forms(stage, mat, rhs, force_diagonal_blocks, 
@@ -816,8 +816,8 @@ namespace Hermes
       delete_cache();
 
       // Time measurement.
-      profiling.assemble_util_time.tick();
-      profiling.current_record.form_preparation_assemble += profiling.assemble_util_time.accumulated();
+      // profiling.assemble_util_time.tick();
+      // profiling.current_record.form_preparation_assemble += // profiling.assemble_util_time.accumulated();
     }
 
     template<typename Scalar>
@@ -2540,8 +2540,8 @@ namespace Hermes
       if (mfv->adapt_eval == false)
       {
         // Time measurement.
-        profiling.assemble_util_time.tick();
-        profiling.eval_util_time.reset();
+        // profiling.assemble_util_time.tick();
+        // profiling.eval_util_time.reset();
 
         // Determine the integration order by parsing the form.
         int order = calc_order_matrix_form_vol(mfv, u_ext, fu, fv, ru, rv);
@@ -2549,9 +2549,9 @@ namespace Hermes
         result = eval_form_subelement(order, mfv, u_ext, fu, fv, ru, rv);
 
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.current_record.form_preparation_eval += profiling.eval_util_time.accumulated();
-        profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.eval_util_time.tick();
+        // profiling.current_record.form_preparation_eval += // profiling.eval_util_time.accumulated();
+        // profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
       }
       else 
       {
@@ -2593,8 +2593,8 @@ namespace Hermes
       _F_;
 
       // Time measurement.
-      profiling.assemble_util_time.tick();
-      profiling.eval_util_time.reset();
+      // profiling.assemble_util_time.tick();
+      // profiling.eval_util_time.reset();
 
       // Determine the integration order by parsing the form.
       int order = calc_order_matrix_form_vol(mfv, u_ext, fu, fv, ru, rv);
@@ -2644,13 +2644,13 @@ namespace Hermes
 
       // The actual calculation takes place here.
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.integration_time.tick();
+      // profiling.eval_util_time.tick();
+      // profiling.integration_time.tick();
       mfv->value(np, jwt, prev, u, v, e, ext, result);
       // Time measurement.
-      profiling.integration_time.tick();
-      profiling.current_record.form_evaluation += profiling.integration_time.last();
-      profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.integration_time.tick();
+      // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+      // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
       for(unsigned int i = 0; i < result.size(); i++)
         result[i] *= mfv->scaling_factor;
@@ -2671,9 +2671,9 @@ namespace Hermes
         }
 
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.current_record.form_preparation_eval += profiling.eval_util_time.accumulated();
-        profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.eval_util_time.tick();
+        // profiling.current_record.form_preparation_eval += // profiling.eval_util_time.accumulated();
+        // profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
     }
     template<typename Scalar>
     int DiscreteProblem<Scalar>::calc_order_matrix_form_vol(MatrixFormVol<Scalar> *mfv, Hermes::vector<Solution<Scalar>*> u_ext,
@@ -2718,13 +2718,13 @@ namespace Hermes
 
         // Total order of the vector form.
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.integration_time.tick();
+        // profiling.eval_util_time.tick();
+        // profiling.integration_time.tick();
         Hermes::Ord o = mfv->ord(1, &fake_wt, oi, ou, ov, &geom_ord, fake_ext);
         // Time measurement.
-        profiling.integration_time.tick();
-        profiling.current_record.form_evaluation += profiling.integration_time.last();
-        profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.integration_time.tick();
+        // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+        // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
         // Increase due to reference map.
         order = ru->get_inv_ref_order();
@@ -2785,13 +2785,13 @@ namespace Hermes
 
         // Total order of the vector form.
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.integration_time.tick();
+        // profiling.eval_util_time.tick();
+        // profiling.integration_time.tick();
         Hermes::Ord o = mfv->ord(1, &fake_wt, oi, ou, ov, &geom_ord, fake_ext);
         // Time measurement.
-        profiling.integration_time.tick();
-        profiling.current_record.form_evaluation += profiling.integration_time.last();
-        profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.integration_time.tick();
+        // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+        // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
         // Increase due to reference map.
         order = ru->get_inv_ref_order();
@@ -2870,13 +2870,13 @@ namespace Hermes
 
       // The actual calculation takes place here.
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.integration_time.tick();
+      // profiling.eval_util_time.tick();
+      // profiling.integration_time.tick();
       Scalar res = mfv->value(np, jwt, prev, u, v, e, ext) * mfv->scaling_factor;
       // Time measurement.
-      profiling.integration_time.tick();
-      profiling.current_record.form_evaluation += profiling.integration_time.last();
-      profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.integration_time.tick();
+      // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+      // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
       // Clean up.
       for(int i = 0; i < prev_size; i++)
@@ -2994,8 +2994,8 @@ namespace Hermes
       {
 
         // Time measurement.
-        profiling.assemble_util_time.tick();
-        profiling.eval_util_time.reset();
+        // profiling.assemble_util_time.tick();
+        // profiling.eval_util_time.reset();
 
         // Determine the integration order by parsing the form.
         int order = calc_order_vector_form_vol(vfv, u_ext, fv, rv);
@@ -3003,9 +3003,9 @@ namespace Hermes
         result = eval_form_subelement(order, vfv, u_ext, fv, rv);
 
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.current_record.form_preparation_eval += profiling.eval_util_time.accumulated();
-        profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.eval_util_time.tick();
+        // profiling.current_record.form_preparation_eval += // profiling.eval_util_time.accumulated();
+        // profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
       }
       else 
       {
@@ -3041,8 +3041,8 @@ namespace Hermes
       _F_;
 
       // Time measurement.
-      profiling.assemble_util_time.tick();
-      profiling.eval_util_time.reset();
+      // profiling.assemble_util_time.tick();
+      // profiling.eval_util_time.reset();
 
       // Determine the integration order by parsing the form.
       int order = calc_order_vector_form_vol(vfv, u_ext, fv, rv);
@@ -3088,13 +3088,13 @@ namespace Hermes
 
       // The actual calculation takes place here.
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.integration_time.tick();
+      // profiling.eval_util_time.tick();
+      // profiling.integration_time.tick();
       vfv->value(np, jwt, prev, v, e, ext, result);
       // Time measurement.
-      profiling.integration_time.tick();
-      profiling.current_record.form_evaluation += profiling.integration_time.last();
-      profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.integration_time.tick();
+      // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+      // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
       for(unsigned int i = 0; i < result.size(); i++)
         result[i] *= vfv->scaling_factor;
@@ -3115,9 +3115,9 @@ namespace Hermes
         }
 
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.current_record.form_preparation_eval += profiling.eval_util_time.accumulated();
-        profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.eval_util_time.tick();
+        // profiling.current_record.form_preparation_eval += // profiling.eval_util_time.accumulated();
+        // profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
     }
 
     template<typename Scalar>
@@ -3164,13 +3164,13 @@ namespace Hermes
 
         // Total order of the vector form.
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.integration_time.tick();
+        // profiling.eval_util_time.tick();
+        // profiling.integration_time.tick();
         Hermes::Ord o = vfv->ord(1, &fake_wt, oi, ov, &geom_ord, fake_ext);
         // Time measurement.
-        profiling.integration_time.tick();
-        profiling.current_record.form_evaluation += profiling.integration_time.last();
-        profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.integration_time.tick();
+        // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+        // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
         // Increase due to reference map.
         order = rv->get_inv_ref_order();
@@ -3233,13 +3233,13 @@ namespace Hermes
 
         // Total order of the vector form.
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.integration_time.tick();
+        // profiling.eval_util_time.tick();
+        // profiling.integration_time.tick();
         Hermes::Ord o = vfv->ord(1, &fake_wt, oi, ov, &geom_ord, fake_ext);
         // Time measurement.
-        profiling.integration_time.tick();
-        profiling.current_record.form_evaluation += profiling.integration_time.last();
-        profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.integration_time.tick();
+        // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+        // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
         // Increase due to reference map.
         order = rv->get_inv_ref_order();
@@ -3318,13 +3318,13 @@ namespace Hermes
 
       // The actual calculation takes place here.
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.integration_time.tick();
+      // profiling.eval_util_time.tick();
+      // profiling.integration_time.tick();
       Scalar res = vfv->value(np, jwt, prev, v, e, ext) * vfv->scaling_factor;
       // Time measurement.
-      profiling.integration_time.tick();
-      profiling.current_record.form_evaluation += profiling.integration_time.last();
-      profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.integration_time.tick();
+      // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+      // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
       // Clean up.
       for(int i = 0; i < prev_size; i++)
@@ -3436,8 +3436,8 @@ namespace Hermes
       if (mfs->adapt_eval == false)
       {
         // Time measurement.
-        profiling.assemble_util_time.tick();
-        profiling.eval_util_time.reset();
+        // profiling.assemble_util_time.tick();
+        // profiling.eval_util_time.reset();
 
         // Determine the integration order by parsing the form.
         int order = calc_order_matrix_form_surf(mfs, u_ext, fu, fv, ru, rv, surf_pos);
@@ -3445,9 +3445,9 @@ namespace Hermes
         result = eval_form_subelement(order, mfs, u_ext, fu, fv, ru, rv, surf_pos);
 
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.current_record.form_preparation_eval += profiling.eval_util_time.accumulated();
-        profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.eval_util_time.tick();
+        // profiling.current_record.form_preparation_eval += // profiling.eval_util_time.accumulated();
+        // profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
       }
       else 
       {
@@ -3478,8 +3478,8 @@ namespace Hermes
       _F_;
 
       // Time measurement.
-      profiling.assemble_util_time.tick();
-      profiling.eval_util_time.reset();
+      // profiling.assemble_util_time.tick();
+      // profiling.eval_util_time.reset();
 
       // Determine the integration order by parsing the form.
       int order = calc_order_matrix_form_surf(mfs, u_ext, fu, fv, ru, rv, surf_pos);
@@ -3521,13 +3521,13 @@ namespace Hermes
 
       // The actual calculation takes place here.
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.integration_time.tick();
+      // profiling.eval_util_time.tick();
+      // profiling.integration_time.tick();
       mfs->value(np, jwt, prev, u, v, e, ext, result);
       // Time measurement.
-      profiling.integration_time.tick();
-      profiling.current_record.form_evaluation += profiling.integration_time.last();
-      profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.integration_time.tick();
+      // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+      // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
       for(unsigned int i = 0; i < result.size(); i++)
         result[i] *= mfs->scaling_factor * 0.5;
@@ -3548,9 +3548,9 @@ namespace Hermes
         }
 
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.current_record.form_preparation_eval += profiling.eval_util_time.accumulated();
-        profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.eval_util_time.tick();
+        // profiling.current_record.form_preparation_eval += // profiling.eval_util_time.accumulated();
+        // profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
     }
 
     template<typename Scalar>
@@ -3596,13 +3596,13 @@ namespace Hermes
 
         // Total order of the vector form.
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.integration_time.tick();
+        // profiling.eval_util_time.tick();
+        // profiling.integration_time.tick();
         Hermes::Ord o = mfs->ord(1, &fake_wt, oi, ou, ov, &geom_ord, fake_ext);
         // Time measurement.
-        profiling.integration_time.tick();
-        profiling.current_record.form_evaluation += profiling.integration_time.last();
-        profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.integration_time.tick();
+        // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+        // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
         // Increase due to reference map.
         order = ru->get_inv_ref_order();
@@ -3664,13 +3664,13 @@ namespace Hermes
 
         // Total order of the vector form.
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.integration_time.tick();
+        // profiling.eval_util_time.tick();
+        // profiling.integration_time.tick();
         Hermes::Ord o = mfs->ord(1, &fake_wt, oi, ou, ov, &geom_ord, fake_ext);
         // Time measurement.
-        profiling.integration_time.tick();
-        profiling.current_record.form_evaluation += profiling.integration_time.last();
-        profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.integration_time.tick();
+        // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+        // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
         // Increase due to reference map.
         order = ru->get_inv_ref_order();
@@ -3743,13 +3743,13 @@ namespace Hermes
 
       // The actual calculation takes place here.
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.integration_time.tick();
+      // profiling.eval_util_time.tick();
+      // profiling.integration_time.tick();
       Scalar res = mfs->value(np, jwt, prev, u, v, e, ext) * mfs->scaling_factor;
       // Time measurement.
-      profiling.integration_time.tick();
-      profiling.current_record.form_evaluation += profiling.integration_time.last();
-      profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.integration_time.tick();
+      // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+      // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
       // Clean up.
       for(int i = 0; i < prev_size; i++)
@@ -3866,17 +3866,17 @@ namespace Hermes
       {
 
         // Time measurement.
-        profiling.assemble_util_time.tick();
-        profiling.eval_util_time.reset();
+        // profiling.assemble_util_time.tick();
+        // profiling.eval_util_time.reset();
         // Determine the integration order by parsing the form.
         int order = calc_order_vector_form_surf(vfs, u_ext, fv, rv, surf_pos);
         // Perform non-adaptive numerical quadrature of order "order".
         result = eval_form_subelement(order, vfs, u_ext, fv, rv, surf_pos);
 
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.current_record.form_preparation_eval += profiling.eval_util_time.accumulated();
-        profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.eval_util_time.tick();
+        // profiling.current_record.form_preparation_eval += // profiling.eval_util_time.accumulated();
+        // profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
       }
       else 
       {
@@ -3908,8 +3908,8 @@ namespace Hermes
       _F_;
 
       // Time measurement.
-      profiling.assemble_util_time.tick();
-      profiling.eval_util_time.reset();
+      // profiling.assemble_util_time.tick();
+      // profiling.eval_util_time.reset();
 
       // Determine the integration order by parsing the form.
       int order = calc_order_vector_form_surf(vfs, u_ext, fv, rv, surf_pos);
@@ -3949,13 +3949,13 @@ namespace Hermes
       ExtData<Scalar>* ext = init_ext_fns(vfs->ext, rv, eo);
 
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.integration_time.tick();
+      // profiling.eval_util_time.tick();
+      // profiling.integration_time.tick();
       vfs->value(np, jwt, prev, v, e, ext, result);
       // Time measurement.
-      profiling.integration_time.tick();
-      profiling.current_record.form_evaluation += profiling.integration_time.last();
-      profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.integration_time.tick();
+      // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+      // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
       for(unsigned int i = 0; i < result.size(); i++)
         result[i] *= vfs->scaling_factor * 0.5;
@@ -3976,9 +3976,9 @@ namespace Hermes
         }
 
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.current_record.form_preparation_eval += profiling.eval_util_time.accumulated();
-        profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.eval_util_time.tick();
+        // profiling.current_record.form_preparation_eval += // profiling.eval_util_time.accumulated();
+        // profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
 
     }
 
@@ -4024,13 +4024,13 @@ namespace Hermes
 
         // Total order of the vector form.
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.integration_time.tick();
+        // profiling.eval_util_time.tick();
+        // profiling.integration_time.tick();
         Hermes::Ord o = vfs->ord(1, &fake_wt, oi, ov, &geom_ord, fake_ext);
         // Time measurement.
-        profiling.integration_time.tick();
-        profiling.current_record.form_evaluation += profiling.integration_time.last();
-        profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.integration_time.tick();
+        // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+        // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
         // Increase due to reference map.
         order = rv->get_inv_ref_order();
@@ -4091,13 +4091,13 @@ namespace Hermes
 
         // Total order of the vector form.
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.integration_time.tick();
+        // profiling.eval_util_time.tick();
+        // profiling.integration_time.tick();
         Hermes::Ord o = vfs->ord(1, &fake_wt, oi, ov, &geom_ord, fake_ext);
         // Time measurement.
-        profiling.integration_time.tick();
-        profiling.current_record.form_evaluation += profiling.integration_time.last();
-        profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.integration_time.tick();
+        // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+        // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
         // Increase due to reference map.
         order = rv->get_inv_ref_order();
@@ -4169,13 +4169,13 @@ namespace Hermes
 
       // The actual calculation takes place here.
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.integration_time.tick();
+      // profiling.eval_util_time.tick();
+      // profiling.integration_time.tick();
       Scalar res = vfs->value(np, jwt, prev, v, e, ext) * vfs->scaling_factor;
       // Time measurement.
-      profiling.integration_time.tick();
-      profiling.current_record.form_evaluation += profiling.integration_time.last();
-      profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.integration_time.tick();
+      // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+      // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
       // Clean up.
       for(int i = 0; i < prev_size; i++)
@@ -4319,13 +4319,13 @@ namespace Hermes
 
         // Total order of the vector form.
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.integration_time.tick();
+        // profiling.eval_util_time.tick();
+        // profiling.integration_time.tick();
         Hermes::Ord o = mfs->ord(1, &fake_wt, oi, ou, ov, fake_e, fake_ext);
         // Time measurement.
-        profiling.integration_time.tick();
-        profiling.current_record.form_evaluation += profiling.integration_time.last();
-        profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.integration_time.tick();
+        // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+        // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
         // Increase due to reference maps.
         order = ru->get_inv_ref_order();
@@ -4396,13 +4396,13 @@ namespace Hermes
 
         // Total order of the vector form.
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.integration_time.tick();
+        // profiling.eval_util_time.tick();
+        // profiling.integration_time.tick();
         Hermes::Ord o = mfs->ord(1, &fake_wt, oi, ou, ov, fake_e, fake_ext);
         // Time measurement.
-        profiling.integration_time.tick();
-        profiling.current_record.form_evaluation += profiling.integration_time.last();
-        profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.integration_time.tick();
+        // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+        // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
         // Increase due to reference maps.
         order = ru->get_inv_ref_order();
@@ -4441,8 +4441,8 @@ namespace Hermes
       _F_;
 
       // Time measurements.
-      profiling.assemble_util_time.tick();
-      profiling.eval_util_time.reset();
+      // profiling.assemble_util_time.tick();
+      // profiling.eval_util_time.reset();
 
       NeighborSearch<Scalar>* nbs_u = neighbor_searches.get(neighbor_index_u);
       NeighborSearch<Scalar>* nbs_v = neighbor_searches.get(neighbor_index_v);
@@ -4499,13 +4499,13 @@ namespace Hermes
       ExtData<Scalar>* ext = init_ext_fns(mfs->ext, neighbor_searches, order);
 
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.integration_time.tick();
+      // profiling.eval_util_time.tick();
+      // profiling.integration_time.tick();
       Scalar res = mfs->value(np, jwt, prev, u, v, e, ext);
       // Time measurement.
-      profiling.integration_time.tick();
-      profiling.current_record.form_evaluation += profiling.integration_time.last();
-      profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.integration_time.tick();
+      // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+      // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
       // Clean up.
       for (int i = 0; i < prev_size; i++)
@@ -4534,9 +4534,9 @@ namespace Hermes
       res *= mfs->scaling_factor;
 
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.current_record.form_preparation_eval += profiling.eval_util_time.accumulated();
-      profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.eval_util_time.tick();
+      // profiling.current_record.form_preparation_eval += // profiling.eval_util_time.accumulated();
+      // profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
 
       return 0.5 * res; // Edges are parametrized from 0 to 1 while integration weights
       // are defined in (-1, 1). Thus multiplying with 0.5 to correct
@@ -4551,8 +4551,8 @@ namespace Hermes
       _F_;
 
       // Time measurements.
-      profiling.assemble_util_time.tick();
-      profiling.eval_util_time.reset();
+      // profiling.assemble_util_time.tick();
+      // profiling.eval_util_time.reset();
 
       NeighborSearch<Scalar>* nbs_u = neighbor_searches.get(neighbor_index_u);
       NeighborSearch<Scalar>* nbs_v = neighbor_searches.get(neighbor_index_v);
@@ -4609,13 +4609,13 @@ namespace Hermes
       ExtData<Scalar>* ext = init_ext_fns(mfs->ext, neighbor_searches, order);
 
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.integration_time.tick();
+      // profiling.eval_util_time.tick();
+      // profiling.integration_time.tick();
       mfs->value(np, jwt, prev, u, v, e, ext, result);
       // Time measurement.
-      profiling.integration_time.tick();
-      profiling.current_record.form_evaluation += profiling.integration_time.last();
-      profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.integration_time.tick();
+      // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+      // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
       for(unsigned int i = 0; i < result.size(); i++)
         result[i] *= mfs->scaling_factor * 0.5;
@@ -4644,9 +4644,9 @@ namespace Hermes
       delete e;
 
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.current_record.form_preparation_eval += profiling.eval_util_time.accumulated();
-      profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.eval_util_time.tick();
+      // profiling.current_record.form_preparation_eval += // profiling.eval_util_time.accumulated();
+      // profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
     }
 
     template<typename Scalar>
@@ -4692,13 +4692,13 @@ namespace Hermes
 
         // Total order of the vector form.
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.integration_time.tick();
+        // profiling.eval_util_time.tick();
+        // profiling.integration_time.tick();
         Hermes::Ord o = vfs->ord(1, &fake_wt, oi, ov, fake_e, fake_ext);
         // Time measurement.
-        profiling.integration_time.tick();
-        profiling.current_record.form_evaluation += profiling.integration_time.last();
-        profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.integration_time.tick();
+        // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+        // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
         // Increase due to reference map.
         order = rv->get_inv_ref_order();
@@ -4770,13 +4770,13 @@ namespace Hermes
 
         // Total order of the vector form.
         // Time measurement.
-        profiling.eval_util_time.tick();
-        profiling.integration_time.tick();
+        // profiling.eval_util_time.tick();
+        // profiling.integration_time.tick();
         Hermes::Ord o = vfs->ord(1, &fake_wt, oi, ov, fake_e, fake_ext);
         // Time measurement.
-        profiling.integration_time.tick();
-        profiling.current_record.form_evaluation += profiling.integration_time.last();
-        profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+        // profiling.integration_time.tick();
+        // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+        // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
         // Increase due to reference map.
         order = rv->get_inv_ref_order();
@@ -4813,8 +4813,8 @@ namespace Hermes
       _F_;
 
       // Time measurements.
-      profiling.assemble_util_time.tick();
-      profiling.eval_util_time.reset();
+      // profiling.assemble_util_time.tick();
+      // profiling.eval_util_time.reset();
 
       NeighborSearch<Scalar>* nbs_v = (neighbor_searches.get(neighbor_index_v));
       int order = calc_order_dg_vector_form(vfs, u_ext, fv, rv, surf_pos, neighbor_searches, neighbor_index_v);
@@ -4861,13 +4861,13 @@ namespace Hermes
       ExtData<Scalar>* ext = init_ext_fns(vfs->ext, neighbor_searches, order);
 
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.integration_time.tick();
+      // profiling.eval_util_time.tick();
+      // profiling.integration_time.tick();
       Scalar res = vfs->value(np, jwt, prev, v, e, ext) * vfs->scaling_factor;
       // Time measurement.
-      profiling.integration_time.tick();
-      profiling.current_record.form_evaluation += profiling.integration_time.last();
-      profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.integration_time.tick();
+      // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+      // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
       // Clean up.
       for (int i = 0; i < prev_size; i++)
@@ -4893,9 +4893,9 @@ namespace Hermes
       res *= vfs->scaling_factor;
 
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.current_record.form_preparation_eval += profiling.eval_util_time.accumulated();
-      profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.eval_util_time.tick();
+      // profiling.current_record.form_preparation_eval += // profiling.eval_util_time.accumulated();
+      // profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
 
       return 0.5 * res; // Edges are parametrized from 0 to 1 while integration weights
       // are defined in (-1, 1). Thus multiplying with 0.5 to correct
@@ -4909,8 +4909,8 @@ namespace Hermes
       _F_;
 
       // Time measurements.
-      profiling.assemble_util_time.tick();
-      profiling.eval_util_time.reset();
+      // profiling.assemble_util_time.tick();
+      // profiling.eval_util_time.reset();
 
       NeighborSearch<Scalar>* nbs_v = (neighbor_searches.get(neighbor_index_v));
       int order = calc_order_dg_vector_form(vfs, u_ext, fv, rv, surf_pos, neighbor_searches, neighbor_index_v);
@@ -4957,13 +4957,13 @@ namespace Hermes
       ExtData<Scalar>* ext = init_ext_fns(vfs->ext, neighbor_searches, order);
 
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.integration_time.tick();
+      // profiling.eval_util_time.tick();
+      // profiling.integration_time.tick();
       vfs->value(np, jwt, prev, v, e, ext, result);
       // Time measurement.
-      profiling.integration_time.tick();
-      profiling.current_record.form_evaluation += profiling.integration_time.last();
-      profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.integration_time.tick();
+      // profiling.current_record.form_evaluation += // profiling.integration_time.last();
+      // profiling.eval_util_time.tick(Hermes::HERMES_SKIP);
 
       for(unsigned int i = 0; i < result.size(); i++)
         result[i] *= vfs->scaling_factor * 0.5;
@@ -4989,9 +4989,9 @@ namespace Hermes
       delete e;
 
       // Time measurement.
-      profiling.eval_util_time.tick();
-      profiling.current_record.form_preparation_eval += profiling.eval_util_time.accumulated();
-      profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
+      // profiling.eval_util_time.tick();
+      // profiling.current_record.form_preparation_eval += // profiling.eval_util_time.accumulated();
+      // profiling.assemble_util_time.tick(Hermes::HERMES_SKIP);
     }
 
     NeighborNode::NeighborNode(NeighborNode* parent, unsigned int transformation) : parent(parent), transformation(transformation)
