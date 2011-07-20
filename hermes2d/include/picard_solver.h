@@ -40,7 +40,7 @@ namespace Hermes
       PicardSolver(DiscreteProblem<Scalar>* dp, Hermes::MatrixSolverType matrix_solver_type);
 
       /// Solve with default tolerances.
-      virtual bool solve(Scalar* coeff_vec);
+      virtual bool solve(Scalar* coeff_vec, TimePeriod* timer = NULL);
 
       /// Solve with user-defined tolerances.
       bool solve(Scalar* coeff_vec, double tol, int max_iter);

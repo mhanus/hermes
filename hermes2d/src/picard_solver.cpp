@@ -38,7 +38,7 @@ namespace Hermes
     }
     
     template<typename Scalar>
-    bool PicardSolver<Scalar>::solve(Scalar* coeff_vec)
+    bool PicardSolver<Scalar>::solve(Scalar* coeff_vec, TimePeriod* timer)
     {
       return solve(coeff_vec, 1e-8, 100);
     }

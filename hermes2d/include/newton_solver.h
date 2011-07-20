@@ -25,6 +25,7 @@
 #include "hermes2d_common_defs.h"
 #include "discrete_problem.h"
 
+
 namespace Hermes
 {
   namespace Hermes2D
@@ -42,7 +43,7 @@ namespace Hermes
 
       /// Solve with default tolerances.
       /// Calls solve(Scalar*, bool) with residual_as_function = 'false'.
-      virtual bool solve(Scalar* coeff_vec);
+      virtual bool solve(Scalar* coeff_vec, TimePeriod* timer = NULL);
 
       /// Solve with default tolerances.
       /// \param[in] residual_as_function Translate the residual vector into a residual function (or multiple functions)
@@ -51,11 +52,11 @@ namespace Hermes
       ///                                 since in the FE space not all components in the residual vector have the same weight.
       ///                                 On the other hand, this is slower as it requires global norm calculation, and thus
       ///                                 numerical integration over the entire domain. Therefore this option is off by default.
-      virtual bool solve(Scalar* coeff_vec, bool residual_as_function);
+      virtual bool solve(Scalar* coeff_vec, bool residual_as_function, TimePeriod *timer = NULL);
 
       /// Solve with user-defined tolerances.
       /// \param[in] residual_as_function See the method solve(Scalar*, bool).
-      bool solve(Scalar* coeff_vec, double newton_tol, int newton_max_iter, bool residual_as_function = false);
+      bool solve(Scalar* coeff_vec, double newton_tol, int newton_max_iter, bool residual_as_function = false, TimePeriod *timer_ = NULL);
 
       /// A solve() method where the jacobian is reused.
       /// Version with default tolerances.
@@ -73,6 +74,10 @@ namespace Hermes
 
       /// Call NonlinearSolver::set_preconditioner() and set the method to the linear solver (if applicable).
       virtual void set_preconditioner(const char* preconditioner_name);
+      
+      double setup_time;
+      double assemble_time;
+      double solve_time;
 
     protected:
       /// Jacobian.
