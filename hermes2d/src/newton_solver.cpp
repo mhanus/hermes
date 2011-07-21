@@ -45,7 +45,7 @@ namespace Hermes
       jacobian = create_matrix<Scalar>(this->matrix_solver_type);
       residual = create_vector<Scalar>(this->matrix_solver_type);
       linear_solver = create_linear_solver<Scalar>(this->matrix_solver_type, jacobian, residual);
-      assemble_time = solve_time = 0;
+      setup_time = assemble_time = solve_time = 0;
     }
 
     template<typename Scalar>
