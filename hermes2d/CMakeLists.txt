@@ -450,3 +450,7 @@ IF(EXISTS tests)
     add_subdirectory(tests)
   endif(H2D_WITH_TESTS)
 ENDIF(EXISTS tests)
+
+# !!! TEMPORARY !!!
+	add_subdirectory(examples/neutronics)
+# !!! TEMPORARY !!!
