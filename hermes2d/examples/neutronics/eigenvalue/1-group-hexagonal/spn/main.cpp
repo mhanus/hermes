@@ -13,14 +13,14 @@ const unsigned int N_ODD_MOMENTS = (N_MOMENTS+1)/2;
 const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
 
 const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
-  2, 2//, 2                              
+  1, 1//, 2, 2                              
 };
 const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
-  2, 2//, 2                             
+  1, 1//, 2, 2                             
 };      
 const double THRESHOLD = 0.3;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
-const int STRATEGY = -1;                 // Adaptive strategy:
+const int STRATEGY = 0;                  // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
                                          //   error is processed. If more elements have similar errors, refine
                                          //   all to keep the mesh symmetric.
@@ -53,12 +53,13 @@ MatrixSolverType matrix_solver = SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESO
 const bool HERMES_VISUALIZATION = true;  // Set to "true" to enable Hermes OpenGL visualization. 
 const bool VTK_VISUALIZATION = false;     // Set to "true" to enable VTK output.
 const bool DISPLAY_MESHES = true;       // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
-
+const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
 
 // Power iteration control.
 double k_eff = 1.0;         // Initial eigenvalue approximation.
 double TOL_PIT_CM = 1e-7;   // Tolerance for eigenvalue convergence on the coarse mesh.
-double TOL_PIT_RM = 1e-8;   // Tolerance for eigenvalue convergence on the fine mesh.
+double TOL_PIT_FM = 1e-8;   // Tolerance for eigenvalue convergence on the fine mesh.
+bool PROJECT_INITIAL_SOLUTION = true;
 
 int main(int argc, char* argv[])
 {
@@ -109,13 +110,12 @@ int main(int argc, char* argv[])
     views.inspect_meshes(meshes);
 
   // Create pointers to solutions on coarse and fine meshes and from the latest power iteration, respectively.
-  Hermes::vector<Solution*> coarse_solutions, fine_solutions, power_iterates;
+  Hermes::vector<Solution*> coarse_solutions, power_iterates;
   
   // Initialize all the new solution variables.
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
   {
     coarse_solutions.push_back(new Solution());
-    fine_solutions.push_back(new Solution());
     power_iterates.push_back(new Solution(meshes[i], 1.0));   
   }
   
@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
   DiscreteProblem dp(&wf, spaces);
       
   // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
-  report_num_dof("Coarse mesh power iteration, ", spaces);
+  report_num_dof("Coarse mesh power iteration, NDOF: ", spaces);
   si.eigenvalue_iteration(power_iterates, dp, TOL_PIT_CM, matrix_solver);
   
   if (STRATEGY >= 0)
@@ -142,26 +142,121 @@ int main(int argc, char* argv[])
     // DOF and CPU convergence graphs
     GnuplotGraph graph_dof("Error convergence", "NDOF", "log(error)");
     graph_dof.add_row("H1 err. est. [%]", "r", "-", "o");
-    graph_dof.add_row("L2 err. est. [%]", "g", "-", "s");
     graph_dof.add_row("Keff err. est. [milli-%]", "b", "-", "d");
-    graph_dof.set_log_y();
     graph_dof.show_legend();
     graph_dof.show_grid();
     
     GnuplotGraph graph_cpu("Error convergence", "CPU time [s]", "log(error)");
     graph_cpu.add_row("H1 err. est. [%]", "r", "-", "o");
-    graph_cpu.add_row("L2 err. est. [%]", "g", "-", "s");
     graph_cpu.add_row("Keff err. est. [milli-%]", "b", "-", "d");
-    graph_cpu.set_log_y();
     graph_cpu.show_legend();
     graph_cpu.show_grid();
     
-    Hermes::vector<ProjNormType> proj_norms_h1, proj_norms_l2;
+    // Create pointers to coarse mesh solutions used for error estimation.
+    Hermes::vector<Solution*> coarse_solutions;
+    
+    // Initialize all the new solution variables.
+    for (unsigned int i = 0; i < N_EQUATIONS; i++) 
+      coarse_solutions.push_back(new Solution());
+    
+    // Initialize the refinement selectors.
+    H1ProjBasedSelector selector(CAND_LIST, CONV_EXP, H2DRS_DEFAULT_ORDER);
+    Hermes::vector<RefinementSelectors::Selector*> selectors;
     for (unsigned int i = 0; i < N_EQUATIONS; i++)
+      selectors.push_back(&selector);
+    
+    // Adaptivity loop:
+    int as = 1; bool done = false;
+    Hermes::vector<Space *>* fine_spaces;
+    do 
     {
-      proj_norms_h1.push_back(HERMES_H1_NORM);
-      proj_norms_l2.push_back(HERMES_L2_NORM);
+      info("---- Adaptivity step %d:", as);
+      
+      // Initialize the fine mesh problem.
+      info("Solving on fine meshes.");
+      
+      fine_spaces = Space::construct_refined_spaces(spaces);
+      
+      if (PROJECT_INITIAL_SOLUTION)
+      {
+        if (as == 1)
+          for (unsigned int i = 0; i < N_EQUATIONS; i++)  
+            coarse_solutions[i]->copy(power_iterates[i]);
+          
+        report_num_dof("Projecting previous solutions onto new meshes, NDOF: ", *fine_spaces);
+        OGProjection::project_global(*fine_spaces, coarse_solutions, power_iterates, matrix_solver);
+      }
+      
+      // Solve the fine mesh problem.
+      DiscreteProblem dp_ref(&wf, *fine_spaces);
+      report_num_dof("Fine mesh power iteration, NDOF: ", *fine_spaces);
+      si.eigenvalue_iteration(power_iterates, dp_ref, TOL_PIT_FM, matrix_solver);
+            
+      report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces);
+      OGProjection::project_global(spaces, power_iterates, coarse_solutions, matrix_solver);
+      
+      // View the coarse-mesh solutions and polynomial orders.
+      if (HERMES_VISUALIZATION && INTERMEDIATE_VISUALIZATION)
+      {
+        cpu_time.tick();
+        info("Visualizing.");
+        views.show_solutions(coarse_solutions);
+        views.show_orders(spaces);
+        cpu_time.tick(HERMES_SKIP);
+      }
+      
+      Adapt adaptivity(spaces);
+      
+      info("Calculating errors.");
+      Hermes::vector<double> h1_moment_errors;
+      double h1_err_est = adaptivity.calc_err_est(coarse_solutions, power_iterates, &h1_moment_errors) * 100;
+      
+      // Time measurement.
+      cpu_time.tick();
+      double cta = cpu_time.accumulated();
+      
+      // Report results.
+      
+      // Millipercent eigenvalue error w.r.t. the reference value (see physical_parameters.cpp). 
+      double keff_err = 1e5*fabs(wf.get_keff() - REF_K_EFF)/REF_K_EFF;
+      
+      report_errors("odd moment err_est_coarse (H1): ", h1_moment_errors);
+      info("total err_est_coarse (H1): %g%%", h1_err_est);
+      info("k_eff err: %g milli-percent", keff_err);
+      
+      // Add entry to DOF convergence graph.
+      int ndof_coarse = Space::get_num_dofs(spaces);
+      graph_dof.add_values(0, ndof_coarse, h1_err_est);
+      graph_dof.add_values(1, ndof_coarse, keff_err);
+      
+      // Add entry to CPU convergence graph.
+      graph_cpu.add_values(0, cta, h1_err_est);
+      graph_cpu.add_values(1, cta, keff_err);
+            
+      cpu_time.tick(HERMES_SKIP);
+      
+      // If err_est too large, adapt the mesh.
+      if (h1_err_est < ERR_STOP || as == MAX_ADAPT_NUM) 
+        done = true;
+      else 
+      {
+        info("Adapting the coarse meshes.");
+        done = adaptivity.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);        
+        if (Space::get_num_dofs(spaces) >= NDOF_STOP) 
+          done = true;
+      }
+      
+      if (!done)
+      {
+        for(unsigned int i = 0; i < N_EQUATIONS; i++)
+          delete (*fine_spaces)[i]->get_mesh();
+        delete fine_spaces;
+        
+        // Increase counter.
+        as++;
+      }
     }
+    while (!done);
   }
   else
   {

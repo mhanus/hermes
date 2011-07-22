@@ -2888,7 +2888,7 @@ namespace WeakFormsNeutronics
                                   
         // The following variables will store pointers to solutions obtained at each iteration and will be needed for 
         // updating the eigenvalue. 
-        bool meshes_changed;
+        bool meshes_changed = false;
         Hermes::vector<Solution*> new_solutions;
         for (unsigned int i = 0; i < solutions.size(); i++) 
         {
@@ -2991,12 +2991,13 @@ namespace WeakFormsNeutronics
           for (unsigned int i = 0; i < solutions.size(); i++)  
             solutions[i]->copy(new_solutions[i]);
           
-          if (meshes_changed)
-          {
+          //if (meshes_changed)
+          //{
             old_source->assign_solutions(solutions);
+            new_source->assign_solutions(new_solutions);
             // meshes_changed = false; should be here in principle, since meshes do not change
             // during the iteration, but it fails after some iteration
-          }
+          //}
           
           it++;
         }

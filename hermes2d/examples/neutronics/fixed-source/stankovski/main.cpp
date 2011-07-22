@@ -59,7 +59,7 @@ const bool VTK_VISUALIZATION = false;         // Set to "true" to enable VTK out
 const bool DISPLAY_MESHES = false;            // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
 const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
 
-void report_num_dof(const std::string& msg, const Hermes::vector< Space* > spaces)
+void report_num_dof(const std::string& msg, const Hermes::vector< Space* >& spaces)
 {
   std::stringstream ss;
   
@@ -179,12 +179,12 @@ int main(int argc, char* argv[])
     do 
     {
       info("---- Adaptivity step %d:", as);
-      
-      // Initialize the fine mesh problem.
-      info("Solving on fine meshes.");
-      
+            
       fine_spaces = Space::construct_refined_spaces(spaces);
       int ndof_fine = Space::get_num_dofs(*fine_spaces);
+      
+      // Initialize the fine mesh problem.
+      report_num_dof("Solving on fine meshes, #DOF:", *fine_spaces);
       
       DiscreteProblem dp(&wf, *fine_spaces);
 
@@ -202,14 +202,14 @@ int main(int argc, char* argv[])
       Solution::vector_to_solutions(coeff_vec, *fine_spaces, solutions);
       
       // Project the fine mesh solution onto the coarse mesh.
-      info("Projecting fine-mesh solutions onto coarse meshes.");
+      report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF:", *fine_spaces);
       OGProjection::project_global(spaces, solutions, coarse_solutions, matrix_solver);
       
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION && INTERMEDIATE_VISUALIZATION)
       {
-        info("Visualizing.");
         cpu_time.tick();
+        info("Visualizing.");
         views.show_solutions(coarse_solutions);
         views.show_orders(spaces);
         cpu_time.tick(HERMES_SKIP);

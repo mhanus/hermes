@@ -17,3 +17,4 @@ class CustomWeakForm : public DefaultWeakFormSourceIteration
 };
 
 void report_num_dof(const std::string& msg, const Hermes::vector<Space *> spaces);
+void report_errors(const std::string& msg, const Hermes::vector< double > errors);
