@@ -1,13 +1,7 @@
-if(NOT H2D_REAL)
-    return()
-endif(NOT H2D_REAL)
-
 project(4-group-cylindrical)
-
 add_executable(${PROJECT_NAME} main.cpp)
-include (${hermes2d_SOURCE_DIR}/CMake.common)
-set_common_target_properties(${PROJECT_NAME})
+#set_common_target_properties(${PROJECT_NAME} "HERMES2D")
 
-if(WITH_TESTS)
-  add_subdirectory(tests)
-endif(WITH_TESTS)
+set_property(TARGET ${PROJECT_NAME} PROPERTY COMPILE_FLAGS ${FLAGS})
+target_link_libraries(${PROJECT_NAME} ${HERMES2D})
+
