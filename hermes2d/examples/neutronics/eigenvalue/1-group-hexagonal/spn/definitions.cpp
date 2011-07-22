@@ -30,3 +30,17 @@ void report_num_dof(const std::string& msg, const Hermes::vector< Space* > space
   
   info(ss.str().c_str());
 }
+
+void report_errors(const std::string& msg, const Hermes::vector< double > errors)
+{
+  std::stringstream ss;
+  ss << msg;
+  
+  for (unsigned int i = 0; i < errors.size()-1; i++)
+    ss << errors[i]*100 << "%%, ";
+  
+  ss << errors.back()*100 << "%%";
+  
+  info(ss.str().c_str());
+}
+
