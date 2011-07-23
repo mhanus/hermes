@@ -191,7 +191,10 @@ project(hermes2d)
     src/weakform_library/weakforms_h1.cpp
     src/weakform_library/weakforms_hcurl.cpp
     src/weakform_library/weakforms_maxwell.cpp
-    src/weakform_library/weakforms_neutronics.cpp
+    src/weakform_library/neutronics/material_properties.cpp
+    src/weakform_library/neutronics/support_classes.cpp
+    src/weakform_library/neutronics/weakform_parts.cpp
+    src/weakform_library/neutronics/weakforms.cpp
     
     src/discrete_problem.cpp
     src/discrete_problem/discrete_problem_helpers.cpp
@@ -726,6 +729,7 @@ project(hermes2d)
   install(FILES ${INC_VIEWS}     DESTINATION ${CMAKE_INSTALL_PREFIX}/include/hermes2d/views)
   install(FILES ${INC_WEAKFORM}  DESTINATION ${CMAKE_INSTALL_PREFIX}/include/hermes2d/weakform)
   install(FILES ${INC_WEAKFORM_LIBRARY}  DESTINATION ${CMAKE_INSTALL_PREFIX}/include/hermes2d/weakform_library)
+  install(FILES ${INC_WEAKFORM_LIBRARY_NEUTRONICS} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/hermes2d/weakform_library/neutronics)
 
 IF(EXISTS "hermes2d/test_examples")
   if(H2D_WITH_TEST_EXAMPLES)
