@@ -205,7 +205,10 @@ project(hermes2d)
     src/weakform_library/weakforms_h1.cpp
     src/weakform_library/weakforms_hcurl.cpp
     src/weakform_library/weakforms_maxwell.cpp
-    src/weakform_library/weakforms_neutronics.cpp
+    src/weakform_library/neutronics/material_properties.cpp
+    src/weakform_library/neutronics/support_classes.cpp
+    src/weakform_library/neutronics/weakform_parts.cpp
+    src/weakform_library/neutronics/weakforms.cpp
   )
   
   set(HEADERS
@@ -419,6 +422,7 @@ project(hermes2d)
   file(GLOB INC_VIEWS      "include/views/*.h")
   file(GLOB INC_WEAKFORM   "include/weakform/*.h")
   file(GLOB INC_WEAKFORM_LIBRARY "include/weakform_library/*.h")
+  file(GLOB INC_WEAKFORM_LIBRARY_NEUTRONICS "include/weakform_library/neutronics/*.h")
   file(GLOB INC_PROJECTIONS "include/projections/*.h")
 
   install(FILES ${INC}           DESTINATION ${TARGET_ROOT}/include/hermes2d)
@@ -436,6 +440,7 @@ project(hermes2d)
   install(FILES ${INC_VIEWS}     DESTINATION ${TARGET_ROOT}/include/hermes2d/views)
   install(FILES ${INC_WEAKFORM}  DESTINATION ${TARGET_ROOT}/include/hermes2d/weakform)
   install(FILES ${INC_WEAKFORM_LIBRARY}  DESTINATION ${TARGET_ROOT}/include/hermes2d/weakform_library)
+  install(FILES ${INC_WEAKFORM_LIBRARY_NEUTRONICS} DESTINATION ${TARGET_ROOT}/include/hermes2d/weakform_library/neutronics)
   install(FILES ${INC_PROJECTIONS}  DESTINATION ${TARGET_ROOT}/include/hermes2d/projections)
 
 IF(EXISTS test_examples)
