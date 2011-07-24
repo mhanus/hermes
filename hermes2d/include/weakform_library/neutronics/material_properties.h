@@ -116,7 +116,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         
       public:
         
-        std::string get_material(int elem_marker, WeakForm *wf) const;
+        std::string get_material(int elem_marker, WeakForm<double> *wf) const;
         std::string get_material(int elem_marker, Mesh *mesh) const;
         
         virtual void set_iso_src(const MaterialPropertyMap1& src) {
@@ -197,7 +197,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
           return this->materials_list;
         }
         
-        virtual rank1 compute_Sigma_a(const std::string& material) const { return get_Sigma_a(material); }
+        virtual rank1 compute_Sigma_a(const std::string& material) const { 
+          return get_Sigma_a(material); 
+        }
         virtual rank2 compute_Sigma_s(const std::string& material) const = 0;
         virtual rank1 compute_Sigma_t(const std::string& material) const = 0;
         
@@ -276,7 +278,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         }
         
         virtual rank1 compute_Sigma_a(const std::string& material) const;
-        virtual rank2 compute_Sigma_s(const std::string& material) const { return get_Sigma_s(material); }
+        virtual rank2 compute_Sigma_s(const std::string& material) const { 
+          return get_Sigma_s(material); 
+        }
         virtual rank1 compute_Sigma_t(const std::string& material) const;
         
         const rank2& get_Sigma_s(const std::string& material) const;
@@ -367,14 +371,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       public:
         
         MaterialPropertyMaps(unsigned int G, unsigned int N,
-                            std::set<std::string> mat_list = std::set<std::string>()) 
+                             std::set<std::string> mat_list = std::set<std::string>()) 
           : Common::MaterialPropertyMaps(G, mat_list), N(N), N_odd((N+1)/2) 
         {
           if ((N % 2) == 0) error(Messages::E_EVEN_SPN);
         }
         
         MaterialPropertyMaps(unsigned int G, unsigned int N, 
-                            const RegionMaterialMap& reg_mat_map)
+                             const RegionMaterialMap& reg_mat_map)
           : Common::MaterialPropertyMaps(G, reg_mat_map), N(N), N_odd((N+1)/2)  
         { 
           if ((N % 2) == 0) error(Messages::E_EVEN_SPN);
@@ -449,7 +453,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
   class region_material_map
   {
     private:
-      Definitions::RegionMaterialMap m_map;
+      RegionMaterialMap m_map;
     public:
       region_material_map(const std::string& key, const std::string& val) {
         m_map[key] = val;
@@ -460,7 +464,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return *this;
       }
       
-      operator Definitions::RegionMaterialMap() {
+      operator RegionMaterialMap() {
         return m_map;
       }
   };
