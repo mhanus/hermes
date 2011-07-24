@@ -1,8 +1,6 @@
 #ifndef ___H2D_NEUTRONICS_WEAK_FORM_PARTS_H
 #define ___H2D_NEUTRONICS_WEAK_FORM_PARTS_H
 
-#include "common_definitions.h"
-#include "material_properties.h"
 #include "support_classes.h"
 
 namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFormParts
@@ -248,7 +246,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
               g(g), keff(keff)
           {
             if (g >= iterates.size())
-              error(Messages::E_INVALID_GROUP_INDEX);
+              error_function(Messages::E_INVALID_GROUP_INDEX);
           }
           
           OuterIterationForm( unsigned int g, const std::string& area,
@@ -261,7 +259,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
               g(g), keff(keff)
           {
             if (g >= iterates.size())
-              error(Messages::E_INVALID_GROUP_INDEX);
+              error_function(Messages::E_INVALID_GROUP_INDEX);
           }
           
           OuterIterationForm( unsigned int g, const Hermes::vector<std::string>& areas,
@@ -274,7 +272,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
               g(g), keff(keff)
           {
             if (g >= iterates.size())
-              error(Messages::E_INVALID_GROUP_INDEX);
+              error_function(Messages::E_INVALID_GROUP_INDEX);
           }
           
           template<typename Real>

@@ -487,7 +487,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       rank1 chi_elem = matprop.get_chi(mat);
       
       if ((unsigned)ext->nf != nu_elem.size() || (unsigned)ext->nf != Sigma_f_elem.size())
-        error(Messages::E_INVALID_GROUP_INDEX);
+        error_function(Messages::E_INVALID_GROUP_INDEX);
       
       Real result = 0;
       for (int i = 0; i < n; i++) 
