@@ -1,11 +1,7 @@
 #ifndef ___H2D_NEUTRONICS_COMMON_DEFINITIONS_H
 #define ___H2D_NEUTRONICS_COMMON_DEFINITIONS_H
 
-// TODO: Distribute includes to the files that really need them.
-
-#include "weakforms_h1.h"
-#include "../forms.h"
-#include <sstream>
+#include "hermes2d_common_defs.h"
 
 namespace Hermes
 {
@@ -17,6 +13,8 @@ namespace Hermes
       enum ReactionType { 
         ABSORPTION, TOTAL, IN_SCATTERING, SELF_SCATTERING, OUT_SCATTERING, FISSION, NU_FISSION 
       };
+      
+      using namespace Hermes::Error;
       
       namespace Messages
       {
@@ -129,7 +127,7 @@ namespace Hermes
               return 0.0;
             else if (y == 0)
             {
-              error(Messages::E_INF_VALUE);
+              error_function(Messages::E_INF_VALUE);
               return -1.0;
             }
             else

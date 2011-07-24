@@ -1,14 +1,14 @@
 #ifndef ___H2D_NEUTRONICS_SUPPORT_CLASSES_H
 #define ___H2D_NEUTRONICS_SUPPORT_CLASSES_H
 
-#include "common_definitions.h"
 #include "material_properties.h"
 
-#include "../../views/mesh_view.h"
-#include "../../views/scalar_view.h"
-#include "../../views/order_view.h"
+#include "views/mesh_view.h"
+#include "views/scalar_view.h"
+#include "views/order_view.h"
 
-#include "../function/filter.h"
+#include "function/filter.h"
+#include "integrals/h1.h"
 
 namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace SupportClasses
 {   

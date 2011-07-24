@@ -95,7 +95,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
                                            GeomType geom_type ) : WeakForm<double>(matprop.get_G())
     {
       if (minus_f_src.size() != matprop.get_G())
-        error(Messages::E_INVALID_SIZE);
+        error_function(Messages::E_INVALID_SIZE);
       
       lhs_init(matprop.get_G(), matprop, geom_type);
       for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
@@ -108,7 +108,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
                                            GeomType geom_type ) : WeakForm<double>(matprop.get_G())
     {
       if (minus_f_src.size() != matprop.get_G())
-        error(Messages::E_INVALID_SIZE);
+        error_function(Messages::E_INVALID_SIZE);
       
       lhs_init(matprop.get_G(), matprop, geom_type);
       for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
@@ -348,7 +348,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       : WeakFormHomogeneous(N, matprop, geom_type, true)
     {
       if (minus_isotropic_sources.size() != G)
-        error(Messages::E_INVALID_SIZE);
+        error_function(Messages::E_INVALID_SIZE);
       
       for (unsigned int m = 0; m < N_odd; m++)
         for (unsigned int gto = 0; gto < G; gto++)
@@ -367,7 +367,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       : WeakFormHomogeneous(N, matprop, geom_type, true)
     {
       if (minus_isotropic_sources.size() != G)
-        error(Messages::E_INVALID_SIZE);
+        error_function(Messages::E_INVALID_SIZE);
       
       for (unsigned int m = 0; m < N_odd; m++)
         for (unsigned int gto = 0; gto < G; gto++)
