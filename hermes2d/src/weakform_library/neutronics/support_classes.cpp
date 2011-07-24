@@ -4,12 +4,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
 {  
   namespace Common
   {
-    void SourceFilter::filter_fn(int n, Hermes::vector<scalar*> values, scalar* result)
+    void SourceFilter::filter_fn(int n, Hermes::vector<double*> values, double* result)
     {
       int marker = this->get_active_element()->marker;
       std::string material = matprop.get_material(marker, mesh);
       
-      memset(result, 0, n*sizeof(scalar));
+      memset(result, 0, n*sizeof(double));
       
       if (markers.empty() || markers.find(marker) != markers.end())
       {           
@@ -40,7 +40,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       have_solutions = false;
     }
 
-    void SourceFilter::assign_solutions(const Hermes::vector< Solution* >& solutions)
+    void SourceFilter::assign_solutions(const Hermes::vector< Solution<double>* >& solutions)
     {
       if (solutions.size() != (unsigned) num)
         error("SourceFilter: Number of solutions does not match the size of data.");
@@ -52,7 +52,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       post_init();
     }
 
-    void SourceFilter::assign_solutions(const Hermes::vector< MeshFunction* >& solutions)
+    void SourceFilter::assign_solutions(const Hermes::vector< MeshFunction<double>* >& solutions)
     {
       if (solutions.size() != (unsigned) num)
         error("SourceFilter: Number of solutions does not match the size of data.");
@@ -76,7 +76,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     
     void SourceFilter::set_active_element(Element* e)
     {
-      SimpleFilter::set_active_element(e);
+      SimpleFilter<double>::set_active_element(e);
       
       order = sln[0]->get_fn_order();
       for (int i = 1; i < num; i++)
@@ -106,7 +106,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
             o++;
           limit_order(o);
           this->set_quad_order(o, H2D_FN_VAL);
-          scalar *uval = this->get_fn_values();
+          double *uval = this->get_fn_values();
           double result = 0.0;
           
           if (geom_type == HERMES_PLANAR)
@@ -246,10 +246,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         req_mom_idx = angular_moment/2;
     }
     
-    void MomentFilter::Val::filter_fn(int n, Hermes::vector< scalar* > values, scalar* result)
+    void MomentFilter::Val::filter_fn(int n, Hermes::vector< double* > values, double* result)
     {
       if (odd_req_mom)
-        memcpy(result, values.at(req_mom_idx), n*sizeof(scalar));
+        memcpy(result, values.at(req_mom_idx), n*sizeof(double));
       else
       {            
         for (int i = 0; i < n; i++) 
@@ -264,7 +264,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     
     void MomentFilter::Val::set_active_element(Element* e)
     {
-      SimpleFilter::set_active_element(e);
+      SimpleFilter<double>::set_active_element(e);
 
       order = -1;
       
@@ -274,15 +274,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
           order = sln[sol_idx]->get_fn_order();
     }
     
-    void MomentFilter::ValDxDy::filter_fn(int n, Hermes::vector<scalar *> values, 
-                                          Hermes::vector<scalar *> dx, Hermes::vector<scalar *> dy, 
-                                          scalar* rslt, scalar* rslt_dx, scalar* rslt_dy)
+    void MomentFilter::ValDxDy::filter_fn(int n, Hermes::vector<double *> values, 
+                                          Hermes::vector<double *> dx, Hermes::vector<double *> dy, 
+                                          double* rslt, double* rslt_dx, double* rslt_dy)
     {
       if (odd_req_mom)
       {
-        memcpy(rslt, values.at(req_mom_idx), n*sizeof(scalar));
-        memcpy(rslt_dx, dx.at(req_mom_idx), n*sizeof(scalar));
-        memcpy(rslt_dy, dy.at(req_mom_idx), n*sizeof(scalar));
+        memcpy(rslt, values.at(req_mom_idx), n*sizeof(double));
+        memcpy(rslt_dx, dx.at(req_mom_idx), n*sizeof(double));
+        memcpy(rslt_dy, dy.at(req_mom_idx), n*sizeof(double));
       }
       else
       {            
@@ -302,7 +302,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     
     void MomentFilter::ValDxDy::set_active_element(Element* e)
     {
-      DXDYFilter::set_active_element(e);
+      DXDYFilter<double>::set_active_element(e);
       
       order = -1;
       
@@ -313,8 +313,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     }
     
     // TODO: Templatize.
-    void MomentFilter::get_scalar_fluxes(const Hermes::vector< Solution* >& angular_fluxes, 
-                                          Hermes::vector< MeshFunction* >* scalar_fluxes,
+    void MomentFilter::get_scalar_fluxes(const Hermes::vector< Solution<double>* >& angular_fluxes, 
+                                          Hermes::vector< MeshFunction<double>* >* scalar_fluxes,
                                           unsigned int G)
     {          
       scalar_fluxes->reserve(G);
@@ -322,8 +322,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         scalar_fluxes->push_back(new MomentFilter::Val(0, g, G, angular_fluxes));
     }
     
-    void MomentFilter::get_scalar_fluxes_with_derivatives(const Hermes::vector< Solution* >& angular_fluxes, 
-                                                          Hermes::vector< MeshFunction* >* scalar_fluxes,
+    void MomentFilter::get_scalar_fluxes_with_derivatives(const Hermes::vector< Solution<double>* >& angular_fluxes, 
+                                                          Hermes::vector< MeshFunction<double>* >* scalar_fluxes,
                                                           unsigned int G)
     {          
       scalar_fluxes->reserve(G);
@@ -331,20 +331,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         scalar_fluxes->push_back(new MomentFilter::ValDxDy(0, g, G, angular_fluxes));
     }
     
-    void MomentFilter::clear_scalar_fluxes(Hermes::vector< MeshFunction* >* scalar_fluxes)
+    void MomentFilter::clear_scalar_fluxes(Hermes::vector< MeshFunction<double>* >* scalar_fluxes)
     {
-      Hermes::vector< MeshFunction* >::const_iterator it = scalar_fluxes->begin();
+      Hermes::vector< MeshFunction<double>* >::const_iterator it = scalar_fluxes->begin();
       for( ; it != scalar_fluxes->end(); ++it)
         delete *it;
       scalar_fluxes->clear();
     }
     
-    void SourceFilter::filter_fn(int n, Hermes::vector< scalar* > values, scalar* result)
+    void SourceFilter::filter_fn(int n, Hermes::vector< double* > values, double* result)
     {
       int marker = this->get_active_element()->marker;
       std::string material = matprop.get_material(marker, mesh);
       
-      memset(result, 0, n*sizeof(scalar));
+      memset(result, 0, n*sizeof(double));
       
       if (markers.empty() || markers.find(marker) != markers.end())
       {           
@@ -355,7 +355,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         {
           for (unsigned int g = 0; g < G; g++)
           {
-            scalar group_scalar_flux = 0;
+            double group_scalar_flux = 0;
             
             unsigned int exp_mom_idx = 0;
             for (unsigned int sol_idx = mg.pos(exp_mom_idx,g); sol_idx < values.size(); sol_idx = mg.pos(++exp_mom_idx,g))
@@ -368,7 +368,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     }
   }
   
-  double PostProcessor::integrate(MeshFunction* solution, const Hermes::vector<std::string>& areas) const
+  double PostProcessor::integrate(MeshFunction<double>* solution, const Hermes::vector<std::string>& areas) const
   {
     Quad2D* quad = &g_quad_2d_std;
     solution->set_quad_2d(quad);
@@ -391,7 +391,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         int o = solution->get_fn_order() + ru->get_inv_ref_order();
         limit_order(o);
         solution->set_quad_order(o, H2D_FN_VAL);
-        scalar *uval = solution->get_fn_values();
+        double *uval = solution->get_fn_values();
         double result = 0.0;
         
         if (geom_type == HERMES_PLANAR)
@@ -419,17 +419,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     return integral;
   }
 
-  void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution* >* solutions, double integrated_fission_source) const
+  void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution<double>* >* solutions, double integrated_fission_source) const
   {
     if (integrated_fission_source < 1e-12)
       error("PostProcessor::normalize_to_unit_fission_source : Invalid fission source.");
-    
-    Hermes::vector< Solution* >::iterator sln = solutions->begin();
+ // TODO (missing Solution::multiply)
+ /*
+    Hermes::vector< Solution<double>* >::iterator sln = solutions->begin();
     for ( ; sln != solutions->end(); ++sln)
       (*sln)->multiply(1./integrated_fission_source);
+*/
   }
 
-  void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution* >* solutions, 
+  void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution<double>* >* solutions, 
                                                         const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
                                                         const Hermes::vector< std::string >& src_areas) const
   {
@@ -445,20 +447,18 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     delete sf;
   }
 
-  void PostProcessor::normalize_to_unit_power(Hermes::vector< Solution* >* solutions, 
+  void PostProcessor::normalize_to_unit_power(Hermes::vector< Solution<double>* >* solutions, 
                                               const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
                                               double power_per_fission, const Hermes::vector< std::string >& src_areas) const
   {
     // TODO
   }
   
-  double PostProcessor::get_integrated_group_reaction_rates_internal( ReactionType reaction, MeshFunction* solution, 
+  double PostProcessor::get_integrated_group_reaction_rates_internal( ReactionType reaction, MeshFunction<double>* solution, 
                                                                       const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
                                                                       const Hermes::vector< std::string >& regions,
                                                                       unsigned int this_group, int other_group) const
-  {
-    using namespace MaterialProperties::Messages;
-    
+  {    
     if (this_group > matprop.get_G())
       error(Messages::E_INVALID_GROUP_INDEX);
     
@@ -483,7 +483,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         int o = solution->get_fn_order() + ru->get_inv_ref_order();
         limit_order(o);
         solution->set_quad_order(o, H2D_FN_VAL);
-        scalar *uval = solution->get_fn_values();
+        double *uval = solution->get_fn_values();
         double result = 0.0;
         
         if (geom_type == HERMES_PLANAR)
@@ -547,16 +547,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
 
   
   void PostProcessor::get_integrated_group_reaction_rates(ReactionType reaction, 
-                                                          const Hermes::vector< Solution* >& solutions, Hermes::vector< double >* results, 
+                                                          const Hermes::vector< Solution<double>* >& solutions, Hermes::vector< double >* results, 
                                                           const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
                                                           unsigned int group, const Hermes::vector< std::string >& regions) const
   {
-    Hermes::vector<MeshFunction*> scalar_fluxes;
+    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
     
     if (method == NEUTRONICS_SPN)
       SPN::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G());
     else if (method == NEUTRONICS_DIFFUSION)
-      for (Hermes::vector<Solution*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
+      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
         scalar_fluxes.push_back(*it);
     
     Hermes::vector<std::string>::const_iterator region = regions.begin(); 
@@ -585,16 +585,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       SPN::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
   }
   
-  double PostProcessor::get_integrated_group_reaction_rates(ReactionType reaction, const Hermes::vector< Solution* >& solutions, 
+  double PostProcessor::get_integrated_group_reaction_rates(ReactionType reaction, const Hermes::vector< Solution<double>* >& solutions, 
                                                             const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
                                                             unsigned int group, const Hermes::vector< std::string >& regions) const
   {
-    Hermes::vector<MeshFunction*> scalar_fluxes;
+    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
     
     if (method == NEUTRONICS_SPN)
       SPN::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G());
     else if (method == NEUTRONICS_DIFFUSION)
-      for (Hermes::vector<Solution*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
+      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
         scalar_fluxes.push_back(*it);
     
     double result = 0.0;
@@ -618,17 +618,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     return result;
   }
   
-  void PostProcessor::get_integrated_reaction_rates(ReactionType reaction, const Hermes::vector< Solution* >& solutions, 
+  void PostProcessor::get_integrated_reaction_rates(ReactionType reaction, const Hermes::vector< Solution<double>* >& solutions, 
                                                     Hermes::vector< double >* results, 
                                                     const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
                                                     const Hermes::vector< std::string >& regions) const
   {
-    Hermes::vector<MeshFunction*> scalar_fluxes;
+    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
     
     if (method == NEUTRONICS_SPN)
       SPN::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G());
     else if (method == NEUTRONICS_DIFFUSION)
-      for (Hermes::vector<Solution*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
+      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
         scalar_fluxes.push_back(*it);
     
     Hermes::vector<std::string>::const_iterator region = regions.begin(); 
@@ -659,7 +659,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       SPN::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
   }
   
-  double PostProcessor::get_integrated_reaction_rates(ReactionType reaction, const Hermes::vector< Solution* >& solutions, 
+  double PostProcessor::get_integrated_reaction_rates(ReactionType reaction, const Hermes::vector< Solution<double>* >& solutions, 
                                                       const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
                                                       const Hermes::vector< std::string >& regions) const
   {
@@ -669,17 +669,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     return result;
   }
 
-  void PostProcessor::get_integrated_group_scalar_fluxes( const Hermes::vector< Solution* >& solutions, 
+  void PostProcessor::get_integrated_group_scalar_fluxes( const Hermes::vector< Solution<double>* >& solutions, 
                                                           Hermes::vector< double >* results,
                                                           unsigned int group, unsigned int G,
                                                           const Hermes::vector< std::string >& regions) const
   {
-    Hermes::vector<MeshFunction*> scalar_fluxes;
+    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
     
     if (method == NEUTRONICS_SPN)
       SPN::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G);
     else if (method == NEUTRONICS_DIFFUSION)
-      for (Hermes::vector<Solution*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
+      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
         scalar_fluxes.push_back(*it);
     
     Hermes::vector<std::string>::const_iterator region = regions.begin(); 
@@ -690,16 +690,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       SPN::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
   }
   
-  double PostProcessor::get_integrated_group_scalar_fluxes(const Hermes::vector< Solution* >& solutions, 
+  double PostProcessor::get_integrated_group_scalar_fluxes(const Hermes::vector< Solution<double>* >& solutions, 
                                                             unsigned int group, unsigned int G,
                                                             const Hermes::vector< std::string >& regions) const
   {
-    Hermes::vector<MeshFunction*> scalar_fluxes;
+    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
     
     if (method == NEUTRONICS_SPN)
       SPN::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G);
     else if (method == NEUTRONICS_DIFFUSION)
-      for (Hermes::vector<Solution*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
+      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
         scalar_fluxes.push_back(*it);
     
     double result = integrate(scalar_fluxes[group], regions);
@@ -710,15 +710,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     return result;
   }
   
-  void PostProcessor::get_integrated_scalar_fluxes(const Hermes::vector< Solution* >& solutions, Hermes::vector< double >* results, 
+  void PostProcessor::get_integrated_scalar_fluxes(const Hermes::vector< Solution<double>* >& solutions, Hermes::vector< double >* results, 
                                                     unsigned int G, const Hermes::vector< std::string >& regions) const
   {
-    Hermes::vector<MeshFunction*> scalar_fluxes;
+    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
     
     if (method == NEUTRONICS_SPN)
       SPN::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G);
     else if (method == NEUTRONICS_DIFFUSION)
-      for (Hermes::vector<Solution*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
+      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
         scalar_fluxes.push_back(*it);
     
     Hermes::vector<std::string>::const_iterator region = regions.begin(); 
@@ -734,7 +734,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       SPN::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
   }
 
-  double PostProcessor::get_integrated_scalar_fluxes(const Hermes::vector< Solution* >& solutions, unsigned int G,
+  double PostProcessor::get_integrated_scalar_fluxes(const Hermes::vector< Solution<double>* >& solutions, unsigned int G,
                                                       const Hermes::vector< std::string >& regions) const
   {
     double result = 0.0;
@@ -745,7 +745,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
   
   void PostProcessor::get_areas(Mesh *mesh, const Hermes::vector<std::string>& regions, Hermes::vector<double>* results) const
   {
-    Solution unity(mesh, 1);
+    Solution<double> unity(mesh, 1);
     
     Hermes::vector<std::string>::const_iterator region = regions.begin(); 
     for ( ; region != regions.end(); ++region)
@@ -754,7 +754,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
 
   double PostProcessor::get_area(Mesh* mesh, const Hermes::vector< std::string >& regions) const
   {
-    Solution unity(mesh, 1);
+    Solution<double> unity(mesh, 1);
     return integrate(&unity, regions);
   }
 
@@ -762,8 +762,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
 
 
   SourceIteration::SourceIteration( NeutronicsMethod method, const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                    const Hermes2D& hermes2d, const std::vector< std::string >& fission_regions, GeomType geom_type )
-    : hermes2d(hermes2d), method(method), fission_regions(fission_regions), geom_type(geom_type)
+                                    const std::vector< std::string >& fission_regions, GeomType geom_type )
+    : method(method), fission_regions(fission_regions), geom_type(geom_type)
   {
     if (method == NEUTRONICS_DIFFUSION)
     {
@@ -777,11 +777,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     }
   }
   
-  int SourceIteration::eigenvalue_iteration(const Hermes::vector<Solution *>& solutions, DiscreteProblem& dp,
+  int SourceIteration::eigenvalue_iteration(const Hermes::vector<Solution<double> *>& solutions, DiscreteProblem<double>& dp,
                                             double tol_keff, double tol_flux, MatrixSolverType matrix_solver)
   {
     // Sanity checks.
-    if (dp.get_spaces().size() != solutions.size()) 
+/*    if (dp.get_spaces().size() != solutions.size()) 
       error("Spaces and solutions supplied to power_iteration do not match.");
     
     CompleteWeakForms::Common::WeakFormSourceIteration *wf;
@@ -794,13 +794,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     // The following variables will store pointers to solutions obtained at each iteration and will be needed for 
     // updating the eigenvalue. 
     bool meshes_changed = false;
-    Hermes::vector<Solution*> new_solutions;
+    Hermes::vector<Solution<double>*> new_solutions;
     for (unsigned int i = 0; i < solutions.size(); i++) 
     {
       Mesh *m = dp.get_space(i)->get_mesh();
       if (solutions[i]->get_mesh()->get_seq() != m->get_seq())
           meshes_changed = true;
-      new_solutions.push_back(new Solution(m));
+      new_solutions.push_back(new Solution<double>(m));
     }
     
     // Assign the solution vectors to fission source calculators.
@@ -815,8 +815,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     solver->set_factorization_scheme(HERMES_REUSE_FACTORIZATION_COMPLETELY);
     
     // Initial coefficient vector for the Newton's method.
-    int ndof = Space::get_num_dofs(dp.get_spaces());
-    scalar* coeff_vec = new scalar[ndof];
+    int ndof = Space<double>::get_num_dofs(dp.get_spaces());
+    double* coeff_vec = new double[ndof];
     
     // Force the Jacobian assembling in the first iteration.
     bool Jacobian_changed = true;
@@ -837,7 +837,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     bool eigen_done = false; int it = 0;
     do 
     {
-      memset(coeff_vec, 0.0, ndof*sizeof(scalar));
+      memset(coeff_vec, 0.0, ndof*sizeof(double));
 
       if (!hermes2d.solve_newton(coeff_vec, &dp, solver, mat, rhs, Jacobian_changed, 1e-8, 3, true)) 
         error("Newton's iteration failed.");
@@ -846,7 +846,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       Jacobian_changed = false;
       
       // Convert coefficients vector into a set of Solution pointers.
-      Solution::vector_to_solutions(solver->get_solution(), dp.get_spaces(), new_solutions);
+      Solution<double>::vector_to_solutions(solver->get_solution(), dp.get_spaces(), new_solutions);
 
       // Compute the eigenvalue for current iteration.
       double src_old = src_new;
@@ -915,25 +915,25 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     for (unsigned int i = 0; i < solutions.size(); i++) 
       delete new_solutions[i];
     
-    return it;
+    return it;*/
   }
   
   namespace Common
   {
-    const std::string Views::base_title_flux = "Neutron flux: group ";
-    const std::string Views::base_title_order = "Polynomial orders: group ";
-    const std::string Views::base_title_mesh = "Core mesh for group ";
+    const std::string Visualization::base_title_flux = "Neutron flux: group ";
+    const std::string Visualization::base_title_order = "Polynomial orders: group ";
+    const std::string Visualization::base_title_mesh = "Core mesh for group ";
     
-    void Views::init(unsigned int nu, unsigned int ne, unsigned int ng) 
+    void Visualization::init(unsigned int nu, unsigned int ne, unsigned int ng) 
     {
       n_unknowns = nu; n_equations = ne; n_groups = ng;
       
       if (nu > 0 && ne > 0 && ng > 0)
       {
-        sviews = new ScalarView* [n_unknowns];
-        oviews = new OrderView* [n_equations];
+        sviews = new Views::ScalarView<double>* [n_unknowns];
+        oviews = new Views::OrderView<double>* [n_equations];
         if (display_meshes)
-          mviews = new MeshView* [n_equations];
+          mviews = new Views::MeshView* [n_equations];
       }
       else
       {
@@ -943,7 +943,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       }
     }
     
-    Views::~Views()
+    Visualization::~Visualization()
     {
       if (sviews != NULL)
       {
@@ -967,12 +967,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       }
     }
     
-    void Views::inspect_meshes(Hermes::vector< Mesh* > meshes)
+    void Visualization::inspect_meshes(Hermes::vector< Mesh* > meshes)
     {
       if (display_meshes)
       {
         show_meshes(meshes);
-        View::wait();
+        Views::View::wait();
         
         for (unsigned int i = 0; i < n_equations; i++)
           delete mviews[i];
@@ -982,10 +982,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       }
     }
     
-    void Views::inspect_solutions(Hermes::vector< Solution* > solutions)
+    void Visualization::inspect_solutions(Hermes::vector< Solution<double>* > solutions)
     {
       show_solutions(solutions);
-      View::wait();
+      Views::View::wait();
       
       for (unsigned int i = 0; i < n_unknowns; i++)
         delete sviews[i];
@@ -994,10 +994,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       sviews = NULL;
     }
     
-    void Views::inspect_orders(Hermes::vector< Space* > spaces)
+    void Visualization::inspect_orders(Hermes::vector< Space<double>* > spaces)
     {
       show_orders(spaces);
-      View::wait();
+      Views::View::wait();
       
       for (unsigned int i = 0; i < n_equations; i++)
         delete oviews[i];
@@ -1009,50 +1009,50 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
   
   namespace Diffusion
   {
-    Views::Views(unsigned int G, bool display_meshes) : Common::Views(G, G, G, display_meshes)
+    Visualization::Visualization(unsigned int G, bool display_meshes) : Common::Visualization(G, G, G, display_meshes)
     {
       for (unsigned int g = 0; g < n_groups; g++)
       {
         std::string title_flux = base_title_flux + itos(g);
         std::string title_order = base_title_order + itos(g);
         
-        sviews[g] = new ScalarView(title_flux.c_str(), new WinGeom(0, g*452, 450, 450));
+        sviews[g] = new Views::ScalarView<double>(title_flux.c_str(), new Views::WinGeom(0, g*452, 450, 450));
         sviews[g]->show_mesh(false);
         sviews[g]->set_3d_mode(true);
-        oviews[g] = new OrderView(title_order.c_str(), new WinGeom(0, n_groups*452 + g*452, 450, 450));
+        oviews[g] = new Views::OrderView<double>(title_order.c_str(), new Views::WinGeom(0, n_groups*452 + g*452, 450, 450));
       }
       
       if (display_meshes)
         for (unsigned int g = 0; g < n_groups; g++)
         {
           std::string title = base_title_mesh + itos(g);
-          mviews[g] = new MeshView(title.c_str(), new WinGeom(0, g*352, 350, 350));
+          mviews[g] = new Views::MeshView(title.c_str(), new Views::WinGeom(0, g*352, 350, 350));
         }
     }
     
-    void Views::show_meshes(Hermes::vector< Mesh* > meshes)
+    void Visualization::show_meshes(Hermes::vector< Mesh* > meshes)
     {
       if (display_meshes)
         for (unsigned int g = 0; g < n_groups; g++)
           mviews[g]->show(meshes[g]);
     }
     
-    void Views::show_solutions(Hermes::vector< Solution* > solutions)
+    void Visualization::show_solutions(Hermes::vector< Solution<double>* > solutions)
     {
       for (unsigned int g = 0; g < n_groups; g++)
         sviews[g]->show(solutions[g]);
     }
     
-    void Views::show_orders(Hermes::vector< Space* > spaces)
+    void Visualization::show_orders(Hermes::vector< Space<double>* > spaces)
     {
       for (unsigned int g = 0; g < n_groups; g++)
         oviews[g]->show(spaces[g]);
     }
     
-    void Views::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
-                                    Hermes::vector< Solution* > solutions, bool mode_3D)
+    void Visualization::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
+                                    Hermes::vector< Solution<double>* > solutions, bool mode_3D)
     {
-      Linearizer lin;
+      Views::Linearizer<double> lin;
       for (unsigned int g = 0; g < n_groups; g++)
       {
         std::string appendix = std::string("_group_") + itos(g);
@@ -1063,9 +1063,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       }
     }
     
-    void Views::save_orders_vtk(const std::string& base_filename, Hermes::vector< Space* > spaces)
+    void Visualization::save_orders_vtk(const std::string& base_filename, Hermes::vector< Space<double>* > spaces)
     {
-      Orderizer ord;
+      Views::Orderizer ord;
       for (unsigned int g = 0; g < n_groups; g++)
       {
         std::string file = base_filename + std::string("_group_") + itos(g) + std::string(".vtk");
@@ -1077,11 +1077,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
   
   namespace SPN
   {
-    Views::Views(unsigned int spn_order, unsigned int G, bool display_meshes) : Common::Views(display_meshes), mg(G)
+    Visualization::Visualization(unsigned int spn_order, unsigned int G, bool display_meshes) : Common::Visualization(display_meshes), mg(G)
     {
       n_moments = spn_order+1;
       n_odd_moments = (n_moments+1)/2;
-      Common::Views::init(G * n_moments, G * n_odd_moments, G);
+      Common::Visualization::init(G * n_moments, G * n_odd_moments, G);
       
       for (unsigned int g = 0; g < n_groups; g++)
       {
@@ -1091,12 +1091,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         {
           unsigned int i = mg.pos(m,g);
           
-          sviews[i] = new ScalarView((title_flux + itos(m)).c_str(), new WinGeom(m*452, g*452, 450, 450));
+          sviews[i] = new Views::ScalarView<double>((title_flux + itos(m)).c_str(), new Views::WinGeom(m*452, g*452, 450, 450));
           sviews[i]->show_mesh(false);
           sviews[i]->set_3d_mode(true);
           
           if (m%2) 
-            oviews[mg.pos((m-1)/2,g)] = new OrderView((title_order + itos(m)).c_str(), new WinGeom(m*452, n_groups*452 + g*452, 450, 450));
+            oviews[mg.pos((m-1)/2,g)] = new Views::OrderView<double>((title_order + itos(m)).c_str(), new Views::WinGeom(m*452, n_groups*452 + g*452, 450, 450));
         }
       }
       
@@ -1106,12 +1106,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         {
           std::string title = base_title_mesh + itos(g) + std::string(", moment ");
           for (unsigned int m = 0; m < n_odd_moments; m++)
-            mviews[mg.pos(m,g)] = new MeshView((title + itos(m)).c_str(), new WinGeom(m*352, g*352, 350, 350));
+            mviews[mg.pos(m,g)] = new Views::MeshView((title + itos(m)).c_str(), new Views::WinGeom(m*352, g*352, 350, 350));
         }
       }
     }
             
-    void Views::show_meshes(Hermes::vector< Mesh* > meshes)
+    void Visualization::show_meshes(Hermes::vector< Mesh* > meshes)
     {
       if (display_meshes)
         for (unsigned int g = 0; g < n_groups; g++)
@@ -1119,7 +1119,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
             mviews[mg.pos(m,g)]->show(meshes[mg.pos(m,g)]);
     }
     
-    void Views::show_solutions(Hermes::vector< Solution* > solutions)
+    void Visualization::show_solutions(Hermes::vector< Solution<double>* > solutions)
     {
       for (unsigned int g = 0; g < n_groups; g++)
       {
@@ -1137,10 +1137,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       }
     }
     
-    void Views::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
-                                    Hermes::vector< Solution* > solutions, bool mode_3D)
+    void Visualization::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
+                                    Hermes::vector< Solution<double>* > solutions, bool mode_3D)
     { 
-      Linearizer lin;
+      Views::Linearizer<double> lin;
       for (unsigned int g = 0; g < n_groups; g++)
       {
         std::string appendix = std::string("_group_") + itos(g);
@@ -1161,9 +1161,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       }
     }
     
-    void Views::save_orders_vtk(const std::string& base_filename, Hermes::vector< Space* > spaces)
+    void Visualization::save_orders_vtk(const std::string& base_filename, Hermes::vector< Space<double>* > spaces)
     {
-      Orderizer ord;
+      Views::Orderizer ord;
       for (unsigned int g = 0; g < n_groups; g++)
         for (unsigned int m = 0; m < n_odd_moments; m++)
         {
@@ -1173,10 +1173,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         }
     }
     
-    void Views::inspect_solutions(Hermes::vector< Solution* > solutions)
+    void Visualization::inspect_solutions(Hermes::vector< Solution<double>* > solutions)
     {
       show_solutions(solutions);
-      View::wait();
+      Views::View::wait();
       
       for (unsigned int i = 0; i < n_unknowns; i++)
         delete sviews[i];
@@ -1185,7 +1185,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       sviews = NULL;
     }
 
-    void Views::show_orders(Hermes::vector< Space* > spaces)
+    void Visualization::show_orders(Hermes::vector< Space<double>* > spaces)
     {
       for (unsigned int g = 0; g < n_groups; g++)
         for (unsigned int m = 0; m < n_odd_moments; m++)
