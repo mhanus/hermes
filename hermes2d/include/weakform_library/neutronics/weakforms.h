@@ -1,10 +1,8 @@
 #ifndef ___H2D_NEUTRONICS_WEAK_FORMS_H
 #define ___H2D_NEUTRONICS_WEAK_FORMS_H
 
-#include "common_definitions.h"
-#include "material_properties.h"
-#include "support_classes.h"
 #include "weakform_parts.h"
+#include "weakforms_h1.h"
 
 namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakForms 
 {
