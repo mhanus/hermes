@@ -1,6 +1,4 @@
 #include "neutronics/material_properties.h"
-
-#include <algorithm>
 #include <iomanip>
 
 namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace MaterialProperties
@@ -28,7 +26,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
                                                       MaterialPropertyMap1 *mrmg_map)
     {
       if (materials_list.empty())
-        error(Messages::E_MR_EXTENSION);
+        error_function(Messages::E_MR_EXTENSION);
       
       std::set<std::string>::const_iterator it;
       for (it = materials_list.begin(); it != materials_list.end(); ++it)
@@ -39,7 +37,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
                                                                 MaterialPropertyMap1 *mrmg_map)
     {
       if (materials_list.empty())
-        error(Messages::E_MR_EXTENSION);
+        error_function(Messages::E_MR_EXTENSION);
       
       std::set<std::string>::const_iterator it;
       for (it = materials_list.begin(); it != materials_list.end(); ++it)
@@ -49,7 +47,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
     void MaterialPropertyMaps::fill_with(double c, MaterialPropertyMap1 *mrmg_map)
     {
       if (materials_list.empty())
-        error(Messages::E_MR_EXTENSION);
+        error_function(Messages::E_MR_EXTENSION);
       
       std::set<std::string>::const_iterator it;
       for (it = materials_list.begin(); it != materials_list.end(); ++it)
@@ -185,7 +183,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       }
       
       if ((nu.size() != Sigma_f.size()) || (nu.size() != chi.size()))
-        error(Messages::E_NONMATCHING_PROPERTIES);
+        error_function(Messages::E_NONMATCHING_PROPERTIES);
       
       if (!Sigma_f.empty())
       {
@@ -257,7 +255,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return data->second;
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -270,7 +268,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return data->second;
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -281,7 +279,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return data->second;
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -292,7 +290,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return data->second;
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -303,7 +301,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return data->second;
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -406,7 +404,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
             if (Sigma_f_given)
               Sigma_t = Sigma_f;
             else
-              error(Messages::E_INSUFFICIENT_DATA);
+              error_function(Messages::E_INSUFFICIENT_DATA);
           }
           
           Sigma_t_given = true;
@@ -476,7 +474,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       }
       
       if ((D.size() != Sigma_r.size()) || (D.size() != Sigma_s.size()))
-        error(Messages::E_NONMATCHING_PROPERTIES);
+        error_function(Messages::E_NONMATCHING_PROPERTIES);
       
       std::for_each(Sigma_s.begin(), Sigma_s.end(), Validation::ensure_size(G,G));
       std::for_each(Sigma_r.begin(), Sigma_r.end(), Validation::ensure_size(G));
@@ -505,7 +503,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       }
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -522,7 +520,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       }
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -536,7 +534,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return data->second;
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank2()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -547,7 +545,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return data->second;
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -558,7 +556,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return data->second;
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -692,12 +690,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       else if (Sigma_s_1_out_given)
         D = Sigma_s_1_out;
       else
-        error(Messages::E_INSUFFICIENT_DATA);
+        error_function(Messages::E_INSUFFICIENT_DATA);
       
       MaterialPropertyMaps::validate();
       
       if (Sigma_t.empty())
-        error(Messages::E_INSUFFICIENT_DATA);
+        error_function(Messages::E_INSUFFICIENT_DATA);
       
       if (!Sigma_s_1_out_given)
         Sigma_s_1_out = NDArrayMapOp::multiply<rank1>(mu_av, sum_map2_columns(Sigma_s));
@@ -790,19 +788,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
             
             dgetrf_(&n, &n, A, &lda, ipiv, &info);
             if (info != 0) 
-              error(Messages::E_LAPACK_ERROR, info);
+              error_function(Messages::E_LAPACK_ERROR, info);
             
             double rcond;
             dgecon_("1", &n, A, &lda, &anorm, &rcond, 
                     dgecon_double_workspace, dgecon_int_workspace, &info);
             if (info != 0) 
-              error(Messages::E_LAPACK_ERROR, info);
+              error_function(Messages::E_LAPACK_ERROR, info);
             if (rcond > 1e12)
               warning(Messages::W_SINGULAR_MATRIX);
                     
             dgetri_(&n, A, &lda, ipiv, dgetri_workspace, &sz_dgetri_workspace, &info);
             if (info != 0)
-              error(Messages::E_LAPACK_ERROR);
+              error_function(Messages::E_LAPACK_ERROR);
                             
             rank2::iterator inv_mtx_row = inverted_moment_matrix->begin(); gto = 0;
             for ( ; inv_mtx_row != inverted_moment_matrix->end(); ++inv_mtx_row, ++gto)
@@ -821,7 +819,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
     void MaterialPropertyMaps::validate()
     {
       if (Sigma_tn.empty())
-        error(Messages::E_SIGMA_T_REQUIRED);
+        error_function(Messages::E_SIGMA_T_REQUIRED);
       
       Common::MaterialPropertyMaps::validate();
                 
@@ -859,12 +857,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
           for ( ; moment_matrix != moment_matrices.end(); ++moment_matrix, ++moment_matrix_is_diagonal)
           { 
             if (moment_matrix->size() != G)
-              error(Messages::E_INVALID_SIZE);
+              error_function(Messages::E_INVALID_SIZE);
             
             for (unsigned int gto = 0; gto < G && *moment_matrix_is_diagonal; gto++)
             {
               if (moment_matrix->at(gto).size() != G)
-                error(Messages::E_INVALID_SIZE);
+                error_function(Messages::E_INVALID_SIZE);
               
               for (unsigned int gfrom = 0; gfrom < G && *moment_matrix_is_diagonal; gfrom++)
                 if (gfrom != gto && fabs((*moment_matrix)[gto][gfrom]) > 1e-12)
@@ -885,12 +883,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
             for (unsigned int gto = 0; gto < G && isdiag; gto++)
             {
               if (Ssn[n].size() != G)
-                error(Messages::E_INVALID_SIZE);
+                error_function(Messages::E_INVALID_SIZE);
               
               for (unsigned int gfrom = 0; gfrom < G && isdiag; gfrom++)
               {
                 if (Ssn[n][gto].size() != G)
-                  error(Messages::E_INVALID_SIZE);
+                  error_function(Messages::E_INVALID_SIZE);
                 
                 if (gfrom != gto && fabs(Ssn[n][gto][gfrom]) > 1e-12)
                   isdiag = false;
@@ -927,7 +925,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       }
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -939,7 +937,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return extract_rank2_diagonal(Stn_mat->second.front());
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -951,7 +949,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return Ss_mat->second.front();
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank2()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -963,7 +961,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return data->second;
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank3()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -975,7 +973,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return data->second;
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new rank3()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
@@ -987,7 +985,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         return data->second;
       else
       {
-        error(Messages::E_INVALID_MARKER);
+        error_function(Messages::E_INVALID_MARKER);
         return *(new bool1()); // To avoid MSVC problems; execution should never come to this point.
       }
     }

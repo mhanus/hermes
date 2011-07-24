@@ -26,7 +26,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     {
       num = matprop.get_G();
       if(num > 10)
-        error("Unable to create an instance of SourceFilter: Hermes is currently able to handle"
+        error_function("Unable to create an instance of SourceFilter: Hermes is currently able to handle"
               "only 10 functions in filters.");
       
       for (int i = 0; i < 10; i++)
@@ -43,7 +43,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     void SourceFilter::assign_solutions(const Hermes::vector< Solution<double>* >& solutions)
     {
       if (solutions.size() != (unsigned) num)
-        error("SourceFilter: Number of solutions does not match the size of data.");
+        error_function("SourceFilter: Number of solutions does not match the size of data.");
       
       free();
       for (int i = 0; i < num; i++)
@@ -55,7 +55,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     void SourceFilter::assign_solutions(const Hermes::vector< MeshFunction<double>* >& solutions)
     {
       if (solutions.size() != (unsigned) num)
-        error("SourceFilter: Number of solutions does not match the size of data.");
+        error_function("SourceFilter: Number of solutions does not match the size of data.");
       
       free();
       for (int i = 0; i < num; i++)
@@ -198,13 +198,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     double Coeffs::system_matrix(unsigned int m, unsigned int n, unsigned int k_of_Sigma_t2k)
     {
       if (m >= N_MAX || n >= N_MAX)
-        error("For the maximum implemented SPN order (N = %d), both m, n must lie in the range [0,%d]."
+        error_function("For the maximum implemented SPN order (N = %d), both m, n must lie in the range [0,%d]."
               "Entered (m,n) = (%d,%d).", 2*N_MAX-1, N_MAX-1, m, n);
       
       if (m > n) std::swap(m,n);
       
       if (k_of_Sigma_t2k > n)
-        error("In the m-th SPN equation, m = %d, the coefficients at the unknown generalized fluxes involve"
+        error_function("In the m-th SPN equation, m = %d, the coefficients at the unknown generalized fluxes involve"
               "Sigma_tk with k up to %d. Entered k = %d.", n, 2*n, 2*k_of_Sigma_t2k);
       
       return SYSTEM_MATRIX[m][n-m][k_of_Sigma_t2k];
@@ -213,7 +213,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     double Coeffs::D_grad_F(unsigned int m, unsigned int n)
     {
       if (m >= N_MAX || n >= N_MAX)
-        error("For the maximum implemented SPN order (N = %d), both m, n must lie in the range [0,%d]."
+        error_function("For the maximum implemented SPN order (N = %d), both m, n must lie in the range [0,%d]."
               "Entered (m,n) = (%d,%d).", 2*N_MAX-1, N_MAX-1, m, n);
       
       if (m > n) std::swap(m,n); 
@@ -223,10 +223,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     double Coeffs::even_moment(unsigned int m, unsigned int n)
     {
       if (m >= N_MAX)
-        error("For the maximum implemented SPN order (N = %d), there are %d even moment(s)."
+        error_function("For the maximum implemented SPN order (N = %d), there are %d even moment(s)."
               "Tried to access moment #%d.", 2*N_MAX-1, N_MAX, m+1);
       if (n > N_MAX || n < m)
-        error("The even moment #%d must be expressed in terms of %d odd moment(s), starting with %d."
+        error_function("The even moment #%d must be expressed in terms of %d odd moment(s), starting with %d."
               "Tried to use odd moment #%d.", m+1, N_MAX-m, m+1, n+1);
               
       return EVEN_MOMENTS[m][n-m];
@@ -422,7 +422,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
   void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution<double>* >* solutions, double integrated_fission_source) const
   {
     if (integrated_fission_source < 1e-12)
-      error("PostProcessor::normalize_to_unit_fission_source : Invalid fission source.");
+      error_function("PostProcessor::normalize_to_unit_fission_source : Invalid fission source.");
  // TODO (missing Solution::multiply)
  /*
     Hermes::vector< Solution<double>* >::iterator sln = solutions->begin();
@@ -460,7 +460,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
                                                                       unsigned int this_group, int other_group) const
   {    
     if (this_group > matprop.get_G())
-      error(Messages::E_INVALID_GROUP_INDEX);
+      error_function(Messages::E_INVALID_GROUP_INDEX);
     
     Quad2D* quad = &g_quad_2d_std;
     solution->set_quad_2d(quad);
@@ -514,7 +514,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
             break;
           case IN_SCATTERING:
             if (other_group > (int) matprop.get_G() || other_group < 0)
-              error(Messages::E_INVALID_GROUP_INDEX);
+              error_function(Messages::E_INVALID_GROUP_INDEX);
             
             xsec = matprop.compute_Sigma_s(mat)[this_group][other_group];
             break;
@@ -523,7 +523,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
             break;
           case OUT_SCATTERING:
             if (other_group > (int) matprop.get_G() || other_group < 0)
-              error(Messages::E_INVALID_GROUP_INDEX);
+              error_function(Messages::E_INVALID_GROUP_INDEX);
             
             xsec = matprop.compute_Sigma_s(mat)[other_group][this_group];
             break;
@@ -782,7 +782,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
   {
     // Sanity checks.
 /*    if (dp.get_spaces().size() != solutions.size()) 
-      error("Spaces and solutions supplied to power_iteration do not match.");
+      error_function("Spaces and solutions supplied to power_iteration do not match.");
     
     CompleteWeakForms::Common::WeakFormSourceIteration *wf;
     
@@ -840,7 +840,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       memset(coeff_vec, 0.0, ndof*sizeof(double));
 
       if (!hermes2d.solve_newton(coeff_vec, &dp, solver, mat, rhs, Jacobian_changed, 1e-8, 3, true)) 
-        error("Newton's iteration failed.");
+        error_function("Newton's iteration failed.");
           
       // The matrix doesn't change within the power iteration loop, so it does not need to be reassembled again.
       Jacobian_changed = false;
