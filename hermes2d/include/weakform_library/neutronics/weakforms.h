@@ -31,7 +31,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
     Dirichlet and/or zero Neumann BC are assumed - nonzero Neumann or Newton boundary conditions can 
     be enabled by creating a descendant and adding surface forms to it.
     */
-    class FixedSourceProblem : public WeakForm
+    class FixedSourceProblem : public WeakForm<double>
     {        
       public:
         FixedSourceProblem(Hermes::vector<std::string> regions, 
@@ -54,17 +54,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       public:
         virtual void update_keff(double new_keff) = 0; //TODO: Define a common FissionYield::OuterIteration class,
                                                       // so that this method may be defined here instead of in both
-                                                      // SPN and Diffusion DefaultWeakFormSourceIteration.
+                                                      // SPN and Diffusion KeffEigenvalueProblem.
         double get_keff() const { return keff; }
     };
   }
         
   namespace Diffusion
   {      
-    using namespace MaterialProperties::Diffusion;
-    using namespace WeakFormParts::Diffusion;
+    using namespace MaterialProperties::Diffusion;   // Contained in WeakFormParts::Diffusion; 
+                                                     // explicitly needed only for KDevelop's Intellisense.
+    using namespace WeakFormParts::Diffusion;    
+    using DataStructures::bool1;
+    using DataStructures::bool2;
           
-    class FixedSourceProblem : public WeakForm
+    class FixedSourceProblem : public WeakForm<double>
     {
       protected:
         void lhs_init(unsigned int G, const MaterialPropertyMaps& matprop, GeomType geom_type);
@@ -74,53 +77,53 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                           HermesFunction *minus_f_src,
+                           HermesFunction<double> *minus_f_src,
                            const std::string& src_area = HERMES_ANY,
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                           HermesFunction *minus_f_src,
+                           HermesFunction<double> *minus_f_src,
                            const Hermes::vector<std::string>& src_areas,
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                           const std::vector<HermesFunction*>& minus_f_src,
+                           const std::vector<HermesFunction<double>*>& minus_f_src,
                            const std::string& src_area = HERMES_ANY,
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                           const std::vector<HermesFunction*>& minus_f_src,
+                           const std::vector<HermesFunction<double>*>& minus_f_src,
                            const Hermes::vector<std::string>& src_areas,
                            GeomType geom_type = HERMES_PLANAR);
     };
             
-    class KeffEigenvalueProblem : public WeakForm, public Common::KeffEigenvalueProblem
+    class KeffEigenvalueProblem : public WeakForm<double>, public Common::KeffEigenvalueProblem
     {
       protected:            
         std::vector<FissionYield::OuterIterationForm*> keff_iteration_forms;
         
-        void init(const MaterialPropertyMaps& matprop, const Hermes::vector<MeshFunction*>& iterates, 
+        void init(const MaterialPropertyMaps& matprop, const Hermes::vector<MeshFunction<double>*>& iterates, 
                   GeomType geom_type, const Hermes::vector<std::string>& areas = Hermes::vector<std::string>());
         
       public:
         KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                              const Hermes::vector<MeshFunction*>& iterates,
+                              const Hermes::vector<MeshFunction<double>*>& iterates,
                               double initial_keff_guess,
                               GeomType geom_type = HERMES_PLANAR );
                                         
         KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                              const Hermes::vector<Solution*>& iterates,
+                              const Hermes::vector<Solution<double>*>& iterates,
                               double initial_keff_guess,
                               GeomType geom_type = HERMES_PLANAR );    
                                         
         KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                              const Hermes::vector<MeshFunction*>& iterates, 
+                              const Hermes::vector<MeshFunction<double>*>& iterates, 
                               const Hermes::vector<std::string>& src_areas,
                               double initial_keff_guess,
                               GeomType geom_type = HERMES_PLANAR );
                                         
         KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                              const Hermes::vector<Solution*>& iterates, 
+                              const Hermes::vector<Solution<double>*>& iterates, 
                               const Hermes::vector<std::string>& src_areas,
                               double initial_keff_guess,
                               GeomType geom_type = HERMES_PLANAR );                                            
@@ -132,10 +135,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
 
   namespace SPN
   {
-    using namespace MaterialProperties::SPN;
-    using namespace WeakFormParts::SPN;
+    using namespace MaterialProperties::SPN;  // Contained in WeakFormParts::SPN;  
+                                              // explicitly needed only for KDevelop's Intellisense.
+    using namespace WeakFormParts::SPN; 
+    using DataStructures::bool1;
+    using DataStructures::bool2;
     
-    class WeakFormHomogeneous : public WeakForm
+    class WeakFormHomogeneous : public WeakForm<double>
     {
       protected:
         MomentGroupFlattener mg;
@@ -148,29 +154,29 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
     class FixedSourceProblem : public WeakFormHomogeneous
     {
       protected:
-        std::vector<VectorFormVol*> source_terms;
+        std::vector<VectorFormVol<double>*> source_terms;
         
       public:
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                           HermesFunction *minus_isotropic_source,
+                           HermesFunction<double> *minus_isotropic_source,
                            std::string src_area = HERMES_ANY,
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                           HermesFunction *minus_isotropic_source,
+                           HermesFunction<double> *minus_isotropic_source,
                            Hermes::vector<std::string> src_areas,
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                           const std::vector<HermesFunction*>& minus_isotropic_sources,
+                           const std::vector<HermesFunction<double>*>& minus_isotropic_sources,
                            std::string src_area = HERMES_ANY,
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                           const std::vector<HermesFunction*>& minus_isotropic_sources,
+                           const std::vector<HermesFunction<double>*>& minus_isotropic_sources,
                            Hermes::vector<std::string> src_areas,
                            GeomType geom_type = HERMES_PLANAR);
                                   
@@ -181,11 +187,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
     {
       protected:
         std::vector<FissionYield::OuterIterationForm*> keff_iteration_forms;
-        Hermes::vector<MeshFunction*> scalar_flux_iterates;
+        Hermes::vector<MeshFunction<double>*> scalar_flux_iterates;
         
       public:
         KeffEigenvalueProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                              const Hermes::vector<Solution*>& iterates, 
+                              const Hermes::vector<Solution<double>*>& iterates, 
                               const Hermes::vector<std::string>& src_areas,
                               double initial_keff_guess,
                               GeomType geom_type = HERMES_PLANAR );
@@ -194,7 +200,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
         
         void update_keff(double new_keff);
         
-        const Hermes::vector<MeshFunction*>& get_scalar_flux_iterates() const { 
+        const Hermes::vector<MeshFunction<double>*>& get_scalar_flux_iterates() const { 
           return scalar_flux_iterates; 
         }
     };

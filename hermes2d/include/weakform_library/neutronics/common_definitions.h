@@ -5,7 +5,6 @@
 
 #include "weakforms_h1.h"
 #include "../forms.h"
-#include "../function/filter.h"
 #include <sstream>
 
 namespace Hermes
@@ -130,7 +129,7 @@ namespace Hermes
               return 0.0;
             else if (y == 0)
             {
-              error(E_INF_VALUE);
+              error(Messages::E_INF_VALUE);
               return -1.0;
             }
             else
@@ -151,7 +150,7 @@ namespace Hermes
           static rank0 subtract(rank0 x, rank0 y) {
             rank0 ret = x - y;
             if(ret < 0)
-              warning(W_NEG_VALUE);
+              warning(Messages::W_NEG_VALUE);
             return ret;
           }
           

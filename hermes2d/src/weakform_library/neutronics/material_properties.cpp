@@ -216,7 +216,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       }
     }
     
-    std::string MaterialPropertyMaps::get_material(int elem_marker, WeakForm *wf) const 
+    std::string MaterialPropertyMaps::get_material(int elem_marker, WeakForm<double> *wf) const 
     { 
       std::string region;
       
@@ -374,7 +374,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
             if (Sigma_a_given)
             {
               // If Sigma_s is not given, but Sigma_a is, we can calculate Sigma_s from Sigma_t and Sigma_a.
-              Sigma_s = create_map2_by_diagonals(Common::NDArrayMapOp::subtract<rank1>(Sigma_t, Sigma_a));
+              Sigma_s = create_map2_by_diagonals(NDArrayMapOp::subtract<rank1>(Sigma_t, Sigma_a));
             }
             else 
             {
@@ -399,7 +399,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
           }
           
           if (Sigma_a_given)
-            Sigma_t = Common::NDArrayMapOp::add<rank1>(Sigma_a, sum_map2_columns(Sigma_s));
+            Sigma_t = NDArrayMapOp::add<rank1>(Sigma_a, sum_map2_columns(Sigma_s));
           else 
           {
             // If neither Sigma_r, Sigma_t, Sigma_a are given, we may have a purely fissioning system.
@@ -412,7 +412,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
           Sigma_t_given = true;
         }
         
-        Sigma_r = Common::NDArrayMapOp::subtract<rank1>(Sigma_t, extract_map2_diagonals(Sigma_s));
+        Sigma_r = NDArrayMapOp::subtract<rank1>(Sigma_t, extract_map2_diagonals(Sigma_s));
         Sigma_r_given = true;
       }
       
@@ -428,7 +428,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         
         if (Sigma_t_given)
         {
-          Sigma_s = create_map2_by_diagonals(Common::NDArrayMapOp::subtract<rank1>(Sigma_t, Sigma_r));
+          Sigma_s = create_map2_by_diagonals(NDArrayMapOp::subtract<rank1>(Sigma_t, Sigma_r));
         }
         else
         {
@@ -518,7 +518,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       {
         rank1 Sr = Sr_mat->second;
         rank1 Ssd = extract_rank2_diagonal(Ss_mat->second);
-        return Common::NDArrayMapOp::add<rank1>(Sr, Ssd);
+        return NDArrayMapOp::add<rank1>(Sr, Ssd);
       }
       else
       {
@@ -700,9 +700,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         error(Messages::E_INSUFFICIENT_DATA);
       
       if (!Sigma_s_1_out_given)
-        Sigma_s_1_out = Common::NDArrayMapOp::multiply<rank1>(mu_av, sum_map2_columns(Sigma_s));
+        Sigma_s_1_out = NDArrayMapOp::multiply<rank1>(mu_av, sum_map2_columns(Sigma_s));
         
-      MaterialPropertyMap1 Sigma_tr = Common::NDArrayMapOp::subtract<rank1>(Sigma_t, Sigma_s_1_out);
+      MaterialPropertyMap1 Sigma_tr = NDArrayMapOp::subtract<rank1>(Sigma_t, Sigma_s_1_out);
       MaterialPropertyMap1::const_iterator Str_elem = Sigma_tr.begin();
       for ( ; Str_elem != Sigma_tr.end(); ++Str_elem)
         for (unsigned int g = 0; g < G; g++)
@@ -851,7 +851,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         
         if (Ssn.size() == N+1)
         {
-          Sigma_rn[mat] = Common::NDArrayMapOp::subtract<rank3>(Stn, Ssn);
+          Sigma_rn[mat] = NDArrayMapOp::subtract<rank3>(Stn, Ssn);
           
           rank3 moment_matrices = Stn_material->second;
           rank3::const_iterator moment_matrix = moment_matrices.begin();
@@ -879,7 +879,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
           // Totally absorbing material in case of Ssn.size() == 0.
           for (unsigned int n = 0; n < Ssn.size(); n++)
           {
-            Sigma_rn[mat][n] = Common::NDArrayMapOp::subtract<rank2>(Stn[n], Ssn[n]);
+            Sigma_rn[mat][n] = NDArrayMapOp::subtract<rank2>(Stn[n], Ssn[n]);
             
             bool isdiag = true;
             for (unsigned int gto = 0; gto < G && isdiag; gto++)
