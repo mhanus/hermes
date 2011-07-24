@@ -7,7 +7,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
     FixedSourceProblem::FixedSourceProblem(Hermes::vector<std::string> regions, 
                                            Hermes::vector<double> D_map, 
                                            Hermes::vector<double> Sigma_a_map, 
-                                           Hermes::vector<double> Q_map ) : WeakForm(1) 
+                                           Hermes::vector<double> Q_map ) : WeakForm<double>(1) 
     {
       using namespace WeakFormsH1;
       
@@ -15,19 +15,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       {
         /* Jacobian */
         // Diffusion.
-        add_matrix_form(new DefaultJacobianDiffusion(0, 0, regions[i], new HermesFunction(D_map[i]), 
+        add_matrix_form(new DefaultJacobianDiffusion<double>(0, 0, regions[i], new HermesFunction<double>(D_map[i]), 
                                                       HERMES_SYM));
         // Absorption.
-        add_matrix_form(new DefaultMatrixFormVol(0, 0, regions[i], new HermesFunction(Sigma_a_map[i]), 
+        add_matrix_form(new DefaultMatrixFormVol<double>(0, 0, regions[i], new HermesFunction<double>(Sigma_a_map[i]), 
                                                   HERMES_SYM));
         
         /* Residual */
         // Diffusion.
-        add_vector_form(new DefaultResidualDiffusion(0, regions[i], new HermesFunction(D_map[i])));
+        add_vector_form(new DefaultResidualDiffusion<double>(0, regions[i], new HermesFunction<double>(D_map[i])));
         // Absorption.
-        add_vector_form(new DefaultResidualVol(0, regions[i], new HermesFunction(Sigma_a_map[i])));
+        add_vector_form(new DefaultResidualVol<double>(0, regions[i], new HermesFunction<double>(Sigma_a_map[i])));
         // Sources.
-        add_vector_form(new DefaultVectorFormVol(0, regions[i], new HermesFunction(-Q_map[i])));
+        add_vector_form(new DefaultVectorFormVol<double>(0, regions[i], new HermesFunction<double>(-Q_map[i])));
       }
     }
   }
@@ -63,7 +63,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                                           GeomType geom_type) : WeakForm(matprop.get_G())
+                                           GeomType geom_type) : WeakForm<double>(matprop.get_G())
     {
       lhs_init(matprop.get_G(), matprop, geom_type);
       for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
@@ -71,98 +71,98 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                                           HermesFunction *minus_f_src, const std::string& src_area,
-                                           GeomType geom_type  ) : WeakForm(matprop.get_G())
+                                           HermesFunction<double> *minus_f_src, const std::string& src_area,
+                                           GeomType geom_type  ) : WeakForm<double>(matprop.get_G())
     {
       lhs_init(matprop.get_G(), matprop, geom_type);
       for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-        add_vector_form(new WeakFormsH1::DefaultVectorFormVol(gto, src_area, minus_f_src, geom_type));
+        add_vector_form(new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_area, minus_f_src, geom_type));
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                                           HermesFunction *minus_f_src,
+                                           HermesFunction<double> *minus_f_src,
                                            const Hermes::vector<std::string>& src_areas,
-                                           GeomType geom_type  ) : WeakForm(matprop.get_G())
+                                           GeomType geom_type  ) : WeakForm<double>(matprop.get_G())
     {
       lhs_init(matprop.get_G(), matprop, geom_type);
       for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-        add_vector_form(new WeakFormsH1::DefaultVectorFormVol(gto, src_areas, minus_f_src, geom_type));
+        add_vector_form(new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_areas, minus_f_src, geom_type));
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                                           const std::vector<HermesFunction*>& minus_f_src,
+                                           const std::vector<HermesFunction<double>*>& minus_f_src,
                                            const std::string& src_area, 
-                                           GeomType geom_type ) : WeakForm(matprop.get_G())
+                                           GeomType geom_type ) : WeakForm<double>(matprop.get_G())
     {
       if (minus_f_src.size() != matprop.get_G())
         error(Messages::E_INVALID_SIZE);
       
       lhs_init(matprop.get_G(), matprop, geom_type);
       for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-        add_vector_form(new WeakFormsH1::DefaultVectorFormVol(gto, src_area, minus_f_src[gto], geom_type));
+        add_vector_form(new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_area, minus_f_src[gto], geom_type));
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                                           const std::vector<HermesFunction*>& minus_f_src,
+                                           const std::vector<HermesFunction<double>*>& minus_f_src,
                                            const Hermes::vector<std::string>& src_areas,
-                                           GeomType geom_type ) : WeakForm(matprop.get_G())
+                                           GeomType geom_type ) : WeakForm<double>(matprop.get_G())
     {
       if (minus_f_src.size() != matprop.get_G())
         error(Messages::E_INVALID_SIZE);
       
       lhs_init(matprop.get_G(), matprop, geom_type);
       for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-        add_vector_form(new WeakFormsH1::DefaultVectorFormVol(gto, src_areas, minus_f_src[gto], geom_type));
+        add_vector_form(new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_areas, minus_f_src[gto], geom_type));
     }
     
     KeffEigenvalueProblem::KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                                                 const Hermes::vector<MeshFunction*>& iterates,
+                                                 const Hermes::vector<MeshFunction<double>*>& iterates,
                                                  double initial_keff_guess, 
                                                  GeomType geom_type ) 
-      : WeakForm(matprop.get_G()), Common::KeffEigenvalueProblem(initial_keff_guess)
+      : WeakForm<double>(matprop.get_G()), Common::KeffEigenvalueProblem(initial_keff_guess)
     {      
       init(matprop, iterates, geom_type);
     }
     
     KeffEigenvalueProblem::KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                                                 const Hermes::vector<Solution*>& iterates,
+                                                 const Hermes::vector<Solution<double>*>& iterates,
                                                  double initial_keff_guess, 
                                                  GeomType geom_type ) 
-      : WeakForm(matprop.get_G()), Common::KeffEigenvalueProblem(initial_keff_guess)
+      : WeakForm<double>(matprop.get_G()), Common::KeffEigenvalueProblem(initial_keff_guess)
     {      
-      Hermes::vector<MeshFunction *> iterates_mf;
+      Hermes::vector<MeshFunction<double> *> iterates_mf;
       for (unsigned int i = 0; i < iterates.size(); i++)
-        iterates_mf.push_back(static_cast<MeshFunction*>(iterates[i]));
+        iterates_mf.push_back(static_cast<MeshFunction<double>*>(iterates[i]));
       
       init(matprop, iterates_mf, geom_type);
     }
     
     KeffEigenvalueProblem::KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                                                 const Hermes::vector<MeshFunction*>& iterates, 
+                                                 const Hermes::vector<MeshFunction<double>*>& iterates, 
                                                  const Hermes::vector<std::string>& src_areas,
                                                  double initial_keff_guess, 
                                                  GeomType geom_type )
-      : WeakForm(matprop.get_G()), Common::KeffEigenvalueProblem(initial_keff_guess)
+      : WeakForm<double>(matprop.get_G()), Common::KeffEigenvalueProblem(initial_keff_guess)
     {
       init(matprop, iterates, geom_type, src_areas);
     }
     
     KeffEigenvalueProblem::KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                                                 const Hermes::vector<Solution*>& iterates, 
+                                                 const Hermes::vector<Solution<double>*>& iterates, 
                                                  const Hermes::vector<std::string>& src_areas,
                                                  double initial_keff_guess, 
                                                  GeomType geom_type ) 
-      : WeakForm(matprop.get_G()), Common::KeffEigenvalueProblem(initial_keff_guess)
+      : WeakForm<double>(matprop.get_G()), Common::KeffEigenvalueProblem(initial_keff_guess)
     {
-      Hermes::vector<MeshFunction *> iterates_mf;
+      Hermes::vector<MeshFunction<double> *> iterates_mf;
       for (unsigned int i = 0; i < iterates.size(); i++)
-        iterates_mf.push_back(static_cast<MeshFunction*>(iterates[i]));
+        iterates_mf.push_back(static_cast<MeshFunction<double>*>(iterates[i]));
       
       init(matprop, iterates_mf, geom_type, src_areas);
     }
     
     void KeffEigenvalueProblem::init(const MaterialPropertyMaps& matprop,
-                                     const Hermes::vector<MeshFunction*>& iterates, 
+                                     const Hermes::vector<MeshFunction<double>*>& iterates, 
                                      GeomType geom_type, const Hermes::vector<std::string>& areas)
     {
       bool2 Ss_nnz = matprop.get_scattering_nonzero_structure();
@@ -207,7 +207,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
   {
     WeakFormHomogeneous::WeakFormHomogeneous(unsigned int N, const MaterialPropertyMaps& matprop,
                                              GeomType geom_type, bool include_fission) 
-      : WeakForm(matprop.get_G()*(N+1)/2), G(matprop.get_G()), N_odd((N+1)/2)
+      : WeakForm<double>(matprop.get_G()*(N+1)/2), G(matprop.get_G()), N_odd((N+1)/2)
     {
       mg.set_G(G);
       
@@ -311,14 +311,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N, 
-                                           HermesFunction *minus_isotropic_source, std::string src_area,
+                                           HermesFunction<double> *minus_isotropic_source, std::string src_area,
                                            GeomType geom_type  )
       : WeakFormHomogeneous(N, matprop, geom_type, true)
     {
       for (unsigned int m = 0; m < N_odd; m++)
         for (unsigned int gto = 0; gto < G; gto++)
         {
-          VectorFormVol *src = new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, minus_isotropic_source, geom_type);
+          VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(mg.pos(m,gto), src_area, minus_isotropic_source, geom_type);
           src->scaling_factor = Coeffs::even_moment(0, m);
           source_terms.push_back(src);
           add_vector_form(src);
@@ -326,7 +326,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N, 
-                                           HermesFunction *minus_isotropic_source,
+                                           HermesFunction<double> *minus_isotropic_source,
                                            Hermes::vector<std::string> src_areas,
                                            GeomType geom_type  )
       : WeakFormHomogeneous(N, matprop, geom_type, true)
@@ -334,7 +334,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       for (unsigned int m = 0; m < N_odd; m++)
         for (unsigned int gto = 0; gto < G; gto++)
         {
-          VectorFormVol *src = new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, minus_isotropic_source, geom_type);
+          VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(mg.pos(m,gto), src_areas, minus_isotropic_source, geom_type);
           src->scaling_factor = Coeffs::even_moment(0, m);
           source_terms.push_back(src);
           add_vector_form(src);
@@ -342,7 +342,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N, 
-                                           const std::vector<HermesFunction*>& minus_isotropic_sources,
+                                           const std::vector<HermesFunction<double>*>& minus_isotropic_sources,
                                            std::string src_area, 
                                            GeomType geom_type )
       : WeakFormHomogeneous(N, matprop, geom_type, true)
@@ -353,15 +353,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       for (unsigned int m = 0; m < N_odd; m++)
         for (unsigned int gto = 0; gto < G; gto++)
         {
-          VectorFormVol *src = new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_area, minus_isotropic_sources[gto], geom_type);
+          VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(mg.pos(m,gto), src_area, minus_isotropic_sources[gto], geom_type);
           src->scaling_factor = Coeffs::even_moment(0, m);
           source_terms.push_back(src);
           add_vector_form(src);
         }
-    }
+    }                                                                                   
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N, 
-                                           const std::vector<HermesFunction*>& minus_isotropic_sources,
+                                           const std::vector<HermesFunction<double>*>& minus_isotropic_sources,
                                            Hermes::vector<std::string> src_areas,
                                            GeomType geom_type )
       : WeakFormHomogeneous(N, matprop, geom_type, true)
@@ -372,7 +372,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       for (unsigned int m = 0; m < N_odd; m++)
         for (unsigned int gto = 0; gto < G; gto++)
         {
-          VectorFormVol *src = new WeakFormsH1::DefaultVectorFormVol(mg.pos(m,gto), src_areas, minus_isotropic_sources[gto], geom_type);
+          VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(mg.pos(m,gto), src_areas, minus_isotropic_sources[gto], geom_type);
           src->scaling_factor = Coeffs::even_moment(0, m);
           source_terms.push_back(src);
           add_vector_form(src);
@@ -381,14 +381,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
     
     FixedSourceProblem::~FixedSourceProblem()
     {
-      std::vector<VectorFormVol*>::const_iterator it = source_terms.begin();
+      std::vector<VectorFormVol<double>*>::const_iterator it = source_terms.begin();
       for ( ; it != source_terms.end(); ++it)
         delete *it;
       source_terms.clear();
     }
     
     KeffEigenvalueProblem::KeffEigenvalueProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                                                 const Hermes::vector<Solution*>& iterates, 
+                                                 const Hermes::vector<Solution<double>*>& iterates, 
                                                  const Hermes::vector<std::string>& src_areas,
                                                  double initial_keff_guess, 
                                                  GeomType geom_type )
