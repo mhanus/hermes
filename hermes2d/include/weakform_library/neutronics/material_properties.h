@@ -2,6 +2,7 @@
 #define ___H2D_NEUTRONICS_MATERIAL_PROPERTIES_H
 
 #include "common_definitions.h"
+#include "weakform.h"
 
 namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace MaterialProperties
 {
@@ -21,7 +22,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         MaterialPropertyMap1::mapped_type::iterator it;
         for (it = x.second.begin(); it != x.second.end(); ++it) 
           if (fabs(*it) > 1e-14)
-            error(Messages::E_INVALID_COMBINATION);
+            error_function(Messages::E_INVALID_COMBINATION);
       }
     };
     
@@ -31,33 +32,33 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       
       void operator() (MaterialPropertyMap1::value_type x) { 
         if (x.second.size() != nrows)
-          error(Messages::E_INVALID_SIZE);
+          error_function(Messages::E_INVALID_SIZE);
       }
       
       void operator() (MaterialPropertyMap2::value_type x) {
         if (x.second.size() != nrows)
-          error(Messages::E_INVALID_SIZE);
+          error_function(Messages::E_INVALID_SIZE);
         
         MaterialPropertyMap2::mapped_type::iterator it;
         for (it = x.second.begin(); it != x.second.end(); ++it) 
           if (it->size() != ncols)
-            error(Messages::E_INVALID_SIZE);
+            error_function(Messages::E_INVALID_SIZE);
       }
       
       void operator() (MaterialPropertyMap3::value_type x) {
         if (x.second.size() != npages)
-          error(Messages::E_MISMATCHED_ORDER_OF_ANISOTROPY, npages);
+          error_function(Messages::E_MISMATCHED_ORDER_OF_ANISOTROPY, npages);
         
         MaterialPropertyMap3::mapped_type::iterator matrix;
         for (matrix = x.second.begin(); matrix != x.second.end(); ++matrix) 
         {
           if (matrix->size() != nrows)
-            error(Messages::E_INVALID_SIZE);
+            error_function(Messages::E_INVALID_SIZE);
           
           rank2::iterator row;
           for (row = matrix->begin(); row != matrix->end(); ++row) 
             if (row->size() != nrows)
-              error(Messages::E_INVALID_SIZE);
+              error_function(Messages::E_INVALID_SIZE);
         }
       }
       
@@ -374,14 +375,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
                              std::set<std::string> mat_list = std::set<std::string>()) 
           : Common::MaterialPropertyMaps(G, mat_list), N(N), N_odd((N+1)/2) 
         {
-          if ((N % 2) == 0) error(Messages::E_EVEN_SPN);
+          if ((N % 2) == 0) error_function(Messages::E_EVEN_SPN);
         }
         
         MaterialPropertyMaps(unsigned int G, unsigned int N, 
                              const RegionMaterialMap& reg_mat_map)
           : Common::MaterialPropertyMaps(G, reg_mat_map), N(N), N_odd((N+1)/2)  
         { 
-          if ((N % 2) == 0) error(Messages::E_EVEN_SPN);
+          if ((N % 2) == 0) error_function(Messages::E_EVEN_SPN);
         }
                                 
         virtual void validate();
