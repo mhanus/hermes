@@ -21,15 +21,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         /* Lazy constructors: the vector of solutions to be filtered will be added by 'assign_solutions'. */
         
         SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop,
-                    const std::vector<std::string>& source_regions = std::vector<std::string>())
-          : SimpleFilter<double>(), matprop(matprop),
+                     const std::vector<std::string>& source_regions = std::vector<std::string>(),
+                     GeomType geom_type = HERMES_PLANAR)
+          : SimpleFilter<double>(), matprop(matprop), geom_type(geom_type),
             source_regions(source_regions.begin(), source_regions.end())
         {
           pre_init();
         };
         SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop,
-                    const std::string& source_region)
-          : SimpleFilter<double>(), matprop(matprop)
+                     const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
+          : SimpleFilter<double>(), matprop(matprop), geom_type(geom_type)
         { 
           source_regions.insert(source_region);
           pre_init();
@@ -38,47 +39,54 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         /* Immediate constructors: the vector of solutions to be filtered is given by the first argument.  */
         
         SourceFilter(Hermes::vector<MeshFunction<double>*> solutions, 
-                    const MaterialProperties::Common::MaterialPropertyMaps& matprop,
-                    const std::vector<std::string>& source_regions = std::vector<std::string>())
-          : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop),
+                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                     const std::vector<std::string>& source_regions = std::vector<std::string>(),
+                     GeomType geom_type = HERMES_PLANAR)
+          : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type),
             source_regions(source_regions.begin(), source_regions.end())
         {
           post_init();
         };
         SourceFilter(Hermes::vector<Solution<double>*> solutions,
-                    const MaterialProperties::Common::MaterialPropertyMaps& matprop,
-                    const std::vector<std::string>& source_regions = std::vector<std::string>())
-          : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop),
+                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                     const std::vector<std::string>& source_regions = std::vector<std::string>(),
+                     GeomType geom_type = HERMES_PLANAR)
+          : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type),
             source_regions(source_regions.begin(), source_regions.end())
         {
           post_init();
         };
         SourceFilter(Hermes::vector<MeshFunction<double>*> solutions,
                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
-                    const std::string& source_region)
-          : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop)
+                    const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
+          : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type)
         { 
           source_regions.insert(source_region); 
           post_init();
         }
         SourceFilter(Hermes::vector<Solution<double>*> solutions,
                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
-                    const std::string& source_region)
-          : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop)
+                    const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
+          : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type)
         { 
           source_regions.insert(source_region); 
           post_init();
         }
+        
+        /// \brief Empty virtual destructor.
+        /// Required in order to properly delete derived classes accessed through a pointer to this class.
+        virtual ~SourceFilter() {}
         
         virtual void assign_solutions(const Hermes::vector<Solution<double>*>& solutions);
         virtual void assign_solutions(const Hermes::vector<MeshFunction<double>*>& solutions);
         
         virtual void set_active_element(Element* e);
         
-        double integrate(GeomType geom_type = HERMES_PLANAR);
+        double integrate();
                     
       protected:
         const MaterialProperties::Common::MaterialPropertyMaps& matprop;
+        GeomType geom_type;
         std::set<std::string> source_regions;
         std::set<int> markers;
         bool have_solutions;
@@ -181,6 +189,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         MomentGroupFlattener(unsigned int G) : G(G) {};
         
         void set_G(unsigned int G) { this->G = G; }
+        unsigned int get_G() const { return G; }
         
         unsigned int pos(unsigned int angular_moment, unsigned int group) const {
           return angular_moment * G + group;
@@ -252,34 +261,44 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         /* Lazy constructors: the vector of solutions to be filtered will be added by 'assign_solutions'. */
         
         SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop,
-                    const std::vector<std::string>& source_regions = std::vector<std::string>())
-          : Common::SourceFilter(matprop, source_regions), G(matprop.get_G()), mg(G)
+                     const std::vector<std::string>& source_regions = std::vector<std::string>(),
+                     GeomType geom_type = HERMES_PLANAR)
+          : Common::SourceFilter(matprop, source_regions, geom_type),
+            G(matprop.get_G()), mg(G)
         {};
-        SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop, const std::string& source_region)
-          : Common::SourceFilter(matprop, source_region), G(matprop.get_G()), mg(G) 
+        SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                     const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
+          : Common::SourceFilter(matprop, source_region, geom_type),
+            G(matprop.get_G()), mg(G) 
         {};
         
         /* Immediate constructors: the vector of solutions to be filtered is given by the first argument.  */
         
         SourceFilter(Hermes::vector<MeshFunction<double>*> solutions, 
-                    const MaterialProperties::Common::MaterialPropertyMaps& matprop,
-                    const std::vector<std::string>& source_regions = std::vector<std::string>())
-          : Common::SourceFilter(solutions, matprop, source_regions), G(matprop.get_G()), mg(G)
+                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                     const std::vector<std::string>& source_regions = std::vector<std::string>(),
+                     GeomType geom_type = HERMES_PLANAR)
+          : Common::SourceFilter(solutions, matprop, source_regions, geom_type), 
+            G(matprop.get_G()), mg(G)
         {};
         SourceFilter(Hermes::vector<Solution<double>*> solutions,
-                    const MaterialProperties::Common::MaterialPropertyMaps& matprop,
-                    const std::vector<std::string>& source_regions = std::vector<std::string>())
-          : Common::SourceFilter(solutions, matprop, source_regions), G(matprop.get_G()), mg(G) 
+                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                     const std::vector<std::string>& source_regions = std::vector<std::string>(),
+                     GeomType geom_type = HERMES_PLANAR)
+          : Common::SourceFilter(solutions, matprop, source_regions, geom_type), 
+            G(matprop.get_G()), mg(G) 
         {};
         SourceFilter(Hermes::vector<MeshFunction<double>*> solutions,
-                    const MaterialProperties::Common::MaterialPropertyMaps& matprop,
-                    const std::string& source_region)
-          : Common::SourceFilter(solutions, matprop, source_region), G(matprop.get_G()), mg(G) 
+                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                     const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
+          : Common::SourceFilter(solutions, matprop, source_region, geom_type),
+            G(matprop.get_G()), mg(G) 
         {};
         SourceFilter(Hermes::vector<Solution<double>*> solutions,
-                    const MaterialProperties::Common::MaterialPropertyMaps& matprop,
-                    const std::string& source_region)
-          : Common::SourceFilter(solutions, matprop, source_region), G(matprop.get_G()), mg(G) 
+                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                     const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
+          : Common::SourceFilter(solutions, matprop, source_region, geom_type), 
+            G(matprop.get_G()), mg(G) 
         {};
                     
         virtual void assign_solutions(const Hermes::vector<Solution<double>*>& solutions) {
@@ -400,41 +419,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
                                           unsigned int G, const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
                                           
       double get_area(Mesh *mesh, const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
-  };
-  
-  class SourceIteration
-  {
-    NeutronicsMethod method;
-    const std::vector<std::string>& fission_regions;
-    GeomType geom_type;
-            
-    Common::SourceFilter *new_source, *old_source;
-    
-    public:
-      /// \param[in] fission_regions  Strings specifiying the parts of the solution domain where fission occurs.
-      /// \param[in]     hermes2d     Class encapsulating global Hermes2D functions.
-      /// \param[in]     spaces       Pointers to spaces on which the solutions are defined (one space for each energy group).
-      /// \param[in]     wf           Pointer to the weak form of the problem.
-      SourceIteration(NeutronicsMethod method, const MaterialProperties::Common::MaterialPropertyMaps& matprop,
-                      const std::vector<std::string>& fission_regions = std::vector<std::string>(),
-                      GeomType geom_type = HERMES_PLANAR);
-                      
-      ~SourceIteration() { delete new_source; delete old_source; }
-                      
-      // \brief Power iteration method for finding the dominant eigenvalue. 
-      ///
-      /// Starts from an initial guess stored in the argument 'solutions' and updates it by the final result after the iteration
-      /// has converged, also updating the global eigenvalue 'k_eff'.
-      ///
-      /// \param[in,out] solution     A set of Solution* pointers to solution components (neutron fluxes in each group). 
-      ///                             Initial guess for the iteration on input, converged result on output.
-      /// \param[in]     tol          Relative difference between two successive eigenvalue approximations that stops the iteration.
-      /// \param[in]    matrix_solver Solver for the resulting matrix problem.
-      ///
-      /// \return  number of iterations needed for convergence within the specified tolerance.
-      ///
-      int eigenvalue_iteration(const Hermes::vector<Solution<double> *>& solutions, DiscreteProblem<double>& dp,
-                              double tol_keff = 1e-6, double tol_flux = 0, MatrixSolverType matrix_solver = SOLVER_UMFPACK);
   };
   
 /* SupportClasses */
