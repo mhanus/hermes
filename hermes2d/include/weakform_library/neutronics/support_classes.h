@@ -337,6 +337,23 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     };       
   }
   
+  // FIXME: Ad-hoc class. Replace accordingly as soon asarithmetic operations with solutions will be ready.
+  template <typename Scalar>
+  class MultipliableSolution : public Solution<Scalar>
+  {
+    public:
+      MultipliableSolution(const Solution<Scalar>* solution) { this->copy(solution); }
+      
+      void multiply(double coeff)
+      {
+        if (this->sln_type == HERMES_SLN)
+          for (int i = 0; i < this->num_coefs; i++)
+            this->mono_coefs[i] *= coeff;
+        else
+          error("Not implemented.");
+      }
+  };
+  
   class PostProcessor
   {
     NeutronicsMethod method;
@@ -367,7 +384,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         return integrate(solution, areas);
       }
       
-
       
       void normalize_to_unit_fission_source(Hermes::vector<Solution<double>*>* solutions, 
                                             double integrated_fission_source) const;
