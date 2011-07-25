@@ -190,6 +190,7 @@ project(hermes2d)
     src/weakform_library/neutronics/support_classes.cpp
     src/weakform_library/neutronics/weakform_parts.cpp
     src/weakform_library/neutronics/weakforms.cpp
+    src/weakform_library/weakforms_neutronics.cpp
     
     src/discrete_problem.cpp
     src/discrete_problem/discrete_problem_helpers.cpp    
