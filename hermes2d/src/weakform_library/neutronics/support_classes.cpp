@@ -418,16 +418,21 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     return integral;
   }
 
-  void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution<double>* >* solutions, double integrated_fission_source) const
+  void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution<double>* >* solutions, 
+                                                       double integrated_fission_source) const
   {
     if (integrated_fission_source < 1e-12)
       error_function("PostProcessor::normalize_to_unit_fission_source : Invalid fission source.");
- // TODO (missing Solution::multiply)
- /*
+ 
+    // FIXME: Temporary version using the ad-hoc class MultipliableSolution.
+    
     Hermes::vector< Solution<double>* >::iterator sln = solutions->begin();
     for ( ; sln != solutions->end(); ++sln)
-      (*sln)->multiply(1./integrated_fission_source);
-*/
+    {
+      MultipliableSolution<double> ms(*sln);
+      ms.multiply(1./integrated_fission_source);
+      (*sln)->copy(&ms);
+    }
   }
 
   void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution<double>* >* solutions, 
