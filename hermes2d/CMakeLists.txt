@@ -206,6 +206,7 @@ project(hermes2d)
     src/weakform_library/neutronics/support_classes.cpp
     src/weakform_library/neutronics/weakform_parts.cpp
     src/weakform_library/neutronics/weakforms.cpp
+    src/weakform_library/weakforms_neutronics.cpp
   )
   
   set(HEADERS
