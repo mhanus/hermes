@@ -75,6 +75,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
         
         void add_forms_from_homogeneous_part();
         
+        virtual NeutronicsMethod get_method_type() const = 0;
         GeomType get_geom_type() const { return geom_type; }
     };
     
@@ -160,6 +161,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
                            GeomType geom_type = HERMES_PLANAR);
                            
         ~FixedSourceProblem();
+        
+        virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_DIFFUSION; }
     };
             
     class KeffEigenvalueProblem : public Common::KeffEigenvalueProblem
@@ -197,6 +200,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
         SupportClasses::Common::SourceFilter* get_new_source_filter();
         SupportClasses::Common::SourceFilter* get_new_source_filter(const Hermes::vector<Solution<double>*>& solutions);
         SupportClasses::Common::SourceFilter* get_new_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions);
+        
+        virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_DIFFUSION; }
     };  
         
   }
@@ -250,6 +255,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
                            GeomType geom_type = HERMES_PLANAR);
                                   
         virtual ~FixedSourceProblem();
+        
+        virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_SPN; }
     };
     
     class KeffEigenvalueProblem : public Common::KeffEigenvalueProblem
@@ -276,6 +283,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
         SupportClasses::Common::SourceFilter* get_new_source_filter();
         SupportClasses::Common::SourceFilter* get_new_source_filter(const Hermes::vector<Solution<double>*>& solutions);
         SupportClasses::Common::SourceFilter* get_new_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions);
+        
+        virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_SPN; }
     };
   }
         
