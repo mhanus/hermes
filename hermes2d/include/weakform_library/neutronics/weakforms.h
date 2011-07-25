@@ -6,7 +6,7 @@
 
 namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakForms 
 {
-  namespace Simple
+  namespace SimpleMonoenergeticDiffusion
   {
     /* 
     Simple monoenergetic neutron diffusion, with the following weak formulation within each

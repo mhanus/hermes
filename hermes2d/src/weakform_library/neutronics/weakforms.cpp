@@ -2,7 +2,7 @@
 
 namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakForms 
 {
-  namespace Simple
+  namespace SimpleMonoenergeticDiffusion
   {    
     FixedSourceProblem::FixedSourceProblem(Hermes::vector<std::string> regions, 
                                            Hermes::vector<double> D_map, 
