@@ -1,3 +1,6 @@
+#ifndef ___NEUTRONICS_WEAK_FORM_PARTS_IMPLEMENTATION_H_
+#define ___NEUTRONICS_WEAK_FORM_PARTS_IMPLEMENTATION_H_
+
 #include "neutronics/weakform_parts.h"
 
 namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFormParts
@@ -19,12 +22,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       
       return Coeffs::D_grad_F(mrow, mcol) * result;
     }
-    template
-    double VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-                                                          Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
-    template
-    Ord VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-                                                        Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;                                                               
     
     template<typename Real>
     Real VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<Real> *u_ext[],
@@ -48,12 +45,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       
       return result;
     }
-    template
-    double VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<double> *u_ext[],
-                                                          Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
-    template
-    Ord VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<Ord> *u_ext[],
-                                                        Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;
                                                         
     template<typename Real>
     Real DiagonalStreamingAndReactions::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
@@ -360,12 +351,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       
       return result;
     }
-    template
-    double VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-                                                          Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
-    template
-    Ord VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-                                                        Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;                                                               
     
     template<typename Real>
     Real VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<Real> *u_ext[],
@@ -382,13 +367,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       
       return result;
     }
-    template
-    double VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<double> *u_ext[],
-                                                          Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
-    template
-    Ord VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<Ord> *u_ext[],
-                                                        Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;        
-    
+     
     template<typename Real>
     Real DiffusionReaction::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
                                                     Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
@@ -531,11 +510,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       
       return result * chi_elem[gto] * nu_elem[gfrom] * Sigma_f_elem[gfrom];
     }
-    template double Scattering::Residual::vector_form(int n, double *wt, Func<double> *u_ext[],
-                                                      Func<double> *v, Geom<double> *e, ExtData<double> *ext ) const;
-    template Ord Scattering::Residual::vector_form(int n, double *wt, Func<Ord> *u_ext[],
-                                                   Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext ) const;
-                                                   
+                                                    
     template<typename Real>
     Real Scattering::Jacobian::matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
                                               Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const  
@@ -564,13 +539,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       }
       
       return result * matprop.get_Sigma_s(matprop.get_material(e->elem_marker, wf))[gto][gfrom];
-    }
-    
-    template double Scattering::Residual::vector_form(int n, double *wt, Func<double> *u_ext[],
-                                                      Func<double> *v, Geom<double> *e, ExtData<double> *ext ) const;
-    template Ord Scattering::Residual::vector_form(int n, double *wt, Func<Ord> *u_ext[],
-                                                   Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext ) const;
-    
+    }    
+   
     template<typename Real>
     Real ExternalSources::LinearForm::vector_form(int n, double *wt, Func<Real> *u_ext[],
                                                     Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
@@ -587,11 +557,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
           return matprop.get_iso_src(mat)[g] * int_x_v<Real>(n, wt, v, e);
       }
     }    
-    template double ExternalSources::LinearForm::vector_form(int n, double *wt, Func<double> *u_ext[],
-                                                             Func<double> *v, Geom<double> *e, ExtData<double> *ext ) const;
-    template Ord ExternalSources::LinearForm::vector_form(int n, double *wt, Func<Ord> *u_ext[],
-                                                          Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext ) const;
-  }
+ }
     
 /* WeakFormParts */
 }
@@ -601,3 +567,5 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
 }
 /* Hermes */
 }
+
+#endif

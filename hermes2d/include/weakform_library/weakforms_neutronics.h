@@ -4,7 +4,7 @@
 #include "neutronics/common_definitions.h"
 #include "neutronics/material_properties.h"
 #include "neutronics/support_classes.h"
-#include "neutronics/weakform_parts.h"
+#include "neutronics/weakform_parts_implementation.h"
 #include "neutronics/weakforms.h"
 
 namespace Hermes { namespace Hermes2D { namespace Neutronics
