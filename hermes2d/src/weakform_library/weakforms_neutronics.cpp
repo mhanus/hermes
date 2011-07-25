@@ -71,7 +71,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         eigen_done = true;
 
       // cout << "Iteration: " << it << ", flux diffces: " << endl; 
-/*      
+     
       if (tol_flux > 0)
       {
         for (unsigned int i = 0; i < solutions.size(); i++)
@@ -79,24 +79,23 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           SupportClasses::PostProcessor pp(method, geom_type);
           
           // Normalize both flux iterates with the same criterion (unit integrated fission source).
-          solutions[i]->multiply(1./src_old);
-          new_solutions[i]->multiply(1./src_new);
+          SupportClasses::MultipliableSolution<double> sln(solutions[i]);
+          SupportClasses::MultipliableSolution<double> new_sln(new_solutions[i]);
           
-          //cout << i << " = " << fabs(pp.integrate(new_solutions[i]) - pp.integrate(solutions[i])) << ", ";
+          sln.multiply(1./src_old);
+          new_sln.multiply(1./src_new);
+          
+          //cout << i << " = " << fabs(pp.integrate(new_sln) - pp.integrate(sln)) << ", ";
           
           // Compare the two solutions.
-          if (fabs(pp.integrate(new_solutions[i]) - pp.integrate(solutions[i])) >= tol_flux * pp.integrate(new_solutions[i]))
+          if (fabs(pp.integrate(&new_sln) - pp.integrate(&sln)) >= tol_flux * pp.integrate(&new_sln))
             eigen_done = false;
-          
-          // Go back to unnormalized fluxes.
-          solutions[i]->multiply(src_old);
-          new_solutions[i]->multiply(src_new);
           
           if (eigen_done == false)
             break;
         }
       }
-*/      
+      
       //cout << endl;
 
       // Update the final eigenvalue.
