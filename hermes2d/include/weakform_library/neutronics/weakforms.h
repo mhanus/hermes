@@ -1,7 +1,7 @@
 #ifndef ___H2D_NEUTRONICS_WEAK_FORMS_H
 #define ___H2D_NEUTRONICS_WEAK_FORMS_H
 
-#include "weakform_parts.h"
+#include "weakform_parts_implementation.h"
 #include "weakforms_h1.h"
 
 namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakForms 
