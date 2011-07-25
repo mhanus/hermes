@@ -117,6 +117,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         
       public:
         
+        /// \brief Empty virtual destructor.
+        /// Required in order to properly delete derived classes accessed through a pointer to this class.
+        virtual ~MaterialPropertyMaps() {}
+        
         std::string get_material(int elem_marker, WeakForm<double> *wf) const;
         std::string get_material(int elem_marker, Mesh *mesh) const;
         
@@ -236,6 +240,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
           : Common::MaterialPropertyMaps(G, mat_list) { };
         MaterialPropertyMaps(unsigned int G, const RegionMaterialMap& reg_mat_map)
           : Common::MaterialPropertyMaps(G, reg_mat_map) { };
+          
+        /// \brief Empty virtual destructor.
+        /// Required in order to properly delete derived classes accessed through a pointer to this class.
+        virtual ~MaterialPropertyMaps() {}
         
         // We always need to supply chi, nu, Sigma_f, Sigma_r, Sigma_s and D to our neutronics weak forms. 
         // These parameters are often defined in terms of the other ones, or not specified at all and assumed 
