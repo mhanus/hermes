@@ -76,7 +76,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         for (unsigned int i = 0; i < solutions.size(); i++)
         {
-          SupportClasses::PostProcessor pp(method, geom_type);
+          SupportClasses::PostProcessor pp(wf->get_method_type(), wf->get_geom_type());
           
           // Normalize both flux iterates with the same criterion (unit integrated fission source).
           SupportClasses::MultipliableSolution<double> sln(solutions[i]);
