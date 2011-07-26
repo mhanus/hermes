@@ -204,7 +204,7 @@ int main(int argc, char* argv[])
       }
       
       // Calculate element errors.
-      info("Calculating error estimate and exact error."); 
+      info("Calculating error estimate."); 
       Adapt<double> adaptivity(spaces);
       
       // Calculate error estimate for each solution component and the total error estimate.
