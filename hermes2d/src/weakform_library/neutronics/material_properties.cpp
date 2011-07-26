@@ -1,9 +1,9 @@
 #include "neutronics/material_properties.h"
 #include <iomanip>
 
-namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace MaterialProperties
+namespace Hermes { namespace Hermes2D { namespace Neutronics
 {
-  namespace Common
+  namespace Common { namespace MaterialProperties
   {
     MaterialPropertyMaps::MaterialPropertyMaps(unsigned int G, const RegionMaterialMap& reg_mat_map)
       : region_material_map(reg_mat_map), G(G)
@@ -346,13 +346,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       
       return os << endl;
     }
+    
+  /* MaterialProperties */
+  }
+  /* Common */
   }
   
-  namespace Diffusion
+  namespace Diffusion { namespace MaterialProperties
   {        
     void MaterialPropertyMaps::validate()
     {
-      Common::MaterialPropertyMaps::validate();
+      Common::MaterialProperties::MaterialPropertyMaps::validate();
       
       bool D_given = !D.empty();
       bool Sigma_r_given = !Sigma_r.empty();
@@ -484,7 +488,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
     rank1 MaterialPropertyMaps::compute_Sigma_a(const std::string& material) const
     {
       if (!Sigma_a.empty())
-        return Common::MaterialPropertyMaps::get_Sigma_a(material);
+        return Common::MaterialProperties::MaterialPropertyMaps::get_Sigma_a(material);
       
       MaterialPropertyMap1::const_iterator Sr_mat = this->Sigma_r.find(material);
       MaterialPropertyMap2::const_iterator Ss_mat = this->Sigma_s.find(material);
@@ -565,7 +569,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
     {
       using namespace std;
       
-      os << static_cast<const Common::MaterialPropertyMaps&>(matprop) << endl;
+      os << static_cast<const Common::MaterialProperties::MaterialPropertyMaps&>(matprop) << endl;
       
       os << setw(12) << "target group" << setw(10) << "D" << setw(10) << "Sigma_r";
       os << setw(22) << "Sigma_s" << endl; 
@@ -706,9 +710,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         for (unsigned int g = 0; g < G; g++)
           D[Str_elem->first][g] = 1./(3.*Str_elem->second[g]);
     }
+    
+  /* MaterialProperties */
+  }
+  /* Diffusion */
   }
   
-  namespace SPN
+  namespace SPN { namespace MaterialProperties
   {
     void MaterialPropertyMaps::extend_to_rank3(const MaterialPropertyMap2& src, MaterialPropertyMap3* dest)
     {
@@ -821,7 +829,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       if (Sigma_tn.empty())
         error_function(Messages::E_SIGMA_T_REQUIRED);
       
-      Common::MaterialPropertyMaps::validate();
+      Common::MaterialProperties::MaterialPropertyMaps::validate();
                 
       if (Sigma_sn.empty())
       {
@@ -906,7 +914,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
     rank1 MaterialPropertyMaps::compute_Sigma_a(const std::string& material) const
     {
       if (!Sigma_a.empty())
-        return Common::MaterialPropertyMaps::get_Sigma_a(material);
+        return Common::MaterialProperties::MaterialPropertyMaps::get_Sigma_a(material);
       
       MaterialPropertyMap3::const_iterator Sr_mat = this->Sigma_rn.find(material);
       MaterialPropertyMap3::const_iterator Ss_mat = this->Sigma_sn.find(material);
@@ -1014,7 +1022,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
     {
       using namespace std;
       
-      os << static_cast<const Common::MaterialPropertyMaps&>(matprop) << endl;
+      os << static_cast<const Common::MaterialProperties::MaterialPropertyMaps&>(matprop) << endl;
       
       int gto_width = 12;
       int elem_width = 14;
@@ -1063,10 +1071,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       
       return os << endl;
     }
+    
+  /* MaterialProperties */
+  }
+  /* SPN */
   }    
   
-/* MaterialProperties */
-}
 /* Neutronics */
 }
 /* Hermes2D */

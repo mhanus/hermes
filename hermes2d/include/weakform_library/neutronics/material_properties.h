@@ -4,10 +4,8 @@
 #include "common_definitions.h"
 #include "weakform.h"
 
-namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace MaterialProperties
-{
-  using namespace DataStructures;
-  
+namespace Hermes { namespace Hermes2D { namespace Neutronics
+{  
   typedef std::map<std::string, rank0> MaterialPropertyMap0;
   typedef std::map<std::string, rank1> MaterialPropertyMap1;
   typedef std::map<std::string, rank2> MaterialPropertyMap2;
@@ -15,60 +13,60 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
   
   typedef std::map<std::string, std::string> RegionMaterialMap;
   
-  struct Validation
+  namespace Common { namespace MaterialProperties
   {
-    struct ensure_trivial { 
-      void operator() (MaterialPropertyMap1::value_type x) { 
-        MaterialPropertyMap1::mapped_type::iterator it;
-        for (it = x.second.begin(); it != x.second.end(); ++it) 
-          if (fabs(*it) > 1e-14)
-            error_function(Messages::E_INVALID_COMBINATION);
-      }
-    };
-    
-    struct ensure_size { 
-      ensure_size(unsigned int nrows, unsigned int ncols = 0, unsigned int npages = 0) 
-      : nrows(nrows), ncols(ncols), npages(npages) {};
+    struct Validation
+    {
+      struct ensure_trivial { 
+        void operator() (MaterialPropertyMap1::value_type x) { 
+          MaterialPropertyMap1::mapped_type::iterator it;
+          for (it = x.second.begin(); it != x.second.end(); ++it) 
+            if (fabs(*it) > 1e-14)
+              error_function(Messages::E_INVALID_COMBINATION);
+        }
+      };
       
-      void operator() (MaterialPropertyMap1::value_type x) { 
-        if (x.second.size() != nrows)
-          error_function(Messages::E_INVALID_SIZE);
-      }
-      
-      void operator() (MaterialPropertyMap2::value_type x) {
-        if (x.second.size() != nrows)
-          error_function(Messages::E_INVALID_SIZE);
+      struct ensure_size { 
+        ensure_size(unsigned int nrows, unsigned int ncols = 0, unsigned int npages = 0) 
+        : nrows(nrows), ncols(ncols), npages(npages) {};
         
-        MaterialPropertyMap2::mapped_type::iterator it;
-        for (it = x.second.begin(); it != x.second.end(); ++it) 
-          if (it->size() != ncols)
+        void operator() (MaterialPropertyMap1::value_type x) { 
+          if (x.second.size() != nrows)
             error_function(Messages::E_INVALID_SIZE);
-      }
-      
-      void operator() (MaterialPropertyMap3::value_type x) {
-        if (x.second.size() != npages)
-          error_function(Messages::E_MISMATCHED_ORDER_OF_ANISOTROPY, npages);
+        }
         
-        MaterialPropertyMap3::mapped_type::iterator matrix;
-        for (matrix = x.second.begin(); matrix != x.second.end(); ++matrix) 
-        {
-          if (matrix->size() != nrows)
+        void operator() (MaterialPropertyMap2::value_type x) {
+          if (x.second.size() != nrows)
             error_function(Messages::E_INVALID_SIZE);
           
-          rank2::iterator row;
-          for (row = matrix->begin(); row != matrix->end(); ++row) 
-            if (row->size() != nrows)
+          MaterialPropertyMap2::mapped_type::iterator it;
+          for (it = x.second.begin(); it != x.second.end(); ++it) 
+            if (it->size() != ncols)
               error_function(Messages::E_INVALID_SIZE);
         }
-      }
-      
-      private:
-        unsigned int nrows, ncols, npages;
+        
+        void operator() (MaterialPropertyMap3::value_type x) {
+          if (x.second.size() != npages)
+            error_function(Messages::E_MISMATCHED_ORDER_OF_ANISOTROPY, npages);
+          
+          MaterialPropertyMap3::mapped_type::iterator matrix;
+          for (matrix = x.second.begin(); matrix != x.second.end(); ++matrix) 
+          {
+            if (matrix->size() != nrows)
+              error_function(Messages::E_INVALID_SIZE);
+            
+            rank2::iterator row;
+            for (row = matrix->begin(); row != matrix->end(); ++row) 
+              if (row->size() != nrows)
+                error_function(Messages::E_INVALID_SIZE);
+          }
+        }
+        
+        private:
+          unsigned int nrows, ncols, npages;
+      };
     };
-  };
   
-  namespace Common
-  {      
     class MaterialPropertyMaps
     {
       protected:
@@ -218,11 +216,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         
         friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
     };
+    
+  /* MaterialProperties */
+  }
+  /* Common */
   }
   
-  namespace Diffusion
-  {    
-    class MaterialPropertyMaps : public Common::MaterialPropertyMaps
+  namespace Diffusion { namespace MaterialProperties
+  {
+    using Common::MaterialProperties::Validation;
+    
+    class MaterialPropertyMaps : public Common::MaterialProperties::MaterialPropertyMaps
     {
       protected:
         
@@ -237,9 +241,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       public:
         
         MaterialPropertyMaps(unsigned int G, const std::set<std::string>& mat_list = std::set<std::string>()) 
-          : Common::MaterialPropertyMaps(G, mat_list) { };
+          : Common::MaterialProperties::MaterialPropertyMaps(G, mat_list) { };
         MaterialPropertyMaps(unsigned int G, const RegionMaterialMap& reg_mat_map)
-          : Common::MaterialPropertyMaps(G, reg_mat_map) { };
+          : Common::MaterialProperties::MaterialPropertyMaps(G, reg_mat_map) { };
           
         /// \brief Empty virtual destructor.
         /// Required in order to properly delete derived classes accessed through a pointer to this class.
@@ -337,10 +341,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         
         virtual void validate();
     };
-  }  
+    
+  /* MaterialProperties */
+  }
+  /* Diffusion */
+  }
   
-  namespace SPN
+  namespace SPN { namespace MaterialProperties
   {    
+    using Common::MaterialProperties::Validation;
+    
     extern "C" 
     {
       // LU decomoposition of a general matrix.
@@ -357,7 +367,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
                   double *work, int *iwork, int *info);
     }
     
-    class MaterialPropertyMaps : public Common::MaterialPropertyMaps
+    class MaterialPropertyMaps : public Common::MaterialProperties::MaterialPropertyMaps
     {
       protected:
         
@@ -381,14 +391,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         
         MaterialPropertyMaps(unsigned int G, unsigned int N,
                              std::set<std::string> mat_list = std::set<std::string>()) 
-          : Common::MaterialPropertyMaps(G, mat_list), N(N), N_odd((N+1)/2) 
+          : Common::MaterialProperties::MaterialPropertyMaps(G, mat_list), N(N), N_odd((N+1)/2) 
         {
           if ((N % 2) == 0) error_function(Messages::E_EVEN_SPN);
         }
         
         MaterialPropertyMaps(unsigned int G, unsigned int N, 
                              const RegionMaterialMap& reg_mat_map)
-          : Common::MaterialPropertyMaps(G, reg_mat_map), N(N), N_odd((N+1)/2)  
+          : Common::MaterialProperties::MaterialPropertyMaps(G, reg_mat_map), N(N), N_odd((N+1)/2)  
         { 
           if ((N % 2) == 0) error_function(Messages::E_EVEN_SPN);
         }
@@ -437,7 +447,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
         
         friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
     };
-  }  
+    
+  /* MaterialProperties */
+  }
+  /* SPN */
+  }
   
   template <typename NDArrayType>
   class material_property_map
@@ -478,8 +492,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Materia
       }
   };
   
-/* MaterialProperties */
-}
 /* Neutronics */
 }
 /* Hermes2D */
