@@ -1,8 +1,8 @@
 #include "neutronics/support_classes.h"
 
-namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace SupportClasses
+namespace Hermes { namespace Hermes2D { namespace Neutronics
 {  
-  namespace Common
+  namespace Common { namespace SupportClasses
   {
     void SourceFilter::filter_fn(int n, Hermes::vector<double*> values, double* result)
     {
@@ -13,8 +13,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       
       if (markers.empty() || markers.find(marker) != markers.end())
       {           
-        DataStructures::rank1 Sigma_f = matprop.get_Sigma_f(material);
-        DataStructures::rank1 nu = matprop.get_nu(material);
+        rank1 Sigma_f = matprop.get_Sigma_f(material);
+        rank1 nu = matprop.get_nu(material);
       
         for (int i = 0; i < n; i++) 
           for (unsigned int j = 0; j < values.size(); j++)
@@ -132,10 +132,171 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       
       return integral;
     }
+    
+        const std::string Visualization::base_title_flux = "Neutron flux: group ";
+    const std::string Visualization::base_title_order = "Polynomial orders: group ";
+    const std::string Visualization::base_title_mesh = "Core mesh for group ";
+    
+    void Visualization::init(unsigned int nu, unsigned int ne, unsigned int ng) 
+    {
+      n_unknowns = nu; n_equations = ne; n_groups = ng;
+      
+      if (nu > 0 && ne > 0 && ng > 0)
+      {
+        sviews = new Views::ScalarView<double>* [n_unknowns];
+        oviews = new Views::OrderView<double>* [n_equations];
+        if (display_meshes)
+          mviews = new Views::MeshView* [n_equations];
+      }
+      else
+      {
+        sviews = NULL;
+        oviews = NULL;
+        mviews = NULL;
+      }
+    }
+    
+    Visualization::~Visualization()
+    {
+      if (sviews != NULL)
+      {
+        for (unsigned int i = 0; i < n_unknowns; i++)
+          delete sviews[i];
+        delete [] sviews;
+      }
+      
+      if (oviews != NULL)
+      {
+        for (unsigned int i = 0; i < n_equations; i++)
+          delete oviews[i];
+        delete [] oviews;
+      }
+      
+      if (mviews != NULL)
+      {
+        for (unsigned int i = 0; i < n_equations; i++)
+          delete mviews[i];
+        delete [] mviews;
+      }
+    }
+    
+    void Visualization::inspect_meshes(Hermes::vector< Mesh* > meshes)
+    {
+      if (display_meshes)
+      {
+        show_meshes(meshes);
+        Views::View::wait();
+        
+        for (unsigned int i = 0; i < n_equations; i++)
+          delete mviews[i];
+        delete [] mviews;
+        
+        mviews = NULL;
+      }
+    }
+    
+    void Visualization::inspect_solutions(Hermes::vector< Solution<double>* > solutions)
+    {
+      show_solutions(solutions);
+      Views::View::wait();
+      
+      for (unsigned int i = 0; i < n_unknowns; i++)
+        delete sviews[i];
+      delete [] sviews;
+      
+      sviews = NULL;
+    }
+    
+    void Visualization::inspect_orders(Hermes::vector< Space<double>* > spaces)
+    {
+      show_orders(spaces);
+      Views::View::wait();
+      
+      for (unsigned int i = 0; i < n_equations; i++)
+        delete oviews[i];
+      delete [] oviews;
+      
+      oviews = NULL;
+    }
 
+  /* SupportClasses */
+  }
+  /* Common */
   }
   
-  namespace SPN
+  namespace Diffusion { namespace SupportClasses
+  {
+    Visualization::Visualization(unsigned int G, bool display_meshes) : Common::SupportClasses::Visualization(G, G, G, display_meshes)
+    {
+      for (unsigned int g = 0; g < n_groups; g++)
+      {
+        std::string title_flux = base_title_flux + itos(g);
+        std::string title_order = base_title_order + itos(g);
+        
+        sviews[g] = new Views::ScalarView<double>(title_flux.c_str(), new Views::WinGeom(0, g*452, 450, 450));
+        sviews[g]->show_mesh(false);
+        sviews[g]->set_3d_mode(true);
+        oviews[g] = new Views::OrderView<double>(title_order.c_str(), new Views::WinGeom(0, n_groups*452 + g*452, 450, 450));
+      }
+      
+      if (display_meshes)
+        for (unsigned int g = 0; g < n_groups; g++)
+        {
+          std::string title = base_title_mesh + itos(g);
+          mviews[g] = new Views::MeshView(title.c_str(), new Views::WinGeom(0, g*352, 350, 350));
+        }
+    }
+    
+    void Visualization::show_meshes(Hermes::vector< Mesh* > meshes)
+    {
+      if (display_meshes)
+        for (unsigned int g = 0; g < n_groups; g++)
+          mviews[g]->show(meshes[g]);
+    }
+    
+    void Visualization::show_solutions(Hermes::vector< Solution<double>* > solutions)
+    {
+      for (unsigned int g = 0; g < n_groups; g++)
+        sviews[g]->show(solutions[g]);
+    }
+    
+    void Visualization::show_orders(Hermes::vector< Space<double>* > spaces)
+    {
+      for (unsigned int g = 0; g < n_groups; g++)
+        oviews[g]->show(spaces[g]);
+    }
+    
+    void Visualization::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
+                                    Hermes::vector< Solution<double>* > solutions, bool mode_3D)
+    {
+      Views::Linearizer<double> lin;
+      for (unsigned int g = 0; g < n_groups; g++)
+      {
+        std::string appendix = std::string("_group_") + itos(g);
+        std::string file = base_filename + appendix + std::string(".vtk");
+        std::string var = base_varname + appendix;
+        lin.save_solution_vtk(solutions[g], file.c_str(), var.c_str(), mode_3D);
+        info("Scalar flux in group %d saved in VTK format to file %s.", g, file.c_str());
+      }
+    }
+    
+    void Visualization::save_orders_vtk(const std::string& base_filename, Hermes::vector< Space<double>* > spaces)
+    {
+      Views::Orderizer ord;
+      for (unsigned int g = 0; g < n_groups; g++)
+      {
+        std::string file = base_filename + std::string("_group_") + itos(g) + std::string(".vtk");
+        ord.save_orders_vtk(spaces[g], file.c_str());
+        info("Information about approximation space for group %d saved in VTK format to file %s.", g, file.c_str());
+      }
+    }
+    
+  /* SupportClasses */
+  }
+  /* Diffusion */
+  }
+  
+  namespace SPN { namespace SupportClasses
   {
     const double Coeffs::SYSTEM_MATRIX[N_MAX][N_MAX][N_MAX] =            
     {
@@ -347,8 +508,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       
       if (markers.empty() || markers.find(marker) != markers.end())
       {           
-        DataStructures::rank1 Sigma_f = matprop.get_Sigma_f(material);
-        DataStructures::rank1 nu = matprop.get_nu(material);
+        rank1 Sigma_f = matprop.get_Sigma_f(material);
+        rank1 nu = matprop.get_nu(material);
         
         for (int i = 0; i < n; i++) 
         {
@@ -365,567 +526,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         }
       }
     }
-  }
-  
-  double PostProcessor::integrate(MeshFunction<double>* solution, const Hermes::vector<std::string>& areas) const
-  {
-    Quad2D* quad = &g_quad_2d_std;
-    solution->set_quad_2d(quad);
-    Mesh* mesh = solution->get_mesh();
     
-    std::set<int> markers;
-    Hermes::vector<std::string>::const_iterator it = areas.begin();
-    for ( ; it != areas.end(); ++it)
-      markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it));
-    
-    double integral = 0.0;
-    Element* e;
-    for_all_active_elements(e, mesh)
-    {
-      if (markers.empty() || markers.find(e->marker) != markers.end())
-      {
-        update_limit_table(e->get_mode());
-        solution->set_active_element(e);
-        RefMap* ru = solution->get_refmap();
-        int o = solution->get_fn_order() + ru->get_inv_ref_order();
-        limit_order(o);
-        solution->set_quad_order(o, H2D_FN_VAL);
-        double *uval = solution->get_fn_values();
-        double result = 0.0;
-        
-        if (geom_type == HERMES_PLANAR)
-        {
-          h1_integrate_expression(uval[i]);
-        }
-        else if (geom_type == HERMES_AXISYM_X)
-        {
-          double* y = ru->get_phys_y(o);
-          h1_integrate_expression(y[i] * uval[i]);
-        }
-        else
-        {
-          double* x = ru->get_phys_x(o);
-          h1_integrate_expression(x[i] * uval[i]);
-        }
-        
-        integral += result;
-      }
-    }
-    
-    if (geom_type == HERMES_AXISYM_X || geom_type == HERMES_AXISYM_Y)
-      integral *= 2.0*M_PI;
-    
-    return integral;
-  }
-
-  void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution<double>* >* solutions, 
-                                                       double integrated_fission_source) const
-  {
-    if (integrated_fission_source < 1e-12)
-      error_function("PostProcessor::normalize_to_unit_fission_source : Invalid fission source.");
- 
-    // FIXME: Temporary version using the ad-hoc class MultipliableSolution.
-    
-    Hermes::vector< Solution<double>* >::iterator sln = solutions->begin();
-    for ( ; sln != solutions->end(); ++sln)
-    {
-      MultipliableSolution<double> ms(*sln);
-      ms.multiply(1./integrated_fission_source);
-      (*sln)->copy(&ms);
-    }
-  }
-
-  void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution<double>* >* solutions, 
-                                                        const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                                        const Hermes::vector< std::string >& src_areas) const
-  {
-    Common::SourceFilter *sf;
-    
-    if (method == NEUTRONICS_DIFFUSION)
-      sf = new Common::SourceFilter(*solutions, matprop, src_areas, geom_type);
-    else if (method == NEUTRONICS_SPN)
-      sf = new SPN::SourceFilter(*solutions, matprop, src_areas, geom_type);
-    
-    normalize_to_unit_fission_source(solutions, sf->integrate());
-    
-    delete sf;
-  }
-
-  void PostProcessor::normalize_to_unit_power(Hermes::vector< Solution<double>* >* solutions, 
-                                              const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                              double power_per_fission, const Hermes::vector< std::string >& src_areas) const
-  {
-    // TODO
-  }
-  
-  double PostProcessor::get_integrated_group_reaction_rates_internal( ReactionType reaction, MeshFunction<double>* solution, 
-                                                                      const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                                                      const Hermes::vector< std::string >& regions,
-                                                                      unsigned int this_group, int other_group) const
-  {    
-    if (this_group > matprop.get_G())
-      error_function(Messages::E_INVALID_GROUP_INDEX);
-    
-    Quad2D* quad = &g_quad_2d_std;
-    solution->set_quad_2d(quad);
-    Mesh* mesh = solution->get_mesh();
-    
-    std::set<int> markers;
-    Hermes::vector<std::string>::const_iterator it = regions.begin();
-    for ( ; it != regions.end(); ++it)
-      markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it));
-            
-    double integral = 0.0;
-    Element* e;
-    for_all_active_elements(e, mesh)
-    {
-      if (markers.empty() || markers.find(e->marker) != markers.end())
-      {
-        update_limit_table(e->get_mode());
-        solution->set_active_element(e);
-        RefMap* ru = solution->get_refmap();
-        int o = solution->get_fn_order() + ru->get_inv_ref_order();
-        limit_order(o);
-        solution->set_quad_order(o, H2D_FN_VAL);
-        double *uval = solution->get_fn_values();
-        double result = 0.0;
-        
-        if (geom_type == HERMES_PLANAR)
-        {
-          h1_integrate_expression(uval[i]);
-        }
-        else if (geom_type == HERMES_AXISYM_X)
-        {
-          double* y = ru->get_phys_y(o);
-          h1_integrate_expression(y[i] * uval[i]);
-        }
-        else
-        {
-          double* x = ru->get_phys_x(o);
-          h1_integrate_expression(x[i] * uval[i]);
-        }
-        
-        std::string mat = matprop.get_material(e->marker, mesh);
-        double xsec;
-        
-        switch (reaction)
-        {
-          case ABSORPTION:
-            xsec = matprop.compute_Sigma_a(mat)[this_group];
-            break;
-          case TOTAL:
-            xsec = matprop.compute_Sigma_t(mat)[this_group];
-            break;
-          case IN_SCATTERING:
-            if (other_group > (int) matprop.get_G() || other_group < 0)
-              error_function(Messages::E_INVALID_GROUP_INDEX);
-            
-            xsec = matprop.compute_Sigma_s(mat)[this_group][other_group];
-            break;
-          case SELF_SCATTERING:
-            xsec = matprop.compute_Sigma_s(mat)[this_group][this_group];
-            break;
-          case OUT_SCATTERING:
-            if (other_group > (int) matprop.get_G() || other_group < 0)
-              error_function(Messages::E_INVALID_GROUP_INDEX);
-            
-            xsec = matprop.compute_Sigma_s(mat)[other_group][this_group];
-            break;
-          case FISSION:
-            xsec = matprop.get_Sigma_f(mat)[this_group];
-            break;
-          case NU_FISSION:
-            xsec = matprop.get_Sigma_f(mat)[this_group] * matprop.get_nu(mat)[this_group];
-            break;
-        };
-        
-        integral += xsec * result;
-      }
-    }
-    
-    if (geom_type == HERMES_AXISYM_X || geom_type == HERMES_AXISYM_Y)
-      integral *= 2.0*M_PI;
-    
-    return integral;
-  }
-
-  
-  void PostProcessor::get_integrated_group_reaction_rates(ReactionType reaction, 
-                                                          const Hermes::vector< Solution<double>* >& solutions, Hermes::vector< double >* results, 
-                                                          const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                                          unsigned int group, const Hermes::vector< std::string >& regions) const
-  {
-    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
-    
-    if (method == NEUTRONICS_SPN)
-      SPN::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G());
-    else if (method == NEUTRONICS_DIFFUSION)
-      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
-        scalar_fluxes.push_back(*it);
-    
-    Hermes::vector<std::string>::const_iterator region = regions.begin(); 
-
-    for ( ; region != regions.end(); ++region)
-    {
-      double result = 0.0;
-      
-      if (reaction == IN_SCATTERING || reaction == OUT_SCATTERING)
-      {
-        for (unsigned int g_other = 0; g_other < matprop.get_G(); g_other++)
-        {
-          if (reaction == IN_SCATTERING && group != g_other)
-            result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[g_other], matprop, *region, group, g_other);
-          else if (reaction == OUT_SCATTERING && group != g_other)
-            result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[group], matprop, *region, group, g_other);
-        }
-      }
-      else
-        result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[group], matprop, *region, group);
-      
-      results->push_back(result);
-    }
-    
-    if (method == NEUTRONICS_SPN)
-      SPN::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
-  }
-  
-  double PostProcessor::get_integrated_group_reaction_rates(ReactionType reaction, const Hermes::vector< Solution<double>* >& solutions, 
-                                                            const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                                            unsigned int group, const Hermes::vector< std::string >& regions) const
-  {
-    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
-    
-    if (method == NEUTRONICS_SPN)
-      SPN::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G());
-    else if (method == NEUTRONICS_DIFFUSION)
-      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
-        scalar_fluxes.push_back(*it);
-    
-    double result = 0.0;
-      
-    if (reaction == IN_SCATTERING || reaction == OUT_SCATTERING)
-    {
-      for (unsigned int g_other = 0; g_other < matprop.get_G(); g_other++)
-      {
-        if (reaction == IN_SCATTERING && group != g_other)
-          result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[g_other], matprop, regions, group, g_other);
-        else if (reaction == OUT_SCATTERING && group != g_other)
-          result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[group], matprop, regions, group, g_other);
-      }
-    }
-    else
-      result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[group], matprop, regions, group);
-      
-    if (method == NEUTRONICS_SPN)
-      SPN::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
-    
-    return result;
-  }
-  
-  void PostProcessor::get_integrated_reaction_rates(ReactionType reaction, const Hermes::vector< Solution<double>* >& solutions, 
-                                                    Hermes::vector< double >* results, 
-                                                    const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                                    const Hermes::vector< std::string >& regions) const
-  {
-    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
-    
-    if (method == NEUTRONICS_SPN)
-      SPN::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G());
-    else if (method == NEUTRONICS_DIFFUSION)
-      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
-        scalar_fluxes.push_back(*it);
-    
-    Hermes::vector<std::string>::const_iterator region = regions.begin(); 
-    
-    for ( ; region != regions.end(); ++region)
-    {
-      double result = 0.0;
-      for (unsigned int group = 0; group < matprop.get_G(); group++)
-      {
-        if (reaction == IN_SCATTERING || reaction == OUT_SCATTERING)
-        {
-          for (unsigned int g_other = 0; g_other < matprop.get_G(); g_other++)
-          {
-            if (reaction == IN_SCATTERING && group != g_other)
-              result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[g_other], matprop, *region, group, g_other);
-            else if (reaction == OUT_SCATTERING && group != g_other)
-              result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[group], matprop, *region, group, g_other);
-          }
-        }
-        else
-          result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[group], matprop, *region, group);
-      }
-        
-      results->push_back(result);
-    }
-
-    if (method == NEUTRONICS_SPN)
-      SPN::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
-  }
-  
-  double PostProcessor::get_integrated_reaction_rates(ReactionType reaction, const Hermes::vector< Solution<double>* >& solutions, 
-                                                      const MaterialProperties::Common::MaterialPropertyMaps& matprop, 
-                                                      const Hermes::vector< std::string >& regions) const
-  {
-    double result = 0.0;
-    for (unsigned int group = 0; group < matprop.get_G(); group++)
-      result += get_integrated_group_reaction_rates(reaction, solutions, matprop, group, regions);
-    return result;
-  }
-
-  void PostProcessor::get_integrated_group_scalar_fluxes( const Hermes::vector< Solution<double>* >& solutions, 
-                                                          Hermes::vector< double >* results,
-                                                          unsigned int group, unsigned int G,
-                                                          const Hermes::vector< std::string >& regions) const
-  {
-    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
-    
-    if (method == NEUTRONICS_SPN)
-      SPN::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G);
-    else if (method == NEUTRONICS_DIFFUSION)
-      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
-        scalar_fluxes.push_back(*it);
-    
-    Hermes::vector<std::string>::const_iterator region = regions.begin(); 
-    for ( ; region != regions.end(); ++region)
-      results->push_back(integrate(scalar_fluxes[group], *region));
-    
-    if (method == NEUTRONICS_SPN)
-      SPN::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
-  }
-  
-  double PostProcessor::get_integrated_group_scalar_fluxes(const Hermes::vector< Solution<double>* >& solutions, 
-                                                            unsigned int group, unsigned int G,
-                                                            const Hermes::vector< std::string >& regions) const
-  {
-    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
-    
-    if (method == NEUTRONICS_SPN)
-      SPN::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G);
-    else if (method == NEUTRONICS_DIFFUSION)
-      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
-        scalar_fluxes.push_back(*it);
-    
-    double result = integrate(scalar_fluxes[group], regions);
-    
-    if (method == NEUTRONICS_SPN)
-      SPN::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
-    
-    return result;
-  }
-  
-  void PostProcessor::get_integrated_scalar_fluxes(const Hermes::vector< Solution<double>* >& solutions, Hermes::vector< double >* results, 
-                                                    unsigned int G, const Hermes::vector< std::string >& regions) const
-  {
-    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
-    
-    if (method == NEUTRONICS_SPN)
-      SPN::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G);
-    else if (method == NEUTRONICS_DIFFUSION)
-      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
-        scalar_fluxes.push_back(*it);
-    
-    Hermes::vector<std::string>::const_iterator region = regions.begin(); 
-    for ( ; region != regions.end(); ++region)
-    {
-      double result = 0.0;
-      for (unsigned int group = 0; group < G; group++)
-        result += integrate(scalar_fluxes[group], *region);
-      results->push_back(result);
-    }
-    
-    if (method == NEUTRONICS_SPN)
-      SPN::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
-  }
-
-  double PostProcessor::get_integrated_scalar_fluxes(const Hermes::vector< Solution<double>* >& solutions, unsigned int G,
-                                                      const Hermes::vector< std::string >& regions) const
-  {
-    double result = 0.0;
-    for (unsigned int group = 0; group < G; group++)
-      result += get_integrated_group_scalar_fluxes(solutions, group, G, regions);
-    return result;
-  }
-  
-  void PostProcessor::get_areas(Mesh *mesh, const Hermes::vector<std::string>& regions, Hermes::vector<double>* results) const
-  {
-    Solution<double> unity(mesh, 1);
-    
-    Hermes::vector<std::string>::const_iterator region = regions.begin(); 
-    for ( ; region != regions.end(); ++region)
-      results->push_back(integrate(&unity, *region));
-  }
-
-  double PostProcessor::get_area(Mesh* mesh, const Hermes::vector< std::string >& regions) const
-  {
-    Solution<double> unity(mesh, 1);
-    return integrate(&unity, regions);
-  }    
-  
-  namespace Common
-  {
-    const std::string Visualization::base_title_flux = "Neutron flux: group ";
-    const std::string Visualization::base_title_order = "Polynomial orders: group ";
-    const std::string Visualization::base_title_mesh = "Core mesh for group ";
-    
-    void Visualization::init(unsigned int nu, unsigned int ne, unsigned int ng) 
-    {
-      n_unknowns = nu; n_equations = ne; n_groups = ng;
-      
-      if (nu > 0 && ne > 0 && ng > 0)
-      {
-        sviews = new Views::ScalarView<double>* [n_unknowns];
-        oviews = new Views::OrderView<double>* [n_equations];
-        if (display_meshes)
-          mviews = new Views::MeshView* [n_equations];
-      }
-      else
-      {
-        sviews = NULL;
-        oviews = NULL;
-        mviews = NULL;
-      }
-    }
-    
-    Visualization::~Visualization()
-    {
-      if (sviews != NULL)
-      {
-        for (unsigned int i = 0; i < n_unknowns; i++)
-          delete sviews[i];
-        delete [] sviews;
-      }
-      
-      if (oviews != NULL)
-      {
-        for (unsigned int i = 0; i < n_equations; i++)
-          delete oviews[i];
-        delete [] oviews;
-      }
-      
-      if (mviews != NULL)
-      {
-        for (unsigned int i = 0; i < n_equations; i++)
-          delete mviews[i];
-        delete [] mviews;
-      }
-    }
-    
-    void Visualization::inspect_meshes(Hermes::vector< Mesh* > meshes)
-    {
-      if (display_meshes)
-      {
-        show_meshes(meshes);
-        Views::View::wait();
-        
-        for (unsigned int i = 0; i < n_equations; i++)
-          delete mviews[i];
-        delete [] mviews;
-        
-        mviews = NULL;
-      }
-    }
-    
-    void Visualization::inspect_solutions(Hermes::vector< Solution<double>* > solutions)
-    {
-      show_solutions(solutions);
-      Views::View::wait();
-      
-      for (unsigned int i = 0; i < n_unknowns; i++)
-        delete sviews[i];
-      delete [] sviews;
-      
-      sviews = NULL;
-    }
-    
-    void Visualization::inspect_orders(Hermes::vector< Space<double>* > spaces)
-    {
-      show_orders(spaces);
-      Views::View::wait();
-      
-      for (unsigned int i = 0; i < n_equations; i++)
-        delete oviews[i];
-      delete [] oviews;
-      
-      oviews = NULL;
-    }
-  }
-  
-  namespace Diffusion
-  {
-    Visualization::Visualization(unsigned int G, bool display_meshes) : Common::Visualization(G, G, G, display_meshes)
-    {
-      for (unsigned int g = 0; g < n_groups; g++)
-      {
-        std::string title_flux = base_title_flux + itos(g);
-        std::string title_order = base_title_order + itos(g);
-        
-        sviews[g] = new Views::ScalarView<double>(title_flux.c_str(), new Views::WinGeom(0, g*452, 450, 450));
-        sviews[g]->show_mesh(false);
-        sviews[g]->set_3d_mode(true);
-        oviews[g] = new Views::OrderView<double>(title_order.c_str(), new Views::WinGeom(0, n_groups*452 + g*452, 450, 450));
-      }
-      
-      if (display_meshes)
-        for (unsigned int g = 0; g < n_groups; g++)
-        {
-          std::string title = base_title_mesh + itos(g);
-          mviews[g] = new Views::MeshView(title.c_str(), new Views::WinGeom(0, g*352, 350, 350));
-        }
-    }
-    
-    void Visualization::show_meshes(Hermes::vector< Mesh* > meshes)
-    {
-      if (display_meshes)
-        for (unsigned int g = 0; g < n_groups; g++)
-          mviews[g]->show(meshes[g]);
-    }
-    
-    void Visualization::show_solutions(Hermes::vector< Solution<double>* > solutions)
-    {
-      for (unsigned int g = 0; g < n_groups; g++)
-        sviews[g]->show(solutions[g]);
-    }
-    
-    void Visualization::show_orders(Hermes::vector< Space<double>* > spaces)
-    {
-      for (unsigned int g = 0; g < n_groups; g++)
-        oviews[g]->show(spaces[g]);
-    }
-    
-    void Visualization::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
-                                    Hermes::vector< Solution<double>* > solutions, bool mode_3D)
-    {
-      Views::Linearizer<double> lin;
-      for (unsigned int g = 0; g < n_groups; g++)
-      {
-        std::string appendix = std::string("_group_") + itos(g);
-        std::string file = base_filename + appendix + std::string(".vtk");
-        std::string var = base_varname + appendix;
-        lin.save_solution_vtk(solutions[g], file.c_str(), var.c_str(), mode_3D);
-        info("Scalar flux in group %d saved in VTK format to file %s.", g, file.c_str());
-      }
-    }
-    
-    void Visualization::save_orders_vtk(const std::string& base_filename, Hermes::vector< Space<double>* > spaces)
-    {
-      Views::Orderizer ord;
-      for (unsigned int g = 0; g < n_groups; g++)
-      {
-        std::string file = base_filename + std::string("_group_") + itos(g) + std::string(".vtk");
-        ord.save_orders_vtk(spaces[g], file.c_str());
-        info("Information about approximation space for group %d saved in VTK format to file %s.", g, file.c_str());
-      }
-    }
-  }
-  
-  namespace SPN
-  {
-    Visualization::Visualization(unsigned int spn_order, unsigned int G, bool display_meshes) : Common::Visualization(display_meshes), mg(G)
+    Visualization::Visualization(unsigned int spn_order, unsigned int G, bool display_meshes) : Common::SupportClasses::Visualization(display_meshes), mg(G)
     {
       n_moments = spn_order+1;
       n_odd_moments = (n_moments+1)/2;
-      Common::Visualization::init(G * n_moments, G * n_odd_moments, G);
+      Common::SupportClasses::Visualization::init(G * n_moments, G * n_odd_moments, G);
       
       for (unsigned int g = 0; g < n_groups; g++)
       {
@@ -1035,12 +641,407 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         for (unsigned int m = 0; m < n_odd_moments; m++)
           oviews[mg.pos(m,g)]->show(spaces[mg.pos(m,g)]);
     }
+  
+  /* SupportClasses */
+  }
+  /* SPN */
+  }
+  
+  double PostProcessor::integrate(MeshFunction<double>* solution, const Hermes::vector<std::string>& areas) const
+  {
+    Quad2D* quad = &g_quad_2d_std;
+    solution->set_quad_2d(quad);
+    Mesh* mesh = solution->get_mesh();
+    
+    std::set<int> markers;
+    Hermes::vector<std::string>::const_iterator it = areas.begin();
+    for ( ; it != areas.end(); ++it)
+      markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it));
+    
+    double integral = 0.0;
+    Element* e;
+    for_all_active_elements(e, mesh)
+    {
+      if (markers.empty() || markers.find(e->marker) != markers.end())
+      {
+        update_limit_table(e->get_mode());
+        solution->set_active_element(e);
+        RefMap* ru = solution->get_refmap();
+        int o = solution->get_fn_order() + ru->get_inv_ref_order();
+        limit_order(o);
+        solution->set_quad_order(o, H2D_FN_VAL);
+        double *uval = solution->get_fn_values();
+        double result = 0.0;
+        
+        if (geom_type == HERMES_PLANAR)
+        {
+          h1_integrate_expression(uval[i]);
+        }
+        else if (geom_type == HERMES_AXISYM_X)
+        {
+          double* y = ru->get_phys_y(o);
+          h1_integrate_expression(y[i] * uval[i]);
+        }
+        else
+        {
+          double* x = ru->get_phys_x(o);
+          h1_integrate_expression(x[i] * uval[i]);
+        }
+        
+        integral += result;
+      }
+    }
+    
+    if (geom_type == HERMES_AXISYM_X || geom_type == HERMES_AXISYM_Y)
+      integral *= 2.0*M_PI;
+    
+    return integral;
   }
 
+  void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution<double>* >* solutions, 
+                                                       double integrated_fission_source) const
+  {
+    if (integrated_fission_source < 1e-12)
+      error_function("PostProcessor::normalize_to_unit_fission_source : Invalid fission source.");
+ 
+    // FIXME: Temporary version using the ad-hoc class MultipliableSolution.
+    
+    Hermes::vector< Solution<double>* >::iterator sln = solutions->begin();
+    for ( ; sln != solutions->end(); ++sln)
+    {
+      MultipliableSolution<double> ms(*sln);
+      ms.multiply(1./integrated_fission_source);
+      (*sln)->copy(&ms);
+    }
+  }
+
+  void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution<double>* >* solutions, 
+                                                        const Common::MaterialProperties::MaterialPropertyMaps& matprop, 
+                                                        const Hermes::vector< std::string >& src_areas) const
+  {
+    Common::SupportClasses::SourceFilter *sf;
+    
+    if (method == NEUTRONICS_DIFFUSION)
+      sf = new Common::SupportClasses::SourceFilter(*solutions, matprop, src_areas, geom_type);
+    else if (method == NEUTRONICS_SPN)
+      sf = new SPN::SupportClasses::SourceFilter(*solutions, matprop, src_areas, geom_type);
+    
+    normalize_to_unit_fission_source(solutions, sf->integrate());
+    
+    delete sf;
+  }
+
+  void PostProcessor::normalize_to_unit_power(Hermes::vector< Solution<double>* >* solutions, 
+                                              const Common::MaterialProperties::MaterialPropertyMaps& matprop, 
+                                              double power_per_fission, const Hermes::vector< std::string >& src_areas) const
+  {
+    // TODO
+  }
+  
+  double PostProcessor::get_integrated_group_reaction_rates_internal( ReactionType reaction, MeshFunction<double>* solution, 
+                                                                      const Common::MaterialProperties::MaterialPropertyMaps& matprop, 
+                                                                      const Hermes::vector< std::string >& regions,
+                                                                      unsigned int this_group, int other_group) const
+  {    
+    if (this_group > matprop.get_G())
+      error_function(Messages::E_INVALID_GROUP_INDEX);
+    
+    Quad2D* quad = &g_quad_2d_std;
+    solution->set_quad_2d(quad);
+    Mesh* mesh = solution->get_mesh();
+    
+    std::set<int> markers;
+    Hermes::vector<std::string>::const_iterator it = regions.begin();
+    for ( ; it != regions.end(); ++it)
+      markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it));
+            
+    double integral = 0.0;
+    Element* e;
+    for_all_active_elements(e, mesh)
+    {
+      if (markers.empty() || markers.find(e->marker) != markers.end())
+      {
+        update_limit_table(e->get_mode());
+        solution->set_active_element(e);
+        RefMap* ru = solution->get_refmap();
+        int o = solution->get_fn_order() + ru->get_inv_ref_order();
+        limit_order(o);
+        solution->set_quad_order(o, H2D_FN_VAL);
+        double *uval = solution->get_fn_values();
+        double result = 0.0;
+        
+        if (geom_type == HERMES_PLANAR)
+        {
+          h1_integrate_expression(uval[i]);
+        }
+        else if (geom_type == HERMES_AXISYM_X)
+        {
+          double* y = ru->get_phys_y(o);
+          h1_integrate_expression(y[i] * uval[i]);
+        }
+        else
+        {
+          double* x = ru->get_phys_x(o);
+          h1_integrate_expression(x[i] * uval[i]);
+        }
+        
+        std::string mat = matprop.get_material(e->marker, mesh);
+        double xsec;
+        
+        switch (reaction)
+        {
+          case ABSORPTION:
+            xsec = matprop.compute_Sigma_a(mat)[this_group];
+            break;
+          case TOTAL:
+            xsec = matprop.compute_Sigma_t(mat)[this_group];
+            break;
+          case IN_SCATTERING:
+            if (other_group > (int) matprop.get_G() || other_group < 0)
+              error_function(Messages::E_INVALID_GROUP_INDEX);
+            
+            xsec = matprop.compute_Sigma_s(mat)[this_group][other_group];
+            break;
+          case SELF_SCATTERING:
+            xsec = matprop.compute_Sigma_s(mat)[this_group][this_group];
+            break;
+          case OUT_SCATTERING:
+            if (other_group > (int) matprop.get_G() || other_group < 0)
+              error_function(Messages::E_INVALID_GROUP_INDEX);
+            
+            xsec = matprop.compute_Sigma_s(mat)[other_group][this_group];
+            break;
+          case FISSION:
+            xsec = matprop.get_Sigma_f(mat)[this_group];
+            break;
+          case NU_FISSION:
+            xsec = matprop.get_Sigma_f(mat)[this_group] * matprop.get_nu(mat)[this_group];
+            break;
+        };
+        
+        integral += xsec * result;
+      }
+    }
+    
+    if (geom_type == HERMES_AXISYM_X || geom_type == HERMES_AXISYM_Y)
+      integral *= 2.0*M_PI;
+    
+    return integral;
+  }
 
   
-/* SupportClasses */
-}
+  void PostProcessor::get_integrated_group_reaction_rates(ReactionType reaction, 
+                                                          const Hermes::vector< Solution<double>* >& solutions, Hermes::vector< double >* results, 
+                                                          const Common::MaterialProperties::MaterialPropertyMaps& matprop, 
+                                                          unsigned int group, const Hermes::vector< std::string >& regions) const
+  {
+    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+    
+    if (method == NEUTRONICS_SPN)
+      SPN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G());
+    else if (method == NEUTRONICS_DIFFUSION)
+      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
+        scalar_fluxes.push_back(*it);
+    
+    Hermes::vector<std::string>::const_iterator region = regions.begin(); 
+
+    for ( ; region != regions.end(); ++region)
+    {
+      double result = 0.0;
+      
+      if (reaction == IN_SCATTERING || reaction == OUT_SCATTERING)
+      {
+        for (unsigned int g_other = 0; g_other < matprop.get_G(); g_other++)
+        {
+          if (reaction == IN_SCATTERING && group != g_other)
+            result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[g_other], matprop, *region, group, g_other);
+          else if (reaction == OUT_SCATTERING && group != g_other)
+            result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[group], matprop, *region, group, g_other);
+        }
+      }
+      else
+        result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[group], matprop, *region, group);
+      
+      results->push_back(result);
+    }
+    
+    if (method == NEUTRONICS_SPN)
+      SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+  }
+  
+  double PostProcessor::get_integrated_group_reaction_rates(ReactionType reaction, const Hermes::vector< Solution<double>* >& solutions, 
+                                                            const Common::MaterialProperties::MaterialPropertyMaps& matprop, 
+                                                            unsigned int group, const Hermes::vector< std::string >& regions) const
+  {
+    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+    
+    if (method == NEUTRONICS_SPN)
+      SPN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G());
+    else if (method == NEUTRONICS_DIFFUSION)
+      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
+        scalar_fluxes.push_back(*it);
+    
+    double result = 0.0;
+      
+    if (reaction == IN_SCATTERING || reaction == OUT_SCATTERING)
+    {
+      for (unsigned int g_other = 0; g_other < matprop.get_G(); g_other++)
+      {
+        if (reaction == IN_SCATTERING && group != g_other)
+          result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[g_other], matprop, regions, group, g_other);
+        else if (reaction == OUT_SCATTERING && group != g_other)
+          result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[group], matprop, regions, group, g_other);
+      }
+    }
+    else
+      result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[group], matprop, regions, group);
+      
+    if (method == NEUTRONICS_SPN)
+      SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    
+    return result;
+  }
+  
+  void PostProcessor::get_integrated_reaction_rates(ReactionType reaction, const Hermes::vector< Solution<double>* >& solutions, 
+                                                    Hermes::vector< double >* results, 
+                                                    const Common::MaterialProperties::MaterialPropertyMaps& matprop, 
+                                                    const Hermes::vector< std::string >& regions) const
+  {
+    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+    
+    if (method == NEUTRONICS_SPN)
+      SPN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G());
+    else if (method == NEUTRONICS_DIFFUSION)
+      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
+        scalar_fluxes.push_back(*it);
+    
+    Hermes::vector<std::string>::const_iterator region = regions.begin(); 
+    
+    for ( ; region != regions.end(); ++region)
+    {
+      double result = 0.0;
+      for (unsigned int group = 0; group < matprop.get_G(); group++)
+      {
+        if (reaction == IN_SCATTERING || reaction == OUT_SCATTERING)
+        {
+          for (unsigned int g_other = 0; g_other < matprop.get_G(); g_other++)
+          {
+            if (reaction == IN_SCATTERING && group != g_other)
+              result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[g_other], matprop, *region, group, g_other);
+            else if (reaction == OUT_SCATTERING && group != g_other)
+              result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[group], matprop, *region, group, g_other);
+          }
+        }
+        else
+          result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[group], matprop, *region, group);
+      }
+        
+      results->push_back(result);
+    }
+
+    if (method == NEUTRONICS_SPN)
+      SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+  }
+  
+  double PostProcessor::get_integrated_reaction_rates(ReactionType reaction, const Hermes::vector< Solution<double>* >& solutions, 
+                                                      const Common::MaterialProperties::MaterialPropertyMaps& matprop, 
+                                                      const Hermes::vector< std::string >& regions) const
+  {
+    double result = 0.0;
+    for (unsigned int group = 0; group < matprop.get_G(); group++)
+      result += get_integrated_group_reaction_rates(reaction, solutions, matprop, group, regions);
+    return result;
+  }
+
+  void PostProcessor::get_integrated_group_scalar_fluxes( const Hermes::vector< Solution<double>* >& solutions, 
+                                                          Hermes::vector< double >* results,
+                                                          unsigned int group, unsigned int G,
+                                                          const Hermes::vector< std::string >& regions) const
+  {
+    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+    
+    if (method == NEUTRONICS_SPN)
+      SPN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G);
+    else if (method == NEUTRONICS_DIFFUSION)
+      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
+        scalar_fluxes.push_back(*it);
+    
+    Hermes::vector<std::string>::const_iterator region = regions.begin(); 
+    for ( ; region != regions.end(); ++region)
+      results->push_back(integrate(scalar_fluxes[group], *region));
+    
+    if (method == NEUTRONICS_SPN)
+      SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+  }
+  
+  double PostProcessor::get_integrated_group_scalar_fluxes(const Hermes::vector< Solution<double>* >& solutions, 
+                                                            unsigned int group, unsigned int G,
+                                                            const Hermes::vector< std::string >& regions) const
+  {
+    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+    
+    if (method == NEUTRONICS_SPN)
+      SPN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G);
+    else if (method == NEUTRONICS_DIFFUSION)
+      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
+        scalar_fluxes.push_back(*it);
+    
+    double result = integrate(scalar_fluxes[group], regions);
+    
+    if (method == NEUTRONICS_SPN)
+      SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    
+    return result;
+  }
+  
+  void PostProcessor::get_integrated_scalar_fluxes(const Hermes::vector< Solution<double>* >& solutions, Hermes::vector< double >* results, 
+                                                    unsigned int G, const Hermes::vector< std::string >& regions) const
+  {
+    Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+    
+    if (method == NEUTRONICS_SPN)
+      SPN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G);
+    else if (method == NEUTRONICS_DIFFUSION)
+      for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
+        scalar_fluxes.push_back(*it);
+    
+    Hermes::vector<std::string>::const_iterator region = regions.begin(); 
+    for ( ; region != regions.end(); ++region)
+    {
+      double result = 0.0;
+      for (unsigned int group = 0; group < G; group++)
+        result += integrate(scalar_fluxes[group], *region);
+      results->push_back(result);
+    }
+    
+    if (method == NEUTRONICS_SPN)
+      SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+  }
+
+  double PostProcessor::get_integrated_scalar_fluxes(const Hermes::vector< Solution<double>* >& solutions, unsigned int G,
+                                                      const Hermes::vector< std::string >& regions) const
+  {
+    double result = 0.0;
+    for (unsigned int group = 0; group < G; group++)
+      result += get_integrated_group_scalar_fluxes(solutions, group, G, regions);
+    return result;
+  }
+  
+  void PostProcessor::get_areas(Mesh *mesh, const Hermes::vector<std::string>& regions, Hermes::vector<double>* results) const
+  {
+    Solution<double> unity(mesh, 1);
+    
+    Hermes::vector<std::string>::const_iterator region = regions.begin(); 
+    for ( ; region != regions.end(); ++region)
+      results->push_back(integrate(&unity, *region));
+  }
+
+  double PostProcessor::get_area(Mesh* mesh, const Hermes::vector< std::string >& regions) const
+  {
+    Solution<double> unity(mesh, 1);
+    return integrate(&unity, regions);
+  }    
+
 /* Neutronics */
 }
 /* Hermes2D */

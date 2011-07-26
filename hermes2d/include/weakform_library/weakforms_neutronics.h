@@ -21,9 +21,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   ///
   /// \return  number of iterations needed for convergence within the specified tolerance.
   ///
-  int eigenvalue_iteration(const Hermes::vector<Solution<double> *>& solutions, 
-                           WeakForms::Common::KeffEigenvalueProblem* wf, const Hermes::vector<Space<double> *>& spaces,
-                           double tol_keff = 1e-6, double tol_flux = 0, MatrixSolverType matrix_solver = SOLVER_UMFPACK);
+  int keff_eigenvalue_iteration(const Hermes::vector<Solution<double> *>& solutions, 
+                                Common::WeakForms::KeffEigenvalueProblem* wf, const Hermes::vector<Space<double> *>& spaces,
+                                double tol_keff = 1e-6, double tol_flux = 0, MatrixSolverType matrix_solver = SOLVER_UMFPACK);
 
   //TODO: non-vector version
   
