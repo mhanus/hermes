@@ -3,14 +3,11 @@
 
 #include "support_classes.h"
 
-namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFormParts
+namespace Hermes { namespace Hermes2D { namespace Neutronics 
 {             
-  namespace Diffusion
+  namespace Diffusion { namespace WeakFormParts
   { 
-    using namespace MaterialProperties::Diffusion;
-    using DataStructures::rank0;
-    using DataStructures::rank1;
-    using DataStructures::rank2;
+    using namespace MaterialProperties;
     
     class GenericForm
     {
@@ -484,21 +481,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
           unsigned int g;      
       }; 
     };
-        
-  }                
+    
+  /* WeakFormParts */
+  }
+  /* Diffusion */
+  }
 
-  namespace SPN
+  namespace SPN { namespace WeakFormParts
   {
-    using namespace MaterialProperties::SPN;
-    using SupportClasses::SPN::Coeffs;
-    using SupportClasses::SPN::MomentGroupFlattener;
-    using DataStructures::rank0;
-    using DataStructures::rank1;
-    using DataStructures::rank2;
-    using DataStructures::rank3;
+    using namespace MaterialProperties;
+    using SupportClasses::Coeffs;
+    using SupportClasses::MomentGroupFlattener;
     
     //TODO: Make Diffusion::GenericForm only a GenericForm, which takes pointer to
-    // MaterialProperties::Common::MaterialPropertyMaps (hence all "matprop." will 
+    // Common::MaterialProperties::MaterialPropertyMaps (hence all "matprop." will 
     // have to be changed to "matprop->". The following class will then not be needed.
     class GenericForm
     {
@@ -1073,10 +1069,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
           unsigned int g;      
       }; 
     };
+  
+  /* WeakFormParts */
+  }     
+  /* SPN */
   }
-        
-/* WeakFormParts */
-}
+  
 /* Neutronics */
 }
 /* Hermes2D */
