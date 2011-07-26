@@ -110,7 +110,7 @@ int main(int argc, char* argv[])
   Hermes::vector<double> Sources_map(Q_EXT, 0.0, 0.0);
   
   // Initialize the weak formulation.
-  Neutronics::WeakForms::SimpleMonoenergeticDiffusion::FixedSourceProblem
+  Neutronics::SimpleMonoenergeticDiffusionWeakForms::FixedSourceProblem
     wf(regions, D_map, Sigma_a_map, Sources_map);
   
   // Initialize refinement selector.
