@@ -3,9 +3,9 @@
 
 namespace Hermes { namespace Hermes2D { namespace Neutronics
 {
-  int eigenvalue_iteration(const Hermes::vector<Solution<double> *>& solutions, 
-                           WeakForms::Common::KeffEigenvalueProblem* wf, const Hermes::vector<Space<double> *>& spaces,
-                           double tol_keff, double tol_flux, MatrixSolverType matrix_solver)
+  int keff_eigenvalue_iteration(const Hermes::vector<Solution<double> *>& solutions, 
+                                Common::WeakForms::KeffEigenvalueProblem* wf, const Hermes::vector<Space<double> *>& spaces,
+                                double tol_keff, double tol_flux, MatrixSolverType matrix_solver)
   {
     // Sanity checks.
     if (spaces.size() != solutions.size()) 
@@ -23,8 +23,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       new_solutions.push_back(new Solution<double>(m));
     }
     
-    SupportClasses::Common::SourceFilter *new_source = wf->get_new_source_filter(new_solutions);
-    SupportClasses::Common::SourceFilter *old_source = wf->get_new_source_filter(solutions);
+    Common::SupportClasses::SourceFilter *new_source = wf->get_new_source_filter(new_solutions);
+    Common::SupportClasses::SourceFilter *old_source = wf->get_new_source_filter(solutions);
       
     // Initial coefficient vector for the Newton's method.
     int ndof = Space<double>::get_num_dofs(spaces);
@@ -76,11 +76,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         for (unsigned int i = 0; i < solutions.size(); i++)
         {
-          SupportClasses::PostProcessor pp(wf->get_method_type(), wf->get_geom_type());
+          PostProcessor pp(wf->get_method_type(), wf->get_geom_type());
           
           // Normalize both flux iterates with the same criterion (unit integrated fission source).
-          SupportClasses::MultipliableSolution<double> sln(solutions[i]);
-          SupportClasses::MultipliableSolution<double> new_sln(new_solutions[i]);
+          MultipliableSolution<double> sln(solutions[i]);
+          MultipliableSolution<double> new_sln(new_solutions[i]);
           
           sln.multiply(1./src_old);
           new_sln.multiply(1./src_new);
