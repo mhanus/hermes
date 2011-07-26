@@ -10,9 +10,9 @@
 #include "function/filter.h"
 #include "integrals/h1.h"
 
-namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace SupportClasses
+namespace Hermes { namespace Hermes2D { namespace Neutronics
 {   
-  namespace Common
+  namespace Common { namespace SupportClasses
   {    
     class SourceFilter : public SimpleFilter<double>
     {
@@ -20,7 +20,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         
         /* Lazy constructors: the vector of solutions to be filtered will be added by 'assign_solutions'. */
         
-        SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+        SourceFilter(const MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::vector<std::string>& source_regions = std::vector<std::string>(),
                      GeomType geom_type = HERMES_PLANAR)
           : SimpleFilter<double>(), matprop(matprop), geom_type(geom_type),
@@ -28,7 +28,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         {
           pre_init();
         };
-        SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+        SourceFilter(const MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
           : SimpleFilter<double>(), matprop(matprop), geom_type(geom_type)
         { 
@@ -39,7 +39,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         /* Immediate constructors: the vector of solutions to be filtered is given by the first argument.  */
         
         SourceFilter(Hermes::vector<MeshFunction<double>*> solutions, 
-                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                     const MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::vector<std::string>& source_regions = std::vector<std::string>(),
                      GeomType geom_type = HERMES_PLANAR)
           : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type),
@@ -48,7 +48,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
           post_init();
         };
         SourceFilter(Hermes::vector<Solution<double>*> solutions,
-                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                     const MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::vector<std::string>& source_regions = std::vector<std::string>(),
                      GeomType geom_type = HERMES_PLANAR)
           : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type),
@@ -57,7 +57,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
           post_init();
         };
         SourceFilter(Hermes::vector<MeshFunction<double>*> solutions,
-                    const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                    const MaterialProperties::MaterialPropertyMaps& matprop,
                     const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
           : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type)
         { 
@@ -65,7 +65,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
           post_init();
         }
         SourceFilter(Hermes::vector<Solution<double>*> solutions,
-                    const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                    const MaterialProperties::MaterialPropertyMaps& matprop,
                     const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
           : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type)
         { 
@@ -85,7 +85,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         double integrate();
                     
       protected:
-        const MaterialProperties::Common::MaterialPropertyMaps& matprop;
+        const MaterialProperties::MaterialPropertyMaps& matprop;
         GeomType geom_type;
         std::set<std::string> source_regions;
         std::set<int> markers;
@@ -134,11 +134,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         void inspect_solutions(Hermes::vector< Solution<double>* > solutions);
         void inspect_orders(Hermes::vector<Space<double>*> spaces);
     };
+  
+  /* SupportClasses */
+  }
+  /* Common */
   }
  
-  namespace Diffusion
+  namespace Diffusion { namespace SupportClasses
   {
-    class Visualization : public Common::Visualization
+    using Common::SupportClasses::SourceFilter;
+    
+    class Visualization : public Common::SupportClasses::Visualization
     {
       public:
         Visualization(unsigned int G, bool display_meshes = false);
@@ -151,9 +157,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
                                 Hermes::vector< Solution<double>* > solutions,  bool mode_3D = false);
         void save_orders_vtk(const std::string& base_filename, Hermes::vector<Space<double>*> spaces);       
     };
+    
+  /* SupportClasses */
+  }
+  /* Diffusion */
   }
   
-  namespace SPN
+  namespace SPN { namespace SupportClasses
   {    
     class Coeffs
     {
@@ -254,60 +264,60 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       static void clear_scalar_fluxes(Hermes::vector<MeshFunction<double>*>* scalar_fluxes);
     };
     
-    class SourceFilter : public Common::SourceFilter
+    class SourceFilter : public Common::SupportClasses::SourceFilter
     {
       public: 
         
         /* Lazy constructors: the vector of solutions to be filtered will be added by 'assign_solutions'. */
         
-        SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+        SourceFilter(const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::vector<std::string>& source_regions = std::vector<std::string>(),
                      GeomType geom_type = HERMES_PLANAR)
-          : Common::SourceFilter(matprop, source_regions, geom_type),
+          : Common::SupportClasses::SourceFilter(matprop, source_regions, geom_type),
             G(matprop.get_G()), mg(G)
         {};
-        SourceFilter(const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+        SourceFilter(const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
-          : Common::SourceFilter(matprop, source_region, geom_type),
+          : Common::SupportClasses::SourceFilter(matprop, source_region, geom_type),
             G(matprop.get_G()), mg(G) 
         {};
         
         /* Immediate constructors: the vector of solutions to be filtered is given by the first argument.  */
         
         SourceFilter(Hermes::vector<MeshFunction<double>*> solutions, 
-                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                     const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::vector<std::string>& source_regions = std::vector<std::string>(),
                      GeomType geom_type = HERMES_PLANAR)
-          : Common::SourceFilter(solutions, matprop, source_regions, geom_type), 
+          : Common::SupportClasses::SourceFilter(solutions, matprop, source_regions, geom_type), 
             G(matprop.get_G()), mg(G)
         {};
         SourceFilter(Hermes::vector<Solution<double>*> solutions,
-                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                     const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::vector<std::string>& source_regions = std::vector<std::string>(),
                      GeomType geom_type = HERMES_PLANAR)
-          : Common::SourceFilter(solutions, matprop, source_regions, geom_type), 
+          : Common::SupportClasses::SourceFilter(solutions, matprop, source_regions, geom_type), 
             G(matprop.get_G()), mg(G) 
         {};
         SourceFilter(Hermes::vector<MeshFunction<double>*> solutions,
-                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                     const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
-          : Common::SourceFilter(solutions, matprop, source_region, geom_type),
+          : Common::SupportClasses::SourceFilter(solutions, matprop, source_region, geom_type),
             G(matprop.get_G()), mg(G) 
         {};
         SourceFilter(Hermes::vector<Solution<double>*> solutions,
-                     const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                     const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
-          : Common::SourceFilter(solutions, matprop, source_region, geom_type), 
+          : Common::SupportClasses::SourceFilter(solutions, matprop, source_region, geom_type), 
             G(matprop.get_G()), mg(G) 
         {};
                     
         virtual void assign_solutions(const Hermes::vector<Solution<double>*>& solutions) {
-          num = solutions.size();
-          Common::SourceFilter::assign_solutions(solutions);
+          this->num = solutions.size();
+          Common::SupportClasses::SourceFilter::assign_solutions(solutions);
         }
         virtual void assign_solutions(const Hermes::vector<MeshFunction<double>*>& solutions) {
-          num = solutions.size();
-          Common::SourceFilter::assign_solutions(solutions);
+          this->num = solutions.size();
+          Common::SupportClasses::SourceFilter::assign_solutions(solutions);
         }
         
       protected:
@@ -317,7 +327,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         virtual void filter_fn(int n, Hermes::vector<double*> values, double* result);
     };
   
-    class Visualization : public Common::Visualization
+    class Visualization : public Common::SupportClasses::Visualization
     {
       unsigned int n_moments, n_odd_moments;
       MomentGroupFlattener mg;
@@ -335,6 +345,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
         
         void inspect_solutions(Hermes::vector< Solution<double>* > solutions);
     };       
+    
+  /* SupportClasses */
+  }
+  /* SPN */
   }
   
   // FIXME: Ad-hoc class. Replace accordingly as soon asarithmetic operations with solutions will be ready.
@@ -360,11 +374,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
     GeomType geom_type;
     
     double get_integrated_group_reaction_rates_internal(ReactionType reaction, MeshFunction<double>* solution,
-                                                        const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                                        const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                                         const Hermes::vector<std::string>& regions,
                                                         unsigned int this_group, int other_group = -1) const;
     double get_integrated_group_reaction_rates_internal(ReactionType reaction, MeshFunction<double>* solution,
-                                                        const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                                        const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                                         const std::string& region,
                                                         unsigned int this_group, int other_group = -1) const 
     {
@@ -389,11 +403,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
                                             double integrated_fission_source) const;
                                             
       void normalize_to_unit_fission_source(Hermes::vector<Solution<double>*>* solutions,
-                                            const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                            const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                             const Hermes::vector<std::string>& src_areas = Hermes::vector<std::string>()) const;
                                             
       void normalize_to_unit_power(Hermes::vector<Solution<double>*>* solutions,
-                                  const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                  const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                   double power_per_fission,
                                   const Hermes::vector<std::string>& src_areas = Hermes::vector<std::string>()) const;
       
@@ -401,7 +415,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
                                   
       void get_integrated_group_reaction_rates( ReactionType reaction, 
                                                 const Hermes::vector<Solution<double>*>& solutions, Hermes::vector<double>* results,
-                                                const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                                const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                                 unsigned int group, const Hermes::vector<std::string>& regions) const;
                                                 
       void get_integrated_group_scalar_fluxes(const Hermes::vector<Solution<double>*>& solutions, Hermes::vector<double>* results, 
@@ -410,7 +424,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
                                               
       void get_integrated_reaction_rates( ReactionType reaction, 
                                           const Hermes::vector<Solution<double>*>& solutions, Hermes::vector<double>* results,
-                                          const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                          const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                           const Hermes::vector<std::string>& regions) const;
                                           
       void get_integrated_scalar_fluxes(const Hermes::vector<Solution<double>*>& solutions, Hermes::vector<double>* results, 
@@ -420,7 +434,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
                                         
                                         
       double get_integrated_group_reaction_rates( ReactionType reaction, const Hermes::vector<Solution<double>*>& solutions,
-                                                  const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                                  const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                                   unsigned int group,
                                                   const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
                                                   
@@ -428,7 +442,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
                                                 const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
                                                 
       double get_integrated_reaction_rates( ReactionType reaction, const Hermes::vector<Solution<double>*>& solutions,
-                                            const MaterialProperties::Common::MaterialPropertyMaps& matprop,
+                                            const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                             const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
                                             
       double get_integrated_scalar_fluxes(const Hermes::vector<Solution<double>*>& solutions,
@@ -437,8 +451,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace Support
       double get_area(Mesh *mesh, const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
   };
   
-/* SupportClasses */
-}
 /* Neutronics */
 }
 /* Hermes2D */

@@ -3,9 +3,238 @@
 
 #include "neutronics/weakform_parts.h"
 
-namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFormParts
+namespace Hermes { namespace Hermes2D { namespace Neutronics 
 {  
-  namespace SPN
+  namespace Diffusion { namespace WeakFormParts
+  { 
+    template<typename Real>
+    Real VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
+                                                          Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
+    { 
+      Real result;
+      
+      if (geom_type == HERMES_PLANAR) 
+        result = 0.5 * int_u_v<Real, Real>(n, wt, u, v);
+      else if (geom_type == HERMES_AXISYM_X) 
+        result = 0.5 * int_y_u_v<Real, Real>(n, wt, u, v, e);
+      else 
+        result = 0.5 * int_x_u_v<Real, Real>(n, wt, u, v, e);
+      
+      return result;
+    }
+    
+    template<typename Real>
+    Real VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<Real> *u_ext[],
+                                                          Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
+    { 
+      Real result;
+      
+      if (geom_type == HERMES_PLANAR) 
+        result = 0.5 * int_u_ext_v<Real, Real>(n, wt, u_ext[g], v);
+      else if (geom_type == HERMES_AXISYM_X) 
+        result = 0.5 * int_y_u_ext_v<Real, Real>(n, wt, u_ext[g], v, e);
+      else 
+        result = 0.5 * int_x_u_ext_v<Real, Real>(n, wt, u_ext[g], v, e);
+      
+      return result;
+    }
+     
+    template<typename Real>
+    Real DiffusionReaction::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
+                                                    Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
+    {
+      Real result;
+      
+      std::string mat = matprop.get_material(e->elem_marker, wf);     
+      rank1 D_elem = matprop.get_D(mat);
+      rank1 Sigma_r_elem = matprop.get_Sigma_r(mat);
+      
+      if (geom_type == HERMES_PLANAR) 
+      {
+        result = D_elem[g] * int_grad_u_grad_v<Real, Real>(n, wt, u, v) +
+                  Sigma_r_elem[g] * int_u_v<Real, Real>(n, wt, u, v);
+      }
+      else 
+      {
+        if (geom_type == HERMES_AXISYM_X) 
+        {
+          result = D_elem[g] * int_y_grad_u_grad_v<Real, Real>(n, wt, u, v, e) + 
+                    Sigma_r_elem[g] * int_y_u_v<Real, Real>(n, wt, u, v, e);
+        }
+        else 
+        {
+          result = D_elem[g] * int_x_grad_u_grad_v<Real, Real>(n, wt, u, v, e) + 
+                    Sigma_r_elem[g] * int_x_u_v<Real, Real>(n, wt, u, v, e);
+        }
+      }
+      return result;
+    }
+    
+    template<typename Real>
+    Real DiffusionReaction::Residual::vector_form(int n, double *wt, Func<Real> *u_ext[],
+                                                    Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
+    { 
+      Real result;
+      
+      std::string mat = matprop.get_material(e->elem_marker, wf);        
+      rank1 D_elem = matprop.get_D(mat);
+      rank1 Sigma_r_elem = matprop.get_Sigma_r(mat);
+      
+      if (geom_type == HERMES_PLANAR) 
+      {
+        result = D_elem[g] * int_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[g], v) +
+                  Sigma_r_elem[g] * int_u_ext_v<Real, Real>(n, wt, u_ext[g], v);
+      }
+      else 
+      {
+        if (geom_type == HERMES_AXISYM_X) 
+        {
+          result = D_elem[g] * int_y_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[g], v, e) + 
+                    Sigma_r_elem[g] * int_y_u_ext_v<Real, Real>(n, wt, u_ext[g], v, e);
+        }
+        else 
+        {
+          result = D_elem[g] * int_x_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[g], v, e) + 
+                    Sigma_r_elem[g] * int_x_u_ext_v<Real, Real>(n, wt, u_ext[g], v, e);
+        }
+      }
+      return result;
+    }
+    
+    template<typename Real>
+    Real FissionYield::Jacobian::matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
+                                                Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const 
+    {
+      if (!matprop.get_fission_nonzero_structure()[gto])
+        return 0.0;
+      
+      Real result = 0;
+      if (geom_type == HERMES_PLANAR) result = int_u_v<Real, Real>(n, wt, u, v);
+      else 
+      {
+        if (geom_type == HERMES_AXISYM_X) result = int_y_u_v<Real, Real>(n, wt, u, v, e);
+        else result = int_x_u_v<Real, Real>(n, wt, u, v, e);
+      }
+      
+      std::string mat = matprop.get_material(e->elem_marker, wf);
+      rank1 nu_elem = matprop.get_nu(mat);
+      rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
+      rank1 chi_elem = matprop.get_chi(mat);
+      
+      return result * chi_elem[gto] * nu_elem[gfrom] * Sigma_f_elem[gfrom];
+    }
+    
+    template<typename Real>
+    Real FissionYield::OuterIterationForm::vector_form( int n, double *wt, Func<Real> *u_ext[],
+                                                          Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
+    { 
+      if (!matprop.get_fission_nonzero_structure()[g])
+        return 0.0;
+        
+      std::string mat = matprop.get_material(e->elem_marker, wf);
+      rank1 nu_elem = matprop.get_nu(mat);
+      rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
+      rank1 chi_elem = matprop.get_chi(mat);
+      
+      if ((unsigned)ext->nf != nu_elem.size() || (unsigned)ext->nf != Sigma_f_elem.size())
+        error_function(Messages::E_INVALID_GROUP_INDEX);
+      
+      Real result = 0;
+      for (int i = 0; i < n; i++) 
+      {
+        Real local_res = 0;
+        for (int gfrom = 0; gfrom < ext->nf; gfrom++)
+          local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i];
+                  
+        local_res = local_res * wt[i] * v->val[i];
+        
+        if (geom_type == HERMES_AXISYM_X)
+          local_res = local_res * e->y[i];
+        else if (geom_type == HERMES_AXISYM_Y)
+          local_res = local_res * e->x[i];
+        
+        result += local_res;
+      }
+      
+      return result * chi_elem[g] / keff;
+    }
+    
+    template<typename Real>
+    Real FissionYield::Residual::vector_form( int n, double *wt, Func<Real> *u_ext[],
+                                                Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
+    { 
+      if (!matprop.get_fission_nonzero_structure()[gto])
+        return 0.0;
+      
+      Real result = 0;
+      if (geom_type == HERMES_PLANAR) result = int_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v);
+      else 
+      {
+        if (geom_type == HERMES_AXISYM_X) result = int_y_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v, e);
+        else result = int_x_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v, e);
+      }
+      
+      std::string mat = matprop.get_material(e->elem_marker, wf);
+      rank1 nu_elem = matprop.get_nu(mat);
+      rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
+      rank1 chi_elem = matprop.get_chi(mat);
+      
+      return result * chi_elem[gto] * nu_elem[gfrom] * Sigma_f_elem[gfrom];
+    }
+                                                    
+    template<typename Real>
+    Real Scattering::Jacobian::matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
+                                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const  
+    {
+      Real result = 0;
+      if (geom_type == HERMES_PLANAR) result = int_u_v<Real, Real>(n, wt, u, v);
+      else 
+      {
+        if (geom_type == HERMES_AXISYM_X) result = int_y_u_v<Real, Real>(n, wt, u, v, e);
+        else result = int_x_u_v<Real, Real>(n, wt, u, v, e);
+      }
+      
+      return result * matprop.get_Sigma_s(matprop.get_material(e->elem_marker, wf))[gto][gfrom];
+    }
+    
+    template<typename Real>
+    Real Scattering::Residual::vector_form( int n, double *wt, Func<Real> *u_ext[],
+                                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
+    { 
+      Real result = 0;
+      if (geom_type == HERMES_PLANAR) result = int_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v);
+      else 
+      {
+        if (geom_type == HERMES_AXISYM_X) result = int_y_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v, e);
+        else result = int_x_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v, e);
+      }
+      
+      return result * matprop.get_Sigma_s(matprop.get_material(e->elem_marker, wf))[gto][gfrom];
+    }    
+   
+    template<typename Real>
+    Real ExternalSources::LinearForm::vector_form(int n, double *wt, Func<Real> *u_ext[],
+                                                    Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
+    { 
+      std::string mat = matprop.get_material(e->elem_marker, wf);
+      
+      if (geom_type == HERMES_PLANAR) 
+        return matprop.get_iso_src(mat)[g] * int_v<Real>(n, wt, v);
+      else 
+      {
+        if (geom_type == HERMES_AXISYM_X) 
+          return matprop.get_iso_src(mat)[g] * int_y_v<Real>(n, wt, v, e);
+        else 
+          return matprop.get_iso_src(mat)[g] * int_x_v<Real>(n, wt, v, e);
+      }
+    }    
+    
+  /* WeakFormParts */
+  }
+  /* Diffusion */
+  }
+  
+  namespace SPN { namespace WeakFormParts
   {        
     template<typename Real>
     Real VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
@@ -332,235 +561,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics { namespace WeakFor
       else 
         return Coeffs::even_moment(0, mrow) * matprop.get_iso_src(mat)[g] * int_x_v<Real>(n, wt, v, e);
     }
-  }
   
-  namespace Diffusion
-  { 
-    template<typename Real>
-    Real VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                                                          Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
-    { 
-      Real result;
-      
-      if (geom_type == HERMES_PLANAR) 
-        result = 0.5 * int_u_v<Real, Real>(n, wt, u, v);
-      else if (geom_type == HERMES_AXISYM_X) 
-        result = 0.5 * int_y_u_v<Real, Real>(n, wt, u, v, e);
-      else 
-        result = 0.5 * int_x_u_v<Real, Real>(n, wt, u, v, e);
-      
-      return result;
-    }
+  /* WeakFormParts */
+  }
+  /* SPN */
+  }
     
-    template<typename Real>
-    Real VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<Real> *u_ext[],
-                                                          Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
-    { 
-      Real result;
-      
-      if (geom_type == HERMES_PLANAR) 
-        result = 0.5 * int_u_ext_v<Real, Real>(n, wt, u_ext[g], v);
-      else if (geom_type == HERMES_AXISYM_X) 
-        result = 0.5 * int_y_u_ext_v<Real, Real>(n, wt, u_ext[g], v, e);
-      else 
-        result = 0.5 * int_x_u_ext_v<Real, Real>(n, wt, u_ext[g], v, e);
-      
-      return result;
-    }
-     
-    template<typename Real>
-    Real DiffusionReaction::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                                                    Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
-    {
-      Real result;
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);     
-      rank1 D_elem = matprop.get_D(mat);
-      rank1 Sigma_r_elem = matprop.get_Sigma_r(mat);
-      
-      if (geom_type == HERMES_PLANAR) 
-      {
-        result = D_elem[g] * int_grad_u_grad_v<Real, Real>(n, wt, u, v) +
-                  Sigma_r_elem[g] * int_u_v<Real, Real>(n, wt, u, v);
-      }
-      else 
-      {
-        if (geom_type == HERMES_AXISYM_X) 
-        {
-          result = D_elem[g] * int_y_grad_u_grad_v<Real, Real>(n, wt, u, v, e) + 
-                    Sigma_r_elem[g] * int_y_u_v<Real, Real>(n, wt, u, v, e);
-        }
-        else 
-        {
-          result = D_elem[g] * int_x_grad_u_grad_v<Real, Real>(n, wt, u, v, e) + 
-                    Sigma_r_elem[g] * int_x_u_v<Real, Real>(n, wt, u, v, e);
-        }
-      }
-      return result;
-    }
-    
-    template<typename Real>
-    Real DiffusionReaction::Residual::vector_form(int n, double *wt, Func<Real> *u_ext[],
-                                                    Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
-    { 
-      Real result;
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);        
-      rank1 D_elem = matprop.get_D(mat);
-      rank1 Sigma_r_elem = matprop.get_Sigma_r(mat);
-      
-      if (geom_type == HERMES_PLANAR) 
-      {
-        result = D_elem[g] * int_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[g], v) +
-                  Sigma_r_elem[g] * int_u_ext_v<Real, Real>(n, wt, u_ext[g], v);
-      }
-      else 
-      {
-        if (geom_type == HERMES_AXISYM_X) 
-        {
-          result = D_elem[g] * int_y_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[g], v, e) + 
-                    Sigma_r_elem[g] * int_y_u_ext_v<Real, Real>(n, wt, u_ext[g], v, e);
-        }
-        else 
-        {
-          result = D_elem[g] * int_x_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[g], v, e) + 
-                    Sigma_r_elem[g] * int_x_u_ext_v<Real, Real>(n, wt, u_ext[g], v, e);
-        }
-      }
-      return result;
-    }
-    
-    template<typename Real>
-    Real FissionYield::Jacobian::matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                                                Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const 
-    {
-      if (!matprop.get_fission_nonzero_structure()[gto])
-        return 0.0;
-      
-      Real result = 0;
-      if (geom_type == HERMES_PLANAR) result = int_u_v<Real, Real>(n, wt, u, v);
-      else 
-      {
-        if (geom_type == HERMES_AXISYM_X) result = int_y_u_v<Real, Real>(n, wt, u, v, e);
-        else result = int_x_u_v<Real, Real>(n, wt, u, v, e);
-      }
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      rank1 nu_elem = matprop.get_nu(mat);
-      rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
-      rank1 chi_elem = matprop.get_chi(mat);
-      
-      return result * chi_elem[gto] * nu_elem[gfrom] * Sigma_f_elem[gfrom];
-    }
-    
-    template<typename Real>
-    Real FissionYield::OuterIterationForm::vector_form( int n, double *wt, Func<Real> *u_ext[],
-                                                          Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
-    { 
-      if (!matprop.get_fission_nonzero_structure()[g])
-        return 0.0;
-        
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      rank1 nu_elem = matprop.get_nu(mat);
-      rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
-      rank1 chi_elem = matprop.get_chi(mat);
-      
-      if ((unsigned)ext->nf != nu_elem.size() || (unsigned)ext->nf != Sigma_f_elem.size())
-        error_function(Messages::E_INVALID_GROUP_INDEX);
-      
-      Real result = 0;
-      for (int i = 0; i < n; i++) 
-      {
-        Real local_res = 0;
-        for (int gfrom = 0; gfrom < ext->nf; gfrom++)
-          local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i];
-                  
-        local_res = local_res * wt[i] * v->val[i];
-        
-        if (geom_type == HERMES_AXISYM_X)
-          local_res = local_res * e->y[i];
-        else if (geom_type == HERMES_AXISYM_Y)
-          local_res = local_res * e->x[i];
-        
-        result += local_res;
-      }
-      
-      return result * chi_elem[g] / keff;
-    }
-    
-    template<typename Real>
-    Real FissionYield::Residual::vector_form( int n, double *wt, Func<Real> *u_ext[],
-                                                Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
-    { 
-      if (!matprop.get_fission_nonzero_structure()[gto])
-        return 0.0;
-      
-      Real result = 0;
-      if (geom_type == HERMES_PLANAR) result = int_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v);
-      else 
-      {
-        if (geom_type == HERMES_AXISYM_X) result = int_y_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v, e);
-        else result = int_x_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v, e);
-      }
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      rank1 nu_elem = matprop.get_nu(mat);
-      rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
-      rank1 chi_elem = matprop.get_chi(mat);
-      
-      return result * chi_elem[gto] * nu_elem[gfrom] * Sigma_f_elem[gfrom];
-    }
-                                                    
-    template<typename Real>
-    Real Scattering::Jacobian::matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const  
-    {
-      Real result = 0;
-      if (geom_type == HERMES_PLANAR) result = int_u_v<Real, Real>(n, wt, u, v);
-      else 
-      {
-        if (geom_type == HERMES_AXISYM_X) result = int_y_u_v<Real, Real>(n, wt, u, v, e);
-        else result = int_x_u_v<Real, Real>(n, wt, u, v, e);
-      }
-      
-      return result * matprop.get_Sigma_s(matprop.get_material(e->elem_marker, wf))[gto][gfrom];
-    }
-    
-    template<typename Real>
-    Real Scattering::Residual::vector_form( int n, double *wt, Func<Real> *u_ext[],
-                                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
-    { 
-      Real result = 0;
-      if (geom_type == HERMES_PLANAR) result = int_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v);
-      else 
-      {
-        if (geom_type == HERMES_AXISYM_X) result = int_y_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v, e);
-        else result = int_x_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v, e);
-      }
-      
-      return result * matprop.get_Sigma_s(matprop.get_material(e->elem_marker, wf))[gto][gfrom];
-    }    
-   
-    template<typename Real>
-    Real ExternalSources::LinearForm::vector_form(int n, double *wt, Func<Real> *u_ext[],
-                                                    Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
-    { 
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      
-      if (geom_type == HERMES_PLANAR) 
-        return matprop.get_iso_src(mat)[g] * int_v<Real>(n, wt, v);
-      else 
-      {
-        if (geom_type == HERMES_AXISYM_X) 
-          return matprop.get_iso_src(mat)[g] * int_y_v<Real>(n, wt, v, e);
-        else 
-          return matprop.get_iso_src(mat)[g] * int_x_v<Real>(n, wt, v, e);
-      }
-    }    
- }
-    
-/* WeakFormParts */
-}
 /* Neutronics */
 }
 /* Hermes2D */
