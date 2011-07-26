@@ -1,10 +1,9 @@
 #define HERMES_REPORT_ALL
 
 #include "problem_data.h"
-#include "weakform_library/weakforms_neutronics.h"
 
 using namespace RefinementSelectors;
-using namespace Neutronics::WeakForms::SPN;
+using namespace Neutronics::SPN;
 
 const unsigned int N_GROUPS = 1;  // Monoenergetic (single group) problem.
 const unsigned int SPN_ORDER = 3; // SP3 approximation
@@ -77,7 +76,7 @@ int main(int argc, char* argv[])
   Hermes::TimePeriod cpu_time;
   cpu_time.tick();
    
-  MaterialPropertyMaps matprop(N_GROUPS, SPN_ORDER, rm_map);
+  MaterialProperties::MaterialPropertyMaps matprop(N_GROUPS, SPN_ORDER, rm_map);
   matprop.set_iso_src(src);
   matprop.set_Sigma_tn(St);
   matprop.set_Sigma_sn(Ssn);
@@ -110,7 +109,7 @@ int main(int argc, char* argv[])
   for (int j = 0; j < INIT_REF_NUM[0]; j++) 
     meshes[0]->refine_all_elements();
   
-  Neutronics::SupportClasses::SPN::Visualization views(SPN_ORDER, N_GROUPS, DISPLAY_MESHES);
+  SupportClasses::Visualization views(SPN_ORDER, N_GROUPS, DISPLAY_MESHES);
   if (DISPLAY_MESHES && HERMES_VISUALIZATION)
     views.inspect_meshes(meshes);
 
@@ -127,7 +126,7 @@ int main(int argc, char* argv[])
     spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
     
   // Initialize the weak formulation.
-  FixedSourceProblem wf(matprop, SPN_ORDER);
+  WeakForms::FixedSourceProblem wf(matprop, SPN_ORDER);
     
   if (STRATEGY >= 0)
   {
@@ -305,10 +304,10 @@ int main(int argc, char* argv[])
   // Integrate absorption rates and scalar fluxes over specified edit regions and compare with results
   // from the collision probabilities code DRAGON (see problem_data.h).
     
-  Neutronics::SupportClasses::PostProcessor pp(Neutronics::NEUTRONICS_SPN);
+  PostProcessor pp(NEUTRONICS_SPN);
   
   Hermes::vector<double> absorption_rates, integrated_fluxes, areas;
-  pp.get_integrated_reaction_rates(Neutronics::ABSORPTION, solutions, &absorption_rates, matprop, edit_regions);
+  pp.get_integrated_reaction_rates(ABSORPTION, solutions, &absorption_rates, matprop, edit_regions);
   pp.get_integrated_scalar_fluxes(solutions, &integrated_fluxes, N_GROUPS, edit_regions);
   pp.get_areas(spaces[0]->get_mesh(), edit_regions, &areas); // Areas of the edit regions.
   
