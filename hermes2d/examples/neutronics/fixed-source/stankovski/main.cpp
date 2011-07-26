@@ -1,13 +1,10 @@
 #define HERMES_REPORT_ALL
-#include "hermes2d.h"
+
 #include "problem_data.h"
-#include <sstream>
+#include "weakform_library/weakforms_neutronics.h"
 
 using namespace RefinementSelectors;
-
-using namespace WeakFormsNeutronics::Multigroup;
-using namespace MaterialProperties::SPN;
-using namespace CompleteWeakForms::SPN;
+using namespace Neutronics::WeakForms::SPN;
 
 const unsigned int N_GROUPS = 1;  // Monoenergetic (single group) problem.
 const unsigned int SPN_ORDER = 3; // SP3 approximation
@@ -51,36 +48,33 @@ const int NDOF_STOP = 60000;             // Adaptivity process stops when the nu
                                          // this limit. This is mainly to prevent h-adaptivity to go on forever.
 const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the number of adaptation steps grows over
                                          // this limit.
-MatrixSolverType matrix_solver = SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
+Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
 
 const bool HERMES_VISUALIZATION = true;       // Set to "true" to enable Hermes OpenGL visualization. 
 const bool VTK_VISUALIZATION = false;         // Set to "true" to enable VTK output.
-const bool DISPLAY_MESHES = false;            // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
+const bool DISPLAY_MESHES = true;            // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
 const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
 
-void report_num_dof(const std::string& msg, const Hermes::vector< Space* >& spaces)
+void report_num_dof(const std::string& msg, const Hermes::vector< Space<double>* >& spaces)
 {
   std::stringstream ss;
   
-  ss << msg << Space::get_num_dofs(spaces[0]);
+  ss << msg << spaces[0]->get_num_dofs();
   
   for (unsigned int i = 1; i < spaces.size(); i++)
-    ss << " + " << Space::get_num_dofs(spaces[i]);
+    ss << " + " << spaces[i]->get_num_dofs();
   
   if (spaces.size() > 1)
-    ss << " = " << Space::get_num_dofs(spaces);
+    ss << " = " << Space<double>::get_num_dofs(spaces);
   
   info(ss.str().c_str());
 }
 
 int main(int argc, char* argv[])
-{
-  // Instantiate a class with global functions.
-  Hermes2D hermes2d;
-  
+{  
   // Time measurement.
-  TimePeriod cpu_time;
+  Hermes::TimePeriod cpu_time;
   cpu_time.tick();
    
   MaterialPropertyMaps matprop(N_GROUPS, SPN_ORDER, rm_map);
@@ -116,33 +110,25 @@ int main(int argc, char* argv[])
   for (int j = 0; j < INIT_REF_NUM[0]; j++) 
     meshes[0]->refine_all_elements();
   
-  SupportClasses::SPN::Views views(SPN_ORDER, N_GROUPS, DISPLAY_MESHES);
+  Neutronics::SupportClasses::SPN::Visualization views(SPN_ORDER, N_GROUPS, DISPLAY_MESHES);
   if (DISPLAY_MESHES && HERMES_VISUALIZATION)
     views.inspect_meshes(meshes);
 
   // Create pointers to final solutions (the fine mesh solutions in case of STRATEGY >= 0).
-  Hermes::vector<Solution*> solutions;
+  Hermes::vector<Solution<double>*> solutions;
   
   // Initialize all the new solution variables.
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
-    solutions.push_back(new Solution());
+    solutions.push_back(new Solution<double>());
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<Space *> spaces;
+  Hermes::vector<Space<double> *> spaces;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
-    spaces.push_back(new H1Space(meshes[i], P_INIT[i]));
+    spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
     
   // Initialize the weak formulation.
-  DefaultWeakFormFixedSource wf(matprop, SPN_ORDER);
-  
-  // Initialize the discrete algebraic representation of the problem.
-  DiscreteProblem dp(&wf, spaces);
-  
-  // Set up the solver, matrix, and rhs according to the solver selection.
-  SparseMatrix* matrix = create_matrix(matrix_solver);
-  Vector* rhs = create_vector(matrix_solver);
-  Solver* solver = create_linear_solver(matrix_solver, matrix, rhs);
-  
+  FixedSourceProblem wf(matprop, SPN_ORDER);
+    
   if (STRATEGY >= 0)
   {
     // DOF and CPU convergence graphs
@@ -161,49 +147,51 @@ int main(int argc, char* argv[])
     graph_cpu_est.show_grid();
         
     // Create pointers to coarse mesh solutions used for error estimation.
-    Hermes::vector<Solution*> coarse_solutions;
+    Hermes::vector<Solution<double>*> coarse_solutions;
     
     // Initialize all the new solution variables.
     for (unsigned int i = 0; i < N_EQUATIONS; i++) 
-      coarse_solutions.push_back(new Solution());
+      coarse_solutions.push_back(new Solution<double>());
       
     // Initialize the refinement selectors.
-    H1ProjBasedSelector selector(CAND_LIST, CONV_EXP, H2DRS_DEFAULT_ORDER);
-    Hermes::vector<RefinementSelectors::Selector*> selectors;
+    H1ProjBasedSelector<double> selector(CAND_LIST, CONV_EXP, H2DRS_DEFAULT_ORDER);
+    Hermes::vector<RefinementSelectors::Selector<double>*> selectors;
     for (unsigned int i = 0; i < N_EQUATIONS; i++)
       selectors.push_back(&selector);
     
     // Adaptivity loop:
     int as = 1; bool done = false;
-    Hermes::vector<Space *>* fine_spaces;
+    Hermes::vector<Space<double> *>* fine_spaces;
     do 
     {
       info("---- Adaptivity step %d:", as);
             
-      fine_spaces = Space::construct_refined_spaces(spaces);
-      int ndof_fine = Space::get_num_dofs(*fine_spaces);
+      fine_spaces = Space<double>::construct_refined_spaces(spaces);
+      int ndof_fine = Space<double>::get_num_dofs(*fine_spaces);
       
       // Initialize the fine mesh problem.
       report_num_dof("Solving on fine meshes, #DOF:", *fine_spaces);
       
-      DiscreteProblem dp(&wf, *fine_spaces);
+      DiscreteProblem<double> dp(&wf, *fine_spaces);
 
       // Initial coefficient vector for the Newton's method.  
-      scalar* coeff_vec = new scalar[ndof_fine];
-      memset(coeff_vec, 0, ndof_fine * sizeof(scalar));
+      double* coeff_vec = new double[ndof_fine];
+      memset(coeff_vec, 0, ndof_fine * sizeof(double));
       
       // Perform Newton's iteration.
-      bool jacobian_changed = true;
-      bool verbose = true;
-      if (!hermes2d.solve_newton(coeff_vec, &dp, solver, matrix, rhs, jacobian_changed, 1e-8, 100, verbose)) 
-        error("Newton's iteration failed.");
-      
-      // Translate the resulting coefficient vector into solutions.
-      Solution::vector_to_solutions(coeff_vec, *fine_spaces, solutions);
+      // Perform Newton's iteration on reference emesh.
+      NewtonSolver<double> newton(&dp, matrix_solver);
+      newton.set_verbose_output(false);
+    
+      if (!newton.solve(coeff_vec)) 
+        error_function("Newton's iteration failed.");
+      else
+        // Translate the resulting coefficient vector into instances of Solution.
+        Solution<double>::vector_to_solutions(newton.get_sln_vector(), *fine_spaces, solutions);
       
       // Project the fine mesh solution onto the coarse mesh.
       report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF:", *fine_spaces);
-      OGProjection::project_global(spaces, solutions, coarse_solutions, matrix_solver);
+      OGProjection<double>::project_global(spaces, solutions, coarse_solutions, matrix_solver);
       
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION && INTERMEDIATE_VISUALIZATION)
@@ -212,12 +200,12 @@ int main(int argc, char* argv[])
         info("Visualizing.");
         views.show_solutions(coarse_solutions);
         views.show_orders(spaces);
-        cpu_time.tick(HERMES_SKIP);
+        cpu_time.tick(Hermes::HERMES_SKIP);
       }
       
       // Calculate element errors.
       info("Calculating error estimate and exact error."); 
-      Adapt adaptivity(spaces);
+      Adapt<double> adaptivity(spaces);
       
       // Calculate error estimate for each solution component and the total error estimate.
       Hermes::vector<double> err_est_rel;
@@ -227,9 +215,9 @@ int main(int argc, char* argv[])
       info("total H1 error estimate: %g%%", err_est_rel_total);
       
       cpu_time.tick();
-      graph_dof_est.add_values(Space::get_num_dofs(spaces), err_est_rel_total);
+      graph_dof_est.add_values(Space<double>::get_num_dofs(spaces), err_est_rel_total);
       graph_cpu_est.add_values(cpu_time.accumulated(), err_est_rel_total);
-      cpu_time.tick(HERMES_SKIP);
+      cpu_time.tick(Hermes::HERMES_SKIP);
       
       // If err_est too large, adapt the mesh.
       if (err_est_rel_total < ERR_STOP || as == MAX_ADAPT_NUM) 
@@ -238,7 +226,7 @@ int main(int argc, char* argv[])
       {
         info("Adapting the coarse meshes.");
         done = adaptivity.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);        
-        if (Space::get_num_dofs(spaces) >= NDOF_STOP) 
+        if (Space<double>::get_num_dofs(spaces) >= NDOF_STOP) 
           done = true;
       }
       
@@ -274,24 +262,26 @@ int main(int argc, char* argv[])
   }
   else
   {
-    int ndof = Space::get_num_dofs(spaces);
+    int ndof = Space<double>::get_num_dofs(spaces);
+    
+    // Initialize the discrete algebraic representation of the problem.
+    DiscreteProblem<double> dp(&wf, spaces);
     
     // Initial coefficient vector for the Newton's method.  
-    scalar* coeff_vec = new scalar[ndof];
-    memset(coeff_vec, 0, ndof*sizeof(scalar));
+    double* coeff_vec = new double[ndof];
+    memset(coeff_vec, 0, ndof*sizeof(double));
     
     // Perform Newton's iteration.
-    if (!hermes2d.solve_newton(coeff_vec, &dp, solver, matrix, rhs)) 
-      error("Newton's iteration failed.");
+    NewtonSolver<double> newton(&dp, matrix_solver);
+    newton.set_verbose_output(false);
     
-    // Translate the resulting coefficient vector into a Solution.
-    Solution::vector_to_solutions(coeff_vec, spaces, solutions);
+    if (!newton.solve(coeff_vec)) 
+      error_function("Newton's iteration failed.");
+    else
+      // Translate the resulting coefficient vector into instances of Solution.
+      Solution<double>::vector_to_solutions(newton.get_sln_vector(), spaces, solutions);
   } 
-  
-  delete solver;
-  delete matrix;
-  delete rhs;
-  
+    
   cpu_time.tick();
   verbose("Total running time: %g s", cpu_time.accumulated());
   
@@ -315,10 +305,10 @@ int main(int argc, char* argv[])
   // Integrate absorption rates and scalar fluxes over specified edit regions and compare with results
   // from the collision probabilities code DRAGON (see problem_data.h).
     
-  SupportClasses::PostProcessor pp(NEUTRONICS_SPN);
+  Neutronics::SupportClasses::PostProcessor pp(Neutronics::NEUTRONICS_SPN);
   
   Hermes::vector<double> absorption_rates, integrated_fluxes, areas;
-  pp.get_integrated_reaction_rates(ABSORPTION, solutions, &absorption_rates, matprop, edit_regions);
+  pp.get_integrated_reaction_rates(Neutronics::ABSORPTION, solutions, &absorption_rates, matprop, edit_regions);
   pp.get_integrated_scalar_fluxes(solutions, &integrated_fluxes, N_GROUPS, edit_regions);
   pp.get_areas(spaces[0]->get_mesh(), edit_regions, &areas); // Areas of the edit regions.
   
@@ -341,7 +331,7 @@ int main(int argc, char* argv[])
          fabs(areas[i] - ref_regions_areas[i])/ref_regions_areas[i] * 100);
         
   // Wait for the view to be closed.  
-  View::wait();
+  Views::View::wait();
   
   // Final clean up.
   for(unsigned int i = 0; i < N_EQUATIONS; i++)
