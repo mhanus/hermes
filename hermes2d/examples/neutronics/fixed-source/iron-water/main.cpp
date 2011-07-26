@@ -153,7 +153,7 @@ int main(int argc, char* argv[])
     
     info("Solving on reference mesh.");
     if (!newton.solve(coeff_vec)) 
-      error("Newton's iteration failed.");
+      error_function("Newton's iteration failed.");
     else
       // Translate the resulting coefficient vector into the instance of Solution.
       Solution<double>::vector_to_solution(newton.get_sln_vector(), ref_space, &ref_sln);
