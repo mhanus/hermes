@@ -1,7 +1,8 @@
 #include "hermes2d.h"
+using namespace Hermes::Hermes2D;
 
-using namespace WeakFormsNeutronics::Multigroup::MaterialProperties; 
-using namespace Definitions; 
+#include "neutronics/material_properties.h"
+using namespace Neutronics::MaterialProperties; 
 
 //////  Geometric parameters.  /////////////////////////////////////////////////////////////////
 
