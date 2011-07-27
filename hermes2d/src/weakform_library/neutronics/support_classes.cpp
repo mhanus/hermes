@@ -66,7 +66,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     void SourceFilter::post_init()
     {
-      set_quad_2d(&g_quad_2d_std);
       have_solutions = true;
       
       std::set<std::string>::const_iterator it = source_regions.begin();
