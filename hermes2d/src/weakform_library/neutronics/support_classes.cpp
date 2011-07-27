@@ -132,7 +132,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       return integral;
     }
     
-        const std::string Visualization::base_title_flux = "Neutron flux: group ";
+    const std::string Visualization::base_title_flux = "Neutron flux: group ";
     const std::string Visualization::base_title_order = "Polynomial orders: group ";
     const std::string Visualization::base_title_mesh = "Core mesh for group ";
     
@@ -146,6 +146,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         oviews = new Views::OrderView<double>* [n_equations];
         if (display_meshes)
           mviews = new Views::MeshView* [n_equations];
+        else
+          mviews = NULL;
       }
       else
       {
@@ -217,7 +219,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       oviews = NULL;
     }
-
+    
   /* SupportClasses */
   }
   /* Common */
@@ -232,17 +234,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         std::string title_flux = base_title_flux + itos(g);
         std::string title_order = base_title_order + itos(g);
         
-        sviews[g] = new Views::ScalarView<double>(title_flux.c_str(), new Views::WinGeom(0, g*452, 450, 450));
+        sviews[g] = new Views::ScalarView<double>(title_flux.c_str(), new Views::WinGeom(g*452, 0, 450, 450));
         sviews[g]->show_mesh(false);
         sviews[g]->set_3d_mode(true);
-        oviews[g] = new Views::OrderView<double>(title_order.c_str(), new Views::WinGeom(0, n_groups*452 + g*452, 450, 450));
+        oviews[g] = new Views::OrderView<double>(title_order.c_str(), new Views::WinGeom(g*452, 452, 450, 450));
       }
       
       if (display_meshes)
         for (unsigned int g = 0; g < n_groups; g++)
         {
           std::string title = base_title_mesh + itos(g);
-          mviews[g] = new Views::MeshView(title.c_str(), new Views::WinGeom(0, g*352, 350, 350));
+          mviews[g] = new Views::MeshView(title.c_str(), new Views::WinGeom(g*352, 904, 350, 350));
         }
     }
     
