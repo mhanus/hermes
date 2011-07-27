@@ -45,6 +45,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type),
             source_regions(source_regions.begin(), source_regions.end())
         {
+          // We need to setup the array 'item' manually, since 'solutions' may be a vector of
+          // freshly created Solution's, which have unset num_components.
+          for (int i = 0; i < 10; i++)
+            item[i] = H2D_FN_VAL & H2D_FN_COMPONENT_0;
+          
           post_init();
         };
         SourceFilter(Hermes::vector<Solution<double>*> solutions,
@@ -54,6 +59,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type),
             source_regions(source_regions.begin(), source_regions.end())
         {
+          // We need to setup the array 'item' manually, since 'solutions' may be a vector of
+          // freshly created Solution's, which have unset num_components.
+          for (int i = 0; i < 10; i++)
+            item[i] = H2D_FN_VAL & H2D_FN_COMPONENT_0;
+          
           post_init();
         };
         SourceFilter(Hermes::vector<MeshFunction<double>*> solutions,
@@ -62,6 +72,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type)
         { 
           source_regions.insert(source_region); 
+          
+          // We need to setup the array 'item' manually, since 'solutions' may be a vector of
+          // freshly created Solution's, which have unset num_components.
+          for (int i = 0; i < 10; i++)
+            item[i] = H2D_FN_VAL & H2D_FN_COMPONENT_0;
+          
           post_init();
         }
         SourceFilter(Hermes::vector<Solution<double>*> solutions,
@@ -70,6 +86,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type)
         { 
           source_regions.insert(source_region); 
+          
+          // We need to setup the array 'item' manually, since 'solutions' may be a vector of
+          // freshly created Solution's, which have unset num_components.
+          for (int i = 0; i < 10; i++)
+            item[i] = H2D_FN_VAL & H2D_FN_COMPONENT_0;
+          
           post_init();
         }
         
