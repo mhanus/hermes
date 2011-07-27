@@ -155,6 +155,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         void inspect_meshes(Hermes::vector<Mesh*> meshes);
         void inspect_solutions(Hermes::vector< Solution<double>* > solutions);
         void inspect_orders(Hermes::vector<Space<double>*> spaces);
+        
+        Views::ScalarView<double>** get_solution_views(unsigned int* num) { *num = n_unknowns;  return sviews; }
+        Views::OrderView<double>** get_order_views(unsigned int* num)     { *num = n_equations; return oviews; }
+        Views::MeshView** get_mesh_views(unsigned int* num)               { *num = n_equations; return mviews; }
     };
   
   /* SupportClasses */
