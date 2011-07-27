@@ -5,7 +5,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 {
   int keff_eigenvalue_iteration(const Hermes::vector<Solution<double> *>& solutions, 
                                 Common::WeakForms::KeffEigenvalueProblem* wf, const Hermes::vector<Space<double> *>& spaces,
-                                double tol_keff, double tol_flux, MatrixSolverType matrix_solver)
+                                MatrixSolverType matrix_solver, double tol_keff, double tol_flux)
   {
     // Sanity checks.
     if (spaces.size() != solutions.size()) 
@@ -13,15 +13,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                   
     // The following variables will store pointers to solutions obtained at each iteration and will be needed for 
     // updating the eigenvalue. 
-    bool meshes_changed = false;
     Hermes::vector<Solution<double>*> new_solutions;
     for (unsigned int i = 0; i < solutions.size(); i++) 
-    {
-      Mesh *m = spaces[i]->get_mesh();
-      if (solutions[i]->get_mesh()->get_seq() != m->get_seq())
-          meshes_changed = true;
-      new_solutions.push_back(new Solution<double>(m));
-    }
+      new_solutions.push_back(new Solution<double>(spaces[i]->get_mesh()));
     
     Common::SupportClasses::SourceFilter *new_source = wf->get_new_source_filter(new_solutions);
     Common::SupportClasses::SourceFilter *old_source = wf->get_new_source_filter(solutions);
@@ -49,7 +43,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     bool eigen_done = false; int it = 0;
     do 
     {
-      memset(coeff_vec, 0.0, ndof*sizeof(double));
+      memset(coeff_vec, 0, ndof*sizeof(double));
 
       // The matrix doesn't change within the power iteration loop, so we don't have to reassemble the Jacobian again.
       if (!solver.solve_keep_jacobian(coeff_vec, 1e-8, 3)) 
@@ -104,14 +98,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       // Store the new eigenvector approximation in the result.
       for (unsigned int i = 0; i < solutions.size(); i++)  
         solutions[i]->copy(new_solutions[i]);
-      
-      //if (meshes_changed)
-      //{
-        old_source->assign_solutions(solutions);
-        new_source->assign_solutions(new_solutions);
-        // meshes_changed = false; should be here in principle, since meshes do not change
-        // during the iteration, but it fails after some iteration
-      //}
       
       it++;
     }
