@@ -1,20 +1,17 @@
 #include "hermes2d.h"
-#include <sstream>
+using namespace Hermes::Hermes2D; 
 
-using namespace WeakFormsNeutronics::Multigroup;
-using namespace CompleteWeakForms::SPN;
-using namespace ElementaryForms::SPN;
+#include "weakforms_neutronics.h"
+using namespace Neutronics::SPN;
 
-using SupportClasses::SPN::MomentFilter;
-
-class CustomWeakForm : public DefaultWeakFormSourceIteration
+class CustomWeakForm : public WeakForms::KeffEigenvalueProblem
 {
   public:
-    CustomWeakForm(const MaterialPropertyMaps& matprop, unsigned int N,
-                   const Hermes::vector<Solution*>& iterates,
+    CustomWeakForm(const MaterialProperties::MaterialPropertyMaps& matprop, unsigned int N,
+                   const Hermes::vector<Solution<double>*>& iterates,
                    const Hermes::vector<std::string>& fission_regions,
-                   double init_keff, std::string bdy_vacuum);
+                   double init_keff, const std::string& bdy_vacuum);
 };
 
-void report_num_dof(const std::string& msg, const Hermes::vector<Space *> spaces);
+void report_num_dof(const std::string& msg, const Hermes::vector<Space<double> *> spaces);
 void report_errors(const std::string& msg, const Hermes::vector< double > errors);
