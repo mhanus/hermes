@@ -1,20 +1,23 @@
 ////// Weak formulation in axisymmetric coordinate system  ////////////////////////////////////
 
 #include "hermes2d.h"
+using namespace Hermes::Hermes2D; 
 
-using namespace WeakFormsNeutronics::Multigroup::CompleteWeakForms::Diffusion; 
+#include "weakforms_neutronics.h"
+using namespace Neutronics::Diffusion;
 
-class CustomWeakForm : public DefaultWeakFormSourceIteration
+class CustomWeakForm : public WeakForms::KeffEigenvalueProblem
 {
 public:
-  CustomWeakForm( const MaterialPropertyMaps& matprop, const Hermes::vector<Solution*>& iterates,
+  CustomWeakForm( const MaterialProperties::MaterialPropertyMaps& matprop, 
+                  const Hermes::vector<Solution<double>*>& iterates,
                   double init_keff, const std::string& bdy_vacuum )
-    : DefaultWeakFormSourceIteration(matprop, iterates, init_keff, HERMES_AXISYM_Y)
+    : WeakForms::KeffEigenvalueProblem(matprop, iterates, init_keff, HERMES_AXISYM_Y)
   {
     for (unsigned int g = 0; g < matprop.get_G(); g++)
     {
-      add_matrix_form_surf(new VacuumBoundaryCondition::Jacobian(g, bdy_vacuum, HERMES_AXISYM_Y));
-      add_vector_form_surf(new VacuumBoundaryCondition::Residual(g, bdy_vacuum, HERMES_AXISYM_Y));
+      add_matrix_form_surf(new WeakFormParts::VacuumBoundaryCondition::Jacobian(g, bdy_vacuum, HERMES_AXISYM_Y));
+      add_vector_form_surf(new WeakFormParts::VacuumBoundaryCondition::Residual(g, bdy_vacuum, HERMES_AXISYM_Y));
     }
   }
 };
