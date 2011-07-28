@@ -300,12 +300,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                      const std::vector<std::string>& source_regions = std::vector<std::string>(),
                      GeomType geom_type = HERMES_PLANAR)
           : Common::SupportClasses::SourceFilter(matprop, source_regions, geom_type),
-            G(matprop.get_G()), mg(G)
+            G(matprop.get_G()), mg(matprop.get_G())
         {};
         SourceFilter(const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
           : Common::SupportClasses::SourceFilter(matprop, source_region, geom_type),
-            G(matprop.get_G()), mg(G) 
+            G(matprop.get_G()), mg(matprop.get_G()) 
         {};
         
         /* Immediate constructors: the vector of solutions to be filtered is given by the first argument.  */
@@ -315,26 +315,26 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                      const std::vector<std::string>& source_regions = std::vector<std::string>(),
                      GeomType geom_type = HERMES_PLANAR)
           : Common::SupportClasses::SourceFilter(solutions, matprop, source_regions, geom_type), 
-            G(matprop.get_G()), mg(G)
+            G(matprop.get_G()), mg(matprop.get_G())
         {};
         SourceFilter(Hermes::vector<Solution<double>*> solutions,
                      const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::vector<std::string>& source_regions = std::vector<std::string>(),
                      GeomType geom_type = HERMES_PLANAR)
           : Common::SupportClasses::SourceFilter(solutions, matprop, source_regions, geom_type), 
-            G(matprop.get_G()), mg(G) 
+            G(matprop.get_G()), mg(matprop.get_G()) 
         {};
         SourceFilter(Hermes::vector<MeshFunction<double>*> solutions,
                      const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
           : Common::SupportClasses::SourceFilter(solutions, matprop, source_region, geom_type),
-            G(matprop.get_G()), mg(G) 
+            G(matprop.get_G()), mg(matprop.get_G()) 
         {};
         SourceFilter(Hermes::vector<Solution<double>*> solutions,
                      const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                      const std::string& source_region, GeomType geom_type = HERMES_PLANAR)
           : Common::SupportClasses::SourceFilter(solutions, matprop, source_region, geom_type), 
-            G(matprop.get_G()), mg(G) 
+            G(matprop.get_G()), mg(matprop.get_G()) 
         {};
                     
         virtual void assign_solutions(const Hermes::vector<Solution<double>*>& solutions) {
