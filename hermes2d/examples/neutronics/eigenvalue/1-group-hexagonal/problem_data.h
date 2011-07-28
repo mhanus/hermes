@@ -1,6 +1,5 @@
-#include "hermes2d.h"
-
-using namespace WeakFormsNeutronics::Multigroup::MaterialProperties::Definitions; 
+#include "neutronics/material_properties.h"
+using namespace Hermes::Hermes2D::Neutronics; 
 
 // Reference k_effective reactor eigenvalue.
 const double REF_K_EFF = 1.000332; // SP3
