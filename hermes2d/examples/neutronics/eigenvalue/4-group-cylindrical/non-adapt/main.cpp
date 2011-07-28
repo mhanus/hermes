@@ -2,8 +2,6 @@
 #include "../weak_formulation.h"
 #include "../problem_data.h"
 
-using namespace WeakFormsNeutronics::Multigroup;
-
 // This example solves a 4-group neutron diffusion equation in the reactor core.
 // The eigenproblem is solved using power interations.
 //
@@ -47,7 +45,7 @@ const int P_INIT_1 = 1,                           // Initial polynomial degree f
           P_INIT_3 = 2,                           // Initial polynomial degree for approximation of group 3 fluxes.
           P_INIT_4 = 2;                           // Initial polynomial degree for approximation of group 4 fluxes.
 const double ERROR_STOP = 1e-5;                   // Tolerance for the eigenvalue.
-MatrixSolverType matrix_solver = SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
+Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
 
 const char* iterative_method = "bicgstab";        // Name of the iterative method employed by AztecOO (ignored
@@ -62,10 +60,7 @@ const char* preconditioner = "jacobi";            // Name of the preconditioner 
 double k_eff = 1.0;         
 
 int main(int argc, char* argv[])
-{
-  // Instantiate a class with global functions.
-  Hermes2D hermes2d;
-  
+{  
   // Load the mesh.
   Mesh mesh;
   H2DReader mloader;
@@ -75,33 +70,32 @@ int main(int argc, char* argv[])
   for (int i = 0; i < INIT_REF_NUM; i++) mesh.refine_all_elements();
 
   // Solution variables.
-  Solution sln1, sln2, sln3, sln4;
-  Hermes::vector<Solution*> solutions(&sln1, &sln2, &sln3, &sln4);
+  Solution<double> sln1, sln2, sln3, sln4;
+  Hermes::vector<Solution<double>*> solutions(&sln1, &sln2, &sln3, &sln4);
   
   // Define initial conditions.
   info("Setting initial conditions.");
-  Solution iter1, iter2, iter3, iter4;
-  iter1.set_const(&mesh, 1.00);
-  iter2.set_const(&mesh, 1.00);
-  iter3.set_const(&mesh, 1.00);
-  iter4.set_const(&mesh, 1.00);
-  Hermes::vector<Solution*> iterates(&iter1, &iter2, &iter3, &iter4);
+  Solution<double> iter1(&mesh, 1.0), 
+                   iter2(&mesh, 1.0), 
+                   iter3(&mesh, 1.0), 
+                   iter4(&mesh, 1.0);
+  Hermes::vector<Solution<double>*> iterates(&iter1, &iter2, &iter3, &iter4);
 
   // Create H1 spaces with default shapesets.
-  H1Space space1(&mesh, P_INIT_1);
-  H1Space space2(&mesh, P_INIT_2);
-  H1Space space3(&mesh, P_INIT_3);
-  H1Space space4(&mesh, P_INIT_4);
-  Hermes::vector<Space*> spaces(&space1, &space2, &space3, &space4);
+  H1Space<double> space1(&mesh, P_INIT_1);
+  H1Space<double> space2(&mesh, P_INIT_2);
+  H1Space<double> space3(&mesh, P_INIT_3);
+  H1Space<double> space4(&mesh, P_INIT_4);
+  Hermes::vector<Space<double>*> spaces(&space1, &space2, &space3, &space4);
   
-  int ndof = Space::get_num_dofs(spaces);
+  int ndof = Space<double>::get_num_dofs(spaces);
   info("ndof = %d.", ndof);
   
   // Initialize views.
-  ScalarView view1("Neutron flux 1", new WinGeom(0, 0, 320, 600));
-  ScalarView view2("Neutron flux 2", new WinGeom(350, 0, 320, 600));
-  ScalarView view3("Neutron flux 3", new WinGeom(700, 0, 320, 600));
-  ScalarView view4("Neutron flux 4", new WinGeom(1050, 0, 320, 600));
+  Views::ScalarView<double> view1("Neutron flux 1", new Views::WinGeom(0, 0, 320, 600));
+  Views::ScalarView<double> view2("Neutron flux 2", new Views::WinGeom(350, 0, 320, 600));
+  Views::ScalarView<double> view3("Neutron flux 3", new Views::WinGeom(700, 0, 320, 600));
+  Views::ScalarView<double> view4("Neutron flux 4", new Views::WinGeom(1050, 0, 320, 600));
   
   // Do not show meshes.
   view1.show_mesh(false); view1.set_3d_mode(true);
@@ -110,7 +104,7 @@ int main(int argc, char* argv[])
   view4.show_mesh(false); view4.set_3d_mode(true);
   
   // Load physical data of the problem for the 4 energy groups.
-  MaterialPropertyMaps matprop(4);
+  MaterialProperties::MaterialPropertyMaps matprop(4);
   matprop.set_D(D);
   matprop.set_Sigma_r(Sr);
   matprop.set_Sigma_s(Ss);
@@ -122,52 +116,47 @@ int main(int argc, char* argv[])
   
   std::cout << matprop;
   
+  // Time measurement.
+  Hermes::TimePeriod cpu_time, solver_time;
+  cpu_time.tick(); 
+  
   // Initialize the weak formulation.
   CustomWeakForm wf(matprop, iterates, k_eff, bdy_vacuum);
 
   // Initialize the FE problem.
-  DiscreteProblem dp(&wf, spaces);
-  
-  SparseMatrix* matrix = create_matrix(matrix_solver);
-  Vector* rhs = create_vector(matrix_solver);
-  Solver* solver = create_linear_solver(matrix_solver, matrix, rhs);
-
-  if (matrix_solver == SOLVER_AZTECOO) 
-  {
-    ((AztecOOSolver*) solver)->set_solver(iterative_method);
-    ((AztecOOSolver*) solver)->set_precond(preconditioner);
-    // Using default iteration parameters (see solver/aztecoo.h).
-  }
-   
-  // Time measurement.
-  TimePeriod cpu_time, solver_time;
+  DiscreteProblem<double> dp(&wf, spaces);
   
   // Initial coefficient vector for the Newton's method.
-  scalar* coeff_vec = new scalar[ndof];
+  double* coeff_vec = new double[ndof];
   
-  // Force the Jacobian assembling in the first iteration.
-  bool Jacobian_changed = true;
+  NewtonSolver<double> solver(&dp, matrix_solver);
+  solver.set_verbose_output(false);
   
-  // In the following iterations, Jacobian will not be changing; its LU factorization
-  // may be reused.
-  solver->set_factorization_scheme(HERMES_REUSE_FACTORIZATION_COMPLETELY);
+  if (matrix_solver == Hermes::SOLVER_AZTECOO) 
+  {
+    solver.set_iterative_method(iterative_method);
+    solver.set_preconditioner(preconditioner);
+  }
   
   // Main power iteration loop:
   int it = 1; bool done = false;
   do
   {
-    info("------------ Power iteration %d:", it);
-    
-    info("Newton's method (matrix problem solved by %s).", MatrixSolverNames[matrix_solver].c_str());
-    
-    memset(coeff_vec, 0.0, ndof*sizeof(scalar)); //TODO: Why it doesn't work without zeroing coeff_vec in each iteration?
-    
-    solver_time.tick(HERMES_SKIP);      
-    if (!hermes2d.solve_newton(coeff_vec, &dp, solver, matrix, rhs, Jacobian_changed, 1e-8, 10, true)) 
-      error("Newton's iteration failed.");
     solver_time.tick();
     
-    Solution::vector_to_solutions(solver->get_solution(), spaces, solutions);
+    info("------------ Power iteration %d:", it);
+    
+    info("Newton's method (matrix problem solved by %s).", Hermes::MatrixSolverNames[matrix_solver].c_str());
+    
+    memset(coeff_vec, 0, ndof*sizeof(double));
+    
+    if (!solver.solve_keep_jacobian(coeff_vec)) 
+      error_function("Newton's iteration failed.");
+    else
+      Solution<double>::vector_to_solutions(solver.get_sln_vector(), spaces, solutions);
+    
+    solver_time.tick();
+    cpu_time.tick();
     
     // Show intermediate solutions.
     view1.show(&sln1);    
@@ -175,11 +164,14 @@ int main(int argc, char* argv[])
     view3.show(&sln3);    
     view4.show(&sln4);
     
-    // Compute eigenvalue.    
-    SupportClasses::Common::SourceFilter source(solutions, matprop, fission_regions);
-    SupportClasses::Common::SourceFilter source_prev(iterates, matprop, fission_regions);
+    solver_time.tick(Hermes::HERMES_SKIP);
+    cpu_time.tick(Hermes::HERMES_SKIP);
     
-    double k_new = k_eff * (source.integrate(HERMES_AXISYM_Y) / source_prev.integrate(HERMES_AXISYM_Y));
+    // Compute eigenvalue.    
+    SupportClasses::SourceFilter source(solutions, matprop, fission_regions, HERMES_AXISYM_Y);
+    SupportClasses::SourceFilter source_prev(iterates, matprop, fission_regions, HERMES_AXISYM_Y);
+    
+    double k_new = k_eff * (source.integrate() / source_prev.integrate());
     info("Largest eigenvalue: %.8g, rel. difference from previous it.: %g", k_new, fabs((k_eff - k_new) / k_new));
     
     // Stopping criterion.
@@ -197,10 +189,6 @@ int main(int argc, char* argv[])
       iter3.copy(&sln3);    
       iter4.copy(&sln4);
       
-      // Don't need to reassemble the system matrix in further iterations,
-      // only the rhs changes to reflect the progressively updated source.
-      Jacobian_changed = false;
-
       it++;
     }
   }
@@ -210,16 +198,11 @@ int main(int argc, char* argv[])
   
   // Time measurement.
   cpu_time.tick();
-  solver_time.tick(HERMES_SKIP);
+  solver_time.tick(Hermes::HERMES_SKIP);
   
   // Print timing information.
   verbose("Average solver time for one power iteration: %g s", solver_time.accumulated() / it);
   
-  // Clean up.
-  delete matrix;
-  delete rhs;
-  delete solver;
-
   // Show solutions.
   view1.show(&sln1);
   view2.show(&sln2);
@@ -227,12 +210,12 @@ int main(int argc, char* argv[])
   view4.show(&sln4);
   
   // Skip visualization time.
-  cpu_time.tick(HERMES_SKIP);
+  cpu_time.tick(Hermes::HERMES_SKIP);
 
   // Print timing information.
   verbose("Total running time: %g s", cpu_time.accumulated());
     
   // Wait for all views to be closed.
-  View::wait();
+  Views::View::wait();
   return 0;
 }
