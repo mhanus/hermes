@@ -58,14 +58,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         add_vector_form(*vectors_it);
     }
     
-    KeffEigenvalueProblem::~KeffEigenvalueProblem()
-    {
-      std::vector<SupportClasses::SourceFilter*>::const_iterator it = source_filters.begin();
-      for ( ; it != source_filters.end(); ++it)
-        delete *it;
-      source_filters.clear();
-    }
-    
   /* WeakForms */
   }
   /* Common */
@@ -199,41 +191,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       source_terms.clear();
     }
     
-   KeffEigenvalueProblem::KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                                             const Hermes::vector<MeshFunction<double>*>& iterates,
-                                             double initial_keff_guess, 
-                                             GeomType geom_type ) 
-      : Common::WeakForms::KeffEigenvalueProblem(matprop.get_G(), &matprop, geom_type, initial_keff_guess)
-    {
-      homogeneous_part = new HomogeneousPart(&matprop, geom_type, false);
-      add_forms_from_homogeneous_part();
-      
-      init_rhs(iterates);
-    }
-
     KeffEigenvalueProblem::KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
                                                 const Hermes::vector<Solution<double>*>& iterates,
                                                 double initial_keff_guess, 
                                                 GeomType geom_type ) 
       : Common::WeakForms::KeffEigenvalueProblem(matprop.get_G(), &matprop, geom_type, initial_keff_guess)
-    {      
-      Hermes::vector<MeshFunction<double> *> iterates_mf;
-      for (unsigned int i = 0; i < iterates.size(); i++)
-        iterates_mf.push_back(static_cast<MeshFunction<double>*>(iterates[i]));
-      
-      homogeneous_part = new HomogeneousPart(&matprop, geom_type, false);
-      add_forms_from_homogeneous_part();
-      
-      init_rhs(iterates_mf);
-    }
-
-    KeffEigenvalueProblem::KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                                                const Hermes::vector<MeshFunction<double>*>& iterates, 
-                                                const Hermes::vector<std::string>& fission_regions,
-                                                double initial_keff_guess, 
-                                                GeomType geom_type )
-      : Common::WeakForms::KeffEigenvalueProblem(matprop.get_G(), &matprop, geom_type, initial_keff_guess, fission_regions)
-    {
+    {            
       homogeneous_part = new HomogeneousPart(&matprop, geom_type, false);
       add_forms_from_homogeneous_part();
       
@@ -247,28 +210,32 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                 GeomType geom_type ) 
       : Common::WeakForms::KeffEigenvalueProblem(matprop.get_G(), &matprop, geom_type, initial_keff_guess, fission_regions)
     {
-      Hermes::vector<MeshFunction<double> *> iterates_mf;
-      for (unsigned int i = 0; i < iterates.size(); i++)
-        iterates_mf.push_back(static_cast<MeshFunction<double>*>(iterates[i]));
-      
       homogeneous_part = new HomogeneousPart(&matprop, geom_type, false);
       add_forms_from_homogeneous_part();
       
-      init_rhs(iterates_mf);
+      init_rhs(iterates);
     }
     
-    void KeffEigenvalueProblem::init_rhs(const Hermes::vector<MeshFunction<double>*>& iterates)
+    void KeffEigenvalueProblem::init_rhs(const Hermes::vector<Solution<double>*>& iterates)
     {
       const MaterialPropertyMaps *mp = static_cast<const MaterialPropertyMaps*>(matprop);
+      
+      stored_flux_solutions.reserve(G);
+      scalar_flux_iterates.reserve(G);
+      for (unsigned int gto = 0; gto < G; gto++)
+      { 
+        stored_flux_solutions.push_back(iterates[gto]);
+        scalar_flux_iterates.push_back(static_cast<MeshFunction<double>*>(stored_flux_solutions.back()));
+      }
       
       for (unsigned int gto = 0; gto < G; gto++)
       { 
         FissionYield::OuterIterationForm* keff_iteration_form;
         
         if (fission_regions.size() > 0) 
-          keff_iteration_form = new FissionYield::OuterIterationForm( gto, fission_regions, *mp, iterates, keff, geom_type );
+          keff_iteration_form = new FissionYield::OuterIterationForm( gto, fission_regions, *mp, scalar_flux_iterates, keff, geom_type );
         else
-          keff_iteration_form = new FissionYield::OuterIterationForm( gto, *mp, iterates, keff, geom_type );
+          keff_iteration_form = new FissionYield::OuterIterationForm( gto, *mp, scalar_flux_iterates, keff, geom_type );
         
         keff_iteration_forms.push_back(keff_iteration_form);
         add_vector_form(keff_iteration_form);
@@ -284,22 +251,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         (*it)->update_keff(new_keff); 
     }
     
-    Common::SupportClasses::SourceFilter* KeffEigenvalueProblem::get_new_source_filter()
+    void KeffEigenvalueProblem::update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed)
     {
-      source_filters.push_back(new SupportClasses::SourceFilter(*matprop, fission_regions, geom_type));
-      return source_filters.back();
-    }
-    
-    Common::SupportClasses::SourceFilter* KeffEigenvalueProblem::get_new_source_filter(const Hermes::vector<Solution<double>*>& solutions)
-    {
-      source_filters.push_back(new SupportClasses::SourceFilter(solutions, *matprop, fission_regions, geom_type));
-      return source_filters.back();
-    }
-    
-    Common::SupportClasses::SourceFilter* KeffEigenvalueProblem::get_new_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions)
-    {
-      source_filters.push_back(new SupportClasses::SourceFilter(solutions, *matprop, fission_regions, geom_type));
-      return source_filters.back();
+      for (unsigned int gto = 0; gto < G; gto++)
+        stored_flux_solutions[gto]->copy(new_solutions[gto]);
     }
     
   /* WeakForms */
@@ -410,10 +365,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
                                            GeomType geom_type) 
-      : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type)
+      : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
+        SPNWeakForm(N, matprop.get_G())
     {
-      unsigned int N_odd = (N+1)/2;
-      
       homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, true);
       add_forms_from_homogeneous_part();
       
@@ -429,11 +383,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N, 
                                            HermesFunction<double> *minus_isotropic_source, std::string src_area,
                                            GeomType geom_type  )
-      : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type)
-    {
-      unsigned int N_odd = (N+1)/2;
-      MomentGroupFlattener mg(G);
-      
+      : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
+        SPNWeakForm(N, matprop.get_G())
+    {      
       homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, true);
       add_forms_from_homogeneous_part();
       
@@ -451,11 +403,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            HermesFunction<double> *minus_isotropic_source,
                                            Hermes::vector<std::string> src_areas,
                                            GeomType geom_type  )
-      : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type)
-    {
-      unsigned int N_odd = (N+1)/2;
-      MomentGroupFlattener mg(G);
-      
+      : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
+        SPNWeakForm(N, matprop.get_G())
+    {      
       homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, true);
       add_forms_from_homogeneous_part();
       
@@ -473,13 +423,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            const std::vector<HermesFunction<double>*>& minus_isotropic_sources,
                                            std::string src_area, 
                                            GeomType geom_type )
-      : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type)
+      : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
+        SPNWeakForm(N, matprop.get_G())
     {
       if (minus_isotropic_sources.size() != G)
         error_function(Messages::E_INVALID_SIZE);
-      
-      unsigned int N_odd = (N+1)/2;
-      MomentGroupFlattener mg(G);
       
       homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, true);
       add_forms_from_homogeneous_part();
@@ -498,13 +446,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            const std::vector<HermesFunction<double>*>& minus_isotropic_sources,
                                            Hermes::vector<std::string> src_areas,
                                            GeomType geom_type )
-      : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type)
+      : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
+        SPNWeakForm(N, matprop.get_G())
     {
       if (minus_isotropic_sources.size() != G)
         error_function(Messages::E_INVALID_SIZE);
-      
-      unsigned int N_odd = (N+1)/2;
-      MomentGroupFlattener mg(G);
       
       homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, true);
       add_forms_from_homogeneous_part();
@@ -532,12 +478,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                  const Hermes::vector<std::string>& fission_regions,
                                                  double initial_keff_guess, 
                                                  GeomType geom_type )
-      : Common::WeakForms::KeffEigenvalueProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type, initial_keff_guess, fission_regions)
-    {      
-      SupportClasses::MomentFilter::get_scalar_fluxes_with_derivatives(iterates, &scalar_flux_iterates, G);
+      : Common::WeakForms::KeffEigenvalueProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type, initial_keff_guess, fission_regions),
+        SPNWeakForm(N, matprop.get_G())
+    { 
+      stored_flux_solutions.reserve(iterates.size());
+      for (Hermes::vector<Solution<double>*>::const_iterator it = iterates.begin(); it != iterates.end(); ++it)
+        stored_flux_solutions.push_back(*it);
       
-      unsigned int N_odd = (N+1)/2;
-      MomentGroupFlattener mg(G);
+      SupportClasses::MomentFilter::get_scalar_fluxes_with_derivatives(stored_flux_solutions, &scalar_flux_iterates, G);
       
       homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, false);
       add_forms_from_homogeneous_part();
@@ -580,24 +528,29 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         (*it)->update_keff(new_keff); 
     }
     
-    Common::SupportClasses::SourceFilter* KeffEigenvalueProblem::get_new_source_filter()
+    void KeffEigenvalueProblem::update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed)
     {
-      source_filters.push_back(new SupportClasses::SourceFilter(*matprop, fission_regions, geom_type));
-      return source_filters.back();
+      Hermes::vector<Solution<double>*>::const_iterator new_solution = new_solutions.begin();
+      Hermes::vector<Solution<double>*>::const_iterator stored_flux_solution = stored_flux_solutions.begin();
+      
+      for ( ; new_solution != new_solutions.end(); ++new_solution, ++stored_flux_solution)
+      {
+        // FIXME: It seems that Space::construct_refined_spaces prevents automatic determination of meshes_changed.
+        //
+        //if ((*new_solution)->get_mesh()->get_seq() != (*stored_flux_solution)->get_mesh()->get_seq())
+        //  meshes_changed = true;
+        
+        (*stored_flux_solution)->copy(*new_solution);
+      }
+      
+      if (meshes_changed)
+      {
+        Hermes::vector<MeshFunction<double>*>::const_iterator scalar_flux_iterate = scalar_flux_iterates.begin();
+        for ( ; scalar_flux_iterate != scalar_flux_iterates.end(); ++scalar_flux_iterate)
+          (*scalar_flux_iterate)->reinit();
+      }
     }
-    
-    Common::SupportClasses::SourceFilter* KeffEigenvalueProblem::get_new_source_filter(const Hermes::vector<Solution<double>*>& solutions)
-    {
-      source_filters.push_back(new SupportClasses::SourceFilter(solutions, *matprop, fission_regions, geom_type));
-      return source_filters.back();
-    }
-    
-    Common::SupportClasses::SourceFilter* KeffEigenvalueProblem::get_new_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions)
-    {
-      source_filters.push_back(new SupportClasses::SourceFilter(solutions, *matprop, fission_regions, geom_type));
-      return source_filters.back();
-    }
-    
+            
   /* WeakForms */
   }
   /* Diffusion */
