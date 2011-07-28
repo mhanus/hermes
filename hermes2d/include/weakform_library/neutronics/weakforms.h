@@ -86,8 +86,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       protected:
         double keff;
         const Hermes::vector<std::string>& fission_regions;
-        
-        std::vector<SupportClasses::SourceFilter*> source_filters;
+
+        Hermes::vector<Solution<double>*> stored_flux_solutions;
+        Hermes::vector<MeshFunction<double>*> scalar_flux_iterates;
         
         // TODO: keff_iteration_forms initialization also belongs here. 
         /// \param[in] fission_regions  Strings specifiying the parts of the solution domain where fission occurs.
@@ -101,17 +102,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
        { };
         
       public:
-        virtual ~KeffEigenvalueProblem();
+        virtual ~KeffEigenvalueProblem() { };
         
         virtual void update_keff(double new_keff) = 0; //TODO: Define a common FissionYield::OuterIteration class,
                                                       // so that this method may be defined here instead of in both
                                                       // SPN and Diffusion KeffEigenvalueProblem.
+        virtual void update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed) = 0;
         
-        virtual SupportClasses::SourceFilter* get_new_source_filter() = 0;
-        virtual SupportClasses::SourceFilter* get_new_source_filter(const Hermes::vector<Solution<double>*>& solutions) = 0;
-        virtual SupportClasses::SourceFilter* get_new_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions) = 0;
+        virtual SupportClasses::SourceFilter* create_source_filter() = 0;
+        virtual SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<Solution<double>*>& solutions) = 0;
+        virtual SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions) = 0;
                                       
         double get_keff() const { return keff; } 
+        const Hermes::vector<MeshFunction<double>*>& get_scalar_flux_iterates() const { return scalar_flux_iterates; }
     };
     
   /* WeakForms */  
@@ -173,25 +176,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       protected:  
         std::vector<FissionYield::OuterIterationForm*> keff_iteration_forms;
         
-        void init_rhs(const Hermes::vector<MeshFunction<double>*>& iterates);
+        void init_rhs(const Hermes::vector<Solution<double>*>& iterates);
         
-      public:
-        KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                              const Hermes::vector<MeshFunction<double>*>& iterates,
-                              double initial_keff_guess,
-                              GeomType geom_type = HERMES_PLANAR );
-                                        
+      public:                                        
         KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
                               const Hermes::vector<Solution<double>*>& iterates,
                               double initial_keff_guess,
                               GeomType geom_type = HERMES_PLANAR );    
-                                        
-        KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                              const Hermes::vector<MeshFunction<double>*>& iterates, 
-                              const Hermes::vector<std::string>& fission_regions,
-                              double initial_keff_guess,
-                              GeomType geom_type = HERMES_PLANAR );
-                                        
+                                                                                
         KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
                               const Hermes::vector<Solution<double>*>& iterates, 
                               const Hermes::vector<std::string>& fission_regions,
@@ -199,10 +191,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                               GeomType geom_type = HERMES_PLANAR );                                            
                                         
         void update_keff(double new_keff);
+        void update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed);
         
-        Common::SupportClasses::SourceFilter* get_new_source_filter();
-        Common::SupportClasses::SourceFilter* get_new_source_filter(const Hermes::vector<Solution<double>*>& solutions);
-        Common::SupportClasses::SourceFilter* get_new_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions);
+        Common::SupportClasses::SourceFilter* create_source_filter() {
+          return new SupportClasses::SourceFilter(*matprop, fission_regions, geom_type);
+        }
+        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<Solution<double>*>& solutions) {
+          return new SupportClasses::SourceFilter(solutions, *matprop, fission_regions, geom_type);
+        }
+        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions) {
+          return new SupportClasses::SourceFilter(solutions, *matprop, fission_regions, geom_type);
+        }
         
         virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_DIFFUSION; }
     };  
@@ -227,8 +226,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         friend class FixedSourceProblem;
         friend class KeffEigenvalueProblem;
     };
+    
+    class SPNWeakForm
+    {
+      protected:
+        unsigned int N, N_odd;
+        MomentGroupFlattener mg;
+        
+        SPNWeakForm(unsigned int N, unsigned int G) : N(N), N_odd((N+1)/2), mg(G) { };
+    };
             
-    class FixedSourceProblem : public Common::WeakForms::NeutronicsProblem
+    class FixedSourceProblem : public Common::WeakForms::NeutronicsProblem, protected SPNWeakForm
     {
       protected:
         std::vector<VectorFormVol<double>*> source_terms;
@@ -262,11 +270,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_SPN; }
     };
     
-    class KeffEigenvalueProblem : public Common::WeakForms::KeffEigenvalueProblem
+    class KeffEigenvalueProblem : public Common::WeakForms::KeffEigenvalueProblem, protected SPNWeakForm
     {
       protected:
         std::vector<FissionYield::OuterIterationForm*> keff_iteration_forms;
-        Hermes::vector<MeshFunction<double>*> scalar_flux_iterates;
         
       public:
         KeffEigenvalueProblem(const MaterialPropertyMaps& matprop, unsigned int N,
@@ -277,15 +284,18 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         virtual ~KeffEigenvalueProblem();
         
-        const Hermes::vector<MeshFunction<double>*>& get_scalar_flux_iterates() const { 
-          return scalar_flux_iterates; 
-        }
-        
         void update_keff(double new_keff);
+        void update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed);
                 
-        Common::SupportClasses::SourceFilter* get_new_source_filter();
-        Common::SupportClasses::SourceFilter* get_new_source_filter(const Hermes::vector<Solution<double>*>& solutions);
-        Common::SupportClasses::SourceFilter* get_new_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions);
+        Common::SupportClasses::SourceFilter* create_source_filter() {
+          return new SupportClasses::SourceFilter(*matprop, fission_regions, geom_type);
+        }
+        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<Solution<double>*>& solutions) {
+          return new SupportClasses::SourceFilter(solutions, *matprop, fission_regions, geom_type);
+        }
+        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions) {
+          return new SupportClasses::SourceFilter(solutions, *matprop, fission_regions, geom_type);
+        }
         
         virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_SPN; }
     };

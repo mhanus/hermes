@@ -17,8 +17,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     for (unsigned int i = 0; i < solutions.size(); i++) 
       new_solutions.push_back(new Solution<double>(spaces[i]->get_mesh()));
     
-    Common::SupportClasses::SourceFilter *new_source = wf->get_new_source_filter(new_solutions);
-    Common::SupportClasses::SourceFilter *old_source = wf->get_new_source_filter(solutions);
+    Common::SupportClasses::SourceFilter *new_source = wf->create_source_filter(new_solutions);
+    Common::SupportClasses::SourceFilter *old_source = wf->create_source_filter(solutions);
       
     // Initial coefficient vector for the Newton's method.
     int ndof = Space<double>::get_num_dofs(spaces);
@@ -40,6 +40,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     //  below).
     //        
     double src_new = old_source->integrate();
+    bool meshes_changed = true;
     bool eigen_done = false; int it = 0;
     do 
     {
@@ -95,10 +96,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       // Update the final eigenvalue.
       wf->update_keff(k_new);
 
-      // Store the new eigenvector approximation in the result.
-      for (unsigned int i = 0; i < solutions.size(); i++)  
-        solutions[i]->copy(new_solutions[i]);
-      
+      // Update the eigenvector approximation.
+      // FIXME: It seems that Space::construct_refined_spaces prevents automatic determination of meshes_changed
+      //        through their seq number.
+      wf->update_fluxes(new_solutions, meshes_changed);
+      meshes_changed = false;
+  
       it++;
     }
     while (!eigen_done);
@@ -106,6 +109,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     // Free memory.
     for (unsigned int i = 0; i < solutions.size(); i++) 
       delete new_solutions[i];
+    
+    delete new_source;
+    delete old_source;
     
     return it;
   }
