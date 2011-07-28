@@ -1,6 +1,5 @@
-#include "hermes2d.h"
-
-using namespace WeakFormsNeutronics::Multigroup::MaterialProperties::Definitions; 
+#include "neutronics/material_properties.h"
+using namespace Hermes::Hermes2D::Neutronics;
 
 // Reference k_effective reactor eigenvalue for the material properties below
 // and geometry from the file 'reactor.mesh'. For this example, it was obtained
@@ -22,7 +21,9 @@ const std::string core = "core";
 const std::string bdy_vacuum = "vacuum boundary";
 const std::string bdy_symmetry = "symmetry plane";
 
-const Hermes::vector<std::string> fission_regions = Hermes::vector<std::string>("core");
+// Since Hermes::vector can't be initialized with one argument and we want to define
+// the variable here (not in main()), we need to misuse Neutronics::HermesMultiArray a little.
+const Hermes::vector<std::string> fission_regions = HermesMultiArray<std::string>("core");
 
 //////  Physical parameters.  /////////////////////////////////////////////////////////////////
 
