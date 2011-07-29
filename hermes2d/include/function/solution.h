@@ -197,10 +197,11 @@ namespace Hermes
       /// a table from the lowest layer.
       /// The highest layer (in contrast to the PrecalcShapeset class) is represented
       /// here only by this array.
-      std::map<uint64_t, LightArray<struct Function<Scalar>::Node*>*>* tables[4][4];
+      std::map<uint64_t, LightArray<struct Function<Scalar>::Node*>*>* tables[20][4];
 
-      Element* elems[4][4];
-      int cur_elem, oldest[4];
+      Element* elems[20][4];
+
+      int cur_elem, oldest[20];
 
       Scalar* mono_coeffs;  ///< monomial coefficient array
       int* elem_coeffs[2];  ///< array of pointers into mono_coeffs

@@ -86,8 +86,8 @@ namespace Hermes
       this->num_components = 0;
       e_last = NULL;
 
-      for(int i = 0; i < 4; i++)
-        for(int j = 0; j < 4; j++)
+      for(int i = 0; i < 20; i++)
+       for(int j = 0; j < 4; j++)
           tables[i][j] = new std::map<uint64_t, LightArray<struct Function<Scalar>::Node*>*>;
 
       mono_coeffs = NULL;
@@ -210,7 +210,7 @@ namespace Hermes
     template<typename Scalar>
     void Solution<Scalar>::free_tables()
     {
-      for (int i = 0; i < 4; i++)
+      for (int i = 0; i < 20; i++)
         for (int j = 0; j < 4; j++)
           if(tables[i][j] != NULL)
           {
