@@ -4,6 +4,8 @@ using namespace Hermes::Hermes2D;
 #include "weakforms_neutronics.h"
 using namespace Neutronics; 
 
+#define USE_SPN
+
 //////  Geometric parameters.  /////////////////////////////////////////////////////////////////
 
 // File with initial mesh specification.
@@ -51,14 +53,25 @@ const MaterialPropertyMap1 St = material_property_map<rank1>
   "Mixture 3", row(14.00)  
 );
 
-const MaterialPropertyMap3 Ssn = material_property_map<rank3>
-(
-  "Mixture 1", page(matrix(row(1.242)))
-)(
-  "Mixture 2", page(matrix(row(0.355)))
-)(
-  "Mixture 3", page(matrix(row(0.000)))
-);
+#ifdef USE_SPN
+  const MaterialPropertyMap3 Ssn = material_property_map<rank3>
+  (
+    "Mixture 1", page(matrix(row(1.242)))
+  )(
+    "Mixture 2", page(matrix(row(0.355)))
+  )(
+    "Mixture 3", page(matrix(row(0.000)))
+  );
+#else // DIFFUSION
+  const MaterialPropertyMap2 Ss = material_property_map<rank2>
+  (
+    "Mixture 1", matrix(row(1.242))
+  )(
+    "Mixture 2", matrix(row(0.355))
+  )(
+    "Mixture 3", matrix(row(0.000))
+  );
+#endif
 
 //////  Reference solutions.  /////////////////////////////////////////////////////////////////
 
