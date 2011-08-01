@@ -1,24 +1,49 @@
 #define HERMES_REPORT_ALL
 
+// Define USE_SPN in problem_data.h in order to use the SPN approximation. 
+// Otherwise, the diffusion approximation will be used.
+//
 #include "problem_data.h"
 
 using namespace RefinementSelectors;
-using namespace Neutronics::SPN;
 
-const unsigned int N_GROUPS = 1;  // Monoenergetic (single group) problem.
-const unsigned int SPN_ORDER = 3; // SP3 approximation
+#ifdef USE_SPN
+  #include "definitions.h"
+  using namespace Neutronics::SPN;
+#else // DIFFUSION
+  using namespace Neutronics::Diffusion;
+#endif
+
+const unsigned int N_GROUPS = 1;    // Monoenergetic (single group) problem.
+
+#ifdef USE_SPN
+  const unsigned int SPN_ORDER = 3; // SP3 approximation
+#else // DIFFUSION
+  const unsigned int SPN_ORDER = 1;
+#endif
 
 const unsigned int N_MOMENTS = SPN_ORDER+1;
 const unsigned int N_ODD_MOMENTS = (N_MOMENTS+1)/2;
 const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
 
-const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
-  1, 1//, 0, 0
-};
-const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
-  1, 1//, 1, 1
-};      
-const double THRESHOLD = 0.3;            // This is a quantitative parameter of the adapt(...) function and
+// Initial uniform mesh refinement and initial polynomial orders for the individual solution components. 
+#ifdef USE_SPN
+  const int INIT_REF_NUM[N_EQUATIONS] = {
+    1, 1//, 1, 1
+  };
+  const int P_INIT[N_EQUATIONS] = {
+    1, 1//, 1, 1
+  };
+#else // DIFFUSION
+  const int INIT_REF_NUM[N_EQUATIONS] = {
+    1
+  };
+  const int P_INIT[N_EQUATIONS] = {
+    1
+  };
+#endif
+
+const double THRESHOLD = 0.2;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
 const int STRATEGY = 1;                  // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
@@ -48,12 +73,14 @@ const int NDOF_STOP = 60000;             // Adaptivity process stops when the nu
 const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the number of adaptation steps grows over
                                          // this limit.
 Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
-                                                  // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
+                                                                  // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
 
-const bool HERMES_VISUALIZATION = true;       // Set to "true" to enable Hermes OpenGL visualization. 
-const bool VTK_VISUALIZATION = false;         // Set to "true" to enable VTK output.
-const bool DISPLAY_MESHES = true;            // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
-const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
+const bool HERMES_VISUALIZATION = true;         // Set to "true" to enable Hermes OpenGL visualization. 
+const bool VTK_VISUALIZATION = false;           // Set to "true" to enable VTK output.
+const bool DISPLAY_MESHES = false;              // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
+const bool INTERMEDIATE_VISUALIZATION = false;  // Set to "true" to display coarse mesh solutions during adaptivity.
+
+const int ERROR_NORMALIZATION = 0;
 
 void report_num_dof(const std::string& msg, const Hermes::vector< Space<double>* >& spaces)
 {
@@ -75,14 +102,20 @@ int main(int argc, char* argv[])
   // Time measurement.
   Hermes::TimePeriod cpu_time;
   cpu_time.tick();
-   
+
+#ifdef USE_SPN
   MaterialProperties::MaterialPropertyMaps matprop(N_GROUPS, SPN_ORDER, rm_map);
-  matprop.set_iso_src(src);
   matprop.set_Sigma_tn(St);
   matprop.set_Sigma_sn(Ssn);
+#else // DIFFUSION
+  MaterialProperties::MaterialPropertyMaps matprop(N_GROUPS, rm_map);  
+  matprop.set_Sigma_t(St);
+  matprop.set_Sigma_s(Ss);
+#endif
+  matprop.set_iso_src(src);
   matprop.validate();
   
-  cout << matprop;
+  std::cout << matprop;
   
   // Use multimesh, i.e. create one mesh for each energy group.
   Hermes::vector<Mesh *> meshes;
@@ -109,7 +142,11 @@ int main(int argc, char* argv[])
   for (int j = 0; j < INIT_REF_NUM[0]; j++) 
     meshes[0]->refine_all_elements();
   
+#ifdef USE_SPN
   SupportClasses::Visualization views(SPN_ORDER, N_GROUPS, DISPLAY_MESHES);
+#else // DIFFUSION
+  SupportClasses::Visualization views(N_GROUPS, DISPLAY_MESHES);
+#endif
   if (DISPLAY_MESHES && HERMES_VISUALIZATION)
     views.inspect_meshes(meshes);
 
@@ -126,8 +163,12 @@ int main(int argc, char* argv[])
     spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
     
   // Initialize the weak formulation.
+#ifdef USE_SPN
   WeakForms::FixedSourceProblem wf(matprop, SPN_ORDER);
-    
+#else // DIFFUSION
+  WeakForms::FixedSourceProblem wf(matprop);
+#endif
+  
   if (STRATEGY >= 0)
   {
     // DOF and CPU convergence graphs
@@ -169,7 +210,7 @@ int main(int argc, char* argv[])
       int ndof_fine = Space<double>::get_num_dofs(*fine_spaces);
       
       // Initialize the fine mesh problem.
-      report_num_dof("Solving on fine meshes, #DOF:", *fine_spaces);
+      report_num_dof("Solving on fine meshes, #DOF: ", *fine_spaces);
       
       DiscreteProblem<double> dp(&wf, *fine_spaces);
 
@@ -189,9 +230,9 @@ int main(int argc, char* argv[])
         Solution<double>::vector_to_solutions(newton.get_sln_vector(), *fine_spaces, solutions);
       
       // Project the fine mesh solution onto the coarse mesh.
-      report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF:", *fine_spaces);
+      report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces);
       OGProjection<double>::project_global(spaces, solutions, coarse_solutions, matrix_solver);
-      
+
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION && INTERMEDIATE_VISUALIZATION)
       {
@@ -206,12 +247,50 @@ int main(int argc, char* argv[])
       info("Calculating error estimate."); 
       Adapt<double> adaptivity(spaces);
       
+#ifdef USE_SPN            
+
+      info("  --- Calculating group norms for solution normalization.");
+      Hermes::vector< MeshFunction<double>* > coarse_scalar_fluxes, fine_scalar_fluxes;
+      MomentFilter::get_scalar_fluxes_with_derivatives(coarse_solutions, &coarse_scalar_fluxes, N_GROUPS);
+      MomentFilter::get_scalar_fluxes_with_derivatives(solutions, &fine_scalar_fluxes, N_GROUPS);
+      
+      MomentGroupFlattener mg(N_GROUPS);
+      double err_est_rel_total = 0.0;
+      for (unsigned int g = 0; g < N_GROUPS; g++)
+      {
+        double group_err_est = Hermes::sqr(Global<double>::calc_abs_error(coarse_scalar_fluxes[g], fine_scalar_fluxes[g], HERMES_H1_NORM));
+        double group_norm = Hermes::sqr(Global<double>::calc_norm(fine_scalar_fluxes[g], HERMES_H1_NORM));
+        
+        err_est_rel_total += group_err_est/group_norm;
+        
+        for (unsigned int m = 0; m < N_ODD_MOMENTS; m++)
+        {
+          if (ERROR_NORMALIZATION == 0)
+            adaptivity.set_norm_form(mg.pos(m,g), mg.pos(m,g), new NormForm<double>(m, group_norm, HERMES_H1_NORM));
+          else if (ERROR_NORMALIZATION == 1)
+            adaptivity.set_norm_form(mg.pos(m,g), mg.pos(m,g), new NormForm<double>(m, 1.0, HERMES_H1_NORM));
+          else if (ERROR_NORMALIZATION == 2)
+            adaptivity.set_norm_form(mg.pos(m,g), mg.pos(m,g), new NormForm<double>(m, HERMES_H1_NORM));
+        }
+      }
+      err_est_rel_total = sqrt(err_est_rel_total) * 100;
+      
+      MomentFilter::clear_scalar_fluxes(&coarse_scalar_fluxes);
+      MomentFilter::clear_scalar_fluxes(&fine_scalar_fluxes);
+      
       // Calculate error estimate for each solution component and the total error estimate.
       Hermes::vector<double> err_est_rel;
-      double err_est_rel_total = adaptivity.calc_err_est(coarse_solutions, solutions, &err_est_rel) * 100;
+      adaptivity.calc_err_est(coarse_solutions, solutions, &err_est_rel, true, HERMES_TOTAL_ERROR_ABS | HERMES_ELEMENT_ERROR_REL);      
+      
+#else // DIFFUSION
+
+      Hermes::vector<double> err_est_rel;
+      double err_est_rel_total = adaptivity.calc_err_est(coarse_solutions, solutions, &err_est_rel, true, HERMES_TOTAL_ERROR_REL | HERMES_ELEMENT_ERROR_REL) * 100;
+
+#endif
       
       // Report results.
-      info("total H1 error estimate: %g%%", err_est_rel_total);
+      info("  --- total H1 error estimate: %g%%", err_est_rel_total);
       
       cpu_time.tick();
       graph_dof_est.add_values(Space<double>::get_num_dofs(spaces), err_est_rel_total);
@@ -259,7 +338,7 @@ int main(int argc, char* argv[])
     }
     delete fine_spaces; 
   }
-  else
+  else  // Do not use adaptivity.
   {
     int ndof = Space<double>::get_num_dofs(spaces);
     
@@ -303,8 +382,12 @@ int main(int argc, char* argv[])
   
   // Integrate absorption rates and scalar fluxes over specified edit regions and compare with results
   // from the collision probabilities code DRAGON (see problem_data.h).
-    
+
+#ifdef USE_SPN
   PostProcessor pp(NEUTRONICS_SPN);
+#else // DIFFUSION
+  PostProcessor pp(NEUTRONICS_DIFFUSION);
+#endif
   
   Hermes::vector<double> absorption_rates, integrated_fluxes, areas;
   pp.get_integrated_reaction_rates(ABSORPTION, solutions, &absorption_rates, matprop, edit_regions);
