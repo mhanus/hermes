@@ -223,12 +223,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       else
         region = wf->get_element_markers_conversion()->get_user_marker(elem_marker);
       
-      RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
-      
-      if (material != this->region_material_map.end())
-        return material->second;
-      else
-        return region; // Corresponds to the case when region <==> material, 
+      return get_material(region);
     }
     
     std::string MaterialPropertyMaps::get_material(int elem_marker, Mesh *mesh) const 
@@ -240,12 +235,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       else
         region = mesh->get_element_markers_conversion().get_user_marker(elem_marker);
       
-      RegionMaterialMap::const_iterator material = this->region_material_map.find(region);
+      return get_material(region);
+    }
+    
+    std::string MaterialPropertyMaps::get_material(const std::string& elem_marker) const 
+    { 
+      RegionMaterialMap::const_iterator material = this->region_material_map.find(elem_marker);
       
       if (material != this->region_material_map.end())
         return material->second;
       else
-        return region; // Corresponds to the case when region <==> material, 
+        return elem_marker; // Corresponds to the case when elem_marker <==> material, 
     }
     
     const rank1& MaterialPropertyMaps::get_Sigma_a(const std::string& material) const
