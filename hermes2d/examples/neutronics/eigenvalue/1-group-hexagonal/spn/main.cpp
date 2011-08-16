@@ -110,7 +110,7 @@ int main(int argc, char* argv[])
   
   // Initialize all the new solution variables.
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
-    power_iterates.push_back(new Solution<double>(meshes[i], 1.0));   
+    power_iterates.push_back(new ConstantSolution<double>(meshes[i], 1.0));   
   
   // Create the approximation spaces with the default shapeset.
   Hermes::vector<Space<double> *> spaces;
