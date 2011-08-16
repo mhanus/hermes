@@ -102,8 +102,8 @@ int main(int argc, char* argv[])
     meshes.push_back(new Mesh());
   
   // Load the mesh on which the 1st solution component (1st group, 0th moment) will be approximated.
-  H2DReader mloader;
-  mloader.load((std::string("../") + mesh_file).c_str(), meshes[0]);
+  MeshReaderH2D mesh_reader;
+  mesh_reader.load((std::string("../") + mesh_file).c_str(), meshes[0]);
   
   // Convert the mesh so that it has one type of elements (optional). 
   //meshes[0]->convert_quads_to_triangles();
