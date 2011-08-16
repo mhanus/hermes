@@ -32,7 +32,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       for (int i = 0; i < 10; i++)
       {
         item[i] = H2D_FN_VAL & H2D_FN_COMPONENT_0;
-        tables[i] = NULL;
         sln[i] = NULL;
       }
       
@@ -1030,7 +1029,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   
   void PostProcessor::get_areas(Mesh *mesh, const Hermes::vector<std::string>& regions, Hermes::vector<double>* results) const
   {
-    Solution<double> unity(mesh, 1);
+    ConstantSolution<double> unity(mesh, 1.0);
     
     Hermes::vector<std::string>::const_iterator region = regions.begin(); 
     for ( ; region != regions.end(); ++region)
@@ -1039,7 +1038,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 
   double PostProcessor::get_area(Mesh* mesh, const Hermes::vector< std::string >& regions) const
   {
-    Solution<double> unity(mesh, 1);
+    ConstantSolution<double> unity(mesh, 1);
     return integrate(&unity, regions);
   }    
 
