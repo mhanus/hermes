@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
 {
   // Load the mesh.
   Mesh mesh;
-  ExodusIIReader mloader;
+  MeshReaderExodusII mloader;
   if (!mloader.load("iron-water.e", &mesh)) error("ExodusII mesh load failed.");
    
   // Perform initial uniform mesh refinement.

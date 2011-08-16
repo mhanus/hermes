@@ -117,15 +117,17 @@ int main(int argc, char* argv[])
   
   std::cout << matprop;
   
-  // Use multimesh, i.e. create one mesh for each energy group.
+  // Use multimesh, i.e. create one mesh for each energy group and angular moment.
   Hermes::vector<Mesh *> meshes;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
     meshes.push_back(new Mesh());
   
   // Load the mesh on which the 1st solution component (1st group, 0th moment) will be approximated.
-  H2DReader mloader;
-  mloader.load(mesh_file.c_str(), meshes[0]);
-  
+  MeshReaderH2D mesh_reader;
+  mesh_reader.load(mesh_file.c_str(), meshes[0]);
+  meshes[0]->refine_element_id(0,2);
+  meshes[0]->refine_element_id(1);
+   
   // Convert the mesh so that it has one type of elements (optional). 
   //meshes[0]->convert_quads_to_triangles();
   //meshes[0]->convert_triangles_to_quads();
