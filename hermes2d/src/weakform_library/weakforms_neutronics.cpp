@@ -100,7 +100,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       // FIXME: It seems that Space::construct_refined_spaces prevents automatic determination of meshes_changed
       //        through their seq number.
       wf->update_fluxes(new_solutions, meshes_changed);
-      meshes_changed = false;
+      meshes_changed = true; // FIXME: This forces a reinitialization of the scalar flux filter used by the SPN weak form to
+                             // evaluate the right hand side. If meshes are not changed, the unimesh created in that
+                             // filter for the first time should not change either and this should be not neccessary. Currently,
+                             // however, it doesn't work correctly.
   
       it++;
     }
