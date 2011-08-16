@@ -5,21 +5,21 @@
 using namespace RefinementSelectors;
 
 const unsigned int N_GROUPS = 1;  // Monoenergetic (single group) problem.
-const unsigned int SPN_ORDER = 1; // SP3 approximation
+const unsigned int SPN_ORDER = 3; // SP3 approximation
 
 const unsigned int N_MOMENTS = SPN_ORDER+1;
 const unsigned int N_ODD_MOMENTS = (N_MOMENTS+1)/2;
 const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
 
 const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
-  1//, 1//, 2, 2                              
+  1, 1//, 2, 2                              
 };
 const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
-  1//, 1//, 2, 2                             
+  1, 1//, 2, 2                             
 };      
 const double THRESHOLD = 0.3;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
-const int STRATEGY = 0;                  // Adaptive strategy:
+const int STRATEGY = 1;                  // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
                                          //   error is processed. If more elements have similar errors, refine
                                          //   all to keep the mesh symmetric.
@@ -40,7 +40,7 @@ const int MESH_REGULARITY = -1;          // Maximum allowed level of hanging nod
                                          // their notoriously bad performance.
 const double CONV_EXP = 1.0;             // Default value is 1.0. This parameter influences the selection of
                                          // candidates in hp-adaptivity. See get_optimal_refinement() for details.
-const double ERR_STOP = 0.5;             // Stopping criterion for adaptivity (rel. error tolerance between the
+const double ERR_STOP = 0.1;             // Stopping criterion for adaptivity (rel. error tolerance between the
                                          // fine mesh and coarse mesh solution in percent).
 const int NDOF_STOP = 60000;             // Adaptivity process stops when the number of degrees of freedom grows over
                                          // this limit. This is mainly to prevent h-adaptivity to go on forever.
@@ -56,8 +56,8 @@ const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse
 
 // Power iteration control.
 double k_eff = 1.0;         // Initial eigenvalue approximation.
-double TOL_PIT_CM = 1e-7;   // Tolerance for eigenvalue convergence on the coarse mesh.
-double TOL_PIT_FM = 1e-8;   // Tolerance for eigenvalue convergence on the fine mesh.
+double TOL_PIT_CM = 1e-5;   // Tolerance for eigenvalue convergence on the coarse mesh.
+double TOL_PIT_FM = 1e-6;   // Tolerance for eigenvalue convergence on the fine mesh.
 
 int main(int argc, char* argv[])
 {
@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
   
   // Convert the mesh so that it has one type of elements (optional). 
   //meshes[0]->convert_quads_to_triangles();
-  meshes[0]->convert_triangles_to_quads();
+  //meshes[0]->convert_triangles_to_quads();
   
   for (unsigned int i = 1; i < N_EQUATIONS; i++) 
   {
