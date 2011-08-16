@@ -419,7 +419,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         double nSf = nu_elem[gfrom] * Sigma_f_elem[gfrom];
         
-        for (unsigned int mcol = 0; mcol <= N_odd; mcol++)
+        for (unsigned int mcol = 0; mcol < N_odd; mcol++)
         {
           if (geom_type == HERMES_PLANAR) 
             result += nSf * (-Coeffs::system_matrix(mrow, mcol, 0)) * int_u_ext_v<Real, Real>(n, wt, u_ext[mg.pos(mcol,gfrom)], v);
