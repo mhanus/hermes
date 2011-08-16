@@ -98,8 +98,8 @@ int main(int argc, char* argv[])
 {
   // Load the mesh.
   Mesh mesh;
-  H2DReader mloader;
-  mloader.load("domain.mesh", &mesh);
+  MeshReaderH2D mesh_reader;
+  mesh_reader.load("domain.mesh", &mesh);
   
   // Perform initial uniform mesh refinement.
   for (int i = 0; i < INIT_REF_NUM; i++) mesh.refine_all_elements();
