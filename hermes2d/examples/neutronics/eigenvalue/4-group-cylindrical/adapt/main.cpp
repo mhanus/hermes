@@ -130,7 +130,7 @@ int main(int argc, char* argv[])
   {
     coarse_solutions.push_back(new Solution<double>());
     fine_solutions.push_back(new Solution<double>());
-    power_iterates.push_back(new Solution<double>(meshes[g], 1.0));   
+    power_iterates.push_back(new ConstantSolution<double>(meshes[g], 1.0));   
   }
   
   // Create the approximation spaces with the default shapeset.
