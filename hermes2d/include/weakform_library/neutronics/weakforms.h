@@ -147,22 +147,22 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                           HermesFunction<double> *minus_f_src,
+                           Hermes2DFunction<double> *minus_f_src,
                            const std::string& src_area = HERMES_ANY,
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                           HermesFunction<double> *minus_f_src,
+                           Hermes2DFunction<double> *minus_f_src,
                            const Hermes::vector<std::string>& src_areas,
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                           const std::vector<HermesFunction<double>*>& minus_f_src,
+                           const std::vector<Hermes2DFunction<double>*>& minus_f_src,
                            const std::string& src_area = HERMES_ANY,
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                           const std::vector<HermesFunction<double>*>& minus_f_src,
+                           const std::vector<Hermes2DFunction<double>*>& minus_f_src,
                            const Hermes::vector<std::string>& src_areas,
                            GeomType geom_type = HERMES_PLANAR);
                            
@@ -246,22 +246,22 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                           HermesFunction<double> *minus_isotropic_source,
+                           Hermes2DFunction<double> *minus_isotropic_source,
                            std::string src_area = HERMES_ANY,
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                           HermesFunction<double> *minus_isotropic_source,
+                           Hermes2DFunction<double> *minus_isotropic_source,
                            Hermes::vector<std::string> src_areas,
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                           const std::vector<HermesFunction<double>*>& minus_isotropic_sources,
+                           const std::vector<Hermes2DFunction<double>*>& minus_isotropic_sources,
                            std::string src_area = HERMES_ANY,
                            GeomType geom_type = HERMES_PLANAR);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                           const std::vector<HermesFunction<double>*>& minus_isotropic_sources,
+                           const std::vector<Hermes2DFunction<double>*>& minus_isotropic_sources,
                            Hermes::vector<std::string> src_areas,
                            GeomType geom_type = HERMES_PLANAR);
                                   
