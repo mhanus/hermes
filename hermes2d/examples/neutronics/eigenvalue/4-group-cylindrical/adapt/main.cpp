@@ -108,8 +108,8 @@ int main(int argc, char* argv[])
     meshes.push_back(new Mesh());
   
   // Load the mesh for the 1st group.
-  H2DReader mloader;
-  mloader.load((std::string("../") + mesh_file).c_str(), meshes[0]);
+  MeshReaderH2D mesh_reader;
+  mesh_reader.load((std::string("../") + mesh_file).c_str(), meshes[0]);
  
   for (unsigned int g = 1; g < matprop.get_G(); g++) 
   {
