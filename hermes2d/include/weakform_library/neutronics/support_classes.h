@@ -377,7 +377,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   /* SPN */
   }
   
-  // FIXME: Ad-hoc class. Replace accordingly as soon asarithmetic operations with solutions will be ready.
+  // FIXME: Ad-hoc class. Replace accordingly as soon as arithmetic operations with solutions will be ready.
   template <typename Scalar>
   class MultipliableSolution : public Solution<Scalar>
   {
@@ -392,6 +392,21 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         else
           error("Not implemented.");
       }
+  };
+  
+  // FIXME: Ad-hoc class. Replace accordingly as soon as constant solution can be specified otherwise.
+  template <typename Scalar>
+  class ConstantSolution : public ExactSolutionScalar<Scalar>
+  {
+    public:
+      ConstantSolution(Mesh *mesh, const double cnst) : ExactSolutionScalar<Scalar>(mesh), cnst(cnst) {}
+      
+      Scalar value (double x, double y) const { return cnst; }      
+      void derivatives (double x, double y, double& dx, double& dy) const { dx = dy = 0; };
+      Ord ord(Ord x, Ord y) const { return Ord(0); }
+      
+    private:
+      double cnst;
   };
   
   class PostProcessor

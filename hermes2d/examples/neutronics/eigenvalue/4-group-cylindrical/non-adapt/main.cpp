@@ -75,10 +75,10 @@ int main(int argc, char* argv[])
   
   // Define initial conditions.
   info("Setting initial conditions.");
-  Solution<double> iter1(&mesh, 1.0), 
-                   iter2(&mesh, 1.0), 
-                   iter3(&mesh, 1.0), 
-                   iter4(&mesh, 1.0);
+  ConstantSolution<double> iter1(&mesh, 1.0), 
+                           iter2(&mesh, 1.0), 
+                           iter3(&mesh, 1.0), 
+                           iter4(&mesh, 1.0);
   Hermes::vector<Solution<double>*> iterates(&iter1, &iter2, &iter3, &iter4);
 
   // Create H1 spaces with default shapesets.
