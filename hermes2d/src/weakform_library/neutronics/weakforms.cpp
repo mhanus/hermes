@@ -15,19 +15,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         /* Jacobian */
         // Diffusion.
-        add_matrix_form(new DefaultJacobianDiffusion<double>(0, 0, regions[i], new HermesFunction<double>(D_map[i]), 
+        add_matrix_form(new DefaultJacobianDiffusion<double>(0, 0, regions[i], new Hermes1DFunction<double>(D_map[i]), 
                                                       HERMES_SYM));
         // Absorption.
-        add_matrix_form(new DefaultMatrixFormVol<double>(0, 0, regions[i], new HermesFunction<double>(Sigma_a_map[i]), 
+        add_matrix_form(new DefaultMatrixFormVol<double>(0, 0, regions[i], new Hermes2DFunction<double>(Sigma_a_map[i]), 
                                                   HERMES_SYM));
         
         /* Residual */
         // Diffusion.
-        add_vector_form(new DefaultResidualDiffusion<double>(0, regions[i], new HermesFunction<double>(D_map[i])));
+        add_vector_form(new DefaultResidualDiffusion<double>(0, regions[i], new Hermes1DFunction<double>(D_map[i])));
         // Absorption.
-        add_vector_form(new DefaultResidualVol<double>(0, regions[i], new HermesFunction<double>(Sigma_a_map[i])));
+        add_vector_form(new DefaultResidualVol<double>(0, regions[i], new Hermes2DFunction<double>(Sigma_a_map[i])));
         // Sources.
-        add_vector_form(new DefaultVectorFormVol<double>(0, regions[i], new HermesFunction<double>(-Q_map[i])));
+        add_vector_form(new DefaultVectorFormVol<double>(0, regions[i], new Hermes2DFunction<double>(-Q_map[i])));
       }
     }
   }
@@ -111,7 +111,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                                           HermesFunction<double> *minus_f_src, const std::string& src_area,
+                                           Hermes2DFunction<double> *minus_f_src, const std::string& src_area,
                                            GeomType geom_type  ) 
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
     {
@@ -127,7 +127,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                                           HermesFunction<double> *minus_f_src,
+                                           Hermes2DFunction<double> *minus_f_src,
                                            const Hermes::vector<std::string>& src_areas,
                                            GeomType geom_type  ) 
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
@@ -144,7 +144,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                                           const std::vector<HermesFunction<double>*>& minus_f_src,
+                                           const std::vector<Hermes2DFunction<double>*>& minus_f_src,
                                            const std::string& src_area, 
                                            GeomType geom_type ) 
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
@@ -164,7 +164,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                                           const std::vector<HermesFunction<double>*>& minus_f_src,
+                                           const std::vector<Hermes2DFunction<double>*>& minus_f_src,
                                            const Hermes::vector<std::string>& src_areas,
                                            GeomType geom_type ) 
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
@@ -381,7 +381,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N, 
-                                           HermesFunction<double> *minus_isotropic_source, std::string src_area,
+                                           Hermes2DFunction<double> *minus_isotropic_source, std::string src_area,
                                            GeomType geom_type  )
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
         SPNWeakForm(N, matprop.get_G())
@@ -400,7 +400,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N, 
-                                           HermesFunction<double> *minus_isotropic_source,
+                                           Hermes2DFunction<double> *minus_isotropic_source,
                                            Hermes::vector<std::string> src_areas,
                                            GeomType geom_type  )
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
@@ -420,7 +420,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N, 
-                                           const std::vector<HermesFunction<double>*>& minus_isotropic_sources,
+                                           const std::vector<Hermes2DFunction<double>*>& minus_isotropic_sources,
                                            std::string src_area, 
                                            GeomType geom_type )
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
@@ -443,7 +443,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }                                                                                   
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N, 
-                                           const std::vector<HermesFunction<double>*>& minus_isotropic_sources,
+                                           const std::vector<Hermes2DFunction<double>*>& minus_isotropic_sources,
                                            Hermes::vector<std::string> src_areas,
                                            GeomType geom_type )
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
