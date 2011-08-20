@@ -33,7 +33,7 @@ private:
                                                        Func<TestFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext)
   {
     _F_
-    SolFunctionDomain result = 0;
+    SolFunctionDomain result(0);
     for (int i = 0; i < n; i++)
       result += wt[i] * e->x[i] * (u->val[i] * v->val[i] + u->dx[i] * v->dx[i] + u->dy[i] * v->dy[i]);
     return result;
@@ -68,7 +68,7 @@ private:
                                                 Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext) const
   {
     _F_
-    SolFunctionDomain result = 0;
+    SolFunctionDomain result(0);
     for (int i = 0; i < n; i++)
       result += wt[i] * e->x[i] * ( (u_ext[this->i]->val[i] - ext->fn[0]->val[i]) * v->val[i] 
                                   + (u_ext[this->i]->dx[i]  - ext->fn[0]->dx[i])  * v->dx[i] 
@@ -99,7 +99,7 @@ private:
   static SolFunctionDomain l2_error_form_axisym(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<SolFunctionDomain> *u,
                                                 Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext)
   {
-    SolFunctionDomain result = 0;
+    SolFunctionDomain result(0);
     for (int i = 0; i < n; i++)
       result += wt[i] * e->x[i] * (u->val[i] * v->val[i]);
     return result;
@@ -109,7 +109,7 @@ private:
   static SolFunctionDomain h1_error_form_axisym(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<SolFunctionDomain> *u,
                                                 Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext)
   {
-    SolFunctionDomain result = 0;
+    SolFunctionDomain result(0);
     for (int i = 0; i < n; i++)
       result += wt[i] * e->x[i] * (u->val[i] * v->val[i] + u->dx[i] * v->dx[i] + u->dy[i] * v->dy[i]);
     return result;
