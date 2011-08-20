@@ -1,29 +1,24 @@
+//
+//  IAEA EIR-2 benchmark problem, diffusion approximation.
+//
+//  PDE: -div(D(x,y)grad\Phi) + \Sigma_a(x,y)\Phi = Q_{ext}(x,y)
+//       where D(x, y) is the diffusion coefficient, \Sigma_a(x,y) the absorption cross-section,
+//       and Q_{ext}(x,y) external sources.
+//
+//  Domain: square (0, 96)x(0, 96) (see mesh file ../domain.mesh).
+//
+//  BC:  Zero Dirichlet on all edges (approximate version of the void boundary condition).
+//
 #define HERMES_REPORT_ALL
 #include "hermes2d.h"
 
 using namespace Hermes::Hermes2D;
 using namespace WeakFormsH1;
-using namespace RefinementSelectors;
 
 // Weak forms.
 #include "weakform_library/weakforms_neutronics.h"
 
 using namespace RefinementSelectors;
-
-//  This is the IAEA EIR-2 benchmark problem. Note the way of handling different material
-//  parameters. This is an alternative to how this is done in tutorial examples 07 and 12
-//  and in example "iron-water".
-//
-//  PDE: -div(D(x,y)grad\Phi) + \Sigma_a(x,y)\Phi = Q_{ext}(x,y)
-//  where D(x, y) is the diffusion coefficient, \Sigma_a(x,y) the absorption cross-section,
-//  and Q_{ext}(x,y) external sources.
-//
-//  Domain: square (0, L)x(0, L) where L = 30c (see mesh file domain.mesh).
-//
-//  BC:  Zero Dirichlet for the right and top edges ("vacuum boundary").
-//       Zero Neumann for the left and bottom edges ("reflection boundary").
-//
-//  The following parameters can be changed:
 
 const int P_INIT = 1;                             // Initial polynomial degree of all mesh elements.
 const int INIT_REF_NUM = 1;                       // Number of initial uniform mesh refinements.
@@ -50,7 +45,7 @@ const int MESH_REGULARITY = -1;                   // Maximum allowed level of ha
                                                   // their notoriously bad performance.
 const double CONV_EXP = 1.0;                      // Default value is 1.0. This parameter influences the selection of
                                                   // cancidates in hp-adaptivity. See get_optimal_refinement() for details.
-const double ERR_STOP = 0.1;                      // Stopping criterion for adaptivity (rel. error tolerance between the
+const double ERR_STOP = 0.5;                      // Stopping criterion for adaptivity (rel. error tolerance between the
                                                   // reference mesh and coarse mesh solution in percent).
 const int NDOF_STOP = 100000;                     // Adaptivity process stops when the number of degrees of freedom grows
                                                   // over this limit. This is to prevent h-adaptivity to go on forever.
@@ -58,18 +53,10 @@ Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibiliti
                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
 
 // Problem parameters
-double LH = 96;                                   // Total horizontal length.
-double LH0 = 18;                                  // First horizontal length.
-double LH1 = 48;                                  // Second horizontal length.
-double LH2 = 78;                                  // Third horizontal length.
-double LV = 96;                                   // Total vertical length.
-double LV0 = 18;                                  // First vertical length.
-double LV1 = 48;                                  // Second vertical length.
-double LV2 = 78;                                  // Third vertical length.
 double SIGMA_T_1 = 0.60;                          // Total cross-sections.
 double SIGMA_T_2 = 0.48;
 double SIGMA_T_3 = 0.70;
-double SIGMA_T_4 = 0.85;
+double SIGMA_T_4 = 0.65;
 double SIGMA_T_5 = 0.90;
 double SIGMA_S_1 = 0.53;                          // Scattering cross sections.
 double SIGMA_S_2 = 0.20;
@@ -91,21 +78,18 @@ double SIGMA_A_3 = SIGMA_T_3 - SIGMA_S_3;
 double SIGMA_A_4 = SIGMA_T_4 - SIGMA_S_4;
 double SIGMA_A_5 = SIGMA_T_5 - SIGMA_S_5;
 
-// Weak forms.
-#include "weakform_library/weakforms_neutronics.h"
-
 int main(int argc, char* argv[])
 {
   // Load the mesh.
   Mesh mesh;
   MeshReaderH2D mesh_reader;
-  mesh_reader.load("domain.mesh", &mesh);
+  mesh_reader.load("../domain.mesh", &mesh);
   
   // Perform initial uniform mesh refinement.
   for (int i = 0; i < INIT_REF_NUM; i++) mesh.refine_all_elements();
 
   // Set essential boundary conditions.
-  DefaultEssentialBCConst<double> bc_essential(Hermes::vector<std::string>("right", "top"), 0.0);
+  DefaultEssentialBCConst<double> bc_essential(Hermes::vector<std::string>("bottom", "right", "top", "left"), 0.0);
   EssentialBCs<double> bcs(&bc_essential);
   
   // Create an H1 space with default shapeset.
@@ -188,7 +172,7 @@ int main(int argc, char* argv[])
     // Calculate element errors and total error estimate.
     info("Calculating error estimate."); 
     Adapt<double> adaptivity(&space);
-    double err_est_rel = adaptivity.calc_err_est(&sln, &ref_sln) * 100;
+    double err_est_rel = adaptivity.calc_err_est(&sln, &ref_sln, true, HERMES_TOTAL_ERROR_REL | HERMES_ELEMENT_ERROR_ABS) * 100;
 
     // Report results.
     info("ndof_coarse: %d, ndof_fine: %d, err_est_rel: %g%%", 
