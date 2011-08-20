@@ -77,7 +77,7 @@ public:
                           Func<Hermes::Ord> *u, Geom<Hermes::Ord> *e,
                           ExtData<Hermes::Ord> *ext) const
   {
-    Hermes::Ord result = 0;
+    Hermes::Ord result(0);
     
     for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
     {
@@ -138,7 +138,7 @@ public:
                           Func<Hermes::Ord> *u, Geom<Hermes::Ord> *e,
                           ExtData<Hermes::Ord> *ext) const
   {
-    Hermes::Ord result = 0;
+    Hermes::Ord result(0);
     
     for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
     {
@@ -232,7 +232,7 @@ public:
                           Func<Hermes::Ord> *u, Geom<Hermes::Ord> *e,
                           ExtData<Hermes::Ord> *ext) const
   {
-    Hermes::Ord result = 0;
+    Hermes::Ord result(0);
     
     for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
     {      
