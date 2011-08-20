@@ -4,11 +4,13 @@
 // Otherwise, the diffusion approximation will be used.
 //
 #include "problem_data.h"
+#include "definitions.h"
+#include "error_estimators.h"
 
+// Include namespace with variables for controlling the projection-based adaptivity.
 using namespace RefinementSelectors;
 
-#ifdef USE_SPN
-  #include "definitions.h"
+#ifdef USE_SPN 
   using namespace Neutronics::SPN;
 #else // DIFFUSION
   using namespace Neutronics::Diffusion;
@@ -17,7 +19,7 @@ using namespace RefinementSelectors;
 const unsigned int N_GROUPS = 1;    // Monoenergetic (single group) problem.
 
 #ifdef USE_SPN
-  const unsigned int SPN_ORDER = 3; // SP3 approximation
+  const unsigned int SPN_ORDER = 3; // Currently implemented maximum is 9.
 #else // DIFFUSION
   const unsigned int SPN_ORDER = 1;
 #endif
@@ -29,10 +31,10 @@ const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
 // Initial uniform mesh refinement and initial polynomial orders for the individual solution components. 
 #ifdef USE_SPN
   const int INIT_REF_NUM[N_EQUATIONS] = {
-    1, 1//, 1, 1
+    1, 1//, 1//, 1//, 1
   };
   const int P_INIT[N_EQUATIONS] = {
-    1, 1//, 1, 1
+    1, 1//, 1//, 1//, 1
   };
 #else // DIFFUSION
   const int INIT_REF_NUM[N_EQUATIONS] = {
@@ -43,12 +45,14 @@ const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
   };
 #endif
 
-const double THRESHOLD = 0.2;            // This is a quantitative parameter of the adapt(...) function and
+const double THRESHOLD = 0.3;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
 const int STRATEGY = 1;                  // Adaptive strategy:
+                                         // STRATEGY = -1... do not use adaptivity.
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
                                          //   error is processed. If more elements have similar errors, refine
-                                         //   all to keep the mesh symmetric.
+                                         //   all to keep the mesh symmetric. Absolute element errors should be
+                                         //   used in Adapt::calc_err_est for optimal multi-mesh adaptivity.
                                          // STRATEGY = 1 ... refine all elements whose error is larger
                                          //   than THRESHOLD times maximum element error.
                                          // STRATEGY = 2 ... refine all elements whose error is larger
@@ -66,35 +70,66 @@ const int MESH_REGULARITY = -1;          // Maximum allowed level of hanging nod
                                          // their notoriously bad performance.
 const double CONV_EXP = 1.0;             // Default value is 1.0. This parameter influences the selection of
                                          // candidates in hp-adaptivity. See get_optimal_refinement() for details.
-const double ERR_STOP = 1;               // Stopping criterion for adaptivity (rel. error tolerance between the
-                                         // fine mesh and coarse mesh solution in percent).
+const double ERR_STOP = 0.33;            // Stopping criterion for adaptivity (rel. error tolerance between the
+                                         // fine mesh and coarse mesh solution in percent). Setting a very small value
+                                         // effectively disables this convergence test in favor of the following ones.
 const int NDOF_STOP = 60000;             // Adaptivity process stops when the number of degrees of freedom grows over
-                                         // this limit. This is mainly to prevent h-adaptivity to go on forever.
-const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the number of adaptation steps grows over
                                          // this limit.
-Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
-                                                                  // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
+const int MAX_ADAPT_NUM = 60;            // Adaptivity process stops when the number of adaptation steps grows over
+                                         // this limit.
+                                         
+// Solvers used for solving the discrete problems. Possibilities (depends on how you configured the hermes library): 
+//  SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS, SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.                                         
+Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  
 
-const bool HERMES_VISUALIZATION = true;         // Set to "true" to enable Hermes OpenGL visualization. 
+// Visualisation options.
+const bool HERMES_VISUALIZATION = true;        // Set to "true" to enable Hermes OpenGL visualization. 
 const bool VTK_VISUALIZATION = false;           // Set to "true" to enable VTK output.
 const bool DISPLAY_MESHES = false;              // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
-const bool INTERMEDIATE_VISUALIZATION = false;  // Set to "true" to display coarse mesh solutions during adaptivity.
+const bool SHOW_INTERMEDIATE_ORDERS = true;     // Set to "true" to display coarse mesh solutions during adaptivity.
+const bool SHOW_INTERMEDIATE_SOLUTIONS = true;  // Set to "true" to display solutions on intermediate meshes during adaptivity.
 
-const int ERROR_NORMALIZATION = 0;
+// There are several run cases of this example (mainly for testing purposes). Check the switches on variable 'run'
+// throughout the code to see what each of them exactly does. A short description follows.
+//
+// runcase    description of error/norm setting
+// ----------------------------------------------------------------------------------------------------------------------------
+//    0       E/N: all terms in the scalar flux expansion in terms of pseudo-fluxes, including the expansion coeffs.
+//            This is the only viable option in case of diffusion calculation (i.e. undefined USE_SPN), where default Hermes
+//            setting (standard H1 norm) is used for both error evaluation and normalization.
+//    1       E: all terms with coeffs., N: standard H1 norm covering all terms (i.e. without the expansion coeffs.)
+//    2       E/N: only unmixed terms (i.e. F1F1, not F1F3), including the appropriate expansion coeffs. (i.e., squared)
+//    3       E: unmixed terms with coeffs., N: H1 norm covering only the unmixed terms, without coeffs.
+//    4       E/N: unmixed H1, without coeffs. (default in Hermes, i.e. if the set_error/norm_form wasn't called at all)
+//    5       E/N: mixed H1, without coeffs. (second choice in Hermes, typically used when solving a system with interactions
+//            between solution components)
+//
+#ifdef USE_SPN
+  const int NUM_RUN_CASES = 1;
+  const int RUN_CASES[NUM_RUN_CASES] = { 0 };
+#else
+  const int NUM_RUN_CASES = 1;
+  const int RUN_CASES[NUM_RUN_CASES] = { 0 };
+#endif
 
-void report_num_dof(const std::string& msg, const Hermes::vector< Space<double>* >& spaces)
+// Setup the convergence graphs to display appropriate data for selected run cases.
+void setup_convergence_graph(GnuplotGraph *graph, const std::set<int>& run_cases)
 {
-  std::stringstream ss;
+  static const char* colors[] = { "r", "g", "b", "c", "m", "k" };
   
-  ss << msg << spaces[0]->get_num_dofs();
-  
-  for (unsigned int i = 1; i < spaces.size(); i++)
-    ss << " + " << spaces[i]->get_num_dofs();
-  
-  if (spaces.size() > 1)
-    ss << " = " << Space<double>::get_num_dofs(spaces);
-  
-  info(ss.str().c_str());
+  for (std::set<int>::const_iterator run = run_cases.begin(); run != run_cases.end(); ++run)
+  {
+#ifdef USE_SPN
+    graph->add_row(("pseudo-fluxes "+itos(*run)).c_str(), colors[*run], "-", "o");
+#endif
+    graph->add_row(("scalar fluxes "+itos(*run)).c_str(), colors[*run], "-", "+");
+    graph->add_row(("absorb. rates "+itos(*run)).c_str(), colors[*run], "-", "p");
+  }
+    
+  graph->set_log_x();
+  graph->set_log_y();
+  graph->show_legend();
+  graph->show_grid();
 }
 
 int main(int argc, char* argv[])
@@ -103,6 +138,7 @@ int main(int argc, char* argv[])
   Hermes::TimePeriod cpu_time;
   cpu_time.tick();
 
+  // Load material data.
 #ifdef USE_SPN
   MaterialProperties::MaterialPropertyMaps matprop(N_GROUPS, SPN_ORDER, rm_map);
   matprop.set_Sigma_tn(St);
@@ -115,12 +151,17 @@ int main(int argc, char* argv[])
   matprop.set_iso_src(src);
   matprop.validate();
   
+  // Print material data.
   std::cout << matprop;
   
-  // Use multimesh, i.e. create one mesh for each energy group and angular moment.
-  Hermes::vector<Mesh *> meshes;
-  for (unsigned int i = 0; i < N_EQUATIONS; i++) 
+  // Use multimesh, i.e. create one mesh for each energy group and pseudo-flux.
+  Hermes::vector<Mesh *> meshes, basic_meshes;
+  for (unsigned int i = 0; i < N_EQUATIONS; i++)
+  {
     meshes.push_back(new Mesh());
+    basic_meshes.push_back(new Mesh()); // Before each of the repeated runs of the main calculation 
+                                        // loop, meshes will be reset to 'basic_meshes'.
+  }
   
   // Load the mesh on which the 1st solution component (1st group, 0th moment) will be approximated.
   MeshReaderH2D mesh_reader;
@@ -144,6 +185,9 @@ int main(int argc, char* argv[])
   for (int j = 0; j < INIT_REF_NUM[0]; j++) 
     meshes[0]->refine_all_elements();
   
+  for (unsigned int i = 0; i < N_EQUATIONS; i++) 
+    basic_meshes[i]->copy(meshes[i]);
+  
 #ifdef USE_SPN
   SupportClasses::Visualization views(SPN_ORDER, N_GROUPS, DISPLAY_MESHES);
 #else // DIFFUSION
@@ -160,9 +204,13 @@ int main(int argc, char* argv[])
     solutions.push_back(new Solution<double>());
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<Space<double> *> spaces;
+  Hermes::vector<Space<double> *> spaces, basic_spaces;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
+  {
     spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
+    basic_spaces.push_back(new H1Space<double>(basic_meshes[i], P_INIT[i])); // Before each of the repeated runs of the main calculation 
+                                                                             // loop, spaces will be reset to 'basic_spaces'.
+  }
     
   // Initialize the weak formulation.
 #ifdef USE_SPN
@@ -171,22 +219,15 @@ int main(int argc, char* argv[])
   WeakForms::FixedSourceProblem wf(matprop);
 #endif
   
-  if (STRATEGY >= 0)
+  if (STRATEGY >= 0)  // Use adaptivity.
   {
-    // DOF and CPU convergence graphs
-    GnuplotGraph graph_dof_est("Error convergence", "NDOF", "log(error)");
-    graph_dof_est.add_row("H1 err. est. [%]", "r", "-", "o");
-    graph_dof_est.set_log_x();
-    graph_dof_est.set_log_y();
-    graph_dof_est.show_legend();
-    graph_dof_est.show_grid();
+    std::set<int> run_cases(RUN_CASES, RUN_CASES + NUM_RUN_CASES);
     
-    GnuplotGraph graph_cpu_est("Error convergence", "CPU time [s]", "log(error)");
-    graph_cpu_est.add_row("H1 err. est. [%]", "r", "-", "o");
-    graph_dof_est.set_log_x();
-    graph_dof_est.set_log_y();
-    graph_cpu_est.show_legend();
-    graph_cpu_est.show_grid();
+    // DOF and CPU convergence graphs.
+    GnuplotGraph graph_dof_est("Convergence of H1 estimates of rel. error", "NDOF", "error [%]");    
+    GnuplotGraph graph_cpu_est("Convergence of H1 estimates of rel. error", "CPU time [s]", "error [%]");
+    setup_convergence_graph(&graph_dof_est, run_cases);
+    setup_convergence_graph(&graph_cpu_est, run_cases);
         
     // Create pointers to coarse mesh solutions used for error estimation.
     Hermes::vector<Solution<double>*> coarse_solutions;
@@ -201,144 +242,293 @@ int main(int argc, char* argv[])
     for (unsigned int i = 0; i < N_EQUATIONS; i++)
       selectors.push_back(&selector);
     
-    // Adaptivity loop:
-    int as = 1; bool done = false;
-    Hermes::vector<Space<double> *>* fine_spaces;
-    do 
+    // For each run case defined in RUN_CASES.
+    unsigned int run_number = 0;
+    for (std::set<int>::const_iterator run = run_cases.begin(); run != run_cases.end(); ++run, ++run_number)
     {
-      info("---- Adaptivity step %d:", as);
-            
-      fine_spaces = Space<double>::construct_refined_spaces(spaces);
-      int ndof_fine = Space<double>::get_num_dofs(*fine_spaces);
-      
-      // Initialize the fine mesh problem.
-      report_num_dof("Solving on fine meshes, #DOF: ", *fine_spaces);
-      
-      DiscreteProblem<double> dp(&wf, *fine_spaces);
+      info("_______________________________________________________________________________");
+      info(("____________________________________"+itos(*run)+"__________________________________________").c_str());
 
-      // Initial coefficient vector for the Newton's method.  
-      double* coeff_vec = new double[ndof_fine];
-      memset(coeff_vec, 0, ndof_fine * sizeof(double));
-      
-      // Perform Newton's iteration.
-      // Perform Newton's iteration on reference emesh.
-      NewtonSolver<double> newton(&dp, matrix_solver);
-      newton.set_verbose_output(false);
-    
-      if (!newton.solve(coeff_vec)) 
-        error_function("Newton's iteration failed.");
-      else
-        // Translate the resulting coefficient vector into instances of Solution.
-        Solution<double>::vector_to_solutions(newton.get_sln_vector(), *fine_spaces, solutions);
-      
-      // Project the fine mesh solution onto the coarse mesh.
-      report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces);
-      OGProjection<double>::project_global(spaces, solutions, coarse_solutions, matrix_solver);
+      ProjNormType error_norm = HERMES_H1_NORM;
 
-      // View the coarse-mesh solutions and polynomial orders.
-      if (HERMES_VISUALIZATION && INTERMEDIATE_VISUALIZATION)
+      // Adaptivity loop:
+      int as = 1; bool done = false;
+      Hermes::vector<Space<double> *>* fine_spaces;
+      do 
       {
-        cpu_time.tick();
-        info("Visualizing.");
-        views.show_solutions(coarse_solutions);
-        views.show_orders(spaces);
-        cpu_time.tick(Hermes::HERMES_SKIP);
-      }
+        info("---- Adaptivity step %d:", as);
+        
+        // Initialize the fine mesh problem.
+        fine_spaces = Space<double>::construct_refined_spaces(spaces);
+        int ndof_fine = Space<double>::get_num_dofs(*fine_spaces);
       
-      // Calculate element errors.
-      info("Calculating error estimate."); 
-      Adapt<double> adaptivity(spaces);
+        report_num_dof("Solving on fine meshes, #DOF: ", *fine_spaces);
       
-#ifdef USE_SPN            
+        DiscreteProblem<double> dp(&wf, *fine_spaces);
 
-      info("  --- Calculating group norms for solution normalization.");
-      Hermes::vector< MeshFunction<double>* > coarse_scalar_fluxes, fine_scalar_fluxes;
-      MomentFilter::get_scalar_fluxes_with_derivatives(coarse_solutions, &coarse_scalar_fluxes, N_GROUPS);
-      MomentFilter::get_scalar_fluxes_with_derivatives(solutions, &fine_scalar_fluxes, N_GROUPS);
+        // Initial coefficient vector for the Newton's method.  
+        double* coeff_vec = new double[ndof_fine];
+        memset(coeff_vec, 0, ndof_fine * sizeof(double));
       
-      MomentGroupFlattener mg(N_GROUPS);
-      double err_est_rel_total = 0.0;
-      for (unsigned int g = 0; g < N_GROUPS; g++)
-      {
-        double group_err_est = Hermes::sqr(Global<double>::calc_abs_error(coarse_scalar_fluxes[g], fine_scalar_fluxes[g], HERMES_H1_NORM));
-        double group_norm = Hermes::sqr(Global<double>::calc_norm(fine_scalar_fluxes[g], HERMES_H1_NORM));
+        // Perform Newton's iteration on reference mesh.
+        NewtonSolver<double> *newton = new NewtonSolver<double>(&dp, matrix_solver);
+        newton->set_verbose_output(false);
+      
+        if (!newton->solve(coeff_vec)) 
+          error_function("Newton's iteration failed.");
+        else
+          // Translate the resulting coefficient vector into instances of Solution.
+          Solution<double>::vector_to_solutions(newton->get_sln_vector(), *fine_spaces, solutions);
         
-        err_est_rel_total += group_err_est/group_norm;
+        // Clean up.
+        delete newton;
+        delete [] coeff_vec;
         
-        for (unsigned int m = 0; m < N_ODD_MOMENTS; m++)
+        // Project the fine mesh solution onto the coarse mesh.
+        report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces);
+        OGProjection<double>::project_global(spaces, solutions, coarse_solutions, matrix_solver);
+
+        // View the coarse-mesh solutions and polynomial orders.
+        if (HERMES_VISUALIZATION)
         {
-          if (ERROR_NORMALIZATION == 0)
-            adaptivity.set_norm_form(mg.pos(m,g), mg.pos(m,g), new NormForm<double>(m, group_norm, HERMES_H1_NORM));
-          else if (ERROR_NORMALIZATION == 1)
-            adaptivity.set_norm_form(mg.pos(m,g), mg.pos(m,g), new NormForm<double>(m, 1.0, HERMES_H1_NORM));
-          else if (ERROR_NORMALIZATION == 2)
-            adaptivity.set_norm_form(mg.pos(m,g), mg.pos(m,g), new NormForm<double>(m, HERMES_H1_NORM));
+          cpu_time.tick();
+          info("Visualizing.");
+          if (SHOW_INTERMEDIATE_SOLUTIONS)
+            views.show_solutions(coarse_solutions);
+          if (SHOW_INTERMEDIATE_ORDERS)
+            views.show_orders(spaces);
+          cpu_time.tick(Hermes::HERMES_SKIP);
+        }
+        
+        // Calculate element errors.
+        info("Calculating error estimate."); 
+        Adapt<double> adaptivity(spaces);
+                
+  #ifdef USE_SPN            
+
+        cpu_time.tick();
+        Hermes::TimePeriod cpu_time2;
+        cpu_time2.tick();
+        
+        info("  --- Calculating total relative error of scalar flux approximation.");
+        Hermes::vector< MeshFunction<double>* > coarse_scalar_fluxes, fine_scalar_fluxes;
+        // If error_norm == HERMES_L2_NORM, MomentFilter::get_scalar_fluxes can be used instead (derivatives will not be needed).
+        MomentFilter::get_scalar_fluxes_with_derivatives(coarse_solutions, &coarse_scalar_fluxes, N_GROUPS);
+        MomentFilter::get_scalar_fluxes_with_derivatives(solutions, &fine_scalar_fluxes, N_GROUPS);
+        
+        // Calculate relative error estimate of the scalar flux approximation (linear comb. of the actual solutions).
+        MomentGroupFlattener mg(N_GROUPS);  // Creates a single index from the moment-group pair.
+        double scalar_flux_err_est_rel = 0.0;
+        for (unsigned int g = 0; g < N_GROUPS; g++)
+        {
+          double group_err_est = Hermes::sqr(Global<double>::calc_abs_error(coarse_scalar_fluxes[g], fine_scalar_fluxes[g], error_norm));
+          double group_norm = Hermes::sqr(Global<double>::calc_norm(fine_scalar_fluxes[g], error_norm));
+          scalar_flux_err_est_rel += group_err_est/group_norm;
+        }  
+        
+        scalar_flux_err_est_rel = sqrt(scalar_flux_err_est_rel) * 100;
+        
+        // Calculate relative error estimate of the integrated absorption rate (summed over all groups).
+        PostProcessor pp(NEUTRONICS_SPN);
+        double abs_rate_coarse = pp.get_integrated_reaction_rates(ABSORPTION, coarse_solutions, matprop, edit_regions);
+        double abs_rate_fine = pp.get_integrated_reaction_rates(ABSORPTION, solutions, matprop, edit_regions);
+        double absorb_rate_err_est_rel = fabs((abs_rate_coarse - abs_rate_fine)/abs_rate_fine) * 100;
+        
+        MomentFilter::clear_scalar_fluxes(&coarse_scalar_fluxes);
+        MomentFilter::clear_scalar_fluxes(&fine_scalar_fluxes);
+        
+        cpu_time2.tick();
+        info("  ------- Time taken (not included in the total running time): %g s", cpu_time2.last());
+        cpu_time.tick(Hermes::HERMES_SKIP);
+        
+        // Calculate error estimate for each solution component and the total error estimate.
+        info("  --- Calculating total relative error of pseudo-fluxes approximation.");
+        
+        // Set the combination of error estimation form / error normalization form corresponding to the current run case.
+        for (unsigned int g = 0; g < N_GROUPS; g++)
+        {
+          for (unsigned int mrow = 0; mrow < N_ODD_MOMENTS; mrow++)
+          {
+            for (unsigned int mcol = 0; mcol < N_ODD_MOMENTS; mcol++)
+            {
+              if (*run == 0 || *run == 1)
+              {
+                adaptivity.set_error_form(mg.pos(mrow,g), mg.pos(mcol,g), new ErrorFormSPN<double>(mrow, mcol, error_norm));
+                if (*run == 1)
+                  adaptivity.set_norm_form(mg.pos(mrow,g), mg.pos(mcol,g), new Adapt<double>::MatrixFormVolError(error_norm));
+                else
+                  adaptivity.set_norm_form(mg.pos(mrow,g), mg.pos(mcol,g), new ErrorFormSPN<double>(mrow, mcol, error_norm));
+              }
+              else if (*run == 2 || *run == 3)
+              {
+                if (mcol == mrow)
+                {
+                  adaptivity.set_error_form(mg.pos(mrow,g), mg.pos(mcol,g), new ErrorFormSPN<double>(mrow, mcol, error_norm));
+                  if (*run == 3)
+                    adaptivity.set_norm_form(mg.pos(mrow,g), mg.pos(mcol,g), new Adapt<double>::MatrixFormVolError(error_norm));
+                  else
+                    adaptivity.set_norm_form(mg.pos(mrow,g), mg.pos(mcol,g), new ErrorFormSPN<double>(mrow, mcol, error_norm));
+                }
+              }
+              else if (*run == 5)
+              {
+                adaptivity.set_error_form(mg.pos(mrow,g), mg.pos(mcol,g), new Adapt<double>::MatrixFormVolError(error_norm));
+                adaptivity.set_norm_form(mg.pos(mrow,g), mg.pos(mcol,g), new Adapt<double>::MatrixFormVolError(error_norm));
+              }
+            }
+          }
+        }
+        
+        // Calculate the element and total error estimates and make them available for mesh adaptation.
+        double pseudo_flux_err_est_rel = adaptivity.calc_err_est(coarse_solutions, solutions, NULL, true,
+                                                                 HERMES_TOTAL_ERROR_REL | HERMES_ELEMENT_ERROR_REL) * 100; 
+        
+  #else // DIFFUSION
+
+        if (*run != 0)
+          error("Only one run case possible for the diffusion model.");
+        
+        double scalar_flux_err_est_rel = adaptivity.calc_err_est(coarse_solutions, solutions, NULL, true, 
+                                                                 HERMES_TOTAL_ERROR_REL | HERMES_ELEMENT_ERROR_ABS) * 100;
+        
+        PostProcessor pp(NEUTRONICS_DIFFUSION);
+        double abs_rate_coarse = pp.get_integrated_reaction_rates(ABSORPTION, coarse_solutions, matprop, edit_regions);
+        double abs_rate_fine = pp.get_integrated_reaction_rates(ABSORPTION, solutions, matprop, edit_regions);
+        double absorb_rate_err_est_rel = fabs((abs_rate_coarse - abs_rate_fine)/abs_rate_fine) * 100;
+
+  #endif
+        
+        // Report results.
+  #ifdef USE_SPN
+        info("  --- pseudo-fluxes rel. error estimate: %g%%", pseudo_flux_err_est_rel);
+  #endif
+        info("  --- scalar flux rel. error estimate: %g%%", scalar_flux_err_est_rel);
+        info("  --- integrated absorption rate rel. error estimate: %g%%", absorb_rate_err_est_rel);
+        
+        // Add the results to convergence graphs.
+        cpu_time.tick();
+  #ifdef USE_SPN   
+        graph_dof_est.add_values(3*run_number, ndof_fine, pseudo_flux_err_est_rel);
+        graph_cpu_est.add_values(3*run_number, cpu_time.accumulated(), pseudo_flux_err_est_rel);
+        graph_dof_est.add_values(3*run_number+1, ndof_fine, scalar_flux_err_est_rel);
+        graph_cpu_est.add_values(3*run_number+1, cpu_time.accumulated(), scalar_flux_err_est_rel);
+        graph_dof_est.add_values(3*run_number+2, ndof_fine, absorb_rate_err_est_rel);
+        graph_cpu_est.add_values(3*run_number+2, cpu_time.accumulated(), absorb_rate_err_est_rel);
+  #else // DIFFUSION
+        graph_dof_est.add_values(2*run_number, ndof_fine, scalar_flux_err_est_rel);
+        graph_cpu_est.add_values(2*run_number, cpu_time.accumulated(), scalar_flux_err_est_rel);
+        graph_dof_est.add_values(2*run_number+1, ndof_fine, absorb_rate_err_est_rel);
+        graph_cpu_est.add_values(2*run_number+1, cpu_time.accumulated(), absorb_rate_err_est_rel);
+  #endif
+        cpu_time.tick(Hermes::HERMES_SKIP);
+        
+        // If err_est is too large, adapt the mesh.
+        if (scalar_flux_err_est_rel < ERR_STOP || as == MAX_ADAPT_NUM || ndof_fine >= NDOF_STOP) 
+          done = true;
+        else 
+        {
+          info("Adapting the coarse meshes.");
+          done = adaptivity.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);
+        }
+        
+        if (!done)
+        {
+          for(unsigned int i = 0; i < N_EQUATIONS; i++)
+            delete (*fine_spaces)[i]->get_mesh();
+          delete fine_spaces;
+          
+          // Increase the adaptivity step counter.
+          as++;
         }
       }
-      err_est_rel_total = sqrt(err_est_rel_total) * 100;
+      while (done == false);
       
-      MomentFilter::clear_scalar_fluxes(&coarse_scalar_fluxes);
-      MomentFilter::clear_scalar_fluxes(&fine_scalar_fluxes);
+      // Save the convergence graphs.
+      graph_dof_est.save(("conv_dof_est_sp"+itos(SPN_ORDER)+".gp").c_str());
+      graph_cpu_est.save(("conv_cpu_est_sp"+itos(SPN_ORDER)+".gp").c_str());
       
-      // Calculate error estimate for each solution component and the total error estimate.
-      Hermes::vector<double> err_est_rel;
-      adaptivity.calc_err_est(coarse_solutions, solutions, &err_est_rel, true, HERMES_TOTAL_ERROR_ABS | HERMES_ELEMENT_ERROR_REL);      
-      
-#else // DIFFUSION
-
-      Hermes::vector<double> err_est_rel;
-      double err_est_rel_total = adaptivity.calc_err_est(coarse_solutions, solutions, &err_est_rel, true, HERMES_TOTAL_ERROR_REL | HERMES_ELEMENT_ERROR_REL) * 100;
-
-#endif
-      
-      // Report results.
-      info("  --- total H1 error estimate: %g%%", err_est_rel_total);
-      
-      cpu_time.tick();
-      graph_dof_est.add_values(Space<double>::get_num_dofs(spaces), err_est_rel_total);
-      graph_cpu_est.add_values(cpu_time.accumulated(), err_est_rel_total);
-      cpu_time.tick(Hermes::HERMES_SKIP);
-      
-      // If err_est too large, adapt the mesh.
-      if (err_est_rel_total < ERR_STOP || as == MAX_ADAPT_NUM) 
-        done = true;
-      else 
+      for (unsigned int i = 0; i < N_EQUATIONS; i++)
       {
-        info("Adapting the coarse meshes.");
-        done = adaptivity.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);        
-        if (Space<double>::get_num_dofs(spaces) >= NDOF_STOP) 
-          done = true;
+        // Make the fine-mesh spaces the final spaces for further analyses.
+        delete spaces[i]->get_mesh(); // Alternatively "delete meshes[i]".
+        delete spaces[i];
+        spaces[i] = fine_spaces->at(i);    
       }
-      
-      // Clean up.
-      delete [] coeff_vec;
-      
-      if (!done)
-      {
-        for(unsigned int i = 0; i < N_EQUATIONS; i++)
-          delete (*fine_spaces)[i]->get_mesh();
-        delete fine_spaces;
+      delete fine_spaces; 
         
-        // Increase counter.
-        as++;
-      }
-    }
-    while (done == false);
-    
-    graph_dof_est.save("conv_dof_est.gp");
-    graph_cpu_est.save("conv_cpu_est.gp");
-    
-    for (unsigned int i = 0; i < N_EQUATIONS; i++)
-    {
-      // Make the fine-mesh spaces the final spaces for further analyses.
-      delete spaces[i]->get_mesh(); // Alternatively "delete meshes[i]".
-      delete spaces[i];
-      spaces[i] = fine_spaces->at(i);
+      cpu_time.tick();
+      verbose("Total running time: %g s", cpu_time.accumulated());
+      cpu_time.reset();
       
-      // Delete the auxiliary coarse-mesh solutions.
-      delete coarse_solutions[i];    
+      //
+      // Analysis of the solution.
+      //
+      
+      // Visualization.
+      
+      if (HERMES_VISUALIZATION)
+      {
+        views.show_solutions(solutions);
+        views.show_orders(spaces);
+        
+        // Wait for the view to be closed.  
+        Views::View::wait();
+      }
+      if (VTK_VISUALIZATION)
+      {
+        views.save_solutions_vtk("flux", "flux", solutions);
+        views.save_orders_vtk("space", spaces);
+      }
+      
+      // Integrate absorption rates and scalar fluxes over specified edit regions and compare with results
+      // from the collision probabilities code DRAGON (see problem_data.h).
+
+    #ifdef USE_SPN
+      PostProcessor pp(NEUTRONICS_SPN);
+    #else // DIFFUSION
+      PostProcessor pp(NEUTRONICS_DIFFUSION);
+    #endif
+      
+      Hermes::vector<double> absorption_rates, integrated_fluxes, areas;
+      pp.get_integrated_reaction_rates(ABSORPTION, solutions, &absorption_rates, matprop, edit_regions);
+      pp.get_integrated_scalar_fluxes(solutions, &integrated_fluxes, N_GROUPS, edit_regions);
+      pp.get_areas(spaces[0]->get_mesh(), edit_regions, &areas); // Areas of the edit regions.
+      
+      // Multiply integral results by the number of times each region appears in the assembly.
+      for (int i = 0; i < 2*n_pins; i++)
+      {
+        absorption_rates[i] *= 8;
+        integrated_fluxes[i] *= 8;
+        areas[i] *= 8;
+      }
+      
+      for (int i = 0; i < 2*n_pins; i++)
+        info("Absorption rate integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, absorption_rates[i], 
+            fabs(absorption_rates[i] - ref_integrated_absorption_rates[i])/ref_integrated_absorption_rates[i] * 100);
+      for (int i = 0; i < 2*n_pins; i++)
+        info("Scalar flux integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, integrated_fluxes[i],
+            fabs(integrated_fluxes[i] - ref_integrated_fluxes[i])/ref_integrated_fluxes[i] * 100);
+      for (int i = 0; i < 2*n_pins; i++)
+        info("Area of %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, areas[i],
+            fabs(areas[i] - ref_regions_areas[i])/ref_regions_areas[i] * 100);
+        
+      // Reset the meshes and spaces for the next run case.
+      for(unsigned int i = 0; i < N_EQUATIONS; i++)
+      {
+        delete spaces[i]->get_mesh();
+        meshes[i] = new Mesh();
+        meshes[i]->copy(basic_meshes[i]);
+        
+        delete spaces[i];
+        spaces[i] = basic_spaces[i]->dup(meshes[i]);
+      }
+      
+      // Advance to the next run case ...
     }
-    delete fine_spaces; 
+    
+    // Delete the auxiliary coarse-mesh solutions.
+    for(unsigned int i = 0; i < N_EQUATIONS; i++)
+      delete coarse_solutions[i];
   }
   else  // Do not use adaptivity.
   {
@@ -360,62 +550,60 @@ int main(int argc, char* argv[])
     else
       // Translate the resulting coefficient vector into instances of Solution.
       Solution<double>::vector_to_solutions(newton.get_sln_vector(), spaces, solutions);
-  } 
     
-  cpu_time.tick();
-  verbose("Total running time: %g s", cpu_time.accumulated());
-  
-  //
-  // Analysis of the solution.
-  //
-  
-  // Visualization.
-  
-  if (HERMES_VISUALIZATION)
-  {
-    views.show_solutions(solutions);
-    views.show_orders(spaces);
-  }
-  if (VTK_VISUALIZATION)
-  {
-    views.save_solutions_vtk("flux", "flux", solutions);
-    views.save_orders_vtk("space", spaces);
-  }
-  
-  // Integrate absorption rates and scalar fluxes over specified edit regions and compare with results
-  // from the collision probabilities code DRAGON (see problem_data.h).
+    cpu_time.tick();
+    verbose("Total running time: %g s", cpu_time.accumulated());
+    
+    //
+    // Analysis of the solution (the same as if adaptivity was used).
+    //
+    
+    // Visualization.
+    
+    if (HERMES_VISUALIZATION)
+    {
+      views.show_solutions(solutions);
+      views.show_orders(spaces);
+    }
+    if (VTK_VISUALIZATION)
+    {
+      views.save_solutions_vtk("flux", "flux", solutions);
+      views.save_orders_vtk("space", spaces);
+    }
+    
+    // Integrate absorption rates and scalar fluxes over specified edit regions and compare with results
+    // from the collision probabilities code DRAGON (see problem_data.h).
 
-#ifdef USE_SPN
-  PostProcessor pp(NEUTRONICS_SPN);
-#else // DIFFUSION
-  PostProcessor pp(NEUTRONICS_DIFFUSION);
-#endif
-  
-  Hermes::vector<double> absorption_rates, integrated_fluxes, areas;
-  pp.get_integrated_reaction_rates(ABSORPTION, solutions, &absorption_rates, matprop, edit_regions);
-  pp.get_integrated_scalar_fluxes(solutions, &integrated_fluxes, N_GROUPS, edit_regions);
-  pp.get_areas(spaces[0]->get_mesh(), edit_regions, &areas); // Areas of the edit regions.
-  
-  // Multiply integral results by the number of times each region appears in the assembly.
-  for (int i = 0; i < 2*n_pins; i++)
-  {
-    absorption_rates[i] *= 8;
-    integrated_fluxes[i] *= 8;
-    areas[i] *= 8;
-  }
-  
-  for (int i = 0; i < 2*n_pins; i++)
-    info("Absorption rate integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, absorption_rates[i], 
-         fabs(absorption_rates[i] - ref_integrated_absorption_rates[i])/ref_integrated_absorption_rates[i] * 100);
-  for (int i = 0; i < 2*n_pins; i++)
-    info("Scalar flux integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, integrated_fluxes[i],
-         fabs(integrated_fluxes[i] - ref_integrated_fluxes[i])/ref_integrated_fluxes[i] * 100);
-  for (int i = 0; i < 2*n_pins; i++)
-    info("Area of %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, areas[i],
-         fabs(areas[i] - ref_regions_areas[i])/ref_regions_areas[i] * 100);
-        
-  // Wait for the view to be closed.  
-  Views::View::wait();
+  #ifdef USE_SPN
+    PostProcessor pp(NEUTRONICS_SPN);
+  #else // DIFFUSION
+    PostProcessor pp(NEUTRONICS_DIFFUSION);
+  #endif
+    
+    Hermes::vector<double> absorption_rates, integrated_fluxes, areas;
+    pp.get_integrated_reaction_rates(ABSORPTION, solutions, &absorption_rates, matprop, edit_regions);
+    pp.get_integrated_scalar_fluxes(solutions, &integrated_fluxes, N_GROUPS, edit_regions);
+    pp.get_areas(spaces[0]->get_mesh(), edit_regions, &areas); // Areas of the edit regions.
+    
+    // Multiply integral results by the number of times each region appears in the assembly.
+    for (int i = 0; i < 2*n_pins; i++)
+    {
+      absorption_rates[i] *= 8;
+      integrated_fluxes[i] *= 8;
+      areas[i] *= 8;
+    }
+    
+    for (int i = 0; i < 2*n_pins; i++)
+      info("Absorption rate integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, absorption_rates[i], 
+          fabs(absorption_rates[i] - ref_integrated_absorption_rates[i])/ref_integrated_absorption_rates[i] * 100);
+    for (int i = 0; i < 2*n_pins; i++)
+      info("Scalar flux integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, integrated_fluxes[i],
+          fabs(integrated_fluxes[i] - ref_integrated_fluxes[i])/ref_integrated_fluxes[i] * 100);
+    for (int i = 0; i < 2*n_pins; i++)
+      info("Area of %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, areas[i],
+          fabs(areas[i] - ref_regions_areas[i])/ref_regions_areas[i] * 100);
+
+  } 
   
   // Final clean up.
   for(unsigned int i = 0; i < N_EQUATIONS; i++)
@@ -424,6 +612,9 @@ int main(int argc, char* argv[])
                                   // otherwise, it will delete "fine_spaces[i]->get_mesh()".
     delete spaces[i];
     delete solutions[i];
+    
+    delete basic_meshes[i];
+    delete basic_spaces[i];
   }
   
   return 0;
