@@ -43,3 +43,9 @@ void report_errors(const std::string& msg, const Hermes::vector< double > errors
   info(ss.str().c_str());
 }
 
+std::string itos(int t)
+{
+  std::stringstream ss; ss << t;
+  return ss.str();
+}
+
