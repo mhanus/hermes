@@ -5,6 +5,7 @@
 
 #include "views/mesh_view.h"
 #include "views/scalar_view.h"
+#include "views/vector_view.h"
 #include "views/order_view.h"
 
 #include "function/filter.h"
@@ -122,7 +123,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     class Visualization
     {
       protected:
-        unsigned int n_unknowns, n_equations, n_groups;
+        unsigned int n_equations, n_groups;
         bool display_meshes;
         
         Views::ScalarView<double>** sviews;
@@ -139,12 +140,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           return ss.str();
         }
         
-        void init(unsigned int nu, unsigned int ne, unsigned int ng);
+        void init(unsigned int ne, unsigned int ng);
         
       public:
-        Visualization(bool display_meshes = false) : display_meshes(display_meshes) { init(0,0,0); }
-        Visualization(unsigned int n_unknowns, unsigned int n_equations, unsigned int n_groups, 
-                      bool display_meshes = false) : display_meshes(display_meshes) { init(n_unknowns, n_equations, n_groups); }
+        Visualization(bool display_meshes = false) : display_meshes(display_meshes) { init(0,0); }
+        Visualization(unsigned int n_equations, unsigned int n_groups, bool display_meshes = false) 
+          : display_meshes(display_meshes) { init(n_equations, n_groups); }
         
         virtual ~Visualization();
         
@@ -156,7 +157,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         void inspect_solutions(Hermes::vector< Solution<double>* > solutions);
         void inspect_orders(Hermes::vector<Space<double>*> spaces);
         
-        Views::ScalarView<double>** get_solution_views(unsigned int* num) { *num = n_unknowns;  return sviews; }
+        Views::ScalarView<double>** get_solution_views(unsigned int* num) { *num = n_equations; return sviews; }
         Views::OrderView<double>** get_order_views(unsigned int* num)     { *num = n_equations; return oviews; }
         Views::MeshView** get_mesh_views(unsigned int* num)               { *num = n_equations; return mviews; }
     };
@@ -237,23 +238,31 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       class Common 
       {
         protected:
-          Common(unsigned int angular_moment, unsigned int group, unsigned int G);  
+          Common(unsigned int angular_moment, unsigned int group, unsigned int G) 
+            : odd_req_mom((angular_moment%2) == 1), req_mom_idx(angular_moment/2),  g(group), mg(G)
+          {
+            if (group >= G) error_function("MomentFilter::Common > %s", Messages::E_INVALID_GROUP_INDEX);
+          }
           
           unsigned int odd_req_mom, req_mom_idx, g;
           MomentGroupFlattener mg;
       };
       
-      class Val : protected Common, public SimpleFilter<double>
+      class EvenMomentVal : protected Common, public SimpleFilter<double>
       {
         public:       
-          Val(unsigned int angular_moment, unsigned int group, unsigned int G, 
-              const Hermes::vector<MeshFunction<double>*>& solutions)
+          EvenMomentVal(unsigned int angular_moment, unsigned int group, unsigned int G, 
+                        const Hermes::vector<MeshFunction<double>*>& solutions)
             : Common(angular_moment, group, G), SimpleFilter<double>(solutions, Hermes::vector<int>())
-          {};
-          Val(unsigned int angular_moment, unsigned int group, unsigned int G,
-              const Hermes::vector<Solution<double>*>& solutions)
+          {
+            if (odd_req_mom) error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
+          };
+          EvenMomentVal(unsigned int angular_moment, unsigned int group, unsigned int G,
+                        const Hermes::vector<Solution<double>*>& solutions)
             : Common(angular_moment, group, G), SimpleFilter<double>(solutions, Hermes::vector<int>())
-          {};
+          {
+            if (odd_req_mom) error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
+          };
           
           virtual void set_active_element(Element* e);
           
@@ -261,24 +270,62 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           void filter_fn(int n, Hermes::vector<double*> values, double* result);
       };
       
-      class ValDxDy : protected Common, public DXDYFilter<double>
+      class EvenMomentValDxDy : protected Common, public DXDYFilter<double>
       {
         public:
-          ValDxDy(unsigned int angular_moment, unsigned int group, unsigned int G, 
+          EvenMomentValDxDy(unsigned int angular_moment, unsigned int group, unsigned int G, 
                   const Hermes::vector<MeshFunction<double>*>& solutions)
             : Common(angular_moment, group, G), DXDYFilter<double>(solutions)
-          {};
-          ValDxDy(unsigned int angular_moment, unsigned int group, unsigned int G,
+          {
+            if (odd_req_mom) error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
+          };
+          EvenMomentValDxDy(unsigned int angular_moment, unsigned int group, unsigned int G,
                   const Hermes::vector<Solution<double>*>& solutions)
             : Common(angular_moment, group, G), DXDYFilter<double>(solutions)
-          {};
+          {
+            if (odd_req_mom) error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
+          };
           
           virtual void set_active_element(Element* e);
           
         protected:
           void filter_fn(int n, 
-                        Hermes::vector<double *> values, Hermes::vector<double *> dx, Hermes::vector<double *> dy, 
-                        double* rslt, double* rslt_dx, double* rslt_dy);
+                         Hermes::vector<double *> values, Hermes::vector<double *> dx, Hermes::vector<double *> dy, 
+                         double* rslt, double* rslt_dx, double* rslt_dy);
+      };
+      
+      class OddMomentVal : protected Common, public Filter<double>
+      {
+        public:
+          OddMomentVal(unsigned int component, unsigned int angular_moment, unsigned int group, unsigned int G, 
+                  const Hermes::vector<MeshFunction<double>*>& solutions,
+                  const MaterialProperties::MaterialPropertyMaps *matprop)
+            : Common(angular_moment, group, G), Filter<double>(solutions), component(component), matprop(matprop)
+          {
+            if (!odd_req_mom) error_function("MomentFilter::OddMomentVal constructor > %s", Messages::E_ODD_MOMENT_EXPECTED);
+            if (component >= 2) error_function("MomentFilter::OddMomentVal > %s", Messages::E_INVALID_COMPONENT);
+          };
+          OddMomentVal(unsigned int component, unsigned int angular_moment, unsigned int group, unsigned int G,
+                  const Hermes::vector<Solution<double>*>& solutions,
+                  const MaterialProperties::MaterialPropertyMaps *matprop)
+            : Common(angular_moment, group, G), Filter<double>(solutions), component(component), matprop(matprop)
+          {
+            if (!odd_req_mom) error_function("MomentFilter::OddMomentVal constructor > %s", Messages::E_ODD_MOMENT_EXPECTED);
+            if (component >= 2) error_function("MomentFilter::OddMomentVal > %s", Messages::E_INVALID_COMPONENT);
+          };
+          
+          virtual void set_active_element(Element* e);
+          
+        protected:
+          virtual void precalculate(int order, int mask);
+          virtual double get_pt_value(double x, double y, int item = H2D_FN_VAL_0)
+          { 
+            error_function("Not implemented yet"); 
+            return 0; 
+          }
+                         
+          const MaterialProperties::MaterialPropertyMaps *matprop;
+          unsigned int component;
       };
       
       static void get_scalar_fluxes(const Hermes::vector<Solution<double>*>& angular_fluxes,
@@ -358,12 +405,23 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       unsigned int n_moments, n_odd_moments;
       MomentGroupFlattener mg;
       
+      Views::ScalarView<double>** sviews_app;
+      Views::VectorView<double>** vviews;
+      
       public:
         Visualization(unsigned int spn_order, unsigned int G, bool display_meshes = false);
+        virtual ~Visualization();
         
         void show_meshes(Hermes::vector<Mesh*> meshes);
         void show_solutions(Hermes::vector< Solution<double>* > solutions);
         void show_orders(Hermes::vector<Space<double>*> spaces);
+        
+        void show_even_flux_moment(unsigned int moment, unsigned int group, Views::ScalarView<double>* sview,
+                                   Hermes::vector< Solution<double>* > solutions);
+        void show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView<double>* vview,
+                                  Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
+        void show_all_flux_moments(Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
+        
         
         void save_solutions_vtk(const std::string& base_filename, const std::string& base_varname,
                                 Hermes::vector< Solution<double>* > solutions, bool mode_3D = false);                   

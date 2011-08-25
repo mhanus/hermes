@@ -18,7 +18,7 @@
 using namespace RefinementSelectors;
 
 const unsigned int N_GROUPS = 1;    // Monoenergetic (single group) problem.
-const unsigned int SPN_ORDER = 7;   // Currently implemented maximum is 9.
+const unsigned int SPN_ORDER = 3;   // Currently implemented maximum is 9.
 
 const unsigned int N_MOMENTS = SPN_ORDER+1;
 const unsigned int N_ODD_MOMENTS = (N_MOMENTS+1)/2;
@@ -26,10 +26,10 @@ const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
 
 // Initial uniform mesh refinement and initial polynomial orders for the individual solution components. 
 const int INIT_REF_NUM[N_EQUATIONS] = {
-  1, 1, 1, 1//, 1
+  1, 1//, 1, 1//, 1
 };
 const int P_INIT[N_EQUATIONS] = {
-  1, 1, 1, 1//, 1
+  1, 1//, 1, 1//, 1
 };
 
 const double THRESHOLD = 0.6;            // This is a quantitative parameter of the adapt(...) function and
@@ -192,13 +192,7 @@ int main(int argc, char* argv[])
    
   // Initialize the weak formulation.
   CustomWeakForm wf(matprop, SPN_ORDER);
-  
-  // Initialize views.
-  Views::ScalarView<double> sview("Solution", new Views::WinGeom(0, 0, 440, 350));
-  sview.fix_scale_width(50);
-  sview.show_mesh(false);
-  Views::OrderView<double>  oview("Polynomial orders", new Views::WinGeom(450, 0, 400, 350));
-  
+    
   // DOF and CPU convergence graphs initialization.
   GnuplotGraph graph_dof("Convergence of rel. errors", "NDOF", "error [%]");
   graph_dof.add_row("pseudo-fluxes (H1)", "r", "-", "+");
@@ -417,9 +411,7 @@ int main(int argc, char* argv[])
   
   if (HERMES_VISUALIZATION)
   {
-    views.show_solutions(solutions);
-    views.show_orders(spaces);
-    
+    views.show_all_flux_moments(solutions, matprop);    
     // Wait for the view to be closed.  
     Views::View::wait();
   }

@@ -59,6 +59,12 @@ namespace Hermes
           "SP_%d model requires Sigma_tn for n = 0,...,%d.";
         static const char* E_SIGMA_T_REQUIRED =
           "SP_%d model requires Sigma_tn for n = 0,...,%d.";
+        static const char* E_EVEN_MOMENT_EXPECTED = 
+          "Even moment expected";
+        static const char* E_ODD_MOMENT_EXPECTED = 
+          "Odd moment expected";
+        static const char* E_INVALID_COMPONENT = 
+          "Only component == 0 (x) and component == 1 (y) are allowed.";
       }
       
       template <typename NDArrayType>

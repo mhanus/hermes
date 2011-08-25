@@ -135,13 +135,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     const std::string Visualization::base_title_order = "Polynomial orders: group ";
     const std::string Visualization::base_title_mesh = "Core mesh for group ";
     
-    void Visualization::init(unsigned int nu, unsigned int ne, unsigned int ng) 
+    void Visualization::init(unsigned int ne, unsigned int ng) 
     {
-      n_unknowns = nu; n_equations = ne; n_groups = ng;
+      n_equations = ne; n_groups = ng;
       
-      if (nu > 0 && ne > 0 && ng > 0)
+      if (ne > 0 && ng > 0)
       {
-        sviews = new Views::ScalarView<double>* [n_unknowns];
+        sviews = new Views::ScalarView<double>* [n_equations];
         oviews = new Views::OrderView<double>* [n_equations];
         if (display_meshes)
           mviews = new Views::MeshView* [n_equations];
@@ -160,7 +160,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {
       if (sviews != NULL)
       {
-        for (unsigned int i = 0; i < n_unknowns; i++)
+        for (unsigned int i = 0; i < n_equations; i++)
           delete sviews[i];
         delete [] sviews;
       }
@@ -200,7 +200,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       show_solutions(solutions);
       Views::View::wait();
       
-      for (unsigned int i = 0; i < n_unknowns; i++)
+      for (unsigned int i = 0; i < n_equations; i++)
         delete sviews[i];
       delete [] sviews;
       
@@ -226,7 +226,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   
   namespace Diffusion { namespace SupportClasses
   {
-    Visualization::Visualization(unsigned int G, bool display_meshes) : Common::SupportClasses::Visualization(G, G, G, display_meshes)
+    Visualization::Visualization(unsigned int G, bool display_meshes) : Common::SupportClasses::Visualization(G, G, display_meshes)
     {
       for (unsigned int g = 0; g < n_groups; g++)
       {
@@ -391,38 +391,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
               
       return EVEN_MOMENTS[m][n-m];
     }
-            
-    MomentFilter::Common::Common(unsigned int angular_moment, unsigned int group, unsigned int G) 
-      : odd_req_mom(false), g(group), mg(G)
-    {
-      if (angular_moment % 2)
-      { 
-        warning("Using MomentFilter to access the odd moments of flux is inefficient. "
-                "The vector of solutions itself contains these moments (for each energy group).");
-        req_mom_idx = (angular_moment-1)/2;
-        odd_req_mom = true;
-      }
-      else
-        req_mom_idx = angular_moment/2;
-    }
     
-    void MomentFilter::Val::filter_fn(int n, Hermes::vector< double* > values, double* result)
-    {
-      if (odd_req_mom)
-        memcpy(result, values.at(req_mom_idx), n*sizeof(double));
-      else
-      {            
-        for (int i = 0; i < n; i++) 
-        {
-          result[i] = 0;
-          unsigned int exp_mom_idx = req_mom_idx;
-          for (unsigned int sol_idx = mg.pos(exp_mom_idx,g); sol_idx < values.size(); sol_idx = mg.pos(++exp_mom_idx,g))
-            result[i] += Coeffs::even_moment(req_mom_idx, exp_mom_idx) * values.at(sol_idx)[i];
-        }
+    void MomentFilter::EvenMomentVal::filter_fn(int n, Hermes::vector< double* > values, double* result)
+    {         
+      for (int i = 0; i < n; i++) 
+      {
+        result[i] = 0;
+        unsigned int exp_mom_idx = req_mom_idx;
+        for (unsigned int sol_idx = mg.pos(exp_mom_idx,g); sol_idx < values.size(); sol_idx = mg.pos(++exp_mom_idx,g))
+          result[i] += Coeffs::even_moment(req_mom_idx, exp_mom_idx) * values.at(sol_idx)[i];
       }
     }
     
-    void MomentFilter::Val::set_active_element(Element* e)
+    void MomentFilter::EvenMomentVal::set_active_element(Element* e)
     {
       SimpleFilter<double>::set_active_element(e);
 
@@ -434,33 +415,24 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           order = sln[sol_idx]->get_fn_order();
     }
     
-    void MomentFilter::ValDxDy::filter_fn(int n, Hermes::vector<double *> values, 
+    void MomentFilter::EvenMomentValDxDy::filter_fn(int n, Hermes::vector<double *> values, 
                                           Hermes::vector<double *> dx, Hermes::vector<double *> dy, 
                                           double* rslt, double* rslt_dx, double* rslt_dy)
     {
-      if (odd_req_mom)
+      for (int i = 0; i < n; i++) 
       {
-        memcpy(rslt, values.at(req_mom_idx), n*sizeof(double));
-        memcpy(rslt_dx, dx.at(req_mom_idx), n*sizeof(double));
-        memcpy(rslt_dy, dy.at(req_mom_idx), n*sizeof(double));
-      }
-      else
-      {            
-        for (int i = 0; i < n; i++) 
+        rslt[i] = rslt_dx[i] = rslt_dy[i] = 0;
+        unsigned int exp_mom_idx = req_mom_idx;
+        for (unsigned int sol_idx = mg.pos(exp_mom_idx,g); sol_idx < values.size(); sol_idx = mg.pos(++exp_mom_idx,g))
         {
-          rslt[i] = rslt_dx[i] = rslt_dy[i] = 0;
-          unsigned int exp_mom_idx = req_mom_idx;
-          for (unsigned int sol_idx = mg.pos(exp_mom_idx,g); sol_idx < values.size(); sol_idx = mg.pos(++exp_mom_idx,g))
-          {
-            rslt[i] += Coeffs::even_moment(req_mom_idx, exp_mom_idx) * values.at(sol_idx)[i];
-            rslt_dx[i] += Coeffs::even_moment(req_mom_idx, exp_mom_idx) * dx.at(sol_idx)[i];
-            rslt_dy[i] += Coeffs::even_moment(req_mom_idx, exp_mom_idx) * dy.at(sol_idx)[i];
-          }
+          rslt[i] += Coeffs::even_moment(req_mom_idx, exp_mom_idx) * values.at(sol_idx)[i];
+          rslt_dx[i] += Coeffs::even_moment(req_mom_idx, exp_mom_idx) * dx.at(sol_idx)[i];
+          rslt_dy[i] += Coeffs::even_moment(req_mom_idx, exp_mom_idx) * dy.at(sol_idx)[i];
         }
       }
     }
     
-    void MomentFilter::ValDxDy::set_active_element(Element* e)
+    void MomentFilter::EvenMomentValDxDy::set_active_element(Element* e)
     {
       DXDYFilter<double>::set_active_element(e);
       
@@ -472,6 +444,58 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           order = sln[sol_idx]->get_fn_order();
     }
     
+    void MomentFilter::OddMomentVal::set_active_element(Element* e)
+    {
+      Filter<double>::set_active_element(e);
+
+      order = -1;
+      
+      for (unsigned int gfrom = 0; gfrom < matprop->get_G(); gfrom++)
+        if (sln[mg.pos(req_mom_idx,gfrom)]->get_fn_order() > order)
+          order = sln[mg.pos(req_mom_idx,gfrom)]->get_fn_order();
+    }
+    
+    void MomentFilter::OddMomentVal::precalculate(int order, int mask)
+    {
+      if (mask & (H2D_FN_DX | H2D_FN_DY | H2D_FN_DXX | H2D_FN_DYY | H2D_FN_DXY))
+        error_function("MomentFilter::OddMomentVal not defined for derivatives.");
+      
+      Quad2D* quad = this->quads[this->cur_quad];
+      int np = quad->get_num_points(order);
+      Filter<double>::Node* node = new_node(H2D_FN_VAL_0, np);
+      
+      double **val = new double* [this->num], **dx = new double* [this->num], **dy = new double* [this->num];
+      for (int i = 0; i < this->num; i++)
+      {
+        this->sln[i]->set_quad_order(order, H2D_FN_VAL | H2D_FN_DX | H2D_FN_DY);
+        val[i] = this->sln[i]->get_fn_values();
+        this->sln[i]->get_dx_dy_values(dx[i], dy[i]);
+      }
+   
+      std::string material = matprop->get_material(this->element->marker, this->mesh);
+      rank2 D = matprop->get_odd_Sigma_rn_inv(material)[req_mom_idx];
+      
+      for (int i = 0; i < np; i++)
+      {
+        for (unsigned int gfrom = 0; gfrom < matprop->get_G(); gfrom++)
+        {
+          if (component == 0)
+            node->values[0][0][i] = -D[g][gfrom] * dx[mg.pos(req_mom_idx,gfrom)][i];
+          else
+            node->values[0][0][i] = -D[g][gfrom] * dy[mg.pos(req_mom_idx,gfrom)][i];
+        }
+        node->values[0][0][i] *= Coeffs::D(odd_req_mom);
+      }
+      
+      if(this->nodes->present(order)) 
+      {
+        assert(this->nodes->get(order) == this->cur_node);
+        ::free(this->nodes->get(order));
+      }
+      this->nodes->add(node, order);
+      this->cur_node = node;
+    }
+    
     // TODO: Templatize.
     void MomentFilter::get_scalar_fluxes(const Hermes::vector< Solution<double>* >& angular_fluxes, 
                                           Hermes::vector< MeshFunction<double>* >* scalar_fluxes,
@@ -479,7 +503,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {          
       scalar_fluxes->reserve(G);
       for (unsigned int g = 0; g < G; g++)
-        scalar_fluxes->push_back(new MomentFilter::Val(0, g, G, angular_fluxes));
+        scalar_fluxes->push_back(new MomentFilter::EvenMomentVal(0, g, G, angular_fluxes));
     }
     
     void MomentFilter::get_scalar_fluxes_with_derivatives(const Hermes::vector< Solution<double>* >& angular_fluxes, 
@@ -488,7 +512,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {          
       scalar_fluxes->reserve(G);
       for (unsigned int g = 0; g < G; g++)
-        scalar_fluxes->push_back(new MomentFilter::ValDxDy(0, g, G, angular_fluxes));
+        scalar_fluxes->push_back(new MomentFilter::EvenMomentValDxDy(0, g, G, angular_fluxes));
     }
     
     void MomentFilter::clear_scalar_fluxes(Hermes::vector< MeshFunction<double>* >* scalar_fluxes)
@@ -527,26 +551,25 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
     }
     
-    Visualization::Visualization(unsigned int spn_order, unsigned int G, bool display_meshes) : Common::SupportClasses::Visualization(display_meshes), mg(G)
+    Visualization::Visualization(unsigned int spn_order, unsigned int G, bool display_meshes) 
+      : Common::SupportClasses::Visualization(display_meshes), mg(G), sviews_app(NULL), vviews(NULL)
     {
       n_moments = spn_order+1;
       n_odd_moments = (n_moments+1)/2;
-      Common::SupportClasses::Visualization::init(G * n_moments, G * n_odd_moments, G);
+      Common::SupportClasses::Visualization::init(G * n_odd_moments, G);
       
       for (unsigned int g = 0; g < n_groups; g++)
       {
-        std::string title_flux = base_title_flux + itos(g) + std::string(", moment ");
-        std::string title_order = base_title_order + itos(g) + std::string(", moment ");
-        for (unsigned int m = 0; m < n_moments; m++)
+        std::string title_flux = base_title_flux + itos(g) + std::string(", pseudo-flux #");
+        std::string title_order = base_title_order + itos(g) + std::string(", pseudo-flux #");
+        for (unsigned int m = 0; m < n_odd_moments; m++)
         {
           unsigned int i = mg.pos(m,g);
           
           sviews[i] = new Views::ScalarView<double>((title_flux + itos(m)).c_str(), new Views::WinGeom(m*452, g*452, 450, 450));
           sviews[i]->show_mesh(false);
           sviews[i]->set_3d_mode(true);
-          
-          if (m%2) 
-            oviews[mg.pos((m-1)/2,g)] = new Views::OrderView<double>((title_order + itos(m)).c_str(), new Views::WinGeom(m*452, n_groups*452 + g*452, 450, 450));
+          oviews[i] = new Views::OrderView<double>((title_order + itos(m)).c_str(), new Views::WinGeom(m*452, n_groups*452 + g*452, 450, 450));
         }
       }
       
@@ -558,6 +581,21 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           for (unsigned int m = 0; m < n_odd_moments; m++)
             mviews[mg.pos(m,g)] = new Views::MeshView((title + itos(m)).c_str(), new Views::WinGeom(m*352, g*352, 350, 350));
         }
+      }
+    }
+    
+    Visualization::~Visualization()
+    {
+      assert((sviews_app == NULL && vviews == NULL) || (sviews_app != NULL && vviews != NULL));
+      if (sviews_app != NULL)
+      {
+        for (unsigned int i = 0; i < n_equations; i++)
+        {
+          delete sviews_app[i];
+          delete vviews[i];
+        }
+        delete [] sviews_app;
+        delete [] vviews;
       }
     }
             
@@ -572,17 +610,76 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void Visualization::show_solutions(Hermes::vector< Solution<double>* > solutions)
     {
       for (unsigned int g = 0; g < n_groups; g++)
+        for (unsigned int m = 0; m < n_odd_moments; m++)
+          sviews[mg.pos(m,g)]->show(solutions[mg.pos(m,g)]);
+    }
+    
+    void Visualization::show_even_flux_moment(unsigned int moment, unsigned int group, Views::ScalarView<double>* sview,
+                                              Hermes::vector< Solution<double>* > solutions)
+    {
+      if ((moment % 2) != 0 || moment >= n_moments)
+      {
+        warning("Invalid moment specified for Visualization::show_even_flux_moment.");
+        return;
+      }
+      if (group >= n_groups)
+      {
+        warning("Invalid group specified for Visualization::show_even_flux_moment.");
+        return;
+      }
+      MomentFilter::EvenMomentVal mf(moment, group, n_groups, solutions);
+      sview->show(&mf);
+    }
+    
+    void Visualization::show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView<double>* vview,
+                                             Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop)
+    {
+      if ((moment % 2) != 1 || moment >= n_moments)
+      {
+        warning("Invalid moment specified for Visualization::show_odd_flux_moment.");
+        return;
+      }
+      if (group >= n_groups)
+      {
+        warning("Invalid group specified for Visualization::show_odd_flux_moment.");
+        return;
+      }
+      MomentFilter::OddMomentVal mfx(0, moment, group, n_groups, solutions, &matprop);
+      MomentFilter::OddMomentVal mfy(1, moment, group, n_groups, solutions, &matprop);
+      vview->show(&mfx, &mfy);
+    }
+    
+    void Visualization::show_all_flux_moments(Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop)
+    {
+      assert((sviews_app == NULL && vviews == NULL) || (sviews_app != NULL && vviews != NULL));
+      
+      if (sviews_app == NULL)
+      {
+        sviews_app = new Views::ScalarView<double>* [n_equations];
+        vviews = new Views::VectorView<double>* [n_equations];
+        
+        for (unsigned int g = 0; g < n_groups; g++)
+        {
+          std::string title_flux = base_title_flux + itos(g) + std::string(", flux moment #");
+          for (unsigned int m = 0; m < n_odd_moments; m++)
+          {
+            unsigned int i = mg.pos(m,g);
+            
+            sviews_app[i] = new Views::ScalarView<double>((title_flux + itos(2*m)).c_str(), new Views::WinGeom(2*m*452, g*452, 450, 450));
+            sviews_app[i]->show_mesh(false);
+            sviews_app[i]->set_3d_mode(true);
+            vviews[i] = new Views::VectorView<double>((title_flux + itos(2*m+1)).c_str(), new Views::WinGeom((2*m+1)*452, g*452, 450, 450));
+          }
+        }
+      }
+      
+      for (unsigned int g = 0; g < n_groups; g++)
       {
         for (unsigned int m = 0; m < n_odd_moments; m++)
         {
           unsigned int i = mg.pos(m,g);
-          unsigned int j = mg.pos(2*m,g);
-          unsigned int k = mg.pos(2*m+1,g);
-          
-          MomentFilter::Val mf(2*m, g, n_groups, solutions);
-          
-          sviews[j]->show(&mf);
-          sviews[k]->show(solutions[i]);
+          show_even_flux_moment(2*m, g, sviews_app[i], solutions);
+          show_odd_flux_moment(2*m+1, g, vviews[i], solutions, matprop);
         }
       }
     }
@@ -596,7 +693,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         std::string appendix = std::string("_group_") + itos(g);
         for (unsigned int m = 0; m < n_odd_moments; m++)
         {
-          MomentFilter::Val mf(2*m, g, n_groups, solutions);
+          MomentFilter::EvenMomentVal mf(2*m, g, n_groups, solutions);
           
           std::string file = base_filename + std::string("_moment_") + itos(2*m) + appendix + std::string(".vtk");
           std::string var = base_varname + std::string("_moment_") + itos(2*m) + appendix;
@@ -628,7 +725,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       show_solutions(solutions);
       Views::View::wait();
       
-      for (unsigned int i = 0; i < n_unknowns; i++)
+      for (unsigned int i = 0; i < n_equations; i++)
         delete sviews[i];
       delete [] sviews;
       
