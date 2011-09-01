@@ -291,7 +291,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
               
               if ( (j-i)%G )
               {
-                for (unsigned int k = 0; k < 2*m; k+=2)
+                for (unsigned int k = 0; k <= 2*m; k+=2)
                 {
                   if (!diagonal_moments[k])
                   {
@@ -319,6 +319,29 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
       
       bool1 chi_nnz = mp->get_fission_nonzero_structure();
+/* DEBUG      
+      std::cout << std::endl;
+      for (unsigned int gto = 0; gto < G; gto++)
+      {
+        for (unsigned int m = 0; m < N_odd; m++)
+        {
+          unsigned int i = mg.pos(m, gto);
+          
+          for (unsigned int gfrom = 0; gfrom < G; gfrom++)
+          {
+            for (unsigned int n = 0; n < N_odd; n++)
+            {
+              unsigned int j = mg.pos(n, gfrom);
+              
+              std::cout << "(" << m << "," << n << " ; " << gto << "," << gfrom << ") --- i = " << i << ", j = " << j;
+              std::cout << "\t p" << present[i][j] << " s" << sym[i][j] << std::endl;
+            }
+          }
+        }
+      }
+      std::cout << std::endl;
+*/    
+      int dssrJ = 0, dssrR = 0, fyJ = 0, fyR = 0, odsJ = 0, odsR = 0, odrJ = 0, odrR = 0; // DEBUG
       
       for (unsigned int gto = 0; gto < G; gto++)
       {
@@ -326,43 +349,58 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         {
           unsigned int i = mg.pos(m, gto);
           
-          matrix_forms.push_back(new DiagonalStreamingAndReactions::Jacobian(m, gto, *mp, geom_type));
-          vector_forms.push_back(new DiagonalStreamingAndReactions::Residual(m, gto, *mp, geom_type));
+          matrix_forms.push_back(new DiagonalStreamingAndReactions::Jacobian(m, gto, *mp, geom_type)); dssrJ++;
+          vector_forms.push_back(new DiagonalStreamingAndReactions::Residual(m, gto, *mp, geom_type)); dssrR++;
           
-          if (include_fission && chi_nnz[gto])
-            vector_forms.push_back(new FissionYield::Residual(m, N_odd, gto, *mp, geom_type));
+          if (include_fission && chi_nnz[gto]) {
+            vector_forms.push_back(new FissionYield::Residual(m, N_odd, gto, *mp, geom_type));  fyR++;
+          }
           
-          vector_forms.push_back(new OffDiagonalReactions::Residual(m, N_odd, gto, *mp, geom_type));
+          vector_forms.push_back(new OffDiagonalReactions::Residual(m, N_odd, gto, *mp, geom_type)); odrR++;
           
-          if (G > 1)
-            vector_forms.push_back(new OffDiagonalStreaming::Residual(m, gto, *mp, geom_type));
+          if (G > 1) {
+            vector_forms.push_back(new OffDiagonalStreaming::Residual(m, gto, *mp, geom_type)); odsR++;
+          }
           
           for (unsigned int gfrom = 0; gfrom < G; gfrom++)
           {
-            if (gfrom != gto)
-              matrix_forms.push_back(new OffDiagonalStreaming::Jacobian(m, gto, gfrom, *mp, geom_type));
+            if (gfrom != gto) {
+              matrix_forms.push_back(new OffDiagonalStreaming::Jacobian(m, gto, gfrom, *mp, geom_type)); odsJ++;
+            }
             
             for (unsigned int n = 0; n < N_odd; n++)
             {
               unsigned int j = mg.pos(n, gfrom);
               
-              if (include_fission && chi_nnz[gto])
-                matrix_forms.push_back( new FissionYield::Jacobian(m, n, gto, gfrom, *mp, geom_type) );
+              if (include_fission && chi_nnz[gto]) {
+                matrix_forms.push_back( new FissionYield::Jacobian(m, n, gto, gfrom, *mp, geom_type) ); fyJ++;
+              }
               
               //// cout << "(" << i << "," << j << ") : P" << present[i][j] << " S" << sym[i][j] << endl;
               
               if (i != j)
               {
-                if (present[i][j])
+                if (present[i][j]) {
                   matrix_forms.push_back( new OffDiagonalReactions::Jacobian(m, n, gto, gfrom, *mp, geom_type, 
-                                                                      sym[i][j] ? HERMES_SYM : HERMES_NONSYM) );
+                                                                      sym[i][j] ? HERMES_SYM : HERMES_NONSYM) ); odrJ++;
+                }
               }
             }
           }
         }
       }
+/* DEBUG       
+      std::cout << "DiagonalStreamingAndReactions::Jacobian: " << dssrJ << std::endl;
+      std::cout << "DiagonalStreamingAndReactions::Residual: " << dssrR << std::endl;
+      std::cout << "FissionYield::Jacobian: "  << fyJ << std::endl;
+      std::cout << "FissionYield::Residual: " << fyR << std::endl;
+      std::cout << "OffDiagonalStreaming::Jacobian: " << odsJ << std::endl;
+      std::cout << "OffDiagonalStreaming::Residual: " << odsR << std::endl;
+      std::cout << "OffDiagonalReactions::Jacobian: " << odrJ << std::endl;
+      std::cout << "OffDiagonalReactions::Residual: " << odrR << std::endl;
+*/      
     }
-    
+   
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
                                            GeomType geom_type) 
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
