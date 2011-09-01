@@ -1,0 +1,1749 @@
+**:     EXECUTION SUMMARY
+**:
+**:CMD  rundragon TCM03.x2m
+**:MAC  Linux
+**:
+**:
+ DDDDDD   RRRRRR     AAA     GGGGG    OOOOO   NN     NN
+ DDDDDDD  RRRRRRR   AAAAA   GGGGGGG  OOOOOOO  NNN    NN
+ DD   DD  RR   RR  AA   AA  GG       OO   OO  NNNN   NN
+ DD   DD  RRRRRR   AA   AA  GG  GGG  OO   OO  NN NN  NN
+ DD   DD  RRRR     AAAAAAA  GG  GGG  OO   OO  NN  NN NN
+ DD   DD  RR RR    AAAAAAA  GG   GG  OO   OO  NN   NNNN
+ DDDDDDD  RR  RR   AA   AA  GGGGGGG  OOOOOOO  NN    NNN
+ DDDDDD   RR   RR  AA   AA   GGGGG    OOOOO   NN     NN
+
+ VERSION DRAGON 3.06 (2008/03/14)
+ GROUPE D'ANALYSE NUCLEAIRE
+ ECOLE POLYTECHNIQUE DE MONTREAL
+
+
+
+ You are now using DRAGON  3.06 Revision J  (2010/12/15)
+
+
+ COPYRIGHT NOTICE FOR THIS VERSION OF DRAGON:
+ --------------------------------------------
+ Copyright (C) 2007 Ecole Polytechnique de Montreal 
+ This library is free software; you can redistribute it
+ and/or modify it under the terms of the GNU Lesser General
+ Public License as published by the Free Software Foundation;
+ either version 2.1 of the License, or (at your option) any
+ later version 
+ Ecole Polytechnique de Montreal makes no
+ warranty, express or implied, or assumes
+ no liability or responsibility for the use
+ of DRAGON.
+
+
+
+* CLE-2000 VERS 2.1 * R.ROY, EPM COPYRIGHT 1999 *                           LINE
+*----                                                                       0001
+*  DEEP PENETRATION PROBLEM (DPP)                                           0002
+*  2-GROUP MACROSCOPIC CROSS SECTIONS                                       0003
+*  FIXED SOURCE PROBLEM                                                     0004
+*  CARTESIAN 3 X 3 ASSEMBLY                                                 0005
+*                                                                           0006
+*----                                                                       0007
+*  Define STRUCTURES and MODULES used                                       0008
+*----                                                                       0009
+LINKED_LIST                                                                 0010
+  DPPG TRACK MACRO SYS FLUX EDITION ;                                       0011
+SEQ_BINARY                                                                  0012
+  DPPGTRK ;                                                                 0013
+SEQ_ASCII                                                                   0014
+  Fig.ps ;                                                                  0015
+MODULE                                                                      0016
+  GEO: EXCELT: MAC: ASM: FLU: EDI: PSP: DELETE: END: ;                      0017
+*----                                                                       0018
+* Macroscopic XS                                                            0019
+*----                                                                       0020
+MACRO := MAC: ::                                                            0021
+  NGRO 2 NMIX 2 NIFI 0 ANIS 2 CTRA APOL                                     0022
+  READ INPUT                                                                0023
+  MIX 1   TOTAL 0.10108 0.108529                                            0024
+          SCAT 2 1 0.015923                                                 0025
+               2 2 0.012502 0.023434                                        0026
+               2 1 0.008976                                                 0027
+               2 2 0.003914 0.009016                                        0028
+          FIXE 0.006546 0.017701                                            0029
+  MIX 2   TOTAL 0.10108 0.108529                                            0030
+          SCAT 2 1 0.015923                                                 0031
+               2 2 0.012502 0.023434                                        0032
+               2 1 0.008976                                                 0033
+               2 2 0.003914 0.009016                                        0034
+  ;                                                                         0035
+*----                                                                       0036
+*  Geometry : DPPG                                                          0037
+*----                                                                       0038
+DPPG := GEO: :: CAR2D 2 2                                                   0039
+  X- REFL X+ VOID Y- REFL Y+ VOID                                           0040
+  MESHX 0.0 65.0 133.0                                                      0041
+  SPLITX 10 20                                                              0042
+  MESHY 0.0 60.0 140.0                                                      0043
+  SPLITY 10 20                                                              0044
+  MIX  1  2                                                                 0045
+       2  2                                                                 0046
+  ;                                                                         0047
+*----                                                                       0048
+*  Tracking : EXCELT - DPPG                                                 0049
+*  Solution : FIXED SOURCE PROBLEM                                          0050
+*  Editing  : 1- FLUX AT X=66.7 CM                                          0051
+*             2- FLUX AT Y=3.00 CM                                          0052
+*             3- FLUX IN THE SOURCE AND MATERIAL AREAS                      0053
+*----                                                                       0054
+TRACK DPPGTRK := EXCELT: DPPG ::                                            0055
+  EDIT 2                                                                    0056
+  TITLE 'DEEP PENETRATION PROBLEM'                                          0057
+  ANIS 2                                                                    0058
+  MAXR 1000 CUT 1.E-6 TRAK TSPC 24 24.0                                     0059
+  ;                                                                         0060
+SYS := ASM: MACRO TRACK DPPGTRK ::                                          0061
+  SKIP                                                                      0062
+  ;                                                                         0063
+FLUX := FLU: SYS MACRO TRACK ::                                             0064
+  TYPE S THER 100 1.E-6 EXTE 100 1.E-6                                      0065
+  ;                                                                         0066
+EDITION := EDI: FLUX MACRO TRACK ::                                         0067
+  EDIT 1 SAVE                                                               0068
+  MERGE REGION                                                              0069
+    0 0 0 0 0 0 0 0 0 0 1  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0070
+    0 0 0 0 0 0 0 0 0 0 2  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0071
+    0 0 0 0 0 0 0 0 0 0 3  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0072
+    0 0 0 0 0 0 0 0 0 0 4  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0073
+    0 0 0 0 0 0 0 0 0 0 5  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0074
+    0 0 0 0 0 0 0 0 0 0 6  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0075
+    0 0 0 0 0 0 0 0 0 0 7  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0076
+    0 0 0 0 0 0 0 0 0 0 8  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0077
+    0 0 0 0 0 0 0 0 0 0 9  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0078
+    0 0 0 0 0 0 0 0 0 0 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0079
+    0 0 0 0 0 0 0 0 0 0 11 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0080
+    0 0 0 0 0 0 0 0 0 0 12 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0081
+    0 0 0 0 0 0 0 0 0 0 13 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0082
+    0 0 0 0 0 0 0 0 0 0 14 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0083
+    0 0 0 0 0 0 0 0 0 0 15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0084
+    0 0 0 0 0 0 0 0 0 0 16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0085
+    0 0 0 0 0 0 0 0 0 0 17 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0086
+    0 0 0 0 0 0 0 0 0 0 18 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0087
+    0 0 0 0 0 0 0 0 0 0 19 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0088
+    0 0 0 0 0 0 0 0 0 0 20 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0089
+    0 0 0 0 0 0 0 0 0 0 21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0090
+    0 0 0 0 0 0 0 0 0 0 22 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0091
+    0 0 0 0 0 0 0 0 0 0 23 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0092
+    0 0 0 0 0 0 0 0 0 0 24 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0093
+    0 0 0 0 0 0 0 0 0 0 25 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0094
+    0 0 0 0 0 0 0 0 0 0 26 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0095
+    0 0 0 0 0 0 0 0 0 0 27 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0096
+    0 0 0 0 0 0 0 0 0 0 28 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0097
+    0 0 0 0 0 0 0 0 0 0 29 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0098
+    0 0 0 0 0 0 0 0 0 0 30 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0            0099
+  ;                                                                         0100
+EDITION := EDI: EDITION  FLUX  MACRO TRACK ::                               0101
+  EDIT 1 SAVE                                                               0102
+  MERGE REGION                                                              0103
+    1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25       0104
+    26 27 28 29 30                                                          0105
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0106
+    0  0  0  0  0                                                           0107
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0108
+    0  0  0  0  0                                                           0109
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0110
+    0  0  0  0  0                                                           0111
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0112
+    0  0  0  0  0                                                           0113
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0114
+    0  0  0  0  0                                                           0115
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0116
+    0  0  0  0  0                                                           0117
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0118
+    0  0  0  0  0                                                           0119
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0120
+    0  0  0  0  0                                                           0121
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0122
+    0  0  0  0  0                                                           0123
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0124
+    0  0  0  0  0                                                           0125
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0126
+    0  0  0  0  0                                                           0127
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0128
+    0  0  0  0  0                                                           0129
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0130
+    0  0  0  0  0                                                           0131
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0132
+    0  0  0  0  0                                                           0133
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0134
+    0  0  0  0  0                                                           0135
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0136
+    0  0  0  0  0                                                           0137
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0138
+    0  0  0  0  0                                                           0139
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0140
+    0  0  0  0  0                                                           0141
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0142
+    0  0  0  0  0                                                           0143
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0144
+    0  0  0  0  0                                                           0145
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0146
+    0  0  0  0  0                                                           0147
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0148
+    0  0  0  0  0                                                           0149
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0150
+    0  0  0  0  0                                                           0151
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0152
+    0  0  0  0  0                                                           0153
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0154
+    0  0  0  0  0                                                           0155
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0156
+    0  0  0  0  0                                                           0157
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0158
+    0  0  0  0  0                                                           0159
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0160
+    0  0  0  0  0                                                           0161
+    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0       0162
+    0  0  0  0  0                                                           0163
+  ;                                                                         0164
+EDITION := EDI: EDITION  FLUX  MACRO TRACK ::                               0165
+  EDIT 1 SAVE                                                               0166
+  TAKE MIX 1 2                                                              0167
+  ;                                                                         0168
+*----                                                                       0169
+*   Plotting                                                                0170
+*----                                                                       0171
+Fig.ps := PSP: TRACK :: TYPE REGION ;                                       0172
+Fig.ps := PSP: Fig.ps TRACK :: TYPE MIXTURE ;                               0173
+Fig.ps := PSP: Fig.ps TRACK FLUX :: TYPE FLUX ;                             0174
+Fig.ps := PSP: Fig.ps TRACK FLUX :: TYPE MGFLUX ;                           0175
+*----                                                                       0176
+*   Clean up                                                                0177
+*----                                                                       0178
+DPPGTRK  := DELETE: DPPGTRK  ;                                              0179
+END: ;                                                                      0180
+QUIT "LIST" .                                                               0181
+
+<|LINKED_LIST                                                             |<0010
+<|  DPPG TRACK MACRO SYS FLUX EDITION ;                                   |<0011
+<|SEQ_BINARY                                                              |<0012
+<|  DPPGTRK ;                                                             |<0013
+<|SEQ_ASCII                                                               |<0014
+<|  Fig.ps ;                                                              |<0015
+<|MODULE                                                                  |<0016
+<|  GEO: EXCELT: MAC: ASM: FLU: EDI: PSP: DELETE: END: ;                  |<0017
+<|MACRO := MAC: ::                                                        |<0021
+->@BEGIN MODULE : MAC:        
+->@DESCRIPTION  : Macroscopic cross section precessor                                     
+->@CREDITS      : G. Marleau                                                              
+->@COPYRIGHTS   : ECOLE POLYTECHNIQUE DE MONTREAL 
+<|  NGRO 2 NMIX 2 NIFI 0 ANIS 2 CTRA APOL                                 |<0022
+<|  READ INPUT                                                            |<0023
+<|  MIX 1   TOTAL 0.10108 0.108529                                        |<0024
+<|          SCAT 2 1 0.015923                                             |<0025
+<|               2 2 0.012502 0.023434                                    |<0026
+<|               2 1 0.008976                                             |<0027
+<|               2 2 0.003914 0.009016                                    |<0028
+<|          FIXE 0.006546 0.017701                                        |<0029
+<|  MIX 2   TOTAL 0.10108 0.108529                                        |<0030
+<|          SCAT 2 1 0.015923                                             |<0031
+<|               2 2 0.012502 0.023434                                    |<0032
+<|               2 1 0.008976                                             |<0033
+<|               2 2 0.003914 0.009016                                    |<0034
+<|  ;                                                                     |<0035
+ CROSS SECTION TYPE     TOTAL      NUSIGF     FIXE       CHI        SCAT   2   TRANC     FIXA       FIXG  
+ MATERIAL     1         READ                  READ                  READ                                   
+ MATERIAL     2         READ                                        READ                                   
+ MACROLIB STATE-VECTOR ( 9) ELEMENTS FROM: MAC   
+ --------------------------------
+ NGROUP =       2 (NUMBER OF GROUPS)
+ NBMIX  =       2 (NUMBER OF MIXTURE)
+ NANISO =       2 (MAXIMUM SCATTERING ANISOTROPY)
+ NIFISS =       0 (NUMBER OF FISSILE ISOTOPES)
+ NEDMAC =       0 (NUMBER OF CROSS SECTION EDIT)
+ ITRANC =       1 (TYPE OF TRANSPORT CORRECTION;
+                   = 0: NO CORRECTION;
+                   = 1: FROM PN SCATTERING MATRIX;
+                   = 2: RECOVERED FROM MACROLIB)
+ NLG    =       0 (NUMBER OF DELAYED PRECURSOR GROUPS)
+ NALBP  =       0 (NUMBER OF PHYSICAL ALBEDOS)
+ ILEAK  =       0 (LEAKAGE TYPE)
+ --------------------------------
+
+->@END MODULE   : MAC:        
+<|DPPG := GEO: :: CAR2D 2 2                                               |<0039
+->@BEGIN MODULE : GEO:        
+->@DESCRIPTION  : Geometry definition                                                     
+->@CREDITS      : A. Hebert                                                               
+->@COPYRIGHTS   : ECOLE POLYTECHNIQUE DE MONTREAL 
+<|  X- REFL X+ VOID Y- REFL Y+ VOID                                       |<0040
+<|  MESHX 0.0 65.0 133.0                                                  |<0041
+<|  SPLITX 10 20                                                          |<0042
+<|  MESHY 0.0 60.0 140.0                                                  |<0043
+<|  SPLITY 10 20                                                          |<0044
+<|  MIX  1  2                                                             |<0045
+<|       2  2                                                             |<0046
+<|  ;                                                                     |<0047
+
+ CREATION OF A LEVEL   1 GEOMETRY
+ GEOMETRY NAME    =     /           
+ LINKED LIST NAME =     DPPG        
+ GEOMETRY TYPE    =     CARTESIAN 2-D   
+->@END MODULE   : GEO:        
+<|TRACK DPPGTRK := EXCELT: DPPG ::                                        |<0055
+->@BEGIN MODULE : EXCELT:     
+->@DESCRIPTION  : EXCELL tracking in 2-D and 3-D                                          
+->@CREDITS      : G. Marleau, M. Ouisloumen, R. Roy                                       
+->@COPYRIGHTS   : ECOLE POLYTECHNIQUE DE MONTREAL 
+<|  EDIT 2                                                                |<0056
+<|  TITLE 'DEEP PENETRATION PROBLEM'                                      |<0057
+<|  ANIS 2                                                                |<0058
+<|  MAXR 1000 CUT 1.E-6 TRAK TSPC 24 24.0                                 |<0059
+ ***** LDRASS CHECKING ASSEMBLY: DPPG        
+ DPPG         WAS NOT ASSEMBLY CHECKED   
+ DEEP PENETRATION PROBLEM                                                
+
+
+ DEEP PENETRATION PROBLEM                                                
+
+
+ 
+ ECHO = >>> GEOMETRY NAME: DPPG    
+ ECHO = >>> TRACKING FILE: DPPGTRK 
+ ECHO = >>>          DISP: NEWT
+ ECHO = >>> NORMALIZED-LOCAL        
+<|  ;                                                                     |<0060
+ ===> REFERENCE GEOMETRY IS:    
+
+ 00000001
+ DPPG        
+ 
+
+ UNFOLD TYPE CELL MAP FOR PLANE         
+           X=   1 ROT
+ 
+  Y=   1=>      1  A
+ 
+ 
+ ===> PHYSICAL CELLS ARE:
+
+ 00000001
+ DPPG        
+ TURN  A
+
+ ONE TRACKING FILE TO BE ATTACHED  
+              UNDER NAME : DPPG        
+ 
+
+ NUMBERING PHYSICAL CELL #        1
+  >>> DPPG         /ROT  A GEOMETRY <<<    (WITH  NO CYLINDER )
+ 
+
+           CELL MESHING 
+ 
+
+  CELL SURFACES BEFORE ASSEMBLING  
+           SUR       1 SUR       2 SUR       3 SUR       4 SUR       5 SUR       6 SUR       7 SUR       8 SUR       9 SUR      10
+ VALUE      6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00
+ ORIENT            Y-          Y-          Y-          Y-          Y-          Y-          Y-          Y-          Y-          Y- 
+ 
+           SUR      11 SUR      12 SUR      13 SUR      14 SUR      15 SUR      16 SUR      17 SUR      18 SUR      19 SUR      20
+ VALUE      3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00
+ ORIENT            Y-          Y-          Y-          Y-          Y-          Y-          Y-          Y-          Y-          Y- 
+ 
+           SUR      21 SUR      22 SUR      23 SUR      24 SUR      25 SUR      26 SUR      27 SUR      28 SUR      29 SUR      30
+ VALUE      3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00
+ ORIENT            Y-          Y-          Y-          Y-          Y-          Y-          Y-          Y-          Y-          Y- 
+ 
+           SUR      31 SUR      32 SUR      33 SUR      34 SUR      35 SUR      36 SUR      37 SUR      38 SUR      39 SUR      40
+ VALUE      6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00
+ ORIENT            X-          X+          X-          X+          X-          X+          X-          X+          X-          X+ 
+ 
+           SUR      41 SUR      42 SUR      43 SUR      44 SUR      45 SUR      46 SUR      47 SUR      48 SUR      49 SUR      50
+ VALUE      6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00  6.0000E+00
+ ORIENT            X-          X+          X-          X+          X-          X+          X-          X+          X-          X+ 
+ 
+           SUR      51 SUR      52 SUR      53 SUR      54 SUR      55 SUR      56 SUR      57 SUR      58 SUR      59 SUR      60
+ VALUE      4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00
+ ORIENT            X-          X+          X-          X+          X-          X+          X-          X+          X-          X+ 
+ 
+           SUR      61 SUR      62 SUR      63 SUR      64 SUR      65 SUR      66 SUR      67 SUR      68 SUR      69 SUR      70
+ VALUE      4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00
+ ORIENT            X-          X+          X-          X+          X-          X+          X-          X+          X-          X+ 
+ 
+           SUR      71 SUR      72 SUR      73 SUR      74 SUR      75 SUR      76 SUR      77 SUR      78 SUR      79 SUR      80
+ VALUE      4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00
+ ORIENT            X-          X+          X-          X+          X-          X+          X-          X+          X-          X+ 
+ 
+           SUR      81 SUR      82 SUR      83 SUR      84 SUR      85 SUR      86 SUR      87 SUR      88 SUR      89 SUR      90
+ VALUE      4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00  4.0000E+00
+ ORIENT            X-          X+          X-          X+          X-          X+          X-          X+          X-          X+ 
+ 
+           SUR      91 SUR      92 SUR      93 SUR      94 SUR      95 SUR      96 SUR      97 SUR      98 SUR      99 SUR     100
+ VALUE      6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00  6.5000E+00
+ ORIENT            Y+          Y+          Y+          Y+          Y+          Y+          Y+          Y+          Y+          Y+ 
+ 
+           SUR     101 SUR     102 SUR     103 SUR     104 SUR     105 SUR     106 SUR     107 SUR     108 SUR     109 SUR     110
+ VALUE      3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00
+ ORIENT            Y+          Y+          Y+          Y+          Y+          Y+          Y+          Y+          Y+          Y+ 
+ 
+           SUR     111 SUR     112 SUR     113 SUR     114 SUR     115 SUR     116 SUR     117 SUR     118 SUR     119 SUR     120
+ VALUE      3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00  3.4000E+00
+ ORIENT            Y+          Y+          Y+          Y+          Y+          Y+          Y+          Y+          Y+          Y+ 
+ 
+ 
+  CELL VOLUMES  BEFORE ASSEMBLING  
+           VOL       1 VOL       2 VOL       3 VOL       4 VOL       5 VOL       6 VOL       7 VOL       8 VOL       9 VOL      10
+ VALUE      3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01
+ MERGE               1           2           3           4           5           6           7           8           9          10
+ 
+           VOL      11 VOL      12 VOL      13 VOL      14 VOL      15 VOL      16 VOL      17 VOL      18 VOL      19 VOL      20
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE              11          12          13          14          15          16          17          18          19          20
+ 
+           VOL      21 VOL      22 VOL      23 VOL      24 VOL      25 VOL      26 VOL      27 VOL      28 VOL      29 VOL      30
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE              21          22          23          24          25          26          27          28          29          30
+ 
+           VOL      31 VOL      32 VOL      33 VOL      34 VOL      35 VOL      36 VOL      37 VOL      38 VOL      39 VOL      40
+ VALUE      3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01
+ MERGE              31          32          33          34          35          36          37          38          39          40
+ 
+           VOL      41 VOL      42 VOL      43 VOL      44 VOL      45 VOL      46 VOL      47 VOL      48 VOL      49 VOL      50
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE              41          42          43          44          45          46          47          48          49          50
+ 
+           VOL      51 VOL      52 VOL      53 VOL      54 VOL      55 VOL      56 VOL      57 VOL      58 VOL      59 VOL      60
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE              51          52          53          54          55          56          57          58          59          60
+ 
+           VOL      61 VOL      62 VOL      63 VOL      64 VOL      65 VOL      66 VOL      67 VOL      68 VOL      69 VOL      70
+ VALUE      3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01
+ MERGE              61          62          63          64          65          66          67          68          69          70
+ 
+           VOL      71 VOL      72 VOL      73 VOL      74 VOL      75 VOL      76 VOL      77 VOL      78 VOL      79 VOL      80
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE              71          72          73          74          75          76          77          78          79          80
+ 
+           VOL      81 VOL      82 VOL      83 VOL      84 VOL      85 VOL      86 VOL      87 VOL      88 VOL      89 VOL      90
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE              81          82          83          84          85          86          87          88          89          90
+ 
+           VOL      91 VOL      92 VOL      93 VOL      94 VOL      95 VOL      96 VOL      97 VOL      98 VOL      99 VOL     100
+ VALUE      3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01
+ MERGE              91          92          93          94          95          96          97          98          99         100
+ 
+           VOL     101 VOL     102 VOL     103 VOL     104 VOL     105 VOL     106 VOL     107 VOL     108 VOL     109 VOL     110
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             101         102         103         104         105         106         107         108         109         110
+ 
+           VOL     111 VOL     112 VOL     113 VOL     114 VOL     115 VOL     116 VOL     117 VOL     118 VOL     119 VOL     120
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             111         112         113         114         115         116         117         118         119         120
+ 
+           VOL     121 VOL     122 VOL     123 VOL     124 VOL     125 VOL     126 VOL     127 VOL     128 VOL     129 VOL     130
+ VALUE      3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01
+ MERGE             121         122         123         124         125         126         127         128         129         130
+ 
+           VOL     131 VOL     132 VOL     133 VOL     134 VOL     135 VOL     136 VOL     137 VOL     138 VOL     139 VOL     140
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             131         132         133         134         135         136         137         138         139         140
+ 
+           VOL     141 VOL     142 VOL     143 VOL     144 VOL     145 VOL     146 VOL     147 VOL     148 VOL     149 VOL     150
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             141         142         143         144         145         146         147         148         149         150
+ 
+           VOL     151 VOL     152 VOL     153 VOL     154 VOL     155 VOL     156 VOL     157 VOL     158 VOL     159 VOL     160
+ VALUE      3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01
+ MERGE             151         152         153         154         155         156         157         158         159         160
+ 
+           VOL     161 VOL     162 VOL     163 VOL     164 VOL     165 VOL     166 VOL     167 VOL     168 VOL     169 VOL     170
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             161         162         163         164         165         166         167         168         169         170
+ 
+           VOL     171 VOL     172 VOL     173 VOL     174 VOL     175 VOL     176 VOL     177 VOL     178 VOL     179 VOL     180
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             171         172         173         174         175         176         177         178         179         180
+ 
+           VOL     181 VOL     182 VOL     183 VOL     184 VOL     185 VOL     186 VOL     187 VOL     188 VOL     189 VOL     190
+ VALUE      3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01
+ MERGE             181         182         183         184         185         186         187         188         189         190
+ 
+           VOL     191 VOL     192 VOL     193 VOL     194 VOL     195 VOL     196 VOL     197 VOL     198 VOL     199 VOL     200
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             191         192         193         194         195         196         197         198         199         200
+ 
+           VOL     201 VOL     202 VOL     203 VOL     204 VOL     205 VOL     206 VOL     207 VOL     208 VOL     209 VOL     210
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             201         202         203         204         205         206         207         208         209         210
+ 
+           VOL     211 VOL     212 VOL     213 VOL     214 VOL     215 VOL     216 VOL     217 VOL     218 VOL     219 VOL     220
+ VALUE      3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01
+ MERGE             211         212         213         214         215         216         217         218         219         220
+ 
+           VOL     221 VOL     222 VOL     223 VOL     224 VOL     225 VOL     226 VOL     227 VOL     228 VOL     229 VOL     230
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             221         222         223         224         225         226         227         228         229         230
+ 
+           VOL     231 VOL     232 VOL     233 VOL     234 VOL     235 VOL     236 VOL     237 VOL     238 VOL     239 VOL     240
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             231         232         233         234         235         236         237         238         239         240
+ 
+           VOL     241 VOL     242 VOL     243 VOL     244 VOL     245 VOL     246 VOL     247 VOL     248 VOL     249 VOL     250
+ VALUE      3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01
+ MERGE             241         242         243         244         245         246         247         248         249         250
+ 
+           VOL     251 VOL     252 VOL     253 VOL     254 VOL     255 VOL     256 VOL     257 VOL     258 VOL     259 VOL     260
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             251         252         253         254         255         256         257         258         259         260
+ 
+           VOL     261 VOL     262 VOL     263 VOL     264 VOL     265 VOL     266 VOL     267 VOL     268 VOL     269 VOL     270
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             261         262         263         264         265         266         267         268         269         270
+ 
+           VOL     271 VOL     272 VOL     273 VOL     274 VOL     275 VOL     276 VOL     277 VOL     278 VOL     279 VOL     280
+ VALUE      3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01  3.9000E+01
+ MERGE             271         272         273         274         275         276         277         278         279         280
+ 
+           VOL     281 VOL     282 VOL     283 VOL     284 VOL     285 VOL     286 VOL     287 VOL     288 VOL     289 VOL     290
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             281         282         283         284         285         286         287         288         289         290
+ 
+           VOL     291 VOL     292 VOL     293 VOL     294 VOL     295 VOL     296 VOL     297 VOL     298 VOL     299 VOL     300
+ VALUE      2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01  2.0400E+01
+ MERGE             291         292         293         294         295         296         297         298         299         300
+ 
+           VOL     301 VOL     302 VOL     303 VOL     304 VOL     305 VOL     306 VOL     307 VOL     308 VOL     309 VOL     310
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             301         302         303         304         305         306         307         308         309         310
+ 
+           VOL     311 VOL     312 VOL     313 VOL     314 VOL     315 VOL     316 VOL     317 VOL     318 VOL     319 VOL     320
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             311         312         313         314         315         316         317         318         319         320
+ 
+           VOL     321 VOL     322 VOL     323 VOL     324 VOL     325 VOL     326 VOL     327 VOL     328 VOL     329 VOL     330
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             321         322         323         324         325         326         327         328         329         330
+ 
+           VOL     331 VOL     332 VOL     333 VOL     334 VOL     335 VOL     336 VOL     337 VOL     338 VOL     339 VOL     340
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             331         332         333         334         335         336         337         338         339         340
+ 
+           VOL     341 VOL     342 VOL     343 VOL     344 VOL     345 VOL     346 VOL     347 VOL     348 VOL     349 VOL     350
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             341         342         343         344         345         346         347         348         349         350
+ 
+           VOL     351 VOL     352 VOL     353 VOL     354 VOL     355 VOL     356 VOL     357 VOL     358 VOL     359 VOL     360
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             351         352         353         354         355         356         357         358         359         360
+ 
+           VOL     361 VOL     362 VOL     363 VOL     364 VOL     365 VOL     366 VOL     367 VOL     368 VOL     369 VOL     370
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             361         362         363         364         365         366         367         368         369         370
+ 
+           VOL     371 VOL     372 VOL     373 VOL     374 VOL     375 VOL     376 VOL     377 VOL     378 VOL     379 VOL     380
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             371         372         373         374         375         376         377         378         379         380
+ 
+           VOL     381 VOL     382 VOL     383 VOL     384 VOL     385 VOL     386 VOL     387 VOL     388 VOL     389 VOL     390
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             381         382         383         384         385         386         387         388         389         390
+ 
+           VOL     391 VOL     392 VOL     393 VOL     394 VOL     395 VOL     396 VOL     397 VOL     398 VOL     399 VOL     400
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             391         392         393         394         395         396         397         398         399         400
+ 
+           VOL     401 VOL     402 VOL     403 VOL     404 VOL     405 VOL     406 VOL     407 VOL     408 VOL     409 VOL     410
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             401         402         403         404         405         406         407         408         409         410
+ 
+           VOL     411 VOL     412 VOL     413 VOL     414 VOL     415 VOL     416 VOL     417 VOL     418 VOL     419 VOL     420
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             411         412         413         414         415         416         417         418         419         420
+ 
+           VOL     421 VOL     422 VOL     423 VOL     424 VOL     425 VOL     426 VOL     427 VOL     428 VOL     429 VOL     430
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             421         422         423         424         425         426         427         428         429         430
+ 
+           VOL     431 VOL     432 VOL     433 VOL     434 VOL     435 VOL     436 VOL     437 VOL     438 VOL     439 VOL     440
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             431         432         433         434         435         436         437         438         439         440
+ 
+           VOL     441 VOL     442 VOL     443 VOL     444 VOL     445 VOL     446 VOL     447 VOL     448 VOL     449 VOL     450
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             441         442         443         444         445         446         447         448         449         450
+ 
+           VOL     451 VOL     452 VOL     453 VOL     454 VOL     455 VOL     456 VOL     457 VOL     458 VOL     459 VOL     460
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             451         452         453         454         455         456         457         458         459         460
+ 
+           VOL     461 VOL     462 VOL     463 VOL     464 VOL     465 VOL     466 VOL     467 VOL     468 VOL     469 VOL     470
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             461         462         463         464         465         466         467         468         469         470
+ 
+           VOL     471 VOL     472 VOL     473 VOL     474 VOL     475 VOL     476 VOL     477 VOL     478 VOL     479 VOL     480
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             471         472         473         474         475         476         477         478         479         480
+ 
+           VOL     481 VOL     482 VOL     483 VOL     484 VOL     485 VOL     486 VOL     487 VOL     488 VOL     489 VOL     490
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             481         482         483         484         485         486         487         488         489         490
+ 
+           VOL     491 VOL     492 VOL     493 VOL     494 VOL     495 VOL     496 VOL     497 VOL     498 VOL     499 VOL     500
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             491         492         493         494         495         496         497         498         499         500
+ 
+           VOL     501 VOL     502 VOL     503 VOL     504 VOL     505 VOL     506 VOL     507 VOL     508 VOL     509 VOL     510
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             501         502         503         504         505         506         507         508         509         510
+ 
+           VOL     511 VOL     512 VOL     513 VOL     514 VOL     515 VOL     516 VOL     517 VOL     518 VOL     519 VOL     520
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             511         512         513         514         515         516         517         518         519         520
+ 
+           VOL     521 VOL     522 VOL     523 VOL     524 VOL     525 VOL     526 VOL     527 VOL     528 VOL     529 VOL     530
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             521         522         523         524         525         526         527         528         529         530
+ 
+           VOL     531 VOL     532 VOL     533 VOL     534 VOL     535 VOL     536 VOL     537 VOL     538 VOL     539 VOL     540
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             531         532         533         534         535         536         537         538         539         540
+ 
+           VOL     541 VOL     542 VOL     543 VOL     544 VOL     545 VOL     546 VOL     547 VOL     548 VOL     549 VOL     550
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             541         542         543         544         545         546         547         548         549         550
+ 
+           VOL     551 VOL     552 VOL     553 VOL     554 VOL     555 VOL     556 VOL     557 VOL     558 VOL     559 VOL     560
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             551         552         553         554         555         556         557         558         559         560
+ 
+           VOL     561 VOL     562 VOL     563 VOL     564 VOL     565 VOL     566 VOL     567 VOL     568 VOL     569 VOL     570
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             561         562         563         564         565         566         567         568         569         570
+ 
+           VOL     571 VOL     572 VOL     573 VOL     574 VOL     575 VOL     576 VOL     577 VOL     578 VOL     579 VOL     580
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             571         572         573         574         575         576         577         578         579         580
+ 
+           VOL     581 VOL     582 VOL     583 VOL     584 VOL     585 VOL     586 VOL     587 VOL     588 VOL     589 VOL     590
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             581         582         583         584         585         586         587         588         589         590
+ 
+           VOL     591 VOL     592 VOL     593 VOL     594 VOL     595 VOL     596 VOL     597 VOL     598 VOL     599 VOL     600
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             591         592         593         594         595         596         597         598         599         600
+ 
+           VOL     601 VOL     602 VOL     603 VOL     604 VOL     605 VOL     606 VOL     607 VOL     608 VOL     609 VOL     610
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             601         602         603         604         605         606         607         608         609         610
+ 
+           VOL     611 VOL     612 VOL     613 VOL     614 VOL     615 VOL     616 VOL     617 VOL     618 VOL     619 VOL     620
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             611         612         613         614         615         616         617         618         619         620
+ 
+           VOL     621 VOL     622 VOL     623 VOL     624 VOL     625 VOL     626 VOL     627 VOL     628 VOL     629 VOL     630
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             621         622         623         624         625         626         627         628         629         630
+ 
+           VOL     631 VOL     632 VOL     633 VOL     634 VOL     635 VOL     636 VOL     637 VOL     638 VOL     639 VOL     640
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             631         632         633         634         635         636         637         638         639         640
+ 
+           VOL     641 VOL     642 VOL     643 VOL     644 VOL     645 VOL     646 VOL     647 VOL     648 VOL     649 VOL     650
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             641         642         643         644         645         646         647         648         649         650
+ 
+           VOL     651 VOL     652 VOL     653 VOL     654 VOL     655 VOL     656 VOL     657 VOL     658 VOL     659 VOL     660
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             651         652         653         654         655         656         657         658         659         660
+ 
+           VOL     661 VOL     662 VOL     663 VOL     664 VOL     665 VOL     666 VOL     667 VOL     668 VOL     669 VOL     670
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             661         662         663         664         665         666         667         668         669         670
+ 
+           VOL     671 VOL     672 VOL     673 VOL     674 VOL     675 VOL     676 VOL     677 VOL     678 VOL     679 VOL     680
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             671         672         673         674         675         676         677         678         679         680
+ 
+           VOL     681 VOL     682 VOL     683 VOL     684 VOL     685 VOL     686 VOL     687 VOL     688 VOL     689 VOL     690
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             681         682         683         684         685         686         687         688         689         690
+ 
+           VOL     691 VOL     692 VOL     693 VOL     694 VOL     695 VOL     696 VOL     697 VOL     698 VOL     699 VOL     700
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             691         692         693         694         695         696         697         698         699         700
+ 
+           VOL     701 VOL     702 VOL     703 VOL     704 VOL     705 VOL     706 VOL     707 VOL     708 VOL     709 VOL     710
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             701         702         703         704         705         706         707         708         709         710
+ 
+           VOL     711 VOL     712 VOL     713 VOL     714 VOL     715 VOL     716 VOL     717 VOL     718 VOL     719 VOL     720
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             711         712         713         714         715         716         717         718         719         720
+ 
+           VOL     721 VOL     722 VOL     723 VOL     724 VOL     725 VOL     726 VOL     727 VOL     728 VOL     729 VOL     730
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             721         722         723         724         725         726         727         728         729         730
+ 
+           VOL     731 VOL     732 VOL     733 VOL     734 VOL     735 VOL     736 VOL     737 VOL     738 VOL     739 VOL     740
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             731         732         733         734         735         736         737         738         739         740
+ 
+           VOL     741 VOL     742 VOL     743 VOL     744 VOL     745 VOL     746 VOL     747 VOL     748 VOL     749 VOL     750
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             741         742         743         744         745         746         747         748         749         750
+ 
+           VOL     751 VOL     752 VOL     753 VOL     754 VOL     755 VOL     756 VOL     757 VOL     758 VOL     759 VOL     760
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             751         752         753         754         755         756         757         758         759         760
+ 
+           VOL     761 VOL     762 VOL     763 VOL     764 VOL     765 VOL     766 VOL     767 VOL     768 VOL     769 VOL     770
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             761         762         763         764         765         766         767         768         769         770
+ 
+           VOL     771 VOL     772 VOL     773 VOL     774 VOL     775 VOL     776 VOL     777 VOL     778 VOL     779 VOL     780
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             771         772         773         774         775         776         777         778         779         780
+ 
+           VOL     781 VOL     782 VOL     783 VOL     784 VOL     785 VOL     786 VOL     787 VOL     788 VOL     789 VOL     790
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             781         782         783         784         785         786         787         788         789         790
+ 
+           VOL     791 VOL     792 VOL     793 VOL     794 VOL     795 VOL     796 VOL     797 VOL     798 VOL     799 VOL     800
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             791         792         793         794         795         796         797         798         799         800
+ 
+           VOL     801 VOL     802 VOL     803 VOL     804 VOL     805 VOL     806 VOL     807 VOL     808 VOL     809 VOL     810
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             801         802         803         804         805         806         807         808         809         810
+ 
+           VOL     811 VOL     812 VOL     813 VOL     814 VOL     815 VOL     816 VOL     817 VOL     818 VOL     819 VOL     820
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             811         812         813         814         815         816         817         818         819         820
+ 
+           VOL     821 VOL     822 VOL     823 VOL     824 VOL     825 VOL     826 VOL     827 VOL     828 VOL     829 VOL     830
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             821         822         823         824         825         826         827         828         829         830
+ 
+           VOL     831 VOL     832 VOL     833 VOL     834 VOL     835 VOL     836 VOL     837 VOL     838 VOL     839 VOL     840
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             831         832         833         834         835         836         837         838         839         840
+ 
+           VOL     841 VOL     842 VOL     843 VOL     844 VOL     845 VOL     846 VOL     847 VOL     848 VOL     849 VOL     850
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             841         842         843         844         845         846         847         848         849         850
+ 
+           VOL     851 VOL     852 VOL     853 VOL     854 VOL     855 VOL     856 VOL     857 VOL     858 VOL     859 VOL     860
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             851         852         853         854         855         856         857         858         859         860
+ 
+           VOL     861 VOL     862 VOL     863 VOL     864 VOL     865 VOL     866 VOL     867 VOL     868 VOL     869 VOL     870
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             861         862         863         864         865         866         867         868         869         870
+ 
+           VOL     871 VOL     872 VOL     873 VOL     874 VOL     875 VOL     876 VOL     877 VOL     878 VOL     879 VOL     880
+ VALUE      2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01  2.6000E+01
+ MERGE             871         872         873         874         875         876         877         878         879         880
+ 
+           VOL     881 VOL     882 VOL     883 VOL     884 VOL     885 VOL     886 VOL     887 VOL     888 VOL     889 VOL     890
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             881         882         883         884         885         886         887         888         889         890
+ 
+           VOL     891 VOL     892 VOL     893 VOL     894 VOL     895 VOL     896 VOL     897 VOL     898 VOL     899 VOL     900
+ VALUE      1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01  1.3600E+01
+ MERGE             891         892         893         894         895         896         897         898         899         900
+ 
+ 
+
+  ====> GLOBAL MESHING  
+        X-COORDINATES: 
+               0.000000      6.500000     13.000000     19.500000     26.000000
+              32.500000     39.000000     45.500000     52.000000     58.500000
+              65.000000     68.400000     71.800000     75.200000     78.600000
+              82.000000     85.400000     88.800000     92.200000     95.600000
+              99.000000    102.400000    105.800000    109.200000    112.600000
+             116.000000    119.400000    122.800000    126.200000    129.600000
+             133.000000
+        Y-COORDINATES: 
+               0.000000      6.000000     12.000000     18.000000     24.000000
+              30.000000     36.000000     42.000000     48.000000     54.000000
+              60.000000     64.000000     68.000000     72.000000     76.000000
+              80.000000     84.000000     88.000000     92.000000     96.000000
+             100.000000    104.000000    108.000000    112.000000    116.000000
+             120.000000    124.000000    128.000000    132.000000    136.000000
+             140.000000
+ 
+ # OF SURFACES AFTER SYMMETRIES:       0
+ # OF ZONES    AFTER SYMMETRIES:     900
+ # OF CELLS    AFTER SYMMETRIES:       1
+ 
+ # OF ZONES    AFTER MERGING   :     900
+ # OF CELLS    AFTER MERGING   :       1
+ 
+ 
+ >>> GEOMETRY TREATED:    DPPG        
+ >>> EXCELL TREATMENT <<< 
+ 
+
+
+ PRINTING GEOMETRY DESCRIPTION BY PLANES 
+ ---- NOTATION USED:
+          NEGATIVE INTEGERS REPRESENT SURFACES
+          POSITIVE INTEGERS REPRESENT REGIONS
+          ABSENT MEANS THAT THE REGION OR SURFACE DOES NOT EXIST
+          FIRST LINE REPRESENTS REGION OR VOLUME IN CARTESIAN MESH
+          ADDITIONAL LINES REPRESENT REGION OR SURFACE IN RADIAL MESH (OUTER TO INNER)
+          FOR 3-D MODEL, START WITH TOP Z-SURFACE THEN GO DOWN ALONG Z-AXIS AND FINISH BY BOTTOM Z-SURFACE
+          FOR 2-D X-Y PLANE FIRST LINE IS FOR TOP Y-SURFACE THEN GO DOWN ALONG Y-AXIS AND FINISH BY BOTTOM Y-SURFACE
+          FOR A LINE FIRST POINT IS FOR LEFT X-SURFACE THEN INCREASE ALONG X-AXIS AND FINISH BY RIGHT X-SURFACE
+          MATERIAL AND ABLEDO NUMBERS ARE IN PARENTHESIS
+
+
+ X-Y MESH
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                    (    -4)     -91  (    -4)     -92  (    -4)     -93  (    -4)     -94  (    -4)     -95  (    -4)     -96  (    -4)     -97  (    -4)     -98  (    -4)     -99  (    -4)    -100  (    -4)    -101  (    -4)    -102  (    -4)    -103  (    -4)    -104  (    -4)    -105  (    -4)    -106  (    -4)    -107  (    -4)    -108  (    -4)    -109  (    -4)    -110  (    -4)    -111  (    -4)    -112  (    -4)    -113  (    -4)    -114  (    -4)    -115  (    -4)    -116  (    -4)    -117  (    -4)    -118  (    -4)    -119  (    -4)    -120                  
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -89  (     2)     871  (     2)     872  (     2)     873  (     2)     874  (     2)     875  (     2)     876  (     2)     877  (     2)     878  (     2)     879  (     2)     880  (     2)     881  (     2)     882  (     2)     883  (     2)     884  (     2)     885  (     2)     886  (     2)     887  (     2)     888  (     2)     889  (     2)     890  (     2)     891  (     2)     892  (     2)     893  (     2)     894  (     2)     895  (     2)     896  (     2)     897  (     2)     898  (     2)     899  (     2)     900  (    -2)     -90
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -87  (     2)     841  (     2)     842  (     2)     843  (     2)     844  (     2)     845  (     2)     846  (     2)     847  (     2)     848  (     2)     849  (     2)     850  (     2)     851  (     2)     852  (     2)     853  (     2)     854  (     2)     855  (     2)     856  (     2)     857  (     2)     858  (     2)     859  (     2)     860  (     2)     861  (     2)     862  (     2)     863  (     2)     864  (     2)     865  (     2)     866  (     2)     867  (     2)     868  (     2)     869  (     2)     870  (    -2)     -88
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -85  (     2)     811  (     2)     812  (     2)     813  (     2)     814  (     2)     815  (     2)     816  (     2)     817  (     2)     818  (     2)     819  (     2)     820  (     2)     821  (     2)     822  (     2)     823  (     2)     824  (     2)     825  (     2)     826  (     2)     827  (     2)     828  (     2)     829  (     2)     830  (     2)     831  (     2)     832  (     2)     833  (     2)     834  (     2)     835  (     2)     836  (     2)     837  (     2)     838  (     2)     839  (     2)     840  (    -2)     -86
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -83  (     2)     781  (     2)     782  (     2)     783  (     2)     784  (     2)     785  (     2)     786  (     2)     787  (     2)     788  (     2)     789  (     2)     790  (     2)     791  (     2)     792  (     2)     793  (     2)     794  (     2)     795  (     2)     796  (     2)     797  (     2)     798  (     2)     799  (     2)     800  (     2)     801  (     2)     802  (     2)     803  (     2)     804  (     2)     805  (     2)     806  (     2)     807  (     2)     808  (     2)     809  (     2)     810  (    -2)     -84
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -81  (     2)     751  (     2)     752  (     2)     753  (     2)     754  (     2)     755  (     2)     756  (     2)     757  (     2)     758  (     2)     759  (     2)     760  (     2)     761  (     2)     762  (     2)     763  (     2)     764  (     2)     765  (     2)     766  (     2)     767  (     2)     768  (     2)     769  (     2)     770  (     2)     771  (     2)     772  (     2)     773  (     2)     774  (     2)     775  (     2)     776  (     2)     777  (     2)     778  (     2)     779  (     2)     780  (    -2)     -82
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -79  (     2)     721  (     2)     722  (     2)     723  (     2)     724  (     2)     725  (     2)     726  (     2)     727  (     2)     728  (     2)     729  (     2)     730  (     2)     731  (     2)     732  (     2)     733  (     2)     734  (     2)     735  (     2)     736  (     2)     737  (     2)     738  (     2)     739  (     2)     740  (     2)     741  (     2)     742  (     2)     743  (     2)     744  (     2)     745  (     2)     746  (     2)     747  (     2)     748  (     2)     749  (     2)     750  (    -2)     -80
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -77  (     2)     691  (     2)     692  (     2)     693  (     2)     694  (     2)     695  (     2)     696  (     2)     697  (     2)     698  (     2)     699  (     2)     700  (     2)     701  (     2)     702  (     2)     703  (     2)     704  (     2)     705  (     2)     706  (     2)     707  (     2)     708  (     2)     709  (     2)     710  (     2)     711  (     2)     712  (     2)     713  (     2)     714  (     2)     715  (     2)     716  (     2)     717  (     2)     718  (     2)     719  (     2)     720  (    -2)     -78
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -75  (     2)     661  (     2)     662  (     2)     663  (     2)     664  (     2)     665  (     2)     666  (     2)     667  (     2)     668  (     2)     669  (     2)     670  (     2)     671  (     2)     672  (     2)     673  (     2)     674  (     2)     675  (     2)     676  (     2)     677  (     2)     678  (     2)     679  (     2)     680  (     2)     681  (     2)     682  (     2)     683  (     2)     684  (     2)     685  (     2)     686  (     2)     687  (     2)     688  (     2)     689  (     2)     690  (    -2)     -76
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -73  (     2)     631  (     2)     632  (     2)     633  (     2)     634  (     2)     635  (     2)     636  (     2)     637  (     2)     638  (     2)     639  (     2)     640  (     2)     641  (     2)     642  (     2)     643  (     2)     644  (     2)     645  (     2)     646  (     2)     647  (     2)     648  (     2)     649  (     2)     650  (     2)     651  (     2)     652  (     2)     653  (     2)     654  (     2)     655  (     2)     656  (     2)     657  (     2)     658  (     2)     659  (     2)     660  (    -2)     -74
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -71  (     2)     601  (     2)     602  (     2)     603  (     2)     604  (     2)     605  (     2)     606  (     2)     607  (     2)     608  (     2)     609  (     2)     610  (     2)     611  (     2)     612  (     2)     613  (     2)     614  (     2)     615  (     2)     616  (     2)     617  (     2)     618  (     2)     619  (     2)     620  (     2)     621  (     2)     622  (     2)     623  (     2)     624  (     2)     625  (     2)     626  (     2)     627  (     2)     628  (     2)     629  (     2)     630  (    -2)     -72
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -69  (     2)     571  (     2)     572  (     2)     573  (     2)     574  (     2)     575  (     2)     576  (     2)     577  (     2)     578  (     2)     579  (     2)     580  (     2)     581  (     2)     582  (     2)     583  (     2)     584  (     2)     585  (     2)     586  (     2)     587  (     2)     588  (     2)     589  (     2)     590  (     2)     591  (     2)     592  (     2)     593  (     2)     594  (     2)     595  (     2)     596  (     2)     597  (     2)     598  (     2)     599  (     2)     600  (    -2)     -70
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -67  (     2)     541  (     2)     542  (     2)     543  (     2)     544  (     2)     545  (     2)     546  (     2)     547  (     2)     548  (     2)     549  (     2)     550  (     2)     551  (     2)     552  (     2)     553  (     2)     554  (     2)     555  (     2)     556  (     2)     557  (     2)     558  (     2)     559  (     2)     560  (     2)     561  (     2)     562  (     2)     563  (     2)     564  (     2)     565  (     2)     566  (     2)     567  (     2)     568  (     2)     569  (     2)     570  (    -2)     -68
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -65  (     2)     511  (     2)     512  (     2)     513  (     2)     514  (     2)     515  (     2)     516  (     2)     517  (     2)     518  (     2)     519  (     2)     520  (     2)     521  (     2)     522  (     2)     523  (     2)     524  (     2)     525  (     2)     526  (     2)     527  (     2)     528  (     2)     529  (     2)     530  (     2)     531  (     2)     532  (     2)     533  (     2)     534  (     2)     535  (     2)     536  (     2)     537  (     2)     538  (     2)     539  (     2)     540  (    -2)     -66
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -63  (     2)     481  (     2)     482  (     2)     483  (     2)     484  (     2)     485  (     2)     486  (     2)     487  (     2)     488  (     2)     489  (     2)     490  (     2)     491  (     2)     492  (     2)     493  (     2)     494  (     2)     495  (     2)     496  (     2)     497  (     2)     498  (     2)     499  (     2)     500  (     2)     501  (     2)     502  (     2)     503  (     2)     504  (     2)     505  (     2)     506  (     2)     507  (     2)     508  (     2)     509  (     2)     510  (    -2)     -64
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -61  (     2)     451  (     2)     452  (     2)     453  (     2)     454  (     2)     455  (     2)     456  (     2)     457  (     2)     458  (     2)     459  (     2)     460  (     2)     461  (     2)     462  (     2)     463  (     2)     464  (     2)     465  (     2)     466  (     2)     467  (     2)     468  (     2)     469  (     2)     470  (     2)     471  (     2)     472  (     2)     473  (     2)     474  (     2)     475  (     2)     476  (     2)     477  (     2)     478  (     2)     479  (     2)     480  (    -2)     -62
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -59  (     2)     421  (     2)     422  (     2)     423  (     2)     424  (     2)     425  (     2)     426  (     2)     427  (     2)     428  (     2)     429  (     2)     430  (     2)     431  (     2)     432  (     2)     433  (     2)     434  (     2)     435  (     2)     436  (     2)     437  (     2)     438  (     2)     439  (     2)     440  (     2)     441  (     2)     442  (     2)     443  (     2)     444  (     2)     445  (     2)     446  (     2)     447  (     2)     448  (     2)     449  (     2)     450  (    -2)     -60
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -57  (     2)     391  (     2)     392  (     2)     393  (     2)     394  (     2)     395  (     2)     396  (     2)     397  (     2)     398  (     2)     399  (     2)     400  (     2)     401  (     2)     402  (     2)     403  (     2)     404  (     2)     405  (     2)     406  (     2)     407  (     2)     408  (     2)     409  (     2)     410  (     2)     411  (     2)     412  (     2)     413  (     2)     414  (     2)     415  (     2)     416  (     2)     417  (     2)     418  (     2)     419  (     2)     420  (    -2)     -58
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -55  (     2)     361  (     2)     362  (     2)     363  (     2)     364  (     2)     365  (     2)     366  (     2)     367  (     2)     368  (     2)     369  (     2)     370  (     2)     371  (     2)     372  (     2)     373  (     2)     374  (     2)     375  (     2)     376  (     2)     377  (     2)     378  (     2)     379  (     2)     380  (     2)     381  (     2)     382  (     2)     383  (     2)     384  (     2)     385  (     2)     386  (     2)     387  (     2)     388  (     2)     389  (     2)     390  (    -2)     -56
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -53  (     2)     331  (     2)     332  (     2)     333  (     2)     334  (     2)     335  (     2)     336  (     2)     337  (     2)     338  (     2)     339  (     2)     340  (     2)     341  (     2)     342  (     2)     343  (     2)     344  (     2)     345  (     2)     346  (     2)     347  (     2)     348  (     2)     349  (     2)     350  (     2)     351  (     2)     352  (     2)     353  (     2)     354  (     2)     355  (     2)     356  (     2)     357  (     2)     358  (     2)     359  (     2)     360  (    -2)     -54
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -51  (     2)     301  (     2)     302  (     2)     303  (     2)     304  (     2)     305  (     2)     306  (     2)     307  (     2)     308  (     2)     309  (     2)     310  (     2)     311  (     2)     312  (     2)     313  (     2)     314  (     2)     315  (     2)     316  (     2)     317  (     2)     318  (     2)     319  (     2)     320  (     2)     321  (     2)     322  (     2)     323  (     2)     324  (     2)     325  (     2)     326  (     2)     327  (     2)     328  (     2)     329  (     2)     330  (    -2)     -52
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -49  (     1)     271  (     1)     272  (     1)     273  (     1)     274  (     1)     275  (     1)     276  (     1)     277  (     1)     278  (     1)     279  (     1)     280  (     2)     281  (     2)     282  (     2)     283  (     2)     284  (     2)     285  (     2)     286  (     2)     287  (     2)     288  (     2)     289  (     2)     290  (     2)     291  (     2)     292  (     2)     293  (     2)     294  (     2)     295  (     2)     296  (     2)     297  (     2)     298  (     2)     299  (     2)     300  (    -2)     -50
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -47  (     1)     241  (     1)     242  (     1)     243  (     1)     244  (     1)     245  (     1)     246  (     1)     247  (     1)     248  (     1)     249  (     1)     250  (     2)     251  (     2)     252  (     2)     253  (     2)     254  (     2)     255  (     2)     256  (     2)     257  (     2)     258  (     2)     259  (     2)     260  (     2)     261  (     2)     262  (     2)     263  (     2)     264  (     2)     265  (     2)     266  (     2)     267  (     2)     268  (     2)     269  (     2)     270  (    -2)     -48
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -45  (     1)     211  (     1)     212  (     1)     213  (     1)     214  (     1)     215  (     1)     216  (     1)     217  (     1)     218  (     1)     219  (     1)     220  (     2)     221  (     2)     222  (     2)     223  (     2)     224  (     2)     225  (     2)     226  (     2)     227  (     2)     228  (     2)     229  (     2)     230  (     2)     231  (     2)     232  (     2)     233  (     2)     234  (     2)     235  (     2)     236  (     2)     237  (     2)     238  (     2)     239  (     2)     240  (    -2)     -46
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -43  (     1)     181  (     1)     182  (     1)     183  (     1)     184  (     1)     185  (     1)     186  (     1)     187  (     1)     188  (     1)     189  (     1)     190  (     2)     191  (     2)     192  (     2)     193  (     2)     194  (     2)     195  (     2)     196  (     2)     197  (     2)     198  (     2)     199  (     2)     200  (     2)     201  (     2)     202  (     2)     203  (     2)     204  (     2)     205  (     2)     206  (     2)     207  (     2)     208  (     2)     209  (     2)     210  (    -2)     -44
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -41  (     1)     151  (     1)     152  (     1)     153  (     1)     154  (     1)     155  (     1)     156  (     1)     157  (     1)     158  (     1)     159  (     1)     160  (     2)     161  (     2)     162  (     2)     163  (     2)     164  (     2)     165  (     2)     166  (     2)     167  (     2)     168  (     2)     169  (     2)     170  (     2)     171  (     2)     172  (     2)     173  (     2)     174  (     2)     175  (     2)     176  (     2)     177  (     2)     178  (     2)     179  (     2)     180  (    -2)     -42
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -39  (     1)     121  (     1)     122  (     1)     123  (     1)     124  (     1)     125  (     1)     126  (     1)     127  (     1)     128  (     1)     129  (     1)     130  (     2)     131  (     2)     132  (     2)     133  (     2)     134  (     2)     135  (     2)     136  (     2)     137  (     2)     138  (     2)     139  (     2)     140  (     2)     141  (     2)     142  (     2)     143  (     2)     144  (     2)     145  (     2)     146  (     2)     147  (     2)     148  (     2)     149  (     2)     150  (    -2)     -40
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -37  (     1)      91  (     1)      92  (     1)      93  (     1)      94  (     1)      95  (     1)      96  (     1)      97  (     1)      98  (     1)      99  (     1)     100  (     2)     101  (     2)     102  (     2)     103  (     2)     104  (     2)     105  (     2)     106  (     2)     107  (     2)     108  (     2)     109  (     2)     110  (     2)     111  (     2)     112  (     2)     113  (     2)     114  (     2)     115  (     2)     116  (     2)     117  (     2)     118  (     2)     119  (     2)     120  (    -2)     -38
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -35  (     1)      61  (     1)      62  (     1)      63  (     1)      64  (     1)      65  (     1)      66  (     1)      67  (     1)      68  (     1)      69  (     1)      70  (     2)      71  (     2)      72  (     2)      73  (     2)      74  (     2)      75  (     2)      76  (     2)      77  (     2)      78  (     2)      79  (     2)      80  (     2)      81  (     2)      82  (     2)      83  (     2)      84  (     2)      85  (     2)      86  (     2)      87  (     2)      88  (     2)      89  (     2)      90  (    -2)     -36
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -33  (     1)      31  (     1)      32  (     1)      33  (     1)      34  (     1)      35  (     1)      36  (     1)      37  (     1)      38  (     1)      39  (     1)      40  (     2)      41  (     2)      42  (     2)      43  (     2)      44  (     2)      45  (     2)      46  (     2)      47  (     2)      48  (     2)      49  (     2)      50  (     2)      51  (     2)      52  (     2)      53  (     2)      54  (     2)      55  (     2)      56  (     2)      57  (     2)      58  (     2)      59  (     2)      60  (    -2)     -34
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  (    -1)     -31  (     1)       1  (     1)       2  (     1)       3  (     1)       4  (     1)       5  (     1)       6  (     1)       7  (     1)       8  (     1)       9  (     1)      10  (     2)      11  (     2)      12  (     2)      13  (     2)      14  (     2)      15  (     2)      16  (     2)      17  (     2)      18  (     2)      19  (     2)      20  (     2)      21  (     2)      22  (     2)      23  (     2)      24  (     2)      25  (     2)      26  (     2)      27  (     2)      28  (     2)      29  (     2)      30  (    -2)     -32
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                    (    -3)      -1  (    -3)      -2  (    -3)      -3  (    -3)      -4  (    -3)      -5  (    -3)      -6  (    -3)      -7  (    -3)      -8  (    -3)      -9  (    -3)     -10  (    -3)     -11  (    -3)     -12  (    -3)     -13  (    -3)     -14  (    -3)     -15  (    -3)     -16  (    -3)     -17  (    -3)     -18  (    -3)     -19  (    -3)     -20  (    -3)     -21  (    -3)     -22  (    -3)     -23  (    -3)     -24  (    -3)     -25  (    -3)     -26  (    -3)     -27  (    -3)     -28  (    -3)     -29  (    -3)     -30                  
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+ 
+
+ NOW, TRACKING   >>> DPPG         GEOMETRY <<<    (WITH  NO CYLINDER )
+
+ ******  WARNING in : XELTSW *****
+          Some of the integration weights are negative
+          this may result in invalid integration of CP
+          Use Sanchez instead of Roy weighting
+ 
+ ECHO =         24 SOLID ANGLES TO BE TRACKED 
+ 0         0         0
+ 0         1         2
++ 1
++  2
++   3
++    4
++     5
++      6
++       7
++        8
++         9
++          0
++           1
++            2
++             3
++              4
++               5
++                6
++                 7
++                  8
++                   9
++                    0
++                     1
++                      2
++                       3
++                        4
+ 
+ ECHO OF TRACKING PROPERTIES FOR TAPE 97
+          NUMBER OF ANGLES       =        24
+             TRACK DENSITY       =    24.000 LINES/CM
+          NUMBER OF TRACK STORED =     10490
+ 
+
+ TRACKING ERRORS ON SURFACE   AVERAGE ERROR:     0.0452 %      MAXIMUM ERROR:     0.3851 % 
+ MAXIMUM ERROR ON SURFACE=     104 WITH AREA  = 3.3869E+00
+ 
+ TRACKING ERRORS ON VOLUME    AVERAGE ERROR:    -0.0000 %      MAXIMUM ERROR:     0.0123 % 
+ MAXIMUM ERROR IN REGION =     377 WITH VOLUME= 1.3598E+01
+  SIDE            X-         X+         Y-         Y+         Z-         Z+ 
+  GEOM #            1          2          3          4                      
+  PHYS #                                                                    
+  ALBEDO   1.0000E+00 0.0000E+00 1.0000E+00 0.0000E+00 1.0000E+00 1.0000E+00
+                 USED       USED       USED       USED     UNUSED     UNUSED
+ 
+ 
+ ECHO = >>>  SPECULAR CP CALCULATION    
+ ECHO = >>> MFP.  CUT-OFF: 1.0000E-06
+ ECHO = >>> NB. OF REGIONS:   900
+ EXCELT PRINT LEVEL =       2
+ TRACK STATE-VECTOR  (12) ELEMENTS
+ -----------------
+ NREG   =     900 (NUMBER OF REGIONS)
+ NUNKNO =    3600 (NUMBER OF UNKNOWNS IN SYSTEM)
+ ILEAK  =       0 (LEAKAGE FLAG)
+ MAXMIX =       2 (NUMBER OF MIXTURES)
+ NSOUT  =     120 (NUMBER OF OUTER SURFACES)
+ NANIS  =       2 (FLUX ANISOTROPY ORDER)
+ ITROP  =       1 (GEOMETRY TYPE)
+ NORE   =       0 (TRACK NORMALIZATION OPTION)
+ KTOPT  =       1 (TYPE OF TRACKING)
+ KSEPC  =       1 (TYPE OF BOUNDARY CONDITION)
+ NANGL  =      24 (NUMBER OF TRACKING ANGLES)
+ ISYMM  =       1 (TRACKING SYMMETRY FACTOR)
+ LCACT  =       3 (Polar quadrature option)
+ NMU    =       2 (Number of polar quadrature points)
+ -----------------
+
+ EXCELL TRACK OPTIONS 
+ CUTOFX =          0.00000100 (CUTOFF FOR TRACK LENGTH)
+ DENS   =         24.00000000 (TRACK DENSITY)
+ PCORN  =          0.00000000 (CORNER DUPLICATION DISTANCE)
+ -----------------
+
+->@END MODULE   : EXCELT:     
+<|SYS := ASM: MACRO TRACK DPPGTRK ::                                      |<0061
+->@BEGIN MODULE : ASM:        
+->@DESCRIPTION  : Built CP and IC system matrices                                         
+->@CREDITS      : A. Hebert, G. Marleau, R. Roy                                           
+->@COPYRIGHTS   : ECOLE POLYTECHNIQUE DE MONTREAL 
+<|  SKIP                                                                  |<0062
+<|  ;                                                                     |<0063
+ ASM PRINT LEVEL =       1
+ ASMPIJ STATE-VECTOR  (15) ELEMENTS
+ -----------------
+ IPHASE =       0 (TYPE OF SYSTEM MATRIX)
+ ISCATR =       1 (SCATTERING REDUCTION OPTION)
+ IRES   =       0 (RESIDUAL MATRIX OPTION)
+ ICLOS  =      -1 (TYPE OF CP CLOSURE RELATION)
+ KNORM  =       0 (CP MATRIX NORMALIZATION OPTION)
+ NSUBG  =       2 (NUMBER OF GROUP IN SUBGROUP)
+ NGROUP =       2 (NUMBER OF GROUPS)
+ NUNKNO =    3600 (NUMBER OF UNKNOWNS IN SYSTEM)
+ MAXMIX =       2 (NUMBER OF MIXTURES)
+ NANI   =       2 (FLUX ANISOTROPY ORDER)
+ NGEN   =       1 (NUMBER OF GENERATING CELL)
+ NREG   =     900 (NUMBER OF REGIONS)
+ NSUR   =     120 (NUMBER OF SURFACES)
+ NPSS   =       0 (DIMENSION OF PSS MATRIX)
+ NICM   =       0 (DIMENSION OF ICM MATRIX)
+ -----------------
+
+
+ COMPUTATION OF DRAGON COMPLETE CP BY DOOR =   EXCELL      
+
+
+ USE TRANSPORT CORRECTED CROSS-SECTIONS
+->@END MODULE   : ASM:        
+<|FLUX := FLU: SYS MACRO TRACK ::                                         |<0064
+->@BEGIN MODULE : FLU:        
+->@DESCRIPTION  : Solve CP and IC equations for the flux                                  
+->@CREDITS      : T. Courau, A. Hebert, G. Marleau, I. Petrovic                           
+->@COPYRIGHTS   : ECOLE POLYTECHNIQUE DE MONTREAL 
+<|  TYPE S THER 100 1.E-6 EXTE 100 1.E-6                                  |<0065
+<|  ;                                                                     |<0066
+
+
+
+
+ SOLUTION TO TRANSPORT EQUATION 
+ CALCULATION TYPE            =    SOURCE
+ SOURCE TYPE                 =  EXTERNAL
+ FLUX SOLUTION DOOR          =    TRAFIC
+ NUMBER OF GROUPS            =         2
+ NUMBER OF REGIONS           =       900
+ MAX. OUTER ITERATIONS       =       100
+ MAX. THERMAL ITERATIONS     =       100
+ ACCELERATION SCHEME         =( 3 FREE, 3 ACCELERATED)
+ REBALANCING OPTION          = ON 
+ EIGENVALUE TOLERANCE        =  1.000E-06
+ UNKNOWN OUTER TOLERANCE     =  1.000E-06
+ UNKNOWN INNER TOLERANCE     =  1.000E-06
+
+
+ OUTER ITERATION NUMBER                 =          1
+ ---------------------------------------------------
+ CONVERGENCE REACHED AT INNER ITERATION =            5
+ MAXIMUM ERROR ON FLUX  FOUND           =  2.97115E-07
+ TOTAL NUMBER OF ONE GROUP SOLUTIONS    =           10
+
+ TYPE S    -- OUTER ITERATION COMPLETED  =          1
+              MAXIMUM ERROR ON FLUXES    =   0.000E+00
+
+
+ ===================================================
+ CONVERGENCE REACHED AT OUTER ITERATION =          1
+ MAXIMUM FLUX ERROR          =  0.000E+00
+->@END MODULE   : FLU:        
+<|EDITION := EDI: FLUX MACRO TRACK ::                                     |<0067
+->@BEGIN MODULE : EDI:        
+->@DESCRIPTION  : Editing module                                                          
+->@CREDITS      : A. Hebert, G. Marleau                                                   
+->@COPYRIGHTS   : ECOLE POLYTECHNIQUE DE MONTREAL 
+<|  EDIT 1 SAVE                                                           |<0068
+<|  MERGE REGION                                                          |<0069
+<|    0 0 0 0 0 0 0 0 0 0 1  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0070
+<|    0 0 0 0 0 0 0 0 0 0 2  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0071
+<|    0 0 0 0 0 0 0 0 0 0 3  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0072
+<|    0 0 0 0 0 0 0 0 0 0 4  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0073
+<|    0 0 0 0 0 0 0 0 0 0 5  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0074
+<|    0 0 0 0 0 0 0 0 0 0 6  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0075
+<|    0 0 0 0 0 0 0 0 0 0 7  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0076
+<|    0 0 0 0 0 0 0 0 0 0 8  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0077
+<|    0 0 0 0 0 0 0 0 0 0 9  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0078
+<|    0 0 0 0 0 0 0 0 0 0 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0079
+<|    0 0 0 0 0 0 0 0 0 0 11 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0080
+<|    0 0 0 0 0 0 0 0 0 0 12 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0081
+<|    0 0 0 0 0 0 0 0 0 0 13 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0082
+<|    0 0 0 0 0 0 0 0 0 0 14 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0083
+<|    0 0 0 0 0 0 0 0 0 0 15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0084
+<|    0 0 0 0 0 0 0 0 0 0 16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0085
+<|    0 0 0 0 0 0 0 0 0 0 17 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0086
+<|    0 0 0 0 0 0 0 0 0 0 18 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0087
+<|    0 0 0 0 0 0 0 0 0 0 19 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0088
+<|    0 0 0 0 0 0 0 0 0 0 20 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0089
+<|    0 0 0 0 0 0 0 0 0 0 21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0090
+<|    0 0 0 0 0 0 0 0 0 0 22 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0091
+<|    0 0 0 0 0 0 0 0 0 0 23 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0092
+<|    0 0 0 0 0 0 0 0 0 0 24 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0093
+<|    0 0 0 0 0 0 0 0 0 0 25 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0094
+<|    0 0 0 0 0 0 0 0 0 0 26 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0095
+<|    0 0 0 0 0 0 0 0 0 0 27 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0096
+<|    0 0 0 0 0 0 0 0 0 0 28 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0097
+<|    0 0 0 0 0 0 0 0 0 0 29 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0098
+<|    0 0 0 0 0 0 0 0 0 0 30 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0        |<0099
+<|  ;                                                                     |<0100
+ EDITION STATE-VECTOR (13) ELEMENTS FROM: EDI   
+ --------------------------------
+ NMERGE =      30 (NUMBER OF MERGED REGIONS)
+ NGCOND =       2 (NUMBER OF CONDENSED ENERGY GROUPS)
+ IFFAC  =       0 (= 0: NO 4 FACTORS CALCULATIONS;
+                   = 1: 4 FACTORS CALCULATION REQUESTED)
+ ILUPS  =       0 (= 0: KEEP UP-SCATTERING CONTRIBUTION;
+                   = 1: REMOVE UP-SCATTERING CONTRIBUTIONS)
+ NACTI  =       0 (NUMBER OF MIXTURES WITH ACTIVATION EDITS)
+ NSTATS =       0 (TYPE OF STATISTIC CALCULATIONS)
+ NSPH   =       0 (= 0: NO SPH ;
+                   = 1: READ SPH FACTORS;
+                   = 1: TYPE OF CALCULATION FOR SPH FACTORS)
+ KSPH   =       0 (= 1: AVERAGE FLUX SPH NORMALIZATION;
+                   > 1 : SELENGUT NORMALIZATION)
+ NBMICR =       0 (<-1: FULL LIBRARY -NBMICR-1 ISOTOPE;
+                   =-1: FULL LIBRARY ALL ISOTOPE;
+                   = 0: NO ISOTOPE;
+                   = 1: MICROSCOPIC ALL ISOTOPE;
+                   > 1: MICROSCOPIC NBMICR-1 ISOTOPE)
+ IPRINT =       1 (PRINT LEVEL)
+ NSAVES =       2 (= 0: NO COMPUTE/NO SAVE;
+                   = 1: COMPUTE/NO SAVE;
+                   = 2: COMPUTE/SAVE;
+                   = 3: PERTURBATION/SAVE)
+ NWGTH  =       0 (= 0: DIRECT FLUX WEIGHTING P1-SCAT;
+                   = 1: DIRECT CURRENT WEIGHTING P1-SCAT;
+                   = 2: COHERENT WEIGHTING FOR P1-SCAT;
+                   = 3: DIRECTIONAL WEIGHTING FOR P1-SCAT)
+ MAXISM =       1 (MAXIMUM ISOTOPES PER MATERIAL)
+ --------------------------------
+ MERGING INDEX (INITIAL -> FINAL):
+     1 ->     0     2 ->     0     3 ->     0     4 ->     0     5 ->     0     6 ->     0     7 ->     0     8 ->     0
+     9 ->     0    10 ->     0    11 ->     1    12 ->     0    13 ->     0    14 ->     0    15 ->     0    16 ->     0
+    17 ->     0    18 ->     0    19 ->     0    20 ->     0    21 ->     0    22 ->     0    23 ->     0    24 ->     0
+    25 ->     0    26 ->     0    27 ->     0    28 ->     0    29 ->     0    30 ->     0    31 ->     0    32 ->     0
+    33 ->     0    34 ->     0    35 ->     0    36 ->     0    37 ->     0    38 ->     0    39 ->     0    40 ->     0
+    41 ->     2    42 ->     0    43 ->     0    44 ->     0    45 ->     0    46 ->     0    47 ->     0    48 ->     0
+    49 ->     0    50 ->     0    51 ->     0    52 ->     0    53 ->     0    54 ->     0    55 ->     0    56 ->     0
+    57 ->     0    58 ->     0    59 ->     0    60 ->     0    61 ->     0    62 ->     0    63 ->     0    64 ->     0
+    65 ->     0    66 ->     0    67 ->     0    68 ->     0    69 ->     0    70 ->     0    71 ->     3    72 ->     0
+    73 ->     0    74 ->     0    75 ->     0    76 ->     0    77 ->     0    78 ->     0    79 ->     0    80 ->     0
+    81 ->     0    82 ->     0    83 ->     0    84 ->     0    85 ->     0    86 ->     0    87 ->     0    88 ->     0
+    89 ->     0    90 ->     0    91 ->     0    92 ->     0    93 ->     0    94 ->     0    95 ->     0    96 ->     0
+    97 ->     0    98 ->     0    99 ->     0   100 ->     0   101 ->     4   102 ->     0   103 ->     0   104 ->     0
+   105 ->     0   106 ->     0   107 ->     0   108 ->     0   109 ->     0   110 ->     0   111 ->     0   112 ->     0
+   113 ->     0   114 ->     0   115 ->     0   116 ->     0   117 ->     0   118 ->     0   119 ->     0   120 ->     0
+   121 ->     0   122 ->     0   123 ->     0   124 ->     0   125 ->     0   126 ->     0   127 ->     0   128 ->     0
+   129 ->     0   130 ->     0   131 ->     5   132 ->     0   133 ->     0   134 ->     0   135 ->     0   136 ->     0
+   137 ->     0   138 ->     0   139 ->     0   140 ->     0   141 ->     0   142 ->     0   143 ->     0   144 ->     0
+   145 ->     0   146 ->     0   147 ->     0   148 ->     0   149 ->     0   150 ->     0   151 ->     0   152 ->     0
+   153 ->     0   154 ->     0   155 ->     0   156 ->     0   157 ->     0   158 ->     0   159 ->     0   160 ->     0
+   161 ->     6   162 ->     0   163 ->     0   164 ->     0   165 ->     0   166 ->     0   167 ->     0   168 ->     0
+   169 ->     0   170 ->     0   171 ->     0   172 ->     0   173 ->     0   174 ->     0   175 ->     0   176 ->     0
+   177 ->     0   178 ->     0   179 ->     0   180 ->     0   181 ->     0   182 ->     0   183 ->     0   184 ->     0
+   185 ->     0   186 ->     0   187 ->     0   188 ->     0   189 ->     0   190 ->     0   191 ->     7   192 ->     0
+   193 ->     0   194 ->     0   195 ->     0   196 ->     0   197 ->     0   198 ->     0   199 ->     0   200 ->     0
+   201 ->     0   202 ->     0   203 ->     0   204 ->     0   205 ->     0   206 ->     0   207 ->     0   208 ->     0
+   209 ->     0   210 ->     0   211 ->     0   212 ->     0   213 ->     0   214 ->     0   215 ->     0   216 ->     0
+   217 ->     0   218 ->     0   219 ->     0   220 ->     0   221 ->     8   222 ->     0   223 ->     0   224 ->     0
+   225 ->     0   226 ->     0   227 ->     0   228 ->     0   229 ->     0   230 ->     0   231 ->     0   232 ->     0
+   233 ->     0   234 ->     0   235 ->     0   236 ->     0   237 ->     0   238 ->     0   239 ->     0   240 ->     0
+   241 ->     0   242 ->     0   243 ->     0   244 ->     0   245 ->     0   246 ->     0   247 ->     0   248 ->     0
+   249 ->     0   250 ->     0   251 ->     9   252 ->     0   253 ->     0   254 ->     0   255 ->     0   256 ->     0
+   257 ->     0   258 ->     0   259 ->     0   260 ->     0   261 ->     0   262 ->     0   263 ->     0   264 ->     0
+   265 ->     0   266 ->     0   267 ->     0   268 ->     0   269 ->     0   270 ->     0   271 ->     0   272 ->     0
+   273 ->     0   274 ->     0   275 ->     0   276 ->     0   277 ->     0   278 ->     0   279 ->     0   280 ->     0
+   281 ->    10   282 ->     0   283 ->     0   284 ->     0   285 ->     0   286 ->     0   287 ->     0   288 ->     0
+   289 ->     0   290 ->     0   291 ->     0   292 ->     0   293 ->     0   294 ->     0   295 ->     0   296 ->     0
+   297 ->     0   298 ->     0   299 ->     0   300 ->     0   301 ->     0   302 ->     0   303 ->     0   304 ->     0
+   305 ->     0   306 ->     0   307 ->     0   308 ->     0   309 ->     0   310 ->     0   311 ->    11   312 ->     0
+   313 ->     0   314 ->     0   315 ->     0   316 ->     0   317 ->     0   318 ->     0   319 ->     0   320 ->     0
+   321 ->     0   322 ->     0   323 ->     0   324 ->     0   325 ->     0   326 ->     0   327 ->     0   328 ->     0
+   329 ->     0   330 ->     0   331 ->     0   332 ->     0   333 ->     0   334 ->     0   335 ->     0   336 ->     0
+   337 ->     0   338 ->     0   339 ->     0   340 ->     0   341 ->    12   342 ->     0   343 ->     0   344 ->     0
+   345 ->     0   346 ->     0   347 ->     0   348 ->     0   349 ->     0   350 ->     0   351 ->     0   352 ->     0
+   353 ->     0   354 ->     0   355 ->     0   356 ->     0   357 ->     0   358 ->     0   359 ->     0   360 ->     0
+   361 ->     0   362 ->     0   363 ->     0   364 ->     0   365 ->     0   366 ->     0   367 ->     0   368 ->     0
+   369 ->     0   370 ->     0   371 ->    13   372 ->     0   373 ->     0   374 ->     0   375 ->     0   376 ->     0
+   377 ->     0   378 ->     0   379 ->     0   380 ->     0   381 ->     0   382 ->     0   383 ->     0   384 ->     0
+   385 ->     0   386 ->     0   387 ->     0   388 ->     0   389 ->     0   390 ->     0   391 ->     0   392 ->     0
+   393 ->     0   394 ->     0   395 ->     0   396 ->     0   397 ->     0   398 ->     0   399 ->     0   400 ->     0
+   401 ->    14   402 ->     0   403 ->     0   404 ->     0   405 ->     0   406 ->     0   407 ->     0   408 ->     0
+   409 ->     0   410 ->     0   411 ->     0   412 ->     0   413 ->     0   414 ->     0   415 ->     0   416 ->     0
+   417 ->     0   418 ->     0   419 ->     0   420 ->     0   421 ->     0   422 ->     0   423 ->     0   424 ->     0
+   425 ->     0   426 ->     0   427 ->     0   428 ->     0   429 ->     0   430 ->     0   431 ->    15   432 ->     0
+   433 ->     0   434 ->     0   435 ->     0   436 ->     0   437 ->     0   438 ->     0   439 ->     0   440 ->     0
+   441 ->     0   442 ->     0   443 ->     0   444 ->     0   445 ->     0   446 ->     0   447 ->     0   448 ->     0
+   449 ->     0   450 ->     0   451 ->     0   452 ->     0   453 ->     0   454 ->     0   455 ->     0   456 ->     0
+   457 ->     0   458 ->     0   459 ->     0   460 ->     0   461 ->    16   462 ->     0   463 ->     0   464 ->     0
+   465 ->     0   466 ->     0   467 ->     0   468 ->     0   469 ->     0   470 ->     0   471 ->     0   472 ->     0
+   473 ->     0   474 ->     0   475 ->     0   476 ->     0   477 ->     0   478 ->     0   479 ->     0   480 ->     0
+   481 ->     0   482 ->     0   483 ->     0   484 ->     0   485 ->     0   486 ->     0   487 ->     0   488 ->     0
+   489 ->     0   490 ->     0   491 ->    17   492 ->     0   493 ->     0   494 ->     0   495 ->     0   496 ->     0
+   497 ->     0   498 ->     0   499 ->     0   500 ->     0   501 ->     0   502 ->     0   503 ->     0   504 ->     0
+   505 ->     0   506 ->     0   507 ->     0   508 ->     0   509 ->     0   510 ->     0   511 ->     0   512 ->     0
+   513 ->     0   514 ->     0   515 ->     0   516 ->     0   517 ->     0   518 ->     0   519 ->     0   520 ->     0
+   521 ->    18   522 ->     0   523 ->     0   524 ->     0   525 ->     0   526 ->     0   527 ->     0   528 ->     0
+   529 ->     0   530 ->     0   531 ->     0   532 ->     0   533 ->     0   534 ->     0   535 ->     0   536 ->     0
+   537 ->     0   538 ->     0   539 ->     0   540 ->     0   541 ->     0   542 ->     0   543 ->     0   544 ->     0
+   545 ->     0   546 ->     0   547 ->     0   548 ->     0   549 ->     0   550 ->     0   551 ->    19   552 ->     0
+   553 ->     0   554 ->     0   555 ->     0   556 ->     0   557 ->     0   558 ->     0   559 ->     0   560 ->     0
+   561 ->     0   562 ->     0   563 ->     0   564 ->     0   565 ->     0   566 ->     0   567 ->     0   568 ->     0
+   569 ->     0   570 ->     0   571 ->     0   572 ->     0   573 ->     0   574 ->     0   575 ->     0   576 ->     0
+   577 ->     0   578 ->     0   579 ->     0   580 ->     0   581 ->    20   582 ->     0   583 ->     0   584 ->     0
+   585 ->     0   586 ->     0   587 ->     0   588 ->     0   589 ->     0   590 ->     0   591 ->     0   592 ->     0
+   593 ->     0   594 ->     0   595 ->     0   596 ->     0   597 ->     0   598 ->     0   599 ->     0   600 ->     0
+   601 ->     0   602 ->     0   603 ->     0   604 ->     0   605 ->     0   606 ->     0   607 ->     0   608 ->     0
+   609 ->     0   610 ->     0   611 ->    21   612 ->     0   613 ->     0   614 ->     0   615 ->     0   616 ->     0
+   617 ->     0   618 ->     0   619 ->     0   620 ->     0   621 ->     0   622 ->     0   623 ->     0   624 ->     0
+   625 ->     0   626 ->     0   627 ->     0   628 ->     0   629 ->     0   630 ->     0   631 ->     0   632 ->     0
+   633 ->     0   634 ->     0   635 ->     0   636 ->     0   637 ->     0   638 ->     0   639 ->     0   640 ->     0
+   641 ->    22   642 ->     0   643 ->     0   644 ->     0   645 ->     0   646 ->     0   647 ->     0   648 ->     0
+   649 ->     0   650 ->     0   651 ->     0   652 ->     0   653 ->     0   654 ->     0   655 ->     0   656 ->     0
+   657 ->     0   658 ->     0   659 ->     0   660 ->     0   661 ->     0   662 ->     0   663 ->     0   664 ->     0
+   665 ->     0   666 ->     0   667 ->     0   668 ->     0   669 ->     0   670 ->     0   671 ->    23   672 ->     0
+   673 ->     0   674 ->     0   675 ->     0   676 ->     0   677 ->     0   678 ->     0   679 ->     0   680 ->     0
+   681 ->     0   682 ->     0   683 ->     0   684 ->     0   685 ->     0   686 ->     0   687 ->     0   688 ->     0
+   689 ->     0   690 ->     0   691 ->     0   692 ->     0   693 ->     0   694 ->     0   695 ->     0   696 ->     0
+   697 ->     0   698 ->     0   699 ->     0   700 ->     0   701 ->    24   702 ->     0   703 ->     0   704 ->     0
+   705 ->     0   706 ->     0   707 ->     0   708 ->     0   709 ->     0   710 ->     0   711 ->     0   712 ->     0
+   713 ->     0   714 ->     0   715 ->     0   716 ->     0   717 ->     0   718 ->     0   719 ->     0   720 ->     0
+   721 ->     0   722 ->     0   723 ->     0   724 ->     0   725 ->     0   726 ->     0   727 ->     0   728 ->     0
+   729 ->     0   730 ->     0   731 ->    25   732 ->     0   733 ->     0   734 ->     0   735 ->     0   736 ->     0
+   737 ->     0   738 ->     0   739 ->     0   740 ->     0   741 ->     0   742 ->     0   743 ->     0   744 ->     0
+   745 ->     0   746 ->     0   747 ->     0   748 ->     0   749 ->     0   750 ->     0   751 ->     0   752 ->     0
+   753 ->     0   754 ->     0   755 ->     0   756 ->     0   757 ->     0   758 ->     0   759 ->     0   760 ->     0
+   761 ->    26   762 ->     0   763 ->     0   764 ->     0   765 ->     0   766 ->     0   767 ->     0   768 ->     0
+   769 ->     0   770 ->     0   771 ->     0   772 ->     0   773 ->     0   774 ->     0   775 ->     0   776 ->     0
+   777 ->     0   778 ->     0   779 ->     0   780 ->     0   781 ->     0   782 ->     0   783 ->     0   784 ->     0
+   785 ->     0   786 ->     0   787 ->     0   788 ->     0   789 ->     0   790 ->     0   791 ->    27   792 ->     0
+   793 ->     0   794 ->     0   795 ->     0   796 ->     0   797 ->     0   798 ->     0   799 ->     0   800 ->     0
+   801 ->     0   802 ->     0   803 ->     0   804 ->     0   805 ->     0   806 ->     0   807 ->     0   808 ->     0
+   809 ->     0   810 ->     0   811 ->     0   812 ->     0   813 ->     0   814 ->     0   815 ->     0   816 ->     0
+   817 ->     0   818 ->     0   819 ->     0   820 ->     0   821 ->    28   822 ->     0   823 ->     0   824 ->     0
+   825 ->     0   826 ->     0   827 ->     0   828 ->     0   829 ->     0   830 ->     0   831 ->     0   832 ->     0
+   833 ->     0   834 ->     0   835 ->     0   836 ->     0   837 ->     0   838 ->     0   839 ->     0   840 ->     0
+   841 ->     0   842 ->     0   843 ->     0   844 ->     0   845 ->     0   846 ->     0   847 ->     0   848 ->     0
+   849 ->     0   850 ->     0   851 ->    29   852 ->     0   853 ->     0   854 ->     0   855 ->     0   856 ->     0
+   857 ->     0   858 ->     0   859 ->     0   860 ->     0   861 ->     0   862 ->     0   863 ->     0   864 ->     0
+   865 ->     0   866 ->     0   867 ->     0   868 ->     0   869 ->     0   870 ->     0   871 ->     0   872 ->     0
+   873 ->     0   874 ->     0   875 ->     0   876 ->     0   877 ->     0   878 ->     0   879 ->     0   880 ->     0
+   881 ->    30   882 ->     0   883 ->     0   884 ->     0   885 ->     0   886 ->     0   887 ->     0   888 ->     0
+   889 ->     0   890 ->     0   891 ->     0   892 ->     0   893 ->     0   894 ->     0   895 ->     0   896 ->     0
+   897 ->     0   898 ->     0   899 ->     0   900 ->     0
+
+
+
+
+     REGION      VOLUME       REGION      VOLUME       REGION      VOLUME       REGION      VOLUME       REGION      VOLUME  
+        1     2.04000E+01        2     2.04000E+01        3     2.04000E+01        4     2.04000E+01        5     2.04000E+01
+        6     2.04000E+01        7     2.04000E+01        8     2.04000E+01        9     2.04000E+01       10     2.04000E+01
+       11     1.36000E+01       12     1.36000E+01       13     1.36000E+01       14     1.36000E+01       15     1.36000E+01
+       16     1.36000E+01       17     1.36000E+01       18     1.36000E+01       19     1.36000E+01       20     1.36000E+01
+       21     1.36000E+01       22     1.36000E+01       23     1.36000E+01       24     1.36000E+01       25     1.36000E+01
+       26     1.36000E+01       27     1.36000E+01       28     1.36000E+01       29     1.36000E+01       30     1.36000E+01
+
+ SPH CORRECTION FACTOR ALL EQUAL TO 1.0
+
+ F L U X E S   A N D    R E A C T I O N    R A T E S
+ ---------------------------------------------------
+
+ G R O U P   :   1
+ REGION INTEGRATED FLUX
+     5.2748607E-01     5.2722254E-01     5.2659704E-01     5.2535762E-01     5.2298528E-01     5.1845544E-01     5.0957528E-01
+     4.9152483E-01     4.5242369E-01     3.5610358E-01     1.3040803E-01     7.3546010E-02     4.3954499E-02     2.7175674E-02
+     1.7179335E-02     1.1037534E-02     7.1741540E-03     4.7106476E-03     3.1175527E-03     2.0743972E-03     1.3871081E-03
+     9.3252669E-04     6.2979644E-04     4.2707035E-04     2.9059256E-04     1.9831811E-04     1.3569014E-04     9.3032898E-05
+     6.3904411E-05     4.4008884E-05
+ AVERAGED REGIONAL FLUX
+     2.5857160E-02     2.5844242E-02     2.5813580E-02     2.5752824E-02     2.5636534E-02     2.5414482E-02     2.4979180E-02
+     2.4094354E-02     2.2177632E-02     1.7456058E-02     9.5888260E-03     5.4077949E-03     3.2319484E-03     1.9982113E-03
+     1.2631864E-03     8.1158340E-04     5.2751132E-04     3.4637115E-04     2.2923181E-04     1.5252921E-04     1.0199324E-04
+     6.8568139E-05     4.6308562E-05     3.1402232E-05     2.1367100E-05     1.4582214E-05     9.9772158E-06     6.8406543E-06
+     4.6988538E-06     3.2359474E-06
+
+ G R O U P   :   2
+ REGION INTEGRATED FLUX
+     1.3754016E+00     1.3749900E+00     1.3739724E+00     1.3718229E+00     1.3673838E+00     1.3582098E+00     1.3387453E+00
+     1.2960102E+00     1.1966511E+00     9.3961380E-01     3.3480357E-01     1.8015830E-01     1.0216243E-01     5.9808575E-02
+     3.5762156E-02     2.1720032E-02     1.3343523E-02     8.2802623E-03     5.1801311E-03     3.2603245E-03     2.0633889E-03
+     1.3134661E-03     8.4039473E-04     5.4021569E-04     3.4868904E-04     2.2587806E-04     1.4673114E-04     9.5408769E-05
+     6.1781470E-05     3.8971082E-05
+ AVERAGED REGIONAL FLUX
+     6.7421645E-02     6.7401472E-02     6.7351589E-02     6.7246219E-02     6.7028618E-02     6.6578910E-02     6.5624771E-02
+     6.3529914E-02     5.8659365E-02     4.6059500E-02     2.4617910E-02     1.3246934E-02     7.5119436E-03     4.3976893E-03
+     2.6295703E-03     1.5970612E-03     9.8114143E-04     6.0884282E-04     3.8089199E-04     2.3972974E-04     1.5171977E-04
+     9.6578391E-05     6.1793730E-05     3.9721742E-05     2.5638900E-05     1.6608681E-05     1.0789055E-05     7.0153507E-06
+     4.5427551E-06     2.8655208E-06
+
+ EDIDTX MERGED/CONDENSED X-S SAVED IN DIRECTORY = REF-CASE   1
+->@END MODULE   : EDI:        
+<|EDITION := EDI: EDITION  FLUX  MACRO TRACK ::                           |<0101
+->@BEGIN MODULE : EDI:        
+->@DESCRIPTION  : Editing module                                                          
+->@CREDITS      : A. Hebert, G. Marleau                                                   
+->@COPYRIGHTS   : ECOLE POLYTECHNIQUE DE MONTREAL 
+<|  EDIT 1 SAVE                                                           |<0102
+<|  MERGE REGION                                                          |<0103
+<|    1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25   |<0104
+<|    26 27 28 29 30                                                      |<0105
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0106
+<|    0  0  0  0  0                                                       |<0107
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0108
+<|    0  0  0  0  0                                                       |<0109
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0110
+<|    0  0  0  0  0                                                       |<0111
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0112
+<|    0  0  0  0  0                                                       |<0113
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0114
+<|    0  0  0  0  0                                                       |<0115
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0116
+<|    0  0  0  0  0                                                       |<0117
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0118
+<|    0  0  0  0  0                                                       |<0119
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0120
+<|    0  0  0  0  0                                                       |<0121
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0122
+<|    0  0  0  0  0                                                       |<0123
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0124
+<|    0  0  0  0  0                                                       |<0125
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0126
+<|    0  0  0  0  0                                                       |<0127
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0128
+<|    0  0  0  0  0                                                       |<0129
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0130
+<|    0  0  0  0  0                                                       |<0131
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0132
+<|    0  0  0  0  0                                                       |<0133
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0134
+<|    0  0  0  0  0                                                       |<0135
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0136
+<|    0  0  0  0  0                                                       |<0137
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0138
+<|    0  0  0  0  0                                                       |<0139
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0140
+<|    0  0  0  0  0                                                       |<0141
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0142
+<|    0  0  0  0  0                                                       |<0143
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0144
+<|    0  0  0  0  0                                                       |<0145
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0146
+<|    0  0  0  0  0                                                       |<0147
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0148
+<|    0  0  0  0  0                                                       |<0149
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0150
+<|    0  0  0  0  0                                                       |<0151
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0152
+<|    0  0  0  0  0                                                       |<0153
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0154
+<|    0  0  0  0  0                                                       |<0155
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0156
+<|    0  0  0  0  0                                                       |<0157
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0158
+<|    0  0  0  0  0                                                       |<0159
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0160
+<|    0  0  0  0  0                                                       |<0161
+<|    0 0 0 0 0 0 0 0 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0   |<0162
+<|    0  0  0  0  0                                                       |<0163
+<|  ;                                                                     |<0164
+ EDITION STATE-VECTOR (13) ELEMENTS FROM: EDI   
+ --------------------------------
+ NMERGE =      30 (NUMBER OF MERGED REGIONS)
+ NGCOND =       2 (NUMBER OF CONDENSED ENERGY GROUPS)
+ IFFAC  =       0 (= 0: NO 4 FACTORS CALCULATIONS;
+                   = 1: 4 FACTORS CALCULATION REQUESTED)
+ ILUPS  =       0 (= 0: KEEP UP-SCATTERING CONTRIBUTION;
+                   = 1: REMOVE UP-SCATTERING CONTRIBUTIONS)
+ NACTI  =       0 (NUMBER OF MIXTURES WITH ACTIVATION EDITS)
+ NSTATS =       0 (TYPE OF STATISTIC CALCULATIONS)
+ NSPH   =       0 (= 0: NO SPH ;
+                   = 1: READ SPH FACTORS;
+                   = 1: TYPE OF CALCULATION FOR SPH FACTORS)
+ KSPH   =       0 (= 1: AVERAGE FLUX SPH NORMALIZATION;
+                   > 1 : SELENGUT NORMALIZATION)
+ NBMICR =       0 (<-1: FULL LIBRARY -NBMICR-1 ISOTOPE;
+                   =-1: FULL LIBRARY ALL ISOTOPE;
+                   = 0: NO ISOTOPE;
+                   = 1: MICROSCOPIC ALL ISOTOPE;
+                   > 1: MICROSCOPIC NBMICR-1 ISOTOPE)
+ IPRINT =       1 (PRINT LEVEL)
+ NSAVES =       2 (= 0: NO COMPUTE/NO SAVE;
+                   = 1: COMPUTE/NO SAVE;
+                   = 2: COMPUTE/SAVE;
+                   = 3: PERTURBATION/SAVE)
+ NWGTH  =       0 (= 0: DIRECT FLUX WEIGHTING P1-SCAT;
+                   = 1: DIRECT CURRENT WEIGHTING P1-SCAT;
+                   = 2: COHERENT WEIGHTING FOR P1-SCAT;
+                   = 3: DIRECTIONAL WEIGHTING FOR P1-SCAT)
+ MAXISM =       1 (MAXIMUM ISOTOPES PER MATERIAL)
+ --------------------------------
+ MERGING INDEX (INITIAL -> FINAL):
+     1 ->     1     2 ->     2     3 ->     3     4 ->     4     5 ->     5     6 ->     6     7 ->     7     8 ->     8
+     9 ->     9    10 ->    10    11 ->    11    12 ->    12    13 ->    13    14 ->    14    15 ->    15    16 ->    16
+    17 ->    17    18 ->    18    19 ->    19    20 ->    20    21 ->    21    22 ->    22    23 ->    23    24 ->    24
+    25 ->    25    26 ->    26    27 ->    27    28 ->    28    29 ->    29    30 ->    30    31 ->     0    32 ->     0
+    33 ->     0    34 ->     0    35 ->     0    36 ->     0    37 ->     0    38 ->     0    39 ->     0    40 ->     0
+    41 ->     0    42 ->     0    43 ->     0    44 ->     0    45 ->     0    46 ->     0    47 ->     0    48 ->     0
+    49 ->     0    50 ->     0    51 ->     0    52 ->     0    53 ->     0    54 ->     0    55 ->     0    56 ->     0
+    57 ->     0    58 ->     0    59 ->     0    60 ->     0    61 ->     0    62 ->     0    63 ->     0    64 ->     0
+    65 ->     0    66 ->     0    67 ->     0    68 ->     0    69 ->     0    70 ->     0    71 ->     0    72 ->     0
+    73 ->     0    74 ->     0    75 ->     0    76 ->     0    77 ->     0    78 ->     0    79 ->     0    80 ->     0
+    81 ->     0    82 ->     0    83 ->     0    84 ->     0    85 ->     0    86 ->     0    87 ->     0    88 ->     0
+    89 ->     0    90 ->     0    91 ->     0    92 ->     0    93 ->     0    94 ->     0    95 ->     0    96 ->     0
+    97 ->     0    98 ->     0    99 ->     0   100 ->     0   101 ->     0   102 ->     0   103 ->     0   104 ->     0
+   105 ->     0   106 ->     0   107 ->     0   108 ->     0   109 ->     0   110 ->     0   111 ->     0   112 ->     0
+   113 ->     0   114 ->     0   115 ->     0   116 ->     0   117 ->     0   118 ->     0   119 ->     0   120 ->     0
+   121 ->     0   122 ->     0   123 ->     0   124 ->     0   125 ->     0   126 ->     0   127 ->     0   128 ->     0
+   129 ->     0   130 ->     0   131 ->     0   132 ->     0   133 ->     0   134 ->     0   135 ->     0   136 ->     0
+   137 ->     0   138 ->     0   139 ->     0   140 ->     0   141 ->     0   142 ->     0   143 ->     0   144 ->     0
+   145 ->     0   146 ->     0   147 ->     0   148 ->     0   149 ->     0   150 ->     0   151 ->     0   152 ->     0
+   153 ->     0   154 ->     0   155 ->     0   156 ->     0   157 ->     0   158 ->     0   159 ->     0   160 ->     0
+   161 ->     0   162 ->     0   163 ->     0   164 ->     0   165 ->     0   166 ->     0   167 ->     0   168 ->     0
+   169 ->     0   170 ->     0   171 ->     0   172 ->     0   173 ->     0   174 ->     0   175 ->     0   176 ->     0
+   177 ->     0   178 ->     0   179 ->     0   180 ->     0   181 ->     0   182 ->     0   183 ->     0   184 ->     0
+   185 ->     0   186 ->     0   187 ->     0   188 ->     0   189 ->     0   190 ->     0   191 ->     0   192 ->     0
+   193 ->     0   194 ->     0   195 ->     0   196 ->     0   197 ->     0   198 ->     0   199 ->     0   200 ->     0
+   201 ->     0   202 ->     0   203 ->     0   204 ->     0   205 ->     0   206 ->     0   207 ->     0   208 ->     0
+   209 ->     0   210 ->     0   211 ->     0   212 ->     0   213 ->     0   214 ->     0   215 ->     0   216 ->     0
+   217 ->     0   218 ->     0   219 ->     0   220 ->     0   221 ->     0   222 ->     0   223 ->     0   224 ->     0
+   225 ->     0   226 ->     0   227 ->     0   228 ->     0   229 ->     0   230 ->     0   231 ->     0   232 ->     0
+   233 ->     0   234 ->     0   235 ->     0   236 ->     0   237 ->     0   238 ->     0   239 ->     0   240 ->     0
+   241 ->     0   242 ->     0   243 ->     0   244 ->     0   245 ->     0   246 ->     0   247 ->     0   248 ->     0
+   249 ->     0   250 ->     0   251 ->     0   252 ->     0   253 ->     0   254 ->     0   255 ->     0   256 ->     0
+   257 ->     0   258 ->     0   259 ->     0   260 ->     0   261 ->     0   262 ->     0   263 ->     0   264 ->     0
+   265 ->     0   266 ->     0   267 ->     0   268 ->     0   269 ->     0   270 ->     0   271 ->     0   272 ->     0
+   273 ->     0   274 ->     0   275 ->     0   276 ->     0   277 ->     0   278 ->     0   279 ->     0   280 ->     0
+   281 ->     0   282 ->     0   283 ->     0   284 ->     0   285 ->     0   286 ->     0   287 ->     0   288 ->     0
+   289 ->     0   290 ->     0   291 ->     0   292 ->     0   293 ->     0   294 ->     0   295 ->     0   296 ->     0
+   297 ->     0   298 ->     0   299 ->     0   300 ->     0   301 ->     0   302 ->     0   303 ->     0   304 ->     0
+   305 ->     0   306 ->     0   307 ->     0   308 ->     0   309 ->     0   310 ->     0   311 ->     0   312 ->     0
+   313 ->     0   314 ->     0   315 ->     0   316 ->     0   317 ->     0   318 ->     0   319 ->     0   320 ->     0
+   321 ->     0   322 ->     0   323 ->     0   324 ->     0   325 ->     0   326 ->     0   327 ->     0   328 ->     0
+   329 ->     0   330 ->     0   331 ->     0   332 ->     0   333 ->     0   334 ->     0   335 ->     0   336 ->     0
+   337 ->     0   338 ->     0   339 ->     0   340 ->     0   341 ->     0   342 ->     0   343 ->     0   344 ->     0
+   345 ->     0   346 ->     0   347 ->     0   348 ->     0   349 ->     0   350 ->     0   351 ->     0   352 ->     0
+   353 ->     0   354 ->     0   355 ->     0   356 ->     0   357 ->     0   358 ->     0   359 ->     0   360 ->     0
+   361 ->     0   362 ->     0   363 ->     0   364 ->     0   365 ->     0   366 ->     0   367 ->     0   368 ->     0
+   369 ->     0   370 ->     0   371 ->     0   372 ->     0   373 ->     0   374 ->     0   375 ->     0   376 ->     0
+   377 ->     0   378 ->     0   379 ->     0   380 ->     0   381 ->     0   382 ->     0   383 ->     0   384 ->     0
+   385 ->     0   386 ->     0   387 ->     0   388 ->     0   389 ->     0   390 ->     0   391 ->     0   392 ->     0
+   393 ->     0   394 ->     0   395 ->     0   396 ->     0   397 ->     0   398 ->     0   399 ->     0   400 ->     0
+   401 ->     0   402 ->     0   403 ->     0   404 ->     0   405 ->     0   406 ->     0   407 ->     0   408 ->     0
+   409 ->     0   410 ->     0   411 ->     0   412 ->     0   413 ->     0   414 ->     0   415 ->     0   416 ->     0
+   417 ->     0   418 ->     0   419 ->     0   420 ->     0   421 ->     0   422 ->     0   423 ->     0   424 ->     0
+   425 ->     0   426 ->     0   427 ->     0   428 ->     0   429 ->     0   430 ->     0   431 ->     0   432 ->     0
+   433 ->     0   434 ->     0   435 ->     0   436 ->     0   437 ->     0   438 ->     0   439 ->     0   440 ->     0
+   441 ->     0   442 ->     0   443 ->     0   444 ->     0   445 ->     0   446 ->     0   447 ->     0   448 ->     0
+   449 ->     0   450 ->     0   451 ->     0   452 ->     0   453 ->     0   454 ->     0   455 ->     0   456 ->     0
+   457 ->     0   458 ->     0   459 ->     0   460 ->     0   461 ->     0   462 ->     0   463 ->     0   464 ->     0
+   465 ->     0   466 ->     0   467 ->     0   468 ->     0   469 ->     0   470 ->     0   471 ->     0   472 ->     0
+   473 ->     0   474 ->     0   475 ->     0   476 ->     0   477 ->     0   478 ->     0   479 ->     0   480 ->     0
+   481 ->     0   482 ->     0   483 ->     0   484 ->     0   485 ->     0   486 ->     0   487 ->     0   488 ->     0
+   489 ->     0   490 ->     0   491 ->     0   492 ->     0   493 ->     0   494 ->     0   495 ->     0   496 ->     0
+   497 ->     0   498 ->     0   499 ->     0   500 ->     0   501 ->     0   502 ->     0   503 ->     0   504 ->     0
+   505 ->     0   506 ->     0   507 ->     0   508 ->     0   509 ->     0   510 ->     0   511 ->     0   512 ->     0
+   513 ->     0   514 ->     0   515 ->     0   516 ->     0   517 ->     0   518 ->     0   519 ->     0   520 ->     0
+   521 ->     0   522 ->     0   523 ->     0   524 ->     0   525 ->     0   526 ->     0   527 ->     0   528 ->     0
+   529 ->     0   530 ->     0   531 ->     0   532 ->     0   533 ->     0   534 ->     0   535 ->     0   536 ->     0
+   537 ->     0   538 ->     0   539 ->     0   540 ->     0   541 ->     0   542 ->     0   543 ->     0   544 ->     0
+   545 ->     0   546 ->     0   547 ->     0   548 ->     0   549 ->     0   550 ->     0   551 ->     0   552 ->     0
+   553 ->     0   554 ->     0   555 ->     0   556 ->     0   557 ->     0   558 ->     0   559 ->     0   560 ->     0
+   561 ->     0   562 ->     0   563 ->     0   564 ->     0   565 ->     0   566 ->     0   567 ->     0   568 ->     0
+   569 ->     0   570 ->     0   571 ->     0   572 ->     0   573 ->     0   574 ->     0   575 ->     0   576 ->     0
+   577 ->     0   578 ->     0   579 ->     0   580 ->     0   581 ->     0   582 ->     0   583 ->     0   584 ->     0
+   585 ->     0   586 ->     0   587 ->     0   588 ->     0   589 ->     0   590 ->     0   591 ->     0   592 ->     0
+   593 ->     0   594 ->     0   595 ->     0   596 ->     0   597 ->     0   598 ->     0   599 ->     0   600 ->     0
+   601 ->     0   602 ->     0   603 ->     0   604 ->     0   605 ->     0   606 ->     0   607 ->     0   608 ->     0
+   609 ->     0   610 ->     0   611 ->     0   612 ->     0   613 ->     0   614 ->     0   615 ->     0   616 ->     0
+   617 ->     0   618 ->     0   619 ->     0   620 ->     0   621 ->     0   622 ->     0   623 ->     0   624 ->     0
+   625 ->     0   626 ->     0   627 ->     0   628 ->     0   629 ->     0   630 ->     0   631 ->     0   632 ->     0
+   633 ->     0   634 ->     0   635 ->     0   636 ->     0   637 ->     0   638 ->     0   639 ->     0   640 ->     0
+   641 ->     0   642 ->     0   643 ->     0   644 ->     0   645 ->     0   646 ->     0   647 ->     0   648 ->     0
+   649 ->     0   650 ->     0   651 ->     0   652 ->     0   653 ->     0   654 ->     0   655 ->     0   656 ->     0
+   657 ->     0   658 ->     0   659 ->     0   660 ->     0   661 ->     0   662 ->     0   663 ->     0   664 ->     0
+   665 ->     0   666 ->     0   667 ->     0   668 ->     0   669 ->     0   670 ->     0   671 ->     0   672 ->     0
+   673 ->     0   674 ->     0   675 ->     0   676 ->     0   677 ->     0   678 ->     0   679 ->     0   680 ->     0
+   681 ->     0   682 ->     0   683 ->     0   684 ->     0   685 ->     0   686 ->     0   687 ->     0   688 ->     0
+   689 ->     0   690 ->     0   691 ->     0   692 ->     0   693 ->     0   694 ->     0   695 ->     0   696 ->     0
+   697 ->     0   698 ->     0   699 ->     0   700 ->     0   701 ->     0   702 ->     0   703 ->     0   704 ->     0
+   705 ->     0   706 ->     0   707 ->     0   708 ->     0   709 ->     0   710 ->     0   711 ->     0   712 ->     0
+   713 ->     0   714 ->     0   715 ->     0   716 ->     0   717 ->     0   718 ->     0   719 ->     0   720 ->     0
+   721 ->     0   722 ->     0   723 ->     0   724 ->     0   725 ->     0   726 ->     0   727 ->     0   728 ->     0
+   729 ->     0   730 ->     0   731 ->     0   732 ->     0   733 ->     0   734 ->     0   735 ->     0   736 ->     0
+   737 ->     0   738 ->     0   739 ->     0   740 ->     0   741 ->     0   742 ->     0   743 ->     0   744 ->     0
+   745 ->     0   746 ->     0   747 ->     0   748 ->     0   749 ->     0   750 ->     0   751 ->     0   752 ->     0
+   753 ->     0   754 ->     0   755 ->     0   756 ->     0   757 ->     0   758 ->     0   759 ->     0   760 ->     0
+   761 ->     0   762 ->     0   763 ->     0   764 ->     0   765 ->     0   766 ->     0   767 ->     0   768 ->     0
+   769 ->     0   770 ->     0   771 ->     0   772 ->     0   773 ->     0   774 ->     0   775 ->     0   776 ->     0
+   777 ->     0   778 ->     0   779 ->     0   780 ->     0   781 ->     0   782 ->     0   783 ->     0   784 ->     0
+   785 ->     0   786 ->     0   787 ->     0   788 ->     0   789 ->     0   790 ->     0   791 ->     0   792 ->     0
+   793 ->     0   794 ->     0   795 ->     0   796 ->     0   797 ->     0   798 ->     0   799 ->     0   800 ->     0
+   801 ->     0   802 ->     0   803 ->     0   804 ->     0   805 ->     0   806 ->     0   807 ->     0   808 ->     0
+   809 ->     0   810 ->     0   811 ->     0   812 ->     0   813 ->     0   814 ->     0   815 ->     0   816 ->     0
+   817 ->     0   818 ->     0   819 ->     0   820 ->     0   821 ->     0   822 ->     0   823 ->     0   824 ->     0
+   825 ->     0   826 ->     0   827 ->     0   828 ->     0   829 ->     0   830 ->     0   831 ->     0   832 ->     0
+   833 ->     0   834 ->     0   835 ->     0   836 ->     0   837 ->     0   838 ->     0   839 ->     0   840 ->     0
+   841 ->     0   842 ->     0   843 ->     0   844 ->     0   845 ->     0   846 ->     0   847 ->     0   848 ->     0
+   849 ->     0   850 ->     0   851 ->     0   852 ->     0   853 ->     0   854 ->     0   855 ->     0   856 ->     0
+   857 ->     0   858 ->     0   859 ->     0   860 ->     0   861 ->     0   862 ->     0   863 ->     0   864 ->     0
+   865 ->     0   866 ->     0   867 ->     0   868 ->     0   869 ->     0   870 ->     0   871 ->     0   872 ->     0
+   873 ->     0   874 ->     0   875 ->     0   876 ->     0   877 ->     0   878 ->     0   879 ->     0   880 ->     0
+   881 ->     0   882 ->     0   883 ->     0   884 ->     0   885 ->     0   886 ->     0   887 ->     0   888 ->     0
+   889 ->     0   890 ->     0   891 ->     0   892 ->     0   893 ->     0   894 ->     0   895 ->     0   896 ->     0
+   897 ->     0   898 ->     0   899 ->     0   900 ->     0
+
+
+
+
+     REGION      VOLUME       REGION      VOLUME       REGION      VOLUME       REGION      VOLUME       REGION      VOLUME  
+        1     3.90000E+01        2     3.90000E+01        3     3.90000E+01        4     3.90000E+01        5     3.90000E+01
+        6     3.90000E+01        7     3.90000E+01        8     3.90000E+01        9     3.90000E+01       10     3.90000E+01
+       11     2.04000E+01       12     2.04000E+01       13     2.04000E+01       14     2.04000E+01       15     2.04000E+01
+       16     2.04000E+01       17     2.04000E+01       18     2.04000E+01       19     2.04000E+01       20     2.04000E+01
+       21     2.04000E+01       22     2.04000E+01       23     2.04000E+01       24     2.04000E+01       25     2.04000E+01
+       26     2.04000E+01       27     2.04000E+01       28     2.04000E+01       29     2.04000E+01       30     2.04000E+01
+
+ SPH CORRECTION FACTOR ALL EQUAL TO 1.0
+
+ F L U X E S   A N D    R E A C T I O N    R A T E S
+ ---------------------------------------------------
+
+ G R O U P   :   1
+ REGION INTEGRATED FLUX
+     2.9930447E+00     2.9922866E+00     2.9904256E+00     2.9865907E+00     2.9789075E+00     2.9633716E+00     2.9311147E+00
+     2.8610282E+00     2.6954312E+00     2.1954107E+00     5.2748607E-01     2.9185066E-01     1.8022694E-01     1.1620880E-01
+     7.6869299E-02     5.1737474E-02     3.5267397E-02     2.4275998E-02     1.6840126E-02     1.1756343E-02     8.2506444E-03
+     5.8161220E-03     4.1159157E-03     2.9224152E-03     2.0809688E-03     1.4860527E-03     1.0633895E-03     7.6290183E-04
+     5.4871550E-04     3.9585250E-04
+ AVERAGED REGIONAL FLUX
+     7.6744737E-02     7.6725298E-02     7.6677579E-02     7.6579248E-02     7.6382243E-02     7.5983888E-02     7.5156788E-02
+     7.3359699E-02     6.9113621E-02     5.6292583E-02     2.5857160E-02     1.4306405E-02     8.8346541E-03     5.6965096E-03
+     3.7681029E-03     2.5361507E-03     1.7287940E-03     1.1899999E-03     8.2549639E-04     5.7629130E-04     4.0444335E-04
+     2.8510402E-04     2.0176057E-04     1.4325565E-04     1.0200828E-04     7.2845719E-05     5.2126935E-05     3.7397149E-05
+     2.6897818E-05     1.9404534E-05
+
+ G R O U P   :   2
+ REGION INTEGRATED FLUX
+     7.9148690E+00     7.9137516E+00     7.9108626E+00     7.9044637E+00     7.8905429E+00     7.8598619E+00     7.7904030E+00
+     7.6262218E+00     7.2065849E+00     5.8701883E+00     1.3754016E+00     7.2914041E-01     4.3028993E-01     2.6484994E-01
+     1.6712354E-01     1.0725800E-01     6.9701734E-02     4.5737182E-02     3.0247904E-02     2.0135144E-02     1.3477795E-02
+     9.0650371E-03     6.1229291E-03     4.1512684E-03     2.8236909E-03     1.9263164E-03     1.3166352E-03     9.0041332E-04
+     6.1336659E-04     4.0873007E-04
+ AVERAGED REGIONAL FLUX
+     2.0294536E-01     2.0291671E-01     2.0284263E-01     2.0267856E-01     2.0232161E-01     2.0153492E-01     1.9975392E-01
+     1.9554415E-01     1.8478423E-01     1.5051765E-01     6.7421645E-02     3.5742177E-02     2.1092644E-02     1.2982840E-02
+     8.1923302E-03     5.2577453E-03     3.4167517E-03     2.2420187E-03     1.4827404E-03     9.8701687E-04     6.6067622E-04
+     4.4436456E-04     3.0014358E-04     2.0349355E-04     1.3841622E-04     9.4427273E-05     6.4540940E-05     4.4137908E-05
+     3.0066990E-05     2.0035788E-05
+
+ EDIDTX MERGED/CONDENSED X-S SAVED IN DIRECTORY = REF-CASE   2
+->@END MODULE   : EDI:        
+<|EDITION := EDI: EDITION  FLUX  MACRO TRACK ::                           |<0165
+->@BEGIN MODULE : EDI:        
+->@DESCRIPTION  : Editing module                                                          
+->@CREDITS      : A. Hebert, G. Marleau                                                   
+->@COPYRIGHTS   : ECOLE POLYTECHNIQUE DE MONTREAL 
+<|  EDIT 1 SAVE                                                           |<0166
+<|  TAKE MIX 1 2                                                          |<0167
+<|  ;                                                                     |<0168
+ EDITION STATE-VECTOR (13) ELEMENTS FROM: EDI   
+ --------------------------------
+ NMERGE =       2 (NUMBER OF MERGED REGIONS)
+ NGCOND =       2 (NUMBER OF CONDENSED ENERGY GROUPS)
+ IFFAC  =       0 (= 0: NO 4 FACTORS CALCULATIONS;
+                   = 1: 4 FACTORS CALCULATION REQUESTED)
+ ILUPS  =       0 (= 0: KEEP UP-SCATTERING CONTRIBUTION;
+                   = 1: REMOVE UP-SCATTERING CONTRIBUTIONS)
+ NACTI  =       0 (NUMBER OF MIXTURES WITH ACTIVATION EDITS)
+ NSTATS =       0 (TYPE OF STATISTIC CALCULATIONS)
+ NSPH   =       0 (= 0: NO SPH ;
+                   = 1: READ SPH FACTORS;
+                   = 1: TYPE OF CALCULATION FOR SPH FACTORS)
+ KSPH   =       0 (= 1: AVERAGE FLUX SPH NORMALIZATION;
+                   > 1 : SELENGUT NORMALIZATION)
+ NBMICR =       0 (<-1: FULL LIBRARY -NBMICR-1 ISOTOPE;
+                   =-1: FULL LIBRARY ALL ISOTOPE;
+                   = 0: NO ISOTOPE;
+                   = 1: MICROSCOPIC ALL ISOTOPE;
+                   > 1: MICROSCOPIC NBMICR-1 ISOTOPE)
+ IPRINT =       1 (PRINT LEVEL)
+ NSAVES =       2 (= 0: NO COMPUTE/NO SAVE;
+                   = 1: COMPUTE/NO SAVE;
+                   = 2: COMPUTE/SAVE;
+                   = 3: PERTURBATION/SAVE)
+ NWGTH  =       0 (= 0: DIRECT FLUX WEIGHTING P1-SCAT;
+                   = 1: DIRECT CURRENT WEIGHTING P1-SCAT;
+                   = 2: COHERENT WEIGHTING FOR P1-SCAT;
+                   = 3: DIRECTIONAL WEIGHTING FOR P1-SCAT)
+ MAXISM =       1 (MAXIMUM ISOTOPES PER MATERIAL)
+ --------------------------------
+ MERGING INDEX (INITIAL -> FINAL):
+     1 ->     1     2 ->     1     3 ->     1     4 ->     1     5 ->     1     6 ->     1     7 ->     1     8 ->     1
+     9 ->     1    10 ->     1    11 ->     2    12 ->     2    13 ->     2    14 ->     2    15 ->     2    16 ->     2
+    17 ->     2    18 ->     2    19 ->     2    20 ->     2    21 ->     2    22 ->     2    23 ->     2    24 ->     2
+    25 ->     2    26 ->     2    27 ->     2    28 ->     2    29 ->     2    30 ->     2    31 ->     1    32 ->     1
+    33 ->     1    34 ->     1    35 ->     1    36 ->     1    37 ->     1    38 ->     1    39 ->     1    40 ->     1
+    41 ->     2    42 ->     2    43 ->     2    44 ->     2    45 ->     2    46 ->     2    47 ->     2    48 ->     2
+    49 ->     2    50 ->     2    51 ->     2    52 ->     2    53 ->     2    54 ->     2    55 ->     2    56 ->     2
+    57 ->     2    58 ->     2    59 ->     2    60 ->     2    61 ->     1    62 ->     1    63 ->     1    64 ->     1
+    65 ->     1    66 ->     1    67 ->     1    68 ->     1    69 ->     1    70 ->     1    71 ->     2    72 ->     2
+    73 ->     2    74 ->     2    75 ->     2    76 ->     2    77 ->     2    78 ->     2    79 ->     2    80 ->     2
+    81 ->     2    82 ->     2    83 ->     2    84 ->     2    85 ->     2    86 ->     2    87 ->     2    88 ->     2
+    89 ->     2    90 ->     2    91 ->     1    92 ->     1    93 ->     1    94 ->     1    95 ->     1    96 ->     1
+    97 ->     1    98 ->     1    99 ->     1   100 ->     1   101 ->     2   102 ->     2   103 ->     2   104 ->     2
+   105 ->     2   106 ->     2   107 ->     2   108 ->     2   109 ->     2   110 ->     2   111 ->     2   112 ->     2
+   113 ->     2   114 ->     2   115 ->     2   116 ->     2   117 ->     2   118 ->     2   119 ->     2   120 ->     2
+   121 ->     1   122 ->     1   123 ->     1   124 ->     1   125 ->     1   126 ->     1   127 ->     1   128 ->     1
+   129 ->     1   130 ->     1   131 ->     2   132 ->     2   133 ->     2   134 ->     2   135 ->     2   136 ->     2
+   137 ->     2   138 ->     2   139 ->     2   140 ->     2   141 ->     2   142 ->     2   143 ->     2   144 ->     2
+   145 ->     2   146 ->     2   147 ->     2   148 ->     2   149 ->     2   150 ->     2   151 ->     1   152 ->     1
+   153 ->     1   154 ->     1   155 ->     1   156 ->     1   157 ->     1   158 ->     1   159 ->     1   160 ->     1
+   161 ->     2   162 ->     2   163 ->     2   164 ->     2   165 ->     2   166 ->     2   167 ->     2   168 ->     2
+   169 ->     2   170 ->     2   171 ->     2   172 ->     2   173 ->     2   174 ->     2   175 ->     2   176 ->     2
+   177 ->     2   178 ->     2   179 ->     2   180 ->     2   181 ->     1   182 ->     1   183 ->     1   184 ->     1
+   185 ->     1   186 ->     1   187 ->     1   188 ->     1   189 ->     1   190 ->     1   191 ->     2   192 ->     2
+   193 ->     2   194 ->     2   195 ->     2   196 ->     2   197 ->     2   198 ->     2   199 ->     2   200 ->     2
+   201 ->     2   202 ->     2   203 ->     2   204 ->     2   205 ->     2   206 ->     2   207 ->     2   208 ->     2
+   209 ->     2   210 ->     2   211 ->     1   212 ->     1   213 ->     1   214 ->     1   215 ->     1   216 ->     1
+   217 ->     1   218 ->     1   219 ->     1   220 ->     1   221 ->     2   222 ->     2   223 ->     2   224 ->     2
+   225 ->     2   226 ->     2   227 ->     2   228 ->     2   229 ->     2   230 ->     2   231 ->     2   232 ->     2
+   233 ->     2   234 ->     2   235 ->     2   236 ->     2   237 ->     2   238 ->     2   239 ->     2   240 ->     2
+   241 ->     1   242 ->     1   243 ->     1   244 ->     1   245 ->     1   246 ->     1   247 ->     1   248 ->     1
+   249 ->     1   250 ->     1   251 ->     2   252 ->     2   253 ->     2   254 ->     2   255 ->     2   256 ->     2
+   257 ->     2   258 ->     2   259 ->     2   260 ->     2   261 ->     2   262 ->     2   263 ->     2   264 ->     2
+   265 ->     2   266 ->     2   267 ->     2   268 ->     2   269 ->     2   270 ->     2   271 ->     1   272 ->     1
+   273 ->     1   274 ->     1   275 ->     1   276 ->     1   277 ->     1   278 ->     1   279 ->     1   280 ->     1
+   281 ->     2   282 ->     2   283 ->     2   284 ->     2   285 ->     2   286 ->     2   287 ->     2   288 ->     2
+   289 ->     2   290 ->     2   291 ->     2   292 ->     2   293 ->     2   294 ->     2   295 ->     2   296 ->     2
+   297 ->     2   298 ->     2   299 ->     2   300 ->     2   301 ->     2   302 ->     2   303 ->     2   304 ->     2
+   305 ->     2   306 ->     2   307 ->     2   308 ->     2   309 ->     2   310 ->     2   311 ->     2   312 ->     2
+   313 ->     2   314 ->     2   315 ->     2   316 ->     2   317 ->     2   318 ->     2   319 ->     2   320 ->     2
+   321 ->     2   322 ->     2   323 ->     2   324 ->     2   325 ->     2   326 ->     2   327 ->     2   328 ->     2
+   329 ->     2   330 ->     2   331 ->     2   332 ->     2   333 ->     2   334 ->     2   335 ->     2   336 ->     2
+   337 ->     2   338 ->     2   339 ->     2   340 ->     2   341 ->     2   342 ->     2   343 ->     2   344 ->     2
+   345 ->     2   346 ->     2   347 ->     2   348 ->     2   349 ->     2   350 ->     2   351 ->     2   352 ->     2
+   353 ->     2   354 ->     2   355 ->     2   356 ->     2   357 ->     2   358 ->     2   359 ->     2   360 ->     2
+   361 ->     2   362 ->     2   363 ->     2   364 ->     2   365 ->     2   366 ->     2   367 ->     2   368 ->     2
+   369 ->     2   370 ->     2   371 ->     2   372 ->     2   373 ->     2   374 ->     2   375 ->     2   376 ->     2
+   377 ->     2   378 ->     2   379 ->     2   380 ->     2   381 ->     2   382 ->     2   383 ->     2   384 ->     2
+   385 ->     2   386 ->     2   387 ->     2   388 ->     2   389 ->     2   390 ->     2   391 ->     2   392 ->     2
+   393 ->     2   394 ->     2   395 ->     2   396 ->     2   397 ->     2   398 ->     2   399 ->     2   400 ->     2
+   401 ->     2   402 ->     2   403 ->     2   404 ->     2   405 ->     2   406 ->     2   407 ->     2   408 ->     2
+   409 ->     2   410 ->     2   411 ->     2   412 ->     2   413 ->     2   414 ->     2   415 ->     2   416 ->     2
+   417 ->     2   418 ->     2   419 ->     2   420 ->     2   421 ->     2   422 ->     2   423 ->     2   424 ->     2
+   425 ->     2   426 ->     2   427 ->     2   428 ->     2   429 ->     2   430 ->     2   431 ->     2   432 ->     2
+   433 ->     2   434 ->     2   435 ->     2   436 ->     2   437 ->     2   438 ->     2   439 ->     2   440 ->     2
+   441 ->     2   442 ->     2   443 ->     2   444 ->     2   445 ->     2   446 ->     2   447 ->     2   448 ->     2
+   449 ->     2   450 ->     2   451 ->     2   452 ->     2   453 ->     2   454 ->     2   455 ->     2   456 ->     2
+   457 ->     2   458 ->     2   459 ->     2   460 ->     2   461 ->     2   462 ->     2   463 ->     2   464 ->     2
+   465 ->     2   466 ->     2   467 ->     2   468 ->     2   469 ->     2   470 ->     2   471 ->     2   472 ->     2
+   473 ->     2   474 ->     2   475 ->     2   476 ->     2   477 ->     2   478 ->     2   479 ->     2   480 ->     2
+   481 ->     2   482 ->     2   483 ->     2   484 ->     2   485 ->     2   486 ->     2   487 ->     2   488 ->     2
+   489 ->     2   490 ->     2   491 ->     2   492 ->     2   493 ->     2   494 ->     2   495 ->     2   496 ->     2
+   497 ->     2   498 ->     2   499 ->     2   500 ->     2   501 ->     2   502 ->     2   503 ->     2   504 ->     2
+   505 ->     2   506 ->     2   507 ->     2   508 ->     2   509 ->     2   510 ->     2   511 ->     2   512 ->     2
+   513 ->     2   514 ->     2   515 ->     2   516 ->     2   517 ->     2   518 ->     2   519 ->     2   520 ->     2
+   521 ->     2   522 ->     2   523 ->     2   524 ->     2   525 ->     2   526 ->     2   527 ->     2   528 ->     2
+   529 ->     2   530 ->     2   531 ->     2   532 ->     2   533 ->     2   534 ->     2   535 ->     2   536 ->     2
+   537 ->     2   538 ->     2   539 ->     2   540 ->     2   541 ->     2   542 ->     2   543 ->     2   544 ->     2
+   545 ->     2   546 ->     2   547 ->     2   548 ->     2   549 ->     2   550 ->     2   551 ->     2   552 ->     2
+   553 ->     2   554 ->     2   555 ->     2   556 ->     2   557 ->     2   558 ->     2   559 ->     2   560 ->     2
+   561 ->     2   562 ->     2   563 ->     2   564 ->     2   565 ->     2   566 ->     2   567 ->     2   568 ->     2
+   569 ->     2   570 ->     2   571 ->     2   572 ->     2   573 ->     2   574 ->     2   575 ->     2   576 ->     2
+   577 ->     2   578 ->     2   579 ->     2   580 ->     2   581 ->     2   582 ->     2   583 ->     2   584 ->     2
+   585 ->     2   586 ->     2   587 ->     2   588 ->     2   589 ->     2   590 ->     2   591 ->     2   592 ->     2
+   593 ->     2   594 ->     2   595 ->     2   596 ->     2   597 ->     2   598 ->     2   599 ->     2   600 ->     2
+   601 ->     2   602 ->     2   603 ->     2   604 ->     2   605 ->     2   606 ->     2   607 ->     2   608 ->     2
+   609 ->     2   610 ->     2   611 ->     2   612 ->     2   613 ->     2   614 ->     2   615 ->     2   616 ->     2
+   617 ->     2   618 ->     2   619 ->     2   620 ->     2   621 ->     2   622 ->     2   623 ->     2   624 ->     2
+   625 ->     2   626 ->     2   627 ->     2   628 ->     2   629 ->     2   630 ->     2   631 ->     2   632 ->     2
+   633 ->     2   634 ->     2   635 ->     2   636 ->     2   637 ->     2   638 ->     2   639 ->     2   640 ->     2
+   641 ->     2   642 ->     2   643 ->     2   644 ->     2   645 ->     2   646 ->     2   647 ->     2   648 ->     2
+   649 ->     2   650 ->     2   651 ->     2   652 ->     2   653 ->     2   654 ->     2   655 ->     2   656 ->     2
+   657 ->     2   658 ->     2   659 ->     2   660 ->     2   661 ->     2   662 ->     2   663 ->     2   664 ->     2
+   665 ->     2   666 ->     2   667 ->     2   668 ->     2   669 ->     2   670 ->     2   671 ->     2   672 ->     2
+   673 ->     2   674 ->     2   675 ->     2   676 ->     2   677 ->     2   678 ->     2   679 ->     2   680 ->     2
+   681 ->     2   682 ->     2   683 ->     2   684 ->     2   685 ->     2   686 ->     2   687 ->     2   688 ->     2
+   689 ->     2   690 ->     2   691 ->     2   692 ->     2   693 ->     2   694 ->     2   695 ->     2   696 ->     2
+   697 ->     2   698 ->     2   699 ->     2   700 ->     2   701 ->     2   702 ->     2   703 ->     2   704 ->     2
+   705 ->     2   706 ->     2   707 ->     2   708 ->     2   709 ->     2   710 ->     2   711 ->     2   712 ->     2
+   713 ->     2   714 ->     2   715 ->     2   716 ->     2   717 ->     2   718 ->     2   719 ->     2   720 ->     2
+   721 ->     2   722 ->     2   723 ->     2   724 ->     2   725 ->     2   726 ->     2   727 ->     2   728 ->     2
+   729 ->     2   730 ->     2   731 ->     2   732 ->     2   733 ->     2   734 ->     2   735 ->     2   736 ->     2
+   737 ->     2   738 ->     2   739 ->     2   740 ->     2   741 ->     2   742 ->     2   743 ->     2   744 ->     2
+   745 ->     2   746 ->     2   747 ->     2   748 ->     2   749 ->     2   750 ->     2   751 ->     2   752 ->     2
+   753 ->     2   754 ->     2   755 ->     2   756 ->     2   757 ->     2   758 ->     2   759 ->     2   760 ->     2
+   761 ->     2   762 ->     2   763 ->     2   764 ->     2   765 ->     2   766 ->     2   767 ->     2   768 ->     2
+   769 ->     2   770 ->     2   771 ->     2   772 ->     2   773 ->     2   774 ->     2   775 ->     2   776 ->     2
+   777 ->     2   778 ->     2   779 ->     2   780 ->     2   781 ->     2   782 ->     2   783 ->     2   784 ->     2
+   785 ->     2   786 ->     2   787 ->     2   788 ->     2   789 ->     2   790 ->     2   791 ->     2   792 ->     2
+   793 ->     2   794 ->     2   795 ->     2   796 ->     2   797 ->     2   798 ->     2   799 ->     2   800 ->     2
+   801 ->     2   802 ->     2   803 ->     2   804 ->     2   805 ->     2   806 ->     2   807 ->     2   808 ->     2
+   809 ->     2   810 ->     2   811 ->     2   812 ->     2   813 ->     2   814 ->     2   815 ->     2   816 ->     2
+   817 ->     2   818 ->     2   819 ->     2   820 ->     2   821 ->     2   822 ->     2   823 ->     2   824 ->     2
+   825 ->     2   826 ->     2   827 ->     2   828 ->     2   829 ->     2   830 ->     2   831 ->     2   832 ->     2
+   833 ->     2   834 ->     2   835 ->     2   836 ->     2   837 ->     2   838 ->     2   839 ->     2   840 ->     2
+   841 ->     2   842 ->     2   843 ->     2   844 ->     2   845 ->     2   846 ->     2   847 ->     2   848 ->     2
+   849 ->     2   850 ->     2   851 ->     2   852 ->     2   853 ->     2   854 ->     2   855 ->     2   856 ->     2
+   857 ->     2   858 ->     2   859 ->     2   860 ->     2   861 ->     2   862 ->     2   863 ->     2   864 ->     2
+   865 ->     2   866 ->     2   867 ->     2   868 ->     2   869 ->     2   870 ->     2   871 ->     2   872 ->     2
+   873 ->     2   874 ->     2   875 ->     2   876 ->     2   877 ->     2   878 ->     2   879 ->     2   880 ->     2
+   881 ->     2   882 ->     2   883 ->     2   884 ->     2   885 ->     2   886 ->     2   887 ->     2   888 ->     2
+   889 ->     2   890 ->     2   891 ->     2   892 ->     2   893 ->     2   894 ->     2   895 ->     2   896 ->     2
+   897 ->     2   898 ->     2   899 ->     2   900 ->     2
+
+
+
+
+     REGION      VOLUME       REGION      VOLUME       REGION      VOLUME       REGION      VOLUME       REGION      VOLUME  
+        1     3.90000E+03        2     1.47200E+04
+
+ SPH CORRECTION FACTOR ALL EQUAL TO 1.0
+
+ F L U X E S   A N D    R E A C T I O N    R A T E S
+ ---------------------------------------------------
+
+ G R O U P   :   1
+ REGION INTEGRATED FLUX
+     2.7247627E+02     2.7300922E+01
+ AVERAGED REGIONAL FLUX
+     6.9865710E-02     1.8546822E-03
+
+ G R O U P   :   2
+ REGION INTEGRATED FLUX
+     7.2601088E+02     6.6035641E+01
+ AVERAGED REGIONAL FLUX
+     1.8615664E-01     4.4861169E-03
+
+ EDIDTX MERGED/CONDENSED X-S SAVED IN DIRECTORY = REF-CASE   3
+->@END MODULE   : EDI:        
+<|Fig.ps := PSP: TRACK :: TYPE REGION ;                                   |<0172
+->@BEGIN MODULE : PSP:        
+->@DESCRIPTION  : Generate PostScript graphics                                            
+->@CREDITS      : K.E. Kohler, G. Marleau                                                 
+->@COPYRIGHTS   : ECOLE POLYTECHNIQUE DE MONTREAL 
+                  K.E. KOHLER FOR PSPLOT          
+ ------  PSP EXECUTION OPTIONS --------
+ PRINT LEVEL =        1
+ COLOR       =        4
+ TYPE        =        0
+ CONTOUR     =        1
+ --------------------------------------
+->@END MODULE   : PSP:        
+<|Fig.ps := PSP: Fig.ps TRACK :: TYPE MIXTURE ;                           |<0173
+->@BEGIN MODULE : PSP:        
+->@DESCRIPTION  : Generate PostScript graphics                                            
+->@CREDITS      : K.E. Kohler, G. Marleau                                                 
+->@COPYRIGHTS   : ECOLE POLYTECHNIQUE DE MONTREAL 
+                  K.E. KOHLER FOR PSPLOT          
+ ------  PSP EXECUTION OPTIONS --------
+ PRINT LEVEL =        1
+ COLOR       =        4
+ TYPE        =        1
+ CONTOUR     =        1
+ --------------------------------------
+->@END MODULE   : PSP:        
+<|Fig.ps := PSP: Fig.ps TRACK FLUX :: TYPE FLUX ;                         |<0174
+->@BEGIN MODULE : PSP:        
+->@DESCRIPTION  : Generate PostScript graphics                                            
+->@CREDITS      : K.E. Kohler, G. Marleau                                                 
+->@COPYRIGHTS   : ECOLE POLYTECHNIQUE DE MONTREAL 
+                  K.E. KOHLER FOR PSPLOT          
+ ------  PSP EXECUTION OPTIONS --------
+ PRINT LEVEL =        1
+ COLOR       =        4
+ TYPE        =        2
+ CONTOUR     =        1
+ --------------------------------------
+->@END MODULE   : PSP:        
+<|Fig.ps := PSP: Fig.ps TRACK FLUX :: TYPE MGFLUX ;                       |<0175
+->@BEGIN MODULE : PSP:        
+->@DESCRIPTION  : Generate PostScript graphics                                            
+->@CREDITS      : K.E. Kohler, G. Marleau                                                 
+->@COPYRIGHTS   : ECOLE POLYTECHNIQUE DE MONTREAL 
+                  K.E. KOHLER FOR PSPLOT          
+ ------  PSP EXECUTION OPTIONS --------
+ PRINT LEVEL =        1
+ COLOR       =        4
+ TYPE        =        3
+ CONTOUR     =        1
+ --------------------------------------
+->@END MODULE   : PSP:        
+<|DPPGTRK  := DELETE: DPPGTRK  ;                                          |<0179
+<|END: ;                                                                  |<0180
+
+
+ Normal end of execution for DRAGON 3.06
+ Check for warnings in listing
+ before assuming your run was successful
