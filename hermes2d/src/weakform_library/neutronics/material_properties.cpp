@@ -812,7 +812,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                             
             rank2::iterator inv_mtx_row = inverted_moment_matrix->begin(); gto = 0;
             for ( ; inv_mtx_row != inverted_moment_matrix->end(); ++inv_mtx_row, ++gto)
-              std::copy(&A[gto*G], &A[gto*(G+1)], inv_mtx_row->begin());
+              std::copy(&A[gto*G], &A[(gto+1)*G], inv_mtx_row->begin());
             
             delete [] ipiv;
             delete [] dgetri_workspace;
@@ -859,7 +859,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         {
           Sigma_rn[mat] = NDArrayMapOp::subtract<rank3>(Stn, Ssn);
           
-          rank3 moment_matrices = Stn_material->second;
+          rank3 moment_matrices = Sigma_rn[mat];
           rank3::const_iterator moment_matrix = moment_matrices.begin();
           bool1::iterator moment_matrix_is_diagonal = Sigma_rn_is_diagonal[mat].begin();
           for ( ; moment_matrix != moment_matrices.end(); ++moment_matrix, ++moment_matrix_is_diagonal)
@@ -1038,10 +1038,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         os << setw(total_width) << setfill('_') << ' ' << endl << setfill(' ');
         os << setw(total_width/2+mat.length()/2) << mat << endl << endl;
-        
+               
         os << setw(gto_width)  << "trgt group";
-        os << setw(elem_width) << "Sigma_rn";
-        os << setw(elem_width) << "odd_Srn_inv";
+        os << setw(matprop.G*elem_width) << "Sigma_rn";
+        os << setw(matprop.G*elem_width) << "odd_Srn_inv";
         
         rank3::const_iterator Srn_moment = Srn_moments.begin();
         rank3::const_iterator Srn_inv_moment = Srn_inv_moments.begin();
@@ -1057,15 +1057,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
               os << setw(elem_width) << (*Srn_moment)[gto][gfrom];
             
             if (moment % 2)
-            {
               for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
                 os << setw(elem_width) << (*Srn_inv_moment)[gto][gfrom];
-              
-              ++Srn_inv_moment;
-            }
-            
+                          
             os << endl;
           }
+          
+          if (moment % 2)
+            ++Srn_inv_moment;
         }
       }
       
