@@ -472,11 +472,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           unsigned int i = mg.pos(mrow, gfrom);
           
           if (geom_type == HERMES_PLANAR) 
-            result += D_elem[gfrom] * int_u_ext_v<Real, Real>(n, wt, u_ext[i], v);
+            result += D_elem[gfrom] * int_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v);
           else if (geom_type == HERMES_AXISYM_X) 
-            result += D_elem[gfrom] * int_y_u_ext_v<Real, Real>(n, wt, u_ext[i], v, e);
+            result += D_elem[gfrom] * int_y_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v, e);
           else 
-            result += D_elem[gfrom] * int_x_u_ext_v<Real, Real>(n, wt, u_ext[i], v, e);
+            result += D_elem[gfrom] * int_x_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v, e);
         }
       }
       
@@ -489,7 +489,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     Real OffDiagonalReactions::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
                                                         Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const
     {
-      if (mrow == mcol)
+      if (mg.pos(mrow, gto) == mg.pos(mcol, gfrom))
         return Real(0);
       
       Real result(0);
