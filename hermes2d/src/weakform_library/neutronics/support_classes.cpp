@@ -464,11 +464,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       int np = quad->get_num_points(order);
       Filter<double>::Node* node = new_node(H2D_FN_VAL_0, np);
       
-      double **val = new double* [this->num], **dx = new double* [this->num], **dy = new double* [this->num];
-      for (int i = 0; i < this->num; i++)
+      double **dx = new double* [this->num], **dy = new double* [this->num];
+      for (unsigned int gfrom = 0; gfrom < matprop->get_G(); gfrom++)
       {
+        unsigned int i = mg.pos(req_mom_idx,gfrom);
         this->sln[i]->set_quad_order(order, H2D_FN_VAL | H2D_FN_DX | H2D_FN_DY);
-        val[i] = this->sln[i]->get_fn_values();
         this->sln[i]->get_dx_dy_values(dx[i], dy[i]);
       }
    
@@ -477,15 +477,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       for (int i = 0; i < np; i++)
       {
+        node->values[0][0][i] = 0.0;
         for (unsigned int gfrom = 0; gfrom < matprop->get_G(); gfrom++)
         {
           if (component == 0)
-            node->values[0][0][i] = -D[g][gfrom] * dx[mg.pos(req_mom_idx,gfrom)][i];
+            node->values[0][0][i] += -D[g][gfrom] * dx[mg.pos(req_mom_idx,gfrom)][i];
           else
-            node->values[0][0][i] = -D[g][gfrom] * dy[mg.pos(req_mom_idx,gfrom)][i];
+            node->values[0][0][i] += -D[g][gfrom] * dy[mg.pos(req_mom_idx,gfrom)][i];
         }
         node->values[0][0][i] *= Coeffs::D(odd_req_mom);
       }
+      
+      delete [] dx;
+      delete [] dy;
       
       if(this->nodes->present(order)) 
       {
@@ -555,7 +559,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       : Common::SupportClasses::Visualization(display_meshes), mg(G), sviews_app(NULL), vviews(NULL)
     {
       n_moments = spn_order+1;
-      n_odd_moments = (n_moments+1)/2;
+      n_odd_moments = n_moments/2;
       Common::SupportClasses::Visualization::init(G * n_odd_moments, G);
       
       for (unsigned int g = 0; g < n_groups; g++)
