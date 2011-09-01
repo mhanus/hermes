@@ -1,0 +1,32 @@
+vertices = [
+  [ 0, 0 ],
+  [ 65, 0 ],
+  [ 133, 0 ],
+  [ 133, 60 ],
+  [ 133, 140 ],
+  [ 65, 140 ],
+  [ 0, 140 ],
+  [ 0, 60 ],
+  [ 65, 60 ] 
+]
+
+elements = [
+  [ 0, 1, 8, 7, "source" ],
+  [ 1, 2, 3, 8, "media" ],
+  [ 8, 3, 4, 5, "media" ],
+  [ 7, 8, 5, 6, "media" ],
+]
+
+boundaries = [
+  [ 0, 1, "reflective" ],
+  [ 1, 2, "reflective" ],
+  [ 2, 3, "vacuum" ],
+  [ 3, 4, "vacuum" ],
+  [ 4, 5, "vacuum" ],
+  [ 5, 6, "vacuum" ],
+  [ 6, 7, "reflective" ],
+  [ 7, 0, "reflective" ]
+]
+
+
+
