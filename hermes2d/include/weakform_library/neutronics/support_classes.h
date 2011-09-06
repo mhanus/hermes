@@ -331,10 +331,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       static void get_scalar_fluxes(const Hermes::vector<Solution<double>*>& angular_fluxes,
                                     Hermes::vector<MeshFunction<double>*>* scalar_fluxes,
                                     unsigned int G);               
+      static void get_scalar_fluxes(const Hermes::vector<Solution<double>*>& angular_fluxes,
+                                    Hermes::vector<Filter<double>*>* scalar_fluxes,
+                                    unsigned int G);  
       static void get_scalar_fluxes_with_derivatives(const Hermes::vector<Solution<double>*>& angular_fluxes,
                                                     Hermes::vector<MeshFunction<double>*>* scalar_fluxes,
-                                                    unsigned int G);                                                       
+                                                    unsigned int G);
+      static void get_scalar_fluxes_with_derivatives(const Hermes::vector<Solution<double>*>& angular_fluxes,
+                                                    Hermes::vector<Filter<double>*>* scalar_fluxes,
+                                                    unsigned int G);                                                    
       static void clear_scalar_fluxes(Hermes::vector<MeshFunction<double>*>* scalar_fluxes);
+      static void clear_scalar_fluxes(Hermes::vector<Filter<double>*>* scalar_fluxes);
     };
     
     class SourceFilter : public Common::SupportClasses::SourceFilter
