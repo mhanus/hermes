@@ -510,8 +510,26 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         scalar_fluxes->push_back(new MomentFilter::EvenMomentVal(0, g, G, angular_fluxes));
     }
     
+    void MomentFilter::get_scalar_fluxes(const Hermes::vector< Solution<double>* >& angular_fluxes, 
+                                          Hermes::vector< Filter<double>* >* scalar_fluxes,
+                                          unsigned int G)
+    {          
+      scalar_fluxes->reserve(G);
+      for (unsigned int g = 0; g < G; g++)
+        scalar_fluxes->push_back(new MomentFilter::EvenMomentVal(0, g, G, angular_fluxes));
+    }
+    
     void MomentFilter::get_scalar_fluxes_with_derivatives(const Hermes::vector< Solution<double>* >& angular_fluxes, 
                                                           Hermes::vector< MeshFunction<double>* >* scalar_fluxes,
+                                                          unsigned int G)
+    {          
+      scalar_fluxes->reserve(G);
+      for (unsigned int g = 0; g < G; g++)
+        scalar_fluxes->push_back(new MomentFilter::EvenMomentValDxDy(0, g, G, angular_fluxes));
+    }
+    
+    void MomentFilter::get_scalar_fluxes_with_derivatives(const Hermes::vector< Solution<double>* >& angular_fluxes, 
+                                                          Hermes::vector< Filter<double>* >* scalar_fluxes,
                                                           unsigned int G)
     {          
       scalar_fluxes->reserve(G);
@@ -522,6 +540,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void MomentFilter::clear_scalar_fluxes(Hermes::vector< MeshFunction<double>* >* scalar_fluxes)
     {
       Hermes::vector< MeshFunction<double>* >::const_iterator it = scalar_fluxes->begin();
+      for( ; it != scalar_fluxes->end(); ++it)
+        delete *it;
+      scalar_fluxes->clear();
+    }
+    
+    void MomentFilter::clear_scalar_fluxes(Hermes::vector< Filter<double>* >* scalar_fluxes)
+    {
+      Hermes::vector< Filter<double>* >::const_iterator it = scalar_fluxes->begin();
       for( ; it != scalar_fluxes->end(); ++it)
         delete *it;
       scalar_fluxes->clear();
