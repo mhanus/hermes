@@ -3,15 +3,26 @@
 
 // Fixed source problem with void conditions on all boundaries.
 CustomWeakForm::CustomWeakForm(const MaterialProperties::MaterialPropertyMaps& matprop, unsigned int N)
+#ifdef USE_SPN
   : WeakForms::FixedSourceProblem(matprop, N)
+#else // DIFFUSION
+  : WeakForms::FixedSourceProblem(matprop)
+#endif
 {
   for (unsigned int g = 0; g < G; g++)
+  {
+#ifdef USE_SPN    
     for (unsigned int m = 0; m < N_odd; m++)
     {
       add_vector_form_surf(new WeakFormParts::VacuumBoundaryCondition::Residual(m, N, g, "vacuum", matprop));
       for (unsigned int n = 0; n < N_odd; n++)
-        add_matrix_form_surf(new WeakFormParts::VacuumBoundaryCondition::Jacobian(m, n, g, "vacuum", matprop));    
+        add_matrix_form_surf(new WeakFormParts::VacuumBoundaryCondition::Jacobian(m, n, g, "vacuum", matprop));
     }
+#else // DIFFUSION
+    add_vector_form_surf(new WeakFormParts::VacuumBoundaryCondition::Residual(g, "vacuum"));
+    add_matrix_form_surf(new WeakFormParts::VacuumBoundaryCondition::Jacobian(g, "vacuum"));    
+#endif
+  }
 }
 
 // Utility functions that simplify repeated reporting of number of DOF during adaptivity.
