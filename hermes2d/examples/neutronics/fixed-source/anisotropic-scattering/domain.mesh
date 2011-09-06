@@ -1,0 +1,25 @@
+vertices = [
+  [ 0, -0.5 ],
+  [ 2, -0.5 ],
+  [ 20, -0.5 ],
+  [ 20, 0.5 ],
+  [ 2, 0.5 ],
+  [ 0, 0.5 ]
+]
+
+elements = [
+  [ 0, 1, 4, 5, "Region 1" ],
+  [ 1, 2, 3, 4, "Region 2" ]
+]
+
+boundaries = [
+  [ 0, 1, "Unused" ],
+  [ 1, 2, "Unused" ],
+  [ 2, 3, "Vacuum" ],
+  [ 3, 4, "Unused" ],
+  [ 4, 5, "Unused" ],
+  [ 5, 0, "Reflective" ]
+]
+
+
+
