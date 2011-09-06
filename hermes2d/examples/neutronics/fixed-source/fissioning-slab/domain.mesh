@@ -1,0 +1,20 @@
+vertices = [
+  [ 0.0, 0.0 ],
+  [ 2.5, 0.0 ],
+  [ 2.5, 2.5 ],
+  [ 0.0, 2.5 ]
+]
+
+elements = [
+  [ 0, 1, 2, 3, "mixture" ]
+]
+
+boundaries = [
+  [ 0, 1, "reflective" ],
+  [ 1, 2, "vacuum" ],
+  [ 2, 3, "vacuum" ],
+  [ 3, 0, "reflective" ]
+]
+
+
+
