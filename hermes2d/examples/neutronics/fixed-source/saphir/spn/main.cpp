@@ -222,6 +222,11 @@ int main(int argc, char* argv[])
   for (unsigned int i = 0; i < N_EQUATIONS; i++)
     selectors.push_back(&selector);
   
+  // Get region areas for flux averaging.
+  PostProcessor pp(NEUTRONICS_SPN);      
+  Hermes::vector<double> areas;
+  pp.get_areas(meshes[0], edit_regions, &areas);
+  
   // Adaptivity loop.
   int as = 1; bool done = false;
   Hermes::vector<Space<double> *>* fine_spaces;
@@ -272,8 +277,7 @@ int main(int argc, char* argv[])
     }
     
     // Calculate element errors.
-    info("Calculating error estimate."); 
-    Adapt<double> adaptivity(spaces);      
+    info("Calculating error estimate.");    
 
     cpu_time.tick();
     
@@ -283,15 +287,10 @@ int main(int argc, char* argv[])
     MomentFilter::get_scalar_fluxes_with_derivatives(coarse_solutions, &coarse_scalar_fluxes, N_GROUPS);
     MomentFilter::get_scalar_fluxes_with_derivatives(solutions, &fine_scalar_fluxes, N_GROUPS);
     
-    MomentGroupFlattener mg(N_GROUPS);  // Creates a single index from the moment-group pair.
     double scalar_flux_err_est_rel = 0.0;
     double avg_flux_err_est_rel = 0.0;
     double avg_flux_err_s8_rel = 0.0;
-        
-    PostProcessor pp(NEUTRONICS_SPN);      
-    Hermes::vector<double> areas;
-    pp.get_areas(meshes[0], edit_regions, &areas);
-      
+              
     for (unsigned int g = 0; g < N_GROUPS; g++)
     {
       // Calculate relative error (squared) of the scalar flux approximation (linear comb. of the actual solutions) in specified norm.
@@ -332,14 +331,16 @@ int main(int argc, char* argv[])
     
     // Calculate error estimate for each solution component and the total error estimate.
     info("  --- Calculating total relative error of pseudo-fluxes approximation.");
-    
+        
+    Adapt<double> adaptivity(spaces);  
+        
+    MomentGroupFlattener mg(N_GROUPS);  // Creates a single index from the moment-group pair.
     // Set the error estimation/normalization form.
     for (unsigned int g = 0; g < N_GROUPS; g++)
       for (unsigned int mrow = 0; mrow < N_ODD_MOMENTS; mrow++)
         for (unsigned int mcol = 0; mcol < N_ODD_MOMENTS; mcol++)
           adaptivity.set_error_form(mg.pos(mrow,g), mg.pos(mcol,g), new ErrorFormSPN<double>(mrow, mcol, HERMES_H1_NORM));
-            
-    
+              
     // Calculate the element and total error estimates and make them available for mesh adaptation.
     double pseudo_flux_err_est_rel = adaptivity.calc_err_est(coarse_solutions, solutions, NULL, true,
                                                              HERMES_TOTAL_ERROR_REL | HERMES_ELEMENT_ERROR_ABS) * 100; 
@@ -420,12 +421,9 @@ int main(int argc, char* argv[])
     views.save_solutions_vtk("flux", "flux", solutions);
     views.save_orders_vtk("space", spaces);
   }
-
-  PostProcessor pp(NEUTRONICS_SPN);
   
-  Hermes::vector<double> integrated_fluxes, areas;
+  Hermes::vector<double> integrated_fluxes;
   pp.get_integrated_scalar_fluxes(solutions, &integrated_fluxes, N_GROUPS, edit_regions);
-  pp.get_areas(spaces[0]->get_mesh(), edit_regions, &areas); // Areas of the edit regions.
         
   for (int i = 0; i < 5; i++)
   {
@@ -447,8 +445,6 @@ int main(int argc, char* argv[])
     delete spaces[i];
     delete solutions[i];
   }
-                  
-  // Wait for all views to be closed.
-  Views::View::wait();
+  
   return 0;
 }
