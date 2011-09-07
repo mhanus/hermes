@@ -216,6 +216,42 @@ namespace Hermes
       WeakForm<Scalar>* wf;
       double stage_time;
     };
+    
+    template<typename Scalar>
+    class HERMES_API SurfaceForm : public Form<Scalar>
+    {
+    public:
+      /// One area constructor.
+      SurfaceForm(std::string area = HERMES_ANY, Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
+                  double scaling_factor = 1.0, int u_ext_offset = 0) 
+        : Form<Scalar>(area, ext, scaling_factor, u_ext_offset) 
+      {};
+
+      /// Multiple areas constructor.
+      SurfaceForm(Hermes::vector<std::string> areas, Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
+                  double scaling_factor = 1.0, int u_ext_offset = 0) 
+        : Form<Scalar>(areas, ext, scaling_factor, u_ext_offset) 
+      {};
+        
+      /// Multiple interfaces constructor.
+      SurfaceForm(const Hermes::vector<std::pair<std::string, std::string> >& areas_at_interfaces, 
+                  Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
+                  double scaling_factor = 1.0, int u_ext_offset = 0) 
+        : Form<Scalar>("", ext, scaling_factor, u_ext_offset), areas_at_interfaces(areas_at_interfaces) 
+      {};
+
+      /// One interface constructor.
+      SurfaceForm(const std::pair<std::string, std::string>& areas_at_interface, 
+                  Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
+                  double scaling_factor = 1.0, int u_ext_offset = 0) 
+        : Form<Scalar>("", ext, scaling_factor, u_ext_offset) 
+      { 
+        this->areas_at_interfaces.push_back(areas_at_interface); 
+      }
+        
+    //protected:
+      Hermes::vector<std::pair<std::string, std::string> > areas_at_interfaces;
+    };
 
     template<typename Scalar>
     class HERMES_API MatrixFormVol : public Form<Scalar>
@@ -227,7 +263,7 @@ namespace Hermes
         Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
         double scaling_factor = 1.0, int u_ext_offset = 0);
 
-      /// Multiple areas constructor..
+      /// Multiple areas constructor.
       MatrixFormVol(unsigned int i, unsigned int j, 
         Hermes::vector<std::string> areas, SymFlag sym = HERMES_NONSYM, 
         Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
@@ -247,7 +283,7 @@ namespace Hermes
     };
 
     template<typename Scalar>
-    class HERMES_API MatrixFormSurf : public Form<Scalar>
+    class HERMES_API MatrixFormSurf : public SurfaceForm<Scalar>
     {
     public:
       /// One area constructor.
@@ -255,11 +291,21 @@ namespace Hermes
         Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
         double scaling_factor = 1.0, int u_ext_offset = 0);
 
-      /// Multiple areas constructor..
+      /// Multiple areas constructor.
       MatrixFormSurf(unsigned int i, unsigned int j, Hermes::vector<std::string> areas, 
         Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
         double scaling_factor = 1.0, int u_ext_offset = 0);
 
+      /// One interface constructor.
+      MatrixFormSurf(unsigned int i, unsigned int j, const std::pair<std::string, std::string>& areas_at_interface, 
+        Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
+        double scaling_factor = 1.0, int u_ext_offset = 0);
+
+      /// Multiple interfaces constructor.
+      MatrixFormSurf(unsigned int i, unsigned int j, const Hermes::vector<std::pair<std::string, std::string> >& areas_at_interfaces, 
+        Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
+        double scaling_factor = 1.0, int u_ext_offset = 0);
+        
       virtual MatrixFormSurf* clone();
 
       unsigned int i, j;
@@ -280,7 +326,7 @@ namespace Hermes
         Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
         double scaling_factor = 1.0, int u_ext_offset = 0);
 
-      /// Multiple areas constructor..
+      /// Multiple areas constructor.
       VectorFormVol(unsigned int i, Hermes::vector<std::string> areas, 
         Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
         double scaling_factor = 1.0, int u_ext_offset = 0);
@@ -297,7 +343,7 @@ namespace Hermes
     };
 
     template<typename Scalar>
-    class VectorFormSurf : public Form<Scalar>
+    class VectorFormSurf : public SurfaceForm<Scalar>
     {
     public:
       /// One area constructor.
@@ -305,8 +351,18 @@ namespace Hermes
         Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
         double scaling_factor = 1.0, int u_ext_offset = 0);
 
-      /// Multiple areas constructor..
+      /// Multiple areas constructor.
       VectorFormSurf(unsigned int i, Hermes::vector<std::string> areas, 
+        Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
+        double scaling_factor = 1.0, int u_ext_offset = 0);
+        
+      /// One interface constructor.
+      VectorFormSurf(unsigned int i, const std::pair<std::string, std::string>& areas_at_interface, 
+        Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
+        double scaling_factor = 1.0, int u_ext_offset = 0);
+
+      /// Multiple interfaces constructor..
+      VectorFormSurf(unsigned int i, const Hermes::vector<std::pair<std::string, std::string> >& areas_at_interfaces, 
         Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
         double scaling_factor = 1.0, int u_ext_offset = 0);
 
@@ -338,7 +394,7 @@ namespace Hermes
         Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
         double scaling_factor = 1.0, int u_ext_offset = 0);
 
-      /// Multiple areas constructor..
+      /// Multiple areas constructor.
       MultiComponentMatrixFormVol(Hermes::vector<std::pair<unsigned int, unsigned int> >coordinates,  
         Hermes::vector<std::string> areas, SymFlag sym = HERMES_NONSYM,
         Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
@@ -356,7 +412,7 @@ namespace Hermes
     };
 
     template<typename Scalar>
-    class HERMES_API MultiComponentMatrixFormSurf : public Form<Scalar>
+    class HERMES_API MultiComponentMatrixFormSurf : public SurfaceForm<Scalar>
     {
     public:
       /// One area constructor.
@@ -369,6 +425,18 @@ namespace Hermes
       MultiComponentMatrixFormSurf(Hermes::vector<std::pair<unsigned int, unsigned int> >coordinates, 
         Hermes::vector<std::string> areas,
         Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
+        double scaling_factor = 1.0, int u_ext_offset = 0);
+        
+      /// One interface constructor.
+      MultiComponentMatrixFormSurf(Hermes::vector<std::pair<unsigned int, unsigned int> >coordinates, 
+        const std::pair<std::string, std::string>& areas_at_interface, 
+        Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
+        double scaling_factor = 1.0, int u_ext_offset = 0);
+
+      /// Multiple interfaces constructor.
+      MultiComponentMatrixFormSurf(Hermes::vector<std::pair<unsigned int, unsigned int> >coordinates, 
+        const Hermes::vector<std::pair<std::string, std::string> >& areas_at_interfaces,
+        const Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
         double scaling_factor = 1.0, int u_ext_offset = 0);
 
       virtual MultiComponentMatrixFormSurf* clone();
@@ -410,7 +478,7 @@ namespace Hermes
     };
 
     template<typename Scalar>
-    class HERMES_API MultiComponentVectorFormSurf : public Form<Scalar>
+    class HERMES_API MultiComponentVectorFormSurf : public SurfaceForm<Scalar>
     {
     public:
       /// One area constructor.
@@ -422,6 +490,18 @@ namespace Hermes
       /// Multiple areas constructor.
       MultiComponentVectorFormSurf(Hermes::vector<unsigned int> coordinates, 
         Hermes::vector<std::string> areas,
+        Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
+        double scaling_factor = 1.0, int u_ext_offset = 0);
+      
+      /// One interface constructor.
+      MultiComponentVectorFormSurf(Hermes::vector<unsigned int> coordinates, 
+        const std::pair<std::string, std::string>& area, 
+        Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
+        double scaling_factor = 1.0, int u_ext_offset = 0);
+
+      /// Multiple interfaces constructor.
+      MultiComponentVectorFormSurf(Hermes::vector<unsigned int> coordinates, 
+        const Hermes::vector<std::pair<std::string, std::string> >& areas_at_interfaces,
         Hermes::vector<MeshFunction<Scalar>*> ext = Hermes::vector<MeshFunction<Scalar>*>(),
         double scaling_factor = 1.0, int u_ext_offset = 0);
 

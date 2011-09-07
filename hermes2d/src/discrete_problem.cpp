@@ -352,7 +352,7 @@ namespace Hermes
       bool is_DG = false;
       for(unsigned int i = 0; i < this->wf->mfsurf.size(); i++)
       {
-        if(this->wf->mfsurf[i]->areas[0] == H2D_DG_INNER_EDGE)
+        if(this->wf->mfsurf[i]->areas[0] == H2D_DG_INNER_EDGE || !this->wf->mfsurf[i]->areas_at_interfaces.empty())
         {
           is_DG = true;
           break;
@@ -360,7 +360,7 @@ namespace Hermes
       }
       for(unsigned int i = 0; i < this->wf->vfsurf.size() && is_DG == false; i++)
       {
-        if(this->wf->vfsurf[i]->areas[0] == H2D_DG_INNER_EDGE)
+        if(this->wf->vfsurf[i]->areas[0] == H2D_DG_INNER_EDGE || !this->wf->vfsurf[i]->areas_at_interfaces.empty())
         {
           is_DG = true;
           break;
@@ -368,7 +368,7 @@ namespace Hermes
       }
       for(unsigned int i = 0; i < this->wf->mfsurf_mc.size() && is_DG == false; i++)
       {
-        if(this->wf->mfsurf_mc[i]->areas[0] == H2D_DG_INNER_EDGE)
+        if(this->wf->mfsurf_mc[i]->areas[0] == H2D_DG_INNER_EDGE || !this->wf->mfsurf_mc[i]->areas_at_interfaces.empty())
         {
           is_DG = true;
           break;
@@ -376,7 +376,7 @@ namespace Hermes
       }
       for(unsigned int i = 0; i < this->wf->vfsurf_mc.size() && is_DG == false; i++)
       {
-        if(this->wf->vfsurf_mc[i]->areas[0] == H2D_DG_INNER_EDGE)
+        if(this->wf->vfsurf_mc[i]->areas[0] == H2D_DG_INNER_EDGE || !this->wf->vfsurf_mc[i]->areas_at_interfaces.empty())
         {
           is_DG = true;
           break;
@@ -822,7 +822,7 @@ namespace Hermes
       DG_vector_forms_present = false;
       for(unsigned int i = 0; i < stage.mfsurf.size() && DG_matrix_forms_present == false; i++)
       {
-        if (stage.mfsurf[i]->areas[0] == H2D_DG_INNER_EDGE)
+        if (stage.mfsurf[i]->areas[0] == H2D_DG_INNER_EDGE || !this->wf->mfsurf[i]->areas_at_interfaces.empty())
         {
           DG_matrix_forms_present = true;
           break;
@@ -830,7 +830,7 @@ namespace Hermes
       }
       for(unsigned int i = 0; i < stage.vfsurf.size() && DG_vector_forms_present == false; i++)
       {
-        if (stage.vfsurf[i]->areas[0] == H2D_DG_INNER_EDGE)
+        if (stage.vfsurf[i]->areas[0] == H2D_DG_INNER_EDGE || !this->wf->vfsurf[i]->areas_at_interfaces.empty())
         {
           DG_vector_forms_present = true;
           break;
@@ -838,7 +838,7 @@ namespace Hermes
       }
       for(unsigned int i = 0; i < stage.mfsurf_mc.size() && DG_matrix_forms_present == false; i++)
       {
-        if (stage.mfsurf_mc[i]->areas[0] == H2D_DG_INNER_EDGE)
+        if (stage.mfsurf_mc[i]->areas[0] == H2D_DG_INNER_EDGE || !this->wf->mfsurf_mc[i]->areas_at_interfaces.empty())
         {
           DG_matrix_forms_present = true;
           break;
@@ -846,7 +846,7 @@ namespace Hermes
       }
       for(unsigned int i = 0; i < stage.vfsurf_mc.size() && DG_vector_forms_present == false; i++)
       {
-        if (stage.vfsurf_mc[i]->areas[0] == H2D_DG_INNER_EDGE)
+        if (stage.vfsurf_mc[i]->areas[0] == H2D_DG_INNER_EDGE || !this->wf->vfsurf_mc[i]->areas_at_interfaces.empty())
         {
           DG_vector_forms_present = true;
           break;
@@ -2259,7 +2259,7 @@ namespace Hermes
           continue;
         if (fabs(mfs->scaling_factor) < 1e-12)
           continue;
-        if (mfs->areas[0] == H2D_DG_INNER_EDGE)
+        if (mfs->areas[0] == H2D_DG_INNER_EDGE || !mfs->areas_at_interfaces.empty())
           continue;
 
         // Assemble this form only if one of its areas is HERMES_ANY or H2D_DG_BOUNDARY_EDGE,
@@ -2353,7 +2353,7 @@ namespace Hermes
           continue;
         if (fabs(mfs->scaling_factor) < 1e-12)
           continue;
-        if (mfs->areas[0] == H2D_DG_INNER_EDGE)
+        if (mfs->areas[0] == H2D_DG_INNER_EDGE || !mfs->areas_at_interfaces.empty())
           continue;
 
         // Assemble this form only if one of its areas is HERMES_ANY or H2D_DG_BOUNDARY_EDGE,
@@ -2447,7 +2447,7 @@ namespace Hermes
           continue;
         if (fabs(vfs->scaling_factor) < 1e-12)
           continue;
-        if (vfs->areas[0] == H2D_DG_INNER_EDGE)
+        if (vfs->areas[0] == H2D_DG_INNER_EDGE || !vfs->areas_at_interfaces.empty())
           continue;
 
         // Assemble this form only if one of its areas is HERMES_ANY or H2D_DG_BOUNDARY_EDGE,
@@ -2513,7 +2513,7 @@ namespace Hermes
         unsigned int m = vfs->coordinates[0];
         if (fabs(vfs->scaling_factor) < 1e-12)
           continue;
-        if (vfs->areas[0] == H2D_DG_INNER_EDGE)
+        if (vfs->areas[0] == H2D_DG_INNER_EDGE || !vfs->areas_at_interfaces.empty())
           continue;
 
         // Assemble this form only if one of its areas is HERMES_ANY or H2D_DG_BOUNDARY_EDGE,
@@ -2581,16 +2581,58 @@ namespace Hermes
       for (unsigned int ww = 0; ww < stage.mfsurf.size(); ww++)
       {
         MatrixFormSurf<Scalar>* mfs = stage.mfsurf[ww];
-        if (mfs->areas[0] != H2D_DG_INNER_EDGE)
-          continue;
+        
         int m = mfs->i;
         int n = mfs->j;
+        
+        // Assemble this form only if its area is H2D_DG_INNER_EDGE (any interior edge),
+        // or if the central and neighbor elements' markers coincide with some 
+        // [areas_at_interfaces->first, areas_at_interfaces->second] pair (specific interior edge).
+        bool assemble_this_form = false;
+        if (mfs->areas[0] != H2D_DG_INNER_EDGE)
+        {
+          for (unsigned int ss = 0; ss < mfs->areas_at_interfaces.size(); ss++)
+          {
+            bool marker_on_space_m = ( this->spaces[m]->get_mesh()->get_element_markers_conversion().get_internal_marker(mfs->areas_at_interfaces[ss].first).valid
+                                      &&
+                                       this->spaces[m]->get_mesh()->get_element_markers_conversion().get_internal_marker(mfs->areas_at_interfaces[ss].second).valid );
+            if(marker_on_space_m)
+            {
+              NeighborSearch<Scalar> *nbs = neighbor_searches.get(spaces[m]->get_mesh()->get_seq() - min_dg_mesh_seq);
+              marker_on_space_m = ( (this->spaces[m]->get_mesh()->get_element_markers_conversion().get_internal_marker(mfs->areas_at_interfaces[ss].first).marker == rep_element->marker) 
+                                   &&
+                                    (this->spaces[m]->get_mesh()->get_element_markers_conversion().get_internal_marker(mfs->areas_at_interfaces[ss].second).marker == nbs->get_neighb_el()->marker) ); 
+            }
+
+            bool marker_on_space_n = ( this->spaces[n]->get_mesh()->get_element_markers_conversion().get_internal_marker(mfs->areas_at_interfaces[ss].first).valid
+                                      &&
+                                       this->spaces[n]->get_mesh()->get_element_markers_conversion().get_internal_marker(mfs->areas_at_interfaces[ss].second).valid );
+            if(marker_on_space_n)
+            {
+              NeighborSearch<Scalar> *nbs = neighbor_searches.get(spaces[n]->get_mesh()->get_seq() - min_dg_mesh_seq);
+              marker_on_space_n = ( (this->spaces[n]->get_mesh()->get_element_markers_conversion().get_internal_marker(mfs->areas_at_interfaces[ss].first).marker == rep_element->marker) 
+                                   &&
+                                    (this->spaces[n]->get_mesh()->get_element_markers_conversion().get_internal_marker(mfs->areas_at_interfaces[ss].second).marker == nbs->get_neighb_el()->marker) );
+            }
+
+            if (marker_on_space_m && marker_on_space_n)
+            {
+              assemble_this_form = true;
+              break;
+            }
+          }
+        }
+        else
+          assemble_this_form = true;
+        
+        if (!assemble_this_form)
+          continue;
 
         if (isempty[m] || isempty[n])
           continue;
         if (fabs(mfs->scaling_factor) < 1e-12)
           continue;
-
+        
         surf_pos.base = trav_base;
 
         // Create the extended shapeset on the union of the central element and its current neighbor.
