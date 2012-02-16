@@ -233,7 +233,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       if (elem_marker == HERMES_DUMMY_ELEM_MARKER)
         region = this->nu.begin()->first; 
       else
-        region = mesh->get_element_markers_conversion().get_user_marker(elem_marker);
+        region = mesh->get_element_markers_conversion().get_user_marker(elem_marker).marker;
       
       return get_material(region);
     }

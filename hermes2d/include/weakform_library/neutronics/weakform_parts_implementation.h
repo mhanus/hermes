@@ -136,14 +136,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
       rank1 chi_elem = matprop.get_chi(mat);
       
-      if ((unsigned)ext->nf != nu_elem.size() || (unsigned)ext->nf != Sigma_f_elem.size())
+      if ((unsigned)ext->get_nf() != nu_elem.size() || (unsigned)ext->get_nf() != Sigma_f_elem.size())
         error_function(Messages::E_INVALID_GROUP_INDEX);
       
       Real result(0);
       for (int i = 0; i < n; i++) 
       {
         Real local_res(0);
-        for (int gfrom = 0; gfrom < ext->nf; gfrom++)
+        for (int gfrom = 0; gfrom < ext->get_nf(); gfrom++)
           local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i];
                   
         local_res = local_res * wt[i] * v->val[i];
@@ -383,7 +383,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       for (int i = 0; i < n; i++) 
       {
         Real local_res(0);
-        for (int gfrom = 0; gfrom < ext->nf; gfrom++)
+        for (int gfrom = 0; gfrom < ext->get_nf(); gfrom++)
           local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i]; // double flux in group 'gfrom'
         
         // cout << "FissionYield::OuterIterationForm (mom. #" << mrow << " (x, y) = (" << e->x[i] << ", " << e->y[i] << "), " << mat << ") : ";
