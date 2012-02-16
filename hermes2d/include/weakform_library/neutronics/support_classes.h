@@ -126,8 +126,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         unsigned int n_equations, n_groups;
         bool display_meshes;
         
-        Views::ScalarView<double>** sviews;
-        Views::OrderView<double>** oviews;
+        Views::ScalarView** sviews;
+        Views::OrderView** oviews;
         Views::MeshView** mviews;
         
         static const std::string  base_title_flux;
@@ -157,8 +157,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         void inspect_solutions(Hermes::vector< Solution<double>* > solutions);
         void inspect_orders(Hermes::vector<Space<double>*> spaces);
         
-        Views::ScalarView<double>** get_solution_views(unsigned int* num) { *num = n_equations; return sviews; }
-        Views::OrderView<double>** get_order_views(unsigned int* num)     { *num = n_equations; return oviews; }
+        Views::ScalarView** get_solution_views(unsigned int* num) { *num = n_equations; return sviews; }
+        Views::OrderView** get_order_views(unsigned int* num)     { *num = n_equations; return oviews; }
         Views::MeshView** get_mesh_views(unsigned int* num)               { *num = n_equations; return mviews; }
     };
   
@@ -412,8 +412,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       unsigned int n_moments, n_odd_moments;
       MomentGroupFlattener mg;
       
-      Views::ScalarView<double>** sviews_app;
-      Views::VectorView<double>** vviews;
+      Views::ScalarView** sviews_app;
+      Views::VectorView** vviews;
       
       public:
         Visualization(unsigned int spn_order, unsigned int G, bool display_meshes = false);
@@ -423,9 +423,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         void show_solutions(Hermes::vector< Solution<double>* > solutions);
         void show_orders(Hermes::vector<Space<double>*> spaces);
         
-        void show_even_flux_moment(unsigned int moment, unsigned int group, Views::ScalarView<double>* sview,
+        void show_even_flux_moment(unsigned int moment, unsigned int group, Views::ScalarView* sview,
                                    Hermes::vector< Solution<double>* > solutions);
-        void show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView<double>* vview,
+        void show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView* vview,
                                   Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
         void show_all_flux_moments(Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
         
