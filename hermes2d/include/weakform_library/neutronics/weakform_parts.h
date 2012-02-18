@@ -8,19 +8,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   namespace Diffusion { namespace WeakFormParts
   { 
     using namespace MaterialProperties;
-    
-    class GenericForm
-    {
-      protected:
-        const MaterialPropertyMaps& matprop;
-        GeomType geom_type;
         
-        GenericForm(const MaterialPropertyMaps& matprop,
-                    GeomType geom_type = HERMES_PLANAR)
-          : matprop(matprop), geom_type(geom_type) 
-        {};
-    };
-    
     struct VacuumBoundaryCondition
     {
       // TODO: General albedo boundary condition.
@@ -32,8 +20,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             g(g), geom_type(geom_type)
           {};
           
-          Jacobian(unsigned int g, const std::string& area, GeomType geom_type = HERMES_PLANAR) 
+          Jacobian(const std::string& area, unsigned int g, GeomType geom_type = HERMES_PLANAR) 
             : MatrixFormSurf<double>(g,g,area),
+            g(g), geom_type(geom_type)
+          {};
+          
+          Jacobian(const Hermes::vector<std::string>& areas, unsigned int g, GeomType geom_type = HERMES_PLANAR) 
+            : MatrixFormSurf<double>(g,g,areas),
             g(g), geom_type(geom_type)
           {};
           
@@ -69,8 +62,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             g(g), geom_type(geom_type)
           {};
           
-          Residual(unsigned int g, const std::string& area, GeomType geom_type = HERMES_PLANAR) 
+          Residual(const std::string& area, 
+                   unsigned int g, GeomType geom_type = HERMES_PLANAR) 
             : VectorFormSurf<double>(g,area),
+            g(g), geom_type(geom_type)
+          {};
+          
+          Residual(const Hermes::vector<std::string>& areas, 
+                   unsigned int g, GeomType geom_type = HERMES_PLANAR) 
+            : VectorFormSurf<double>(g,areas),
             g(g), geom_type(geom_type)
           {};
           
@@ -101,21 +101,27 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     struct DiffusionReaction
     {   
-      class Jacobian : public MatrixFormVol<double>, protected GenericForm
+      class Jacobian : public MatrixFormVol<double>
       {
         public:            
-          Jacobian(unsigned int g, 
-                  const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
+          Jacobian(unsigned int g, double D, double Sigma_r,
+                  GeomType geom_type = HERMES_PLANAR) 
             : MatrixFormVol<double>(g, g, HERMES_ANY, HERMES_SYM),
-              GenericForm(matprop, geom_type),
-              g(g)
+              D(D), Sigma_r(Sigma_r), geom_type(geom_type)
           {};
               
-          Jacobian(unsigned int g, const std::string& area,
-                  const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
+          Jacobian(const std::string& area, 
+                   unsigned int g, double D, double Sigma_r,
+                   GeomType geom_type = HERMES_PLANAR)
             : MatrixFormVol<double>(g, g, area, HERMES_SYM),
-              GenericForm(matprop, geom_type),
-              g(g)
+              D(D), Sigma_r(Sigma_r), geom_type(geom_type)
+          {};
+          
+          Jacobian(const Hermes::vector<std::string>& areas, 
+                   unsigned int g, double D, double Sigma_r,
+                   GeomType geom_type = HERMES_PLANAR)
+            : MatrixFormVol<double>(g, g, areas, HERMES_SYM),
+              D(D), Sigma_r(Sigma_r), geom_type(geom_type)
           {};
           
           template<typename Real>
@@ -139,25 +145,32 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 
         private:
           
-          unsigned int g;
+          double D, Sigma_r;
+          GeomType geom_type;
       };
       
-      class Residual : public VectorFormVol<double>, protected GenericForm
+      class Residual : public VectorFormVol<double>
       {
         public:
           
-          Residual(unsigned int g, 
-                    const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
+          Residual(unsigned int g, double D, double Sigma_r,
+                   GeomType geom_type = HERMES_PLANAR) 
             : VectorFormVol<double>(g, HERMES_ANY),
-              GenericForm(matprop, geom_type),
-              g(g)
+              g(g), D(D), Sigma_r(Sigma_r), geom_type(geom_type)
           {};
               
-          Residual(unsigned int g, const std::string& area,
-                    const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
+          Residual(const std::string& area, 
+                   unsigned int g, double D, double Sigma_r, 
+                   GeomType geom_type = HERMES_PLANAR)
             : VectorFormVol<double>(g, area),
-              GenericForm(matprop, geom_type), 
-              g(g)
+              g(g), D(D), Sigma_r(Sigma_r), geom_type(geom_type)
+          {};
+          
+          Residual(const Hermes::vector<std::string>& areas,
+                   unsigned int g, double D, double Sigma_r, 
+                   GeomType geom_type = HERMES_PLANAR)
+            : VectorFormVol<double>(g, areas),
+              g(g), D(D), Sigma_r(Sigma_r), geom_type(geom_type)
           {};
           
           template<typename Real>
@@ -182,27 +195,41 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         private:
           
           unsigned int g;
+          double D, Sigma_r;
+          GeomType geom_type;
       };
     };
   
     struct FissionYield
     {
-      class Jacobian : public MatrixFormVol<double>, protected GenericForm
+      class Jacobian : public MatrixFormVol<double>
       {
         public:
           
-          Jacobian( unsigned int gto, unsigned int gfrom, 
-                    const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR )
+          Jacobian( unsigned int gto, unsigned int gfrom,
+                    double chi_to, double nu_from, double Sigma_f_from,
+                    GeomType geom_type = HERMES_PLANAR )
             : MatrixFormVol<double>(gto, gfrom), 
-              GenericForm(matprop, geom_type),
-              gto(gto), gfrom(gfrom)
+              gto(gto), gfrom(gfrom), chi_to(chi_to), nu_from(nu_from), Sigma_f_from(Sigma_f_from),
+              geom_type(geom_type)
           {};
           
-          Jacobian( unsigned int gto, unsigned int gfrom, const std::string& area,
-                    const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR )
+          Jacobian( const std::string& area, 
+                    unsigned int gto, unsigned int gfrom, 
+                    double chi_to, double nu_from, double Sigma_f_from,
+                    GeomType geom_type = HERMES_PLANAR )
             : MatrixFormVol<double>(gto, gfrom, area), 
-              GenericForm(matprop, geom_type),
-              gto(gto), gfrom(gfrom)
+              gto(gto), gfrom(gfrom), chi_to(chi_to), nu_from(nu_from), Sigma_f_from(Sigma_f_from),
+              geom_type(geom_type)
+          {};
+          
+          Jacobian( const Hermes::vector<std::string>& areas,
+                    unsigned int gto, unsigned int gfrom, 
+                    double chi_to, double nu_from, double Sigma_f_from,
+                    GeomType geom_type = HERMES_PLANAR )
+            : MatrixFormVol<double>(gto, gfrom, areas), 
+              gto(gto), gfrom(gfrom), chi_to(chi_to), nu_from(nu_from), Sigma_f_from(Sigma_f_from),
+              geom_type(geom_type)
           {};
           
           template<typename Real>
@@ -227,46 +254,50 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         private:
           
           unsigned int gto, gfrom;
+          double chi_to, nu_from, Sigma_f_from;
+          GeomType geom_type;
       };
   
-      class OuterIterationForm : public VectorFormVol<double>, protected GenericForm
+      class OuterIterationForm : public VectorFormVol<double>
       {
         public:
           
           OuterIterationForm( unsigned int g, 
-                              const MaterialPropertyMaps& matprop,
+                              double chi_to, const rank1& nu, const rank1& Sigma_f, 
                               const Hermes::vector<MeshFunction<double>*>& iterates,
                               double keff = 1.0,
                               GeomType geom_type = HERMES_PLANAR )
             : VectorFormVol<double>(g, HERMES_ANY, iterates),
-              GenericForm(matprop, geom_type),
-              g(g), keff(keff)
+              g(g), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f),
+              keff(keff), geom_type(geom_type)
           {
             if (g >= iterates.size())
               error_function(Messages::E_INVALID_GROUP_INDEX);
           }
           
-          OuterIterationForm( unsigned int g, const std::string& area,
-                              const MaterialPropertyMaps& matprop,
+          OuterIterationForm( const std::string& area, 
+                              unsigned int g, 
+                              double chi_to, const rank1& nu, const rank1& Sigma_f, 
                               const Hermes::vector<MeshFunction<double>*>& iterates,
                               double keff = 1.0,
                               GeomType geom_type = HERMES_PLANAR )
             : VectorFormVol<double>(g, area, iterates),
-              GenericForm(matprop, geom_type),
-              g(g), keff(keff)
+              g(g), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f),
+              keff(keff), geom_type(geom_type)
           {
             if (g >= iterates.size())
               error_function(Messages::E_INVALID_GROUP_INDEX);
           }
           
-          OuterIterationForm( unsigned int g, const Hermes::vector<std::string>& areas,
-                              const MaterialPropertyMaps& matprop,
+          OuterIterationForm( const Hermes::vector<std::string>& areas,
+                              unsigned int g, 
+                              double chi_to, const rank1& nu, const rank1& Sigma_f, 
                               const Hermes::vector<MeshFunction<double>*>& iterates,
                               double keff = 1.0,
                               GeomType geom_type = HERMES_PLANAR )
             : VectorFormVol<double>(g, areas, iterates),
-              GenericForm(matprop, geom_type),
-              g(g), keff(keff)
+              g(g), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f),
+              keff(keff), geom_type(geom_type)
           {
             if (g >= iterates.size())
               error_function(Messages::E_INVALID_GROUP_INDEX);
@@ -296,24 +327,39 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         private:
           
           unsigned int g;
+          double chi_to;
+          rank1 nu, Sigma_f;
           double keff;
+          GeomType geom_type;
       };
     
-      class Residual : public VectorFormVol<double>, protected GenericForm
+      class Residual : public VectorFormVol<double>
       {
         public:
-          Residual( unsigned int gto, unsigned int gfrom, 
-                    const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR )
+          Residual( unsigned int gto, unsigned int gfrom,
+                    double chi_to, double nu_from, double Sigma_f_from,
+                    GeomType geom_type = HERMES_PLANAR )
             : VectorFormVol<double>(gto), 
-              GenericForm(matprop, geom_type),
-              gto(gto), gfrom(gfrom)
+              gto(gto), gfrom(gfrom), chi_to(chi_to), nu_from(nu_from), Sigma_f_from(Sigma_f_from),
+              geom_type(geom_type)
           {};
           
-          Residual( unsigned int gto, unsigned int gfrom, const std::string& area,
-                    const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR )
+          Residual( const std::string& area, 
+                    unsigned int gto, unsigned int gfrom,
+                    double chi_to, double nu_from, double Sigma_f_from,
+                    GeomType geom_type = HERMES_PLANAR )
             : VectorFormVol<double>(gto, area), 
-              GenericForm(matprop, geom_type),
-              gto(gto), gfrom(gfrom)
+              gto(gto), gfrom(gfrom), chi_to(chi_to), nu_from(nu_from), Sigma_f_from(Sigma_f_from),
+              geom_type(geom_type)
+          {};
+          
+          Residual( const Hermes::vector<std::string>& areas,
+                    unsigned int gto, unsigned int gfrom,
+                    double chi_to, double nu_from, double Sigma_f_from,
+                    GeomType geom_type = HERMES_PLANAR )
+            : VectorFormVol<double>(gto, areas), 
+              gto(gto), gfrom(gfrom), chi_to(chi_to), nu_from(nu_from), Sigma_f_from(Sigma_f_from),
+              geom_type(geom_type)
           {};
           
           template<typename Real>
@@ -338,29 +384,41 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         private:
           
           unsigned int gto, gfrom;
+          double chi_to, nu_from, Sigma_f_from;
+          GeomType geom_type;
       };
     };
 
     struct Scattering
     {      
-      class Jacobian : public MatrixFormVol<double>, protected GenericForm
+      class Jacobian : public MatrixFormVol<double>
       {
         public:
           
-          Jacobian( unsigned int gto, unsigned int gfrom, 
-                    const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR )
+          Jacobian( unsigned int gto, unsigned int gfrom, double Sigma_s_to_from,
+                    GeomType geom_type = HERMES_PLANAR )
             : MatrixFormVol<double>(gto, gfrom), 
-              GenericForm(matprop, geom_type),
-              gto(gto), gfrom(gfrom)
+              Sigma_s_to_from(Sigma_s_to_from), geom_type(geom_type)
           {
             this->scaling_factor = (gto != gfrom) ? -1 : 0;
           };
           
-          Jacobian( unsigned int gto, unsigned int gfrom, const std::string& area,
-                    const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR )
+          Jacobian( const std::string& area,
+                    unsigned int gto, unsigned int gfrom, 
+                    double Sigma_s_to_from,
+                    GeomType geom_type = HERMES_PLANAR )
             : MatrixFormVol<double>(gto, gfrom, area), 
-              GenericForm(matprop, geom_type),
-              gto(gto), gfrom(gfrom)
+              Sigma_s_to_from(Sigma_s_to_from), geom_type(geom_type)
+          {
+            this->scaling_factor = (gto != gfrom) ? -1 : 0;
+          };
+          
+          Jacobian( const Hermes::vector<std::string>& areas,
+                    unsigned int gto, unsigned int gfrom, 
+                    double Sigma_s_to_from,
+                    GeomType geom_type = HERMES_PLANAR )
+            : MatrixFormVol<double>(gto, gfrom, areas), 
+              Sigma_s_to_from(Sigma_s_to_from), geom_type(geom_type)
           {
             this->scaling_factor = (gto != gfrom) ? -1 : 0;
           };
@@ -386,28 +444,38 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
         private:
           
-          unsigned int gto, gfrom;
+          double Sigma_s_to_from;
+          GeomType geom_type;
       };
     
-      class Residual : public VectorFormVol<double>, protected GenericForm
+      class Residual : public VectorFormVol<double>
       {
         public:
           Residual( unsigned int gto, unsigned int gfrom, 
-                    const MaterialPropertyMaps& matprop,
+                    double Sigma_s_to_from,
                     GeomType geom_type = HERMES_PLANAR )
             : VectorFormVol<double>(gto), 
-              GenericForm(matprop, geom_type),
-              gto(gto), gfrom(gfrom)
+              gfrom(gfrom), Sigma_s_to_from(Sigma_s_to_from), geom_type(geom_type)
           {
             this->scaling_factor = (gto != gfrom) ? -1 : 0;
           };
           
-          Residual( unsigned int gto, unsigned int gfrom, const std::string& area,
-                    const MaterialPropertyMaps& matprop,
+          Residual( const std::string& area,
+                    unsigned int gto, unsigned int gfrom, 
+                    double Sigma_s_to_from,
                     GeomType geom_type = HERMES_PLANAR )
-            : VectorFormVol<double>(gto, area), 
-              GenericForm(matprop, geom_type),
-              gto(gto), gfrom(gfrom)
+            : VectorFormVol<double>(gto, area),
+              gfrom(gfrom), Sigma_s_to_from(Sigma_s_to_from), geom_type(geom_type)
+          {
+            this->scaling_factor = (gto != gfrom) ? -1 : 0;
+          };
+          
+          Residual( const Hermes::vector<std::string>& areas,
+                    unsigned int gto, unsigned int gfrom, 
+                    double Sigma_s_to_from,
+                    GeomType geom_type = HERMES_PLANAR )
+            : VectorFormVol<double>(gto, areas),
+              gfrom(gfrom), Sigma_s_to_from(Sigma_s_to_from), geom_type(geom_type)
           {
             this->scaling_factor = (gto != gfrom) ? -1 : 0;
           };
@@ -433,28 +501,36 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
         private:
           
-          unsigned int gto, gfrom;
+          unsigned int gfrom;
+          double Sigma_s_to_from;
+          GeomType geom_type;
       };
     };
     
     struct ExternalSources
     {
-      class LinearForm : public VectorFormVol<double>, protected GenericForm
+      class LinearForm : public VectorFormVol<double>
       {
         public:
           
-          LinearForm( unsigned int g, 
-                      const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
+          LinearForm( unsigned int g, double src,
+                      GeomType geom_type = HERMES_PLANAR)
             : VectorFormVol<double>(g), 
-              GenericForm(matprop, geom_type),
-              g(g)
+              src(src), geom_type(geom_type)
           {};
           
-          LinearForm( unsigned int g, const std::string& area,
-                      const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
+          LinearForm( const std::string& area,
+                      unsigned int g, double src,
+                      GeomType geom_type = HERMES_PLANAR)
             : VectorFormVol<double>(g, area), 
-              GenericForm(matprop, geom_type),
-              g(g)
+              src(src), geom_type(geom_type)
+          {};
+          
+          LinearForm( const Hermes::vector<std::string>& areas,
+                      unsigned int g, double src,
+                      GeomType geom_type = HERMES_PLANAR)
+            : VectorFormVol<double>(g, areas), 
+              src(src), geom_type(geom_type)
           {};
           
           template<typename Real>
@@ -478,7 +554,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         private:
           
-          unsigned int g;      
+          double src;
+          GeomType geom_type;
       }; 
     };
     
@@ -493,19 +570,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     using SupportClasses::Coeffs;
     using SupportClasses::MomentGroupFlattener;
     
-    //TODO: Make Diffusion::GenericForm only a GenericForm, which takes pointer to
-    // Common::MaterialProperties::MaterialPropertyMaps (hence all "matprop." will 
-    // have to be changed to "matprop->". The following class will then not be needed.
     class GenericForm
     {
       protected:
-        const MaterialPropertyMaps& matprop;
         GeomType geom_type;
+        unsigned int G;
         MomentGroupFlattener mg;
         
-        GenericForm(const MaterialPropertyMaps& matprop,
-                    GeomType geom_type = HERMES_PLANAR)
-          : matprop(matprop), geom_type(geom_type), mg(matprop.get_G())
+        GenericForm(double G, GeomType geom_type = HERMES_PLANAR)
+          : geom_type(geom_type), G(G), mg(G)
         {};
     };
     
@@ -516,16 +589,25 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         public:
           Jacobian(unsigned int m, unsigned int n, unsigned int g, 
-                  const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
-            : GenericForm(matprop, geom_type),
+                  unsigned int G, GeomType geom_type = HERMES_PLANAR) 
+            : GenericForm(G, geom_type),
               MatrixFormSurf<double>(mg.pos(m,g),mg.pos(n,g),HERMES_ANY),
               mrow(m), mcol(n), g(g)
           {};
           
-          Jacobian(unsigned int m, unsigned int n,  unsigned int g, const std::string& area, 
-                  const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
-            : GenericForm(matprop, geom_type),
+          Jacobian(const std::string& area,
+                   unsigned int m, unsigned int n, unsigned int g, unsigned int G, 
+                   GeomType geom_type = HERMES_PLANAR) 
+            : GenericForm(G, geom_type),
               MatrixFormSurf<double>(mg.pos(m,g),mg.pos(n,g),area),
+              mrow(m), mcol(n), g(g)
+          {};
+          
+          Jacobian(const Hermes::vector<std::string>& areas,
+                   unsigned int m, unsigned int n, unsigned int g, unsigned int G, 
+                   GeomType geom_type = HERMES_PLANAR) 
+            : GenericForm(G, geom_type),
+              MatrixFormSurf<double>(mg.pos(m,g),mg.pos(n,g),areas),
               mrow(m), mcol(n), g(g)
           {};
           
@@ -558,16 +640,25 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         public:
           Residual(unsigned int m, unsigned int N, unsigned int g,
-                  const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
-            : GenericForm(matprop, geom_type),
+                   unsigned int G, GeomType geom_type = HERMES_PLANAR) 
+            : GenericForm(G, geom_type),
               VectorFormSurf<double>(mg.pos(m,g),HERMES_ANY), 
               mrow(m), N_odd((N+1)/2), g(g)
           {};
           
-          Residual(unsigned int m, unsigned int N, unsigned int g, const std::string& area, 
-                  const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
-            : GenericForm(matprop, geom_type),
+          Residual(const std::string& area,
+                   unsigned int m, unsigned int N, unsigned int g, unsigned int G, 
+                   GeomType geom_type = HERMES_PLANAR) 
+            : GenericForm(G, geom_type),
               VectorFormSurf<double>(mg.pos(m,g),area), 
+              mrow(m), N_odd((N+1)/2), g(g)
+          {};
+          
+          Residual(const Hermes::vector<std::string>& areas,
+                   unsigned int m, unsigned int N, unsigned int g, unsigned int G, 
+                   GeomType geom_type = HERMES_PLANAR) 
+            : GenericForm(G, geom_type),
+              VectorFormSurf<double>(mg.pos(m,g),areas), 
               mrow(m), N_odd((N+1)/2), g(g)
           {};
           
@@ -602,18 +693,30 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       class Jacobian : protected GenericForm, public MatrixFormVol<double>
       {
         public:            
-          Jacobian(unsigned int m, unsigned int g, 
-                  const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
-            : GenericForm(matprop, geom_type),
+          Jacobian(unsigned int m, unsigned int g, unsigned int G,
+                   double D, double Sigma_r,
+                   GeomType geom_type = HERMES_PLANAR) 
+            : GenericForm(G, geom_type),
               MatrixFormVol<double>(mg.pos(m,g), mg.pos(m,g), HERMES_ANY, HERMES_SYM),
-              mrow(m), g(g)
+              mrow(m), g(g), D(D), Sigma_r(Sigma_r)
           {};
               
-          Jacobian(unsigned int m, unsigned int g, const std::string& area,
-                  const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
-            : GenericForm(matprop, geom_type),
+          Jacobian(const std::string& area, 
+                   unsigned int m, unsigned int g, unsigned int G, 
+                   double D, double Sigma_r,
+                   GeomType geom_type = HERMES_PLANAR)
+            : GenericForm(G, geom_type),
               MatrixFormVol<double>(mg.pos(m,g), mg.pos(m,g), area, HERMES_SYM),
-              mrow(m), g(g)
+              mrow(m), g(g), D(D), Sigma_r(Sigma_r)
+          {};
+          
+          Jacobian(const Hermes::vector<std::string>& areas,
+                   unsigned int m, unsigned int g, unsigned int G, 
+                   double D, double Sigma_r,
+                   GeomType geom_type = HERMES_PLANAR)
+            : GenericForm(G, geom_type),
+              MatrixFormVol<double>(mg.pos(m,g), mg.pos(m,g), areas, HERMES_SYM),
+              mrow(m), g(g), D(D), Sigma_r(Sigma_r)
           {};
           
           template<typename Real>
@@ -639,24 +742,37 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           unsigned int mrow;
           unsigned int g;
+          double D, Sigma_r;
       };
       
       class Residual : protected GenericForm, public VectorFormVol<double>
       {
         public:
           
-          Residual(unsigned int m, unsigned int g, 
-                    const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR) 
-            : GenericForm(matprop, geom_type),
+          Residual(unsigned int m, unsigned int g, unsigned int G,
+                   double D, double Sigma_r,
+                   GeomType geom_type = HERMES_PLANAR) 
+            : GenericForm(G, geom_type),
               VectorFormVol<double>(mg.pos(m,g), HERMES_ANY),
-              mrow(m), g(g)
+              mrow(m), g(g), D(D), Sigma_r(Sigma_r)
           {};
               
-          Residual(unsigned int m, unsigned int g, const std::string& area,
-                    const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
-            : GenericForm(matprop, geom_type), 
+          Residual(const std::string& area,
+                   unsigned int m, unsigned int g, unsigned int G,
+                   double D, double Sigma_r, 
+                   GeomType geom_type = HERMES_PLANAR)
+            : GenericForm(G, geom_type), 
               VectorFormVol<double>(mg.pos(m,g), area),
-              mrow(m), g(g)
+              mrow(m), g(g), D(D), Sigma_r(Sigma_r)
+          {};
+          
+          Residual(const Hermes::vector<std::string>& areas,
+                   unsigned int m, unsigned int g, unsigned int G,
+                   double D, double Sigma_r, 
+                   GeomType geom_type = HERMES_PLANAR)
+            : GenericForm(G, geom_type), 
+              VectorFormVol<double>(mg.pos(m,g), areas),
+              mrow(m), g(g), D(D), Sigma_r(Sigma_r)
           {};
           
           template<typename Real>
@@ -682,6 +798,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           unsigned int mrow;
           unsigned int g;
+          double D, Sigma_r;
       };
     };
   
@@ -692,19 +809,32 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         public:
           
           Jacobian( unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
-                    const MaterialPropertyMaps& matprop,
+                    unsigned int G, double chi_to, double nu_from, double Sigma_f_from,
                     GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               MatrixFormVol<double>(mg.pos(m,gto), mg.pos(n,gfrom), HERMES_ANY, sym), 
-              mrow(m), mcol(n), gto(gto), gfrom(gfrom)
+              mrow(m), mcol(n), gto(gto), gfrom(gfrom), 
+              chi_to(chi_to), nu_from(nu_from), Sigma_f_from(Sigma_f_from)
           {};
           
-          Jacobian( unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
-                    const std::string& area, const MaterialPropertyMaps& matprop,
+          Jacobian( const std::string& area, 
+                    unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
+                    unsigned int G, double chi_to, double nu_from, double Sigma_f_from,
                     GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               MatrixFormVol<double>(mg.pos(m,gto), mg.pos(n,gfrom), area, sym), 
-              mrow(m), mcol(n), gto(gto), gfrom(gfrom)
+              mrow(m), mcol(n), gto(gto), gfrom(gfrom),
+              chi_to(chi_to), nu_from(nu_from), Sigma_f_from(Sigma_f_from)
+          {};
+          
+          Jacobian( const Hermes::vector<std::string>& areas,
+                    unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
+                    unsigned int G, double chi_to, double nu_from, double Sigma_f_from,
+                    GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
+            : GenericForm(G, geom_type),
+              MatrixFormVol<double>(mg.pos(m,gto), mg.pos(n,gfrom), areas, sym), 
+              mrow(m), mcol(n), gto(gto), gfrom(gfrom),
+              chi_to(chi_to), nu_from(nu_from), Sigma_f_from(Sigma_f_from)
           {};
           
           template<typename Real>
@@ -730,6 +860,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           unsigned int mrow, mcol;
           unsigned int gto, gfrom;
+          double chi_to, nu_from, Sigma_f_from;
       };
   
       class OuterIterationForm : protected GenericForm, public VectorFormVol<double>
@@ -737,33 +868,35 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         public:
           
           OuterIterationForm( unsigned int m, unsigned int g,
-                              const MaterialPropertyMaps& matprop,
+                              unsigned int G, double chi_to, const rank1& nu, const rank1& Sigma_f,
                               const Hermes::vector<MeshFunction<double>*>& iterates,
                               double keff = 1.0,
                               GeomType geom_type = HERMES_PLANAR )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               VectorFormVol<double>(mg.pos(m,g), HERMES_ANY, iterates),
-              mrow(m), g(g), keff(keff)
+              mrow(m), g(g), keff(keff), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f)
           {};
           
-          OuterIterationForm( unsigned int m, unsigned int g, const std::string& area,
-                              const MaterialPropertyMaps& matprop,
+          OuterIterationForm( const std::string& area, 
+                              unsigned int m, unsigned int g,  unsigned int G,
+                              double chi_to, const rank1& nu, const rank1& Sigma_f,
                               const Hermes::vector<MeshFunction<double>*>& iterates,
                               double keff = 1.0,
                               GeomType geom_type = HERMES_PLANAR )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               VectorFormVol<double>(mg.pos(m,g), area, iterates),
-              mrow(m), g(g), keff(keff)
+              mrow(m), g(g), keff(keff), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f)
           {};
           
-          OuterIterationForm( unsigned int m, unsigned int g, const Hermes::vector<std::string>& areas,
-                              const MaterialPropertyMaps& matprop,
+          OuterIterationForm( const Hermes::vector<std::string>& areas, 
+                              unsigned int m, unsigned int g, unsigned int G, 
+                              double chi_to, const rank1& nu, const rank1& Sigma_f,
                               const Hermes::vector<MeshFunction<double>*>& iterates,
                               double keff = 1.0,
                               GeomType geom_type = HERMES_PLANAR )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               VectorFormVol<double>(mg.pos(m,g), areas, iterates),
-              mrow(m), g(g), keff(keff)
+              mrow(m), g(g), keff(keff), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f)
           {};
           
           template<typename Real>
@@ -792,24 +925,37 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           unsigned int mrow;
           unsigned int g;
           double keff;
+          double chi_to;
+          rank1 nu, Sigma_f;
       };
     
       class Residual : protected GenericForm, public VectorFormVol<double>
       {
         public:
-          Residual( unsigned int m, unsigned int N_odd, unsigned int gto,
-                    const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR )
-            : GenericForm(matprop, geom_type),
+          Residual( unsigned int m, unsigned int N_odd, unsigned int gto, unsigned int G, 
+                    double chi_to, const rank1& nu, const rank1& Sigma_f,
+                    GeomType geom_type = HERMES_PLANAR )
+            : GenericForm(G, geom_type),
               VectorFormVol<double>(mg.pos(m,gto)), 
-              mrow(m), N_odd(N_odd), gto(gto)
+              mrow(m), N_odd(N_odd), gto(gto), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f)
           {};
           
-          Residual( unsigned int m, unsigned int N_odd, unsigned int gto,
-                    const std::string& area, const MaterialPropertyMaps& matprop, 
+          Residual( const std::string& area, 
+                    unsigned int m, unsigned int N_odd, unsigned int gto, unsigned int G,
+                    double chi_to, const rank1& nu, const rank1& Sigma_f,
                     GeomType geom_type = HERMES_PLANAR )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               VectorFormVol<double>(mg.pos(m,gto), area), 
-              mrow(m), N_odd(N_odd), gto(gto)
+              mrow(m), N_odd(N_odd), gto(gto), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f)
+          {};
+          
+          Residual( const Hermes::vector<std::string>& areas,
+                    unsigned int m, unsigned int N_odd, unsigned int gto, unsigned int G,
+                    double chi_to, const rank1& nu, const rank1& Sigma_f,
+                    GeomType geom_type = HERMES_PLANAR )
+            : GenericForm(G, geom_type),
+              VectorFormVol<double>(mg.pos(m,gto), areas), 
+              mrow(m), N_odd(N_odd), gto(gto), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f)
           {};
           
           template<typename Real>
@@ -836,6 +982,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           unsigned int mrow;
           unsigned int N_odd;
           unsigned int gto;
+          double chi_to;
+          rank1 nu, Sigma_f;
       };
     };
     
@@ -845,20 +993,30 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         public:
           
-          Jacobian( unsigned int m, unsigned int gto, unsigned int gfrom,
-                    const MaterialPropertyMaps& matprop,
+          Jacobian( unsigned int m, unsigned int gto, unsigned int gfrom, unsigned int G, 
+                    double D,
                     GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               MatrixFormVol<double>(mg.pos(m,gto), mg.pos(m,gfrom), HERMES_ANY, sym), 
-              mrow(m), gto(gto), gfrom(gfrom)
+              mrow(m), gto(gto), gfrom(gfrom), D(D)
           {};
           
-          Jacobian( unsigned int m, unsigned int gto, unsigned int gfrom,
-                    const std::string& area, const MaterialPropertyMaps& matprop,
+          Jacobian( const std::string& area, 
+                    unsigned int m, unsigned int gto, unsigned int gfrom, unsigned int G, 
+                    double D,
                     GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               MatrixFormVol<double>(mg.pos(m,gto), mg.pos(m,gfrom), area, sym), 
-              mrow(m), gto(gto), gfrom(gfrom)
+              mrow(m), gto(gto), gfrom(gfrom), D(D)
+          {};
+          
+          Jacobian( const Hermes::vector<std::string>& areas,
+                    unsigned int m, unsigned int gto, unsigned int gfrom, unsigned int G, 
+                    double D,
+                    GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
+            : GenericForm(G, geom_type),
+              MatrixFormVol<double>(mg.pos(m,gto), mg.pos(m,gfrom), areas, sym), 
+              mrow(m), gto(gto), gfrom(gfrom), D(D)
           {};
           
           template<typename Real>
@@ -884,25 +1042,36 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           unsigned int mrow;
           unsigned int gto, gfrom;
+          double D;
       };
     
       class Residual : protected GenericForm, public VectorFormVol<double>
       {
         public:
-          Residual( unsigned int m, unsigned int gto,
-                    const MaterialPropertyMaps& matprop,
+          Residual( unsigned int m, unsigned int gto, unsigned int G, 
+                    const rank1& D,
                     GeomType geom_type = HERMES_PLANAR )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               VectorFormVol<double>(mg.pos(m,gto)), 
-              mrow(m), gto(gto)
+              mrow(m), gto(gto), D(D)
           {};
           
-          Residual( unsigned int m, unsigned int gto,
-                    const std::string& area, const MaterialPropertyMaps& matprop,
+          Residual( const std::string& area,
+                    unsigned int m, unsigned int gto, unsigned int G, 
+                    const rank1& D,
                     GeomType geom_type = HERMES_PLANAR )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               VectorFormVol<double>(mg.pos(m,gto), area), 
-              mrow(m), gto(gto)
+              mrow(m), gto(gto), D(D)
+          {};
+          
+          Residual( const Hermes::vector<std::string>& areas,
+                    unsigned int m, unsigned int gto, unsigned int G, 
+                    const rank1& D,
+                    GeomType geom_type = HERMES_PLANAR )
+            : GenericForm(G, geom_type),
+              VectorFormVol<double>(mg.pos(m,gto), areas), 
+              mrow(m), gto(gto), D(D)
           {};
           
           template<typename Real>
@@ -928,6 +1097,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           unsigned int mrow;
           unsigned int gto;
+          rank1 D;
       };
     };
     
@@ -938,19 +1108,29 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         public:
           
           Jacobian( unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
-                    const MaterialPropertyMaps& matprop,
+                    unsigned int G, double Sigma_rn,
                     GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               MatrixFormVol<double>(mg.pos(m,gto), mg.pos(n,gfrom), HERMES_ANY, sym), 
-              mrow(m), mcol(n), gto(gto), gfrom(gfrom)
+              mrow(m), mcol(n), gto(gto), gfrom(gfrom), Sigma_rn(Sigma_rn)
           {};
           
-          Jacobian( unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
-                    const std::string& area, const MaterialPropertyMaps& matprop,
+          Jacobian( const std::string& area, 
+                    unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
+                    unsigned int G, double Sigma_rn,
                     GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               MatrixFormVol<double>(mg.pos(m,gto), mg.pos(n,gfrom), area, sym), 
-              mrow(m), mcol(n), gto(gto), gfrom(gfrom)
+              mrow(m), mcol(n), gto(gto), gfrom(gfrom), Sigma_rn(Sigma_rn)
+          {};
+          
+          Jacobian( const Hermes::vector<std::string>& areas,
+                    unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
+                    unsigned int G, double Sigma_rn,
+                    GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
+            : GenericForm(G, geom_type),
+              MatrixFormVol<double>(mg.pos(m,gto), mg.pos(n,gfrom), areas, sym), 
+              mrow(m), mcol(n), gto(gto), gfrom(gfrom), Sigma_rn(Sigma_rn)
           {};
           
           template<typename Real>
@@ -976,25 +1156,36 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           unsigned int mrow, mcol;
           unsigned int gto, gfrom;
+          double Sigma_rn;
       };
     
       class Residual : protected GenericForm, public VectorFormVol<double>
       {
         public:
           Residual( unsigned int m, unsigned int N_odd, unsigned int gto,
-                    const MaterialPropertyMaps& matprop,
+                    unsigned int G, const rank3& Sigma_rn,
                     GeomType geom_type = HERMES_PLANAR )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               VectorFormVol<double>(mg.pos(m,gto)), 
-              mrow(m), N_odd(N_odd), gto(gto)
+              mrow(m), N_odd(N_odd), gto(gto), Sigma_rn(Sigma_rn)
           {};
           
-          Residual( unsigned int m, unsigned int N_odd, unsigned int gto,
-                    const std::string& area, const MaterialPropertyMaps& matprop,
+          Residual( const std::string& area, 
+                    unsigned int m, unsigned int N_odd, unsigned int gto,
+                    unsigned int G, const rank3& Sigma_rn,
                     GeomType geom_type = HERMES_PLANAR )
-            : GenericForm(matprop, geom_type),
+            : GenericForm(G, geom_type),
               VectorFormVol<double>(mg.pos(m,gto), area), 
-              mrow(m), N_odd(N_odd), gto(gto)
+              mrow(m), N_odd(N_odd), gto(gto), Sigma_rn(Sigma_rn)
+          {};
+          
+          Residual( const Hermes::vector<std::string>& areas,
+                    unsigned int m, unsigned int N_odd, unsigned int gto,
+                    unsigned int G, const rank3& Sigma_rn,
+                    GeomType geom_type = HERMES_PLANAR )
+            : GenericForm(G, geom_type),
+              VectorFormVol<double>(mg.pos(m,gto), areas), 
+              mrow(m), N_odd(N_odd), gto(gto), Sigma_rn(Sigma_rn)
           {};
           
           template<typename Real>
@@ -1021,6 +1212,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           unsigned int mrow;
           unsigned int N_odd;
           unsigned int gto;
+          rank3 Sigma_rn;
       };
     };
     
@@ -1030,18 +1222,30 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         public:
           
-          LinearForm( unsigned int m, unsigned int g,
-                      const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
-            : GenericForm(matprop, geom_type),
+          LinearForm( unsigned int m, unsigned int g, unsigned int G, 
+                      double src, 
+                      GeomType geom_type = HERMES_PLANAR)
+            : GenericForm(G, geom_type),
               VectorFormVol<double>(mg.pos(m,g)), 
-              mrow(m), g(g)
+              mrow(m), g(g), src(src)
           {};
           
-          LinearForm( unsigned int m, unsigned int g, const std::string& area,
-                      const MaterialPropertyMaps& matprop, GeomType geom_type = HERMES_PLANAR)
-            : GenericForm(matprop, geom_type),
+          LinearForm( const std::string& area,
+                      unsigned int m, unsigned int g, unsigned int G, 
+                      double src, 
+                      GeomType geom_type = HERMES_PLANAR)
+            : GenericForm(G, geom_type),
               VectorFormVol<double>(mg.pos(m,g), area), 
-              mrow(m), g(g)
+              mrow(m), g(g), src(src)
+          {};
+          
+          LinearForm( const Hermes::vector<std::string>& areas,
+                      unsigned int m, unsigned int g, unsigned int G, 
+                      double src, 
+                      GeomType geom_type = HERMES_PLANAR)
+            : GenericForm(G, geom_type),
+              VectorFormVol<double>(mg.pos(m,g), areas), 
+              mrow(m), g(g), src(src)
           {};
           
           template<typename Real>
@@ -1066,7 +1270,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         private:
           
           unsigned int mrow;
-          unsigned int g;      
+          unsigned int g;
+          double src;
       }; 
     };
   
