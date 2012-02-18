@@ -44,27 +44,23 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                     Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
     {
       Real result;
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);     
-      rank1 D_elem = matprop.get_D(mat);
-      rank1 Sigma_r_elem = matprop.get_Sigma_r(mat);
-      
+            
       if (geom_type == HERMES_PLANAR) 
       {
-        result = D_elem[g] * int_grad_u_grad_v<Real, Real>(n, wt, u, v) +
-                  Sigma_r_elem[g] * int_u_v<Real, Real>(n, wt, u, v);
+        result = D * int_grad_u_grad_v<Real, Real>(n, wt, u, v) +
+                 Sigma_r * int_u_v<Real, Real>(n, wt, u, v);
       }
       else 
       {
         if (geom_type == HERMES_AXISYM_X) 
         {
-          result = D_elem[g] * int_y_grad_u_grad_v<Real, Real>(n, wt, u, v, e) + 
-                    Sigma_r_elem[g] * int_y_u_v<Real, Real>(n, wt, u, v, e);
+          result = D * int_y_grad_u_grad_v<Real, Real>(n, wt, u, v, e) + 
+                   Sigma_r * int_y_u_v<Real, Real>(n, wt, u, v, e);
         }
         else 
         {
-          result = D_elem[g] * int_x_grad_u_grad_v<Real, Real>(n, wt, u, v, e) + 
-                    Sigma_r_elem[g] * int_x_u_v<Real, Real>(n, wt, u, v, e);
+          result = D * int_x_grad_u_grad_v<Real, Real>(n, wt, u, v, e) + 
+                   Sigma_r * int_x_u_v<Real, Real>(n, wt, u, v, e);
         }
       }
       return result;
@@ -75,27 +71,23 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                     Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
     { 
       Real result;
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);        
-      rank1 D_elem = matprop.get_D(mat);
-      rank1 Sigma_r_elem = matprop.get_Sigma_r(mat);
-      
+            
       if (geom_type == HERMES_PLANAR) 
       {
-        result = D_elem[g] * int_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[g], v) +
-                  Sigma_r_elem[g] * int_u_ext_v<Real, Real>(n, wt, u_ext[g], v);
+        result = D * int_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[g], v) +
+                 Sigma_r * int_u_ext_v<Real, Real>(n, wt, u_ext[g], v);
       }
       else 
       {
         if (geom_type == HERMES_AXISYM_X) 
         {
-          result = D_elem[g] * int_y_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[g], v, e) + 
-                    Sigma_r_elem[g] * int_y_u_ext_v<Real, Real>(n, wt, u_ext[g], v, e);
+          result = D * int_y_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[g], v, e) + 
+                   Sigma_r * int_y_u_ext_v<Real, Real>(n, wt, u_ext[g], v, e);
         }
         else 
         {
-          result = D_elem[g] * int_x_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[g], v, e) + 
-                    Sigma_r_elem[g] * int_x_u_ext_v<Real, Real>(n, wt, u_ext[g], v, e);
+          result = D * int_x_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[g], v, e) + 
+                   Sigma_r * int_x_u_ext_v<Real, Real>(n, wt, u_ext[g], v, e);
         }
       }
       return result;
@@ -104,10 +96,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     template<typename Real>
     Real FissionYield::Jacobian::matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
                                                 Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const 
-    {
-      if (!matprop.get_fission_nonzero_structure()[gto])
-        return Real(0);
-      
+    { 
       Real result(0);
       if (geom_type == HERMES_PLANAR) result = int_u_v<Real, Real>(n, wt, u, v);
       else 
@@ -115,28 +104,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         if (geom_type == HERMES_AXISYM_X) result = int_y_u_v<Real, Real>(n, wt, u, v, e);
         else result = int_x_u_v<Real, Real>(n, wt, u, v, e);
       }
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      rank1 nu_elem = matprop.get_nu(mat);
-      rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
-      rank1 chi_elem = matprop.get_chi(mat);
-      
-      return result * chi_elem[gto] * nu_elem[gfrom] * Sigma_f_elem[gfrom];
+            
+      return result * chi_to * nu_from * Sigma_f_from;
     }
     
     template<typename Real>
     Real FissionYield::OuterIterationForm::vector_form( int n, double *wt, Func<Real> *u_ext[],
                                                           Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
-    { 
-      if (!matprop.get_fission_nonzero_structure()[g])
-        return Real(0);
-        
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      rank1 nu_elem = matprop.get_nu(mat);
-      rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
-      rank1 chi_elem = matprop.get_chi(mat);
+    {         
       
-      if ((unsigned)ext->get_nf() != nu_elem.size() || (unsigned)ext->get_nf() != Sigma_f_elem.size())
+      if ((unsigned)ext->get_nf() != nu.size() || (unsigned)ext->get_nf() != Sigma_f.size())
         error_function(Messages::E_INVALID_GROUP_INDEX);
       
       Real result(0);
@@ -144,7 +121,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         Real local_res(0);
         for (int gfrom = 0; gfrom < ext->get_nf(); gfrom++)
-          local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i];
+          local_res += nu[gfrom] * Sigma_f[gfrom] * ext->fn[gfrom]->val[i];
                   
         local_res = local_res * wt[i] * v->val[i];
         
@@ -156,16 +133,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         result += local_res;
       }
       
-      return result * chi_elem[g] / keff;
+      return result * chi_to / keff;
     }
     
     template<typename Real>
     Real FissionYield::Residual::vector_form( int n, double *wt, Func<Real> *u_ext[],
                                                 Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
-    { 
-      if (!matprop.get_fission_nonzero_structure()[gto])
-        return Real(0);
-      
+    {       
       Real result(0);
       if (geom_type == HERMES_PLANAR) result = int_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v);
       else 
@@ -173,13 +147,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         if (geom_type == HERMES_AXISYM_X) result = int_y_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v, e);
         else result = int_x_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v, e);
       }
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      rank1 nu_elem = matprop.get_nu(mat);
-      rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
-      rank1 chi_elem = matprop.get_chi(mat);
-      
-      return result * chi_elem[gto] * nu_elem[gfrom] * Sigma_f_elem[gfrom];
+            
+      return result * chi_to * nu_from * Sigma_f_from;
     }
                                                     
     template<typename Real>
@@ -194,7 +163,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         else result = int_x_u_v<Real, Real>(n, wt, u, v, e);
       }
       
-      return result * matprop.get_Sigma_s(matprop.get_material(e->elem_marker, wf))[gto][gfrom];
+      return result * Sigma_s_to_from;
     }
     
     template<typename Real>
@@ -209,23 +178,21 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         else result = int_x_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v, e);
       }
       
-      return result * matprop.get_Sigma_s(matprop.get_material(e->elem_marker, wf))[gto][gfrom];
+      return result * Sigma_s_to_from;
     }    
    
     template<typename Real>
     Real ExternalSources::LinearForm::vector_form(int n, double *wt, Func<Real> *u_ext[],
                                                     Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
-    { 
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      
+    {       
       if (geom_type == HERMES_PLANAR) 
-        return matprop.get_iso_src(mat)[g] * int_v<Real>(n, wt, v);
+        return src * int_v<Real>(n, wt, v);
       else 
       {
         if (geom_type == HERMES_AXISYM_X) 
-          return matprop.get_iso_src(mat)[g] * int_y_v<Real>(n, wt, v, e);
+          return src * int_y_v<Real>(n, wt, v, e);
         else 
-          return matprop.get_iso_src(mat)[g] * int_x_v<Real>(n, wt, v, e);
+          return src * int_x_v<Real>(n, wt, v, e);
       }
     }    
     
@@ -279,34 +246,24 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     Real DiagonalStreamingAndReactions::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
                                                                 Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const
     {
-      Real result;
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);     
-      
-      double Sigma_r_elem = 0.;
-      for (unsigned int k = 0; k <= mrow; k++)
-        Sigma_r_elem += Coeffs::system_matrix(mrow, mrow, k) * matprop.get_Sigma_rn(mat)[2*k][g][g];
-      
-      double D_elem = -Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][g][g];
-      
-      // cout << "DiagonalStreamingAndReactions::Jacobian (mom. #" << mrow << ") | " << mat << " | Sigma_r = " << Sigma_r_elem << " | D = " << D_elem << endl;
+      Real result;   
 
       if (geom_type == HERMES_PLANAR) 
       {
-        result = D_elem * int_grad_u_grad_v<Real, Real>(n, wt, u, v) +
-                  Sigma_r_elem * int_u_v<Real, Real>(n, wt, u, v);
+        result = D * int_grad_u_grad_v<Real, Real>(n, wt, u, v) +
+                 Sigma_r * int_u_v<Real, Real>(n, wt, u, v);
       }
       else 
       {
         if (geom_type == HERMES_AXISYM_X) 
         {
-          result = D_elem * int_y_grad_u_grad_v<Real, Real>(n, wt, u, v, e) + 
-                    Sigma_r_elem * int_y_u_v<Real, Real>(n, wt, u, v, e);
+          result = D * int_y_grad_u_grad_v<Real, Real>(n, wt, u, v, e) + 
+                   Sigma_r * int_y_u_v<Real, Real>(n, wt, u, v, e);
         }
         else 
         {
-          result = D_elem * int_x_grad_u_grad_v<Real, Real>(n, wt, u, v, e) + 
-                    Sigma_r_elem * int_x_u_v<Real, Real>(n, wt, u, v, e);
+          result = D * int_x_grad_u_grad_v<Real, Real>(n, wt, u, v, e) + 
+                   Sigma_r * int_x_u_v<Real, Real>(n, wt, u, v, e);
         }
       }
       return result;
@@ -318,27 +275,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     { 
       Real result;
       
-      std::string mat = matprop.get_material(e->elem_marker, wf);     
-      
-      double Sigma_r_elem = 0.;
-      for (unsigned int k = 0; k <= mrow; k++)
-        Sigma_r_elem += Coeffs::system_matrix(mrow, mrow, k) * matprop.get_Sigma_rn(mat)[2*k][g][g];
-      
-      double D_elem = -Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][g][g];
-      
-      // cout << "DiagonalStreamingAndReactions::Residual (mom. #" << mrow << ") | " << mat << " | Sigma_r = " << Sigma_r_elem << " | D = " << D_elem << endl;          
-      
       unsigned int i = mg.pos(mrow,g);
       
       if (geom_type == HERMES_PLANAR) 
-        result = D_elem * int_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v) +
-                  Sigma_r_elem * int_u_ext_v<Real, Real>(n, wt, u_ext[i], v);
+        result = D * int_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v) +
+                 Sigma_r * int_u_ext_v<Real, Real>(n, wt, u_ext[i], v);
       else if (geom_type == HERMES_AXISYM_X) 
-        result = D_elem * int_y_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v, e) + 
-                  Sigma_r_elem * int_y_u_ext_v<Real, Real>(n, wt, u_ext[i], v, e);
+        result = D * int_y_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v, e) + 
+                 Sigma_r * int_y_u_ext_v<Real, Real>(n, wt, u_ext[i], v, e);
       else 
-        result = D_elem * int_x_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v, e) + 
-                  Sigma_r_elem * int_x_u_ext_v<Real, Real>(n, wt, u_ext[i], v, e);
+        result = D * int_x_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v, e) + 
+                 Sigma_r * int_x_u_ext_v<Real, Real>(n, wt, u_ext[i], v, e);
       
       return result;
     }
@@ -346,10 +293,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     template<typename Real>
     Real FissionYield::Jacobian::matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
                                                 Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const 
-    {
-      if (!matprop.get_fission_nonzero_structure()[gto])
-        return Real(0);
-      
+    {      
       Real result;
       
       if (geom_type == HERMES_PLANAR) 
@@ -358,37 +302,21 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         result = int_y_u_v<Real, Real>(n, wt, u, v, e);
       else 
         result = int_x_u_v<Real, Real>(n, wt, u, v, e);
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      rank1 nu_elem = matprop.get_nu(mat);
-      rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
-      rank1 chi_elem = matprop.get_chi(mat);
-      
-      return result * (-Coeffs::system_matrix(mrow, mcol, 0)) * chi_elem[gto] * nu_elem[gfrom] * Sigma_f_elem[gfrom];
+            
+      return result * (-Coeffs::system_matrix(mrow, mcol, 0)) * chi_to * nu_from * Sigma_f_from;
     }
     
     template<typename Real>
     Real FissionYield::OuterIterationForm::vector_form( int n, double *wt, Func<Real> *u_ext[],
                                                           Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
-    {  
-      if (!matprop.get_fission_nonzero_structure()[g])
-        return Real(0);
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      rank1 nu_elem = matprop.get_nu(mat);
-      rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
-      rank1 chi_elem = matprop.get_chi(mat);
-                
+    {                 
       Real result(0);
       for (int i = 0; i < n; i++) 
       {
         Real local_res(0);
         for (int gfrom = 0; gfrom < ext->get_nf(); gfrom++)
-          local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i]; // double flux in group 'gfrom'
-        
-        // cout << "FissionYield::OuterIterationForm (mom. #" << mrow << " (x, y) = (" << e->x[i] << ", " << e->y[i] << "), " << mat << ") : ";
-        // cout << (local_res * Coeffs::even_moment(0, mrow) * chi_elem[g] / keff) << endl;
-        
+          local_res += nu[gfrom] * Sigma_f[gfrom] * ext->fn[gfrom]->val[i]; // double flux in group 'gfrom'
+                
         local_res = local_res * wt[i] * v->val[i];
         
         if (geom_type == HERMES_AXISYM_X)
@@ -399,25 +327,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         result += local_res;
       }
       
-      return result * Coeffs::even_moment(0, mrow) * chi_elem[g] / keff;
+      return result * Coeffs::even_moment(0, mrow) * chi_to / keff;
     }
     
     template<typename Real>
     Real FissionYield::Residual::vector_form( int n, double *wt, Func<Real> *u_ext[],
                                                 Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
-    { 
-      if (!matprop.get_fission_nonzero_structure()[gto])
-        return Real(0);
-                
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      rank1 nu_elem = matprop.get_nu(mat);
-      rank1 Sigma_f_elem = matprop.get_Sigma_f(mat);
-      rank1 chi_elem = matprop.get_chi(mat);
-      
+    {       
       Real result(0);
-      for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
+      for (unsigned int gfrom = 0; gfrom < G; gfrom++)
       {
-        double nSf = nu_elem[gfrom] * Sigma_f_elem[gfrom];
+        double nSf = nu[gfrom] * Sigma_f[gfrom];
         
         for (unsigned int mcol = 0; mcol < N_odd; mcol++)
         {
@@ -430,7 +350,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         }
       }
       
-      return result * chi_elem[gto];
+      return result * chi_to;
     }
     
     template<typename Real>
@@ -447,13 +367,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       else if (geom_type == HERMES_AXISYM_X) 
         result = int_y_grad_u_grad_v<Real, Real>(n, wt, u, v, e);
       else 
-        result = int_x_grad_u_grad_v<Real, Real>(n, wt, u, v, e);
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);     
-      
-      // cout << "OffDiagonalStreaming::Jacobian (mom. #" << mrow << ") | " << mat << " | D = " << -Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto][gfrom] << endl;          
-      
-      return -result * Coeffs::D(mrow) * matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto][gfrom];
+        result = int_x_grad_u_grad_v<Real, Real>(n, wt, u, v, e); 
+  
+      return result * D;
     }
     
     template<typename Real>
@@ -461,27 +377,22 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                         Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
     { 
       Real result(0);
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      rank1 D_elem = matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto];
-      
-      for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
+
+      for (unsigned int gfrom = 0; gfrom < G; gfrom++)
       { 
         if (gfrom != gto)
         {
           unsigned int i = mg.pos(mrow, gfrom);
           
           if (geom_type == HERMES_PLANAR) 
-            result += D_elem[gfrom] * int_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v);
+            result += D[gfrom] * int_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v);
           else if (geom_type == HERMES_AXISYM_X) 
-            result += D_elem[gfrom] * int_y_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v, e);
+            result += D[gfrom] * int_y_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v, e);
           else 
-            result += D_elem[gfrom] * int_x_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v, e);
+            result += D[gfrom] * int_x_grad_u_ext_grad_v<Real, Real>(n, wt, u_ext[i], v, e);
         }
       }
-      
-      // cout << "OffDiagonalStreaming::Residual (mom. #" << mrow << ") | " << mat << " | D = " << -Coeffs::D(mrow) * D_elem[0] << endl;          
-      
+            
       return -result * Coeffs::D(mrow);
     }
     
@@ -500,28 +411,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         result = int_y_u_v<Real, Real>(n, wt, u, v, e);
       else 
         result = int_x_u_v<Real, Real>(n, wt, u, v, e);
-      
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      
-      double Sigma_rn_elem = 0.;
-      for (unsigned int k = 0; k <= mrow; k++)
-        Sigma_rn_elem += Coeffs::system_matrix(mrow, mcol, k) * matprop.get_Sigma_rn(mat)[2*k][gto][gfrom];
-      
-      // cout << "OffDiagonalReactions::Jacobian (mom. #(" << mrow << "," << mcol << ") | " << mat << " | Sigma_r = " << Sigma_rn_elem << endl;
-      
-      return result * Sigma_rn_elem;
+            
+      return result * Sigma_rn;
     }
     
     template<typename Real>
     Real OffDiagonalReactions::Residual::vector_form( int n, double *wt, Func<Real> *u_ext[],
                                                         Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
-    { 
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      rank3 Sigma_rn_elem = matprop.get_Sigma_rn(mat);
-      
+    {       
       Real result(0);
       unsigned int i = mg.pos(mrow, gto);
-      for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
+      for (unsigned int gfrom = 0; gfrom < G; gfrom++)
       {            
         for (unsigned int mcol = 0; mcol < N_odd; mcol++)
         {
@@ -531,7 +431,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           {
             double coeff = 0.;
             for (unsigned int k = 0; k <= std::min(mrow, mcol); k++)
-              coeff += Sigma_rn_elem[2*k][gto][gfrom] * Coeffs::system_matrix(mrow, mcol, k);
+              coeff += Sigma_rn[2*k][gto][gfrom] * Coeffs::system_matrix(mrow, mcol, k);
             
             // cout << "OffDiagonalReactions::Residual (mom. #(" << mrow << "," << mcol << ") | " << mat << " | coeff = " << coeff << endl;
             
@@ -551,15 +451,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     template<typename Real>
     Real ExternalSources::LinearForm::vector_form(int n, double *wt, Func<Real> *u_ext[],
                                                     Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
-    { 
-      std::string mat = matprop.get_material(e->elem_marker, wf);
-      
+    {       
       if (geom_type == HERMES_PLANAR) 
-        return Coeffs::even_moment(0, mrow) * matprop.get_iso_src(mat)[g] * int_v<Real>(n, wt, v);
+        return Coeffs::even_moment(0, mrow) * src * int_v<Real>(n, wt, v);
       else if (geom_type == HERMES_AXISYM_X) 
-        return Coeffs::even_moment(0, mrow) * matprop.get_iso_src(mat)[g] * int_y_v<Real>(n, wt, v, e);
+        return Coeffs::even_moment(0, mrow) * src * int_y_v<Real>(n, wt, v, e);
       else 
-        return Coeffs::even_moment(0, mrow) * matprop.get_iso_src(mat)[g] * int_x_v<Real>(n, wt, v, e);
+        return Coeffs::even_moment(0, mrow) * src * int_x_v<Real>(n, wt, v, e);
     }
   
   /* WeakFormParts */

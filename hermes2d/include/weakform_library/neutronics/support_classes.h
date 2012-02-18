@@ -441,39 +441,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   }
   /* SPN */
   }
-  
-  // FIXME: Ad-hoc class. Replace accordingly as soon as arithmetic operations with solutions will be ready.
-  template <typename Scalar>
-  class MultipliableSolution : public Solution<Scalar>
-  {
-    public:
-      MultipliableSolution(const Solution<Scalar>* solution) { this->copy(solution); }
-      
-      void multiply(double coeff)
-      {
-        if (this->sln_type == HERMES_SLN)
-          for (int i = 0; i < this->num_coefs; i++)
-            this->mono_coefs[i] *= coeff;
-        else
-          error("Not implemented.");
-      }
-  };
-  
-  // FIXME: Ad-hoc class. Replace accordingly as soon as constant solution can be specified otherwise.
-  template <typename Scalar>
-  class ConstantSolution : public ExactSolutionScalar<Scalar>
-  {
-    public:
-      ConstantSolution(Mesh *mesh, const double cnst) : ExactSolutionScalar<Scalar>(mesh), cnst(cnst) {}
-      
-      Scalar value (double x, double y) const { return cnst; }      
-      void derivatives (double x, double y, double& dx, double& dy) const { dx = dy = 0; };
-      Ord ord(Ord x, Ord y) const { return Ord(0); }
-      
-    private:
-      double cnst;
-  };
-  
+    
   class PostProcessor
   {
     NeutronicsMethod method;
