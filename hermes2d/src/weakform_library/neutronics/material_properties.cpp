@@ -1,3 +1,7 @@
+//
+//TODO: MaterialRegionMap
+//
+
 #include "neutronics/material_properties.h"
 #include <iomanip>
 
@@ -10,7 +14,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {
       RegionMaterialMap::const_iterator it = reg_mat_map.begin();
       for ( ; it != reg_mat_map.end(); ++it)
+      {
         materials_list.insert(it->second);
+        material_region_map[it->second].push_back(it->first);
+      }
     }
 
     void MaterialPropertyMaps::extend_to_multigroup(const MaterialPropertyMap0& mrsg_map, 
@@ -214,18 +221,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
     }
     
-    std::string MaterialPropertyMaps::get_material(int elem_marker, WeakForm<double> *wf) const 
-    { 
-      std::string region;
-      
-      if (elem_marker == HERMES_DUMMY_ELEM_MARKER)
-        region = this->nu.begin()->first; 
-      else
-        region = wf->get_element_markers_conversion()->get_user_marker(elem_marker);
-      
-      return get_material(region);
+    Hermes::vector<std::string> MaterialPropertyMaps::get_regions(const std::string& material) const
+    {
+      std::map<std::string, Hermes::vector<std::string> >::const_iterator it;
+      for (it = material_region_map.begin(); it != material_region_map.end(); ++it)
+        if (it->first == material)
+          return it->second;
     }
-    
+        
     std::string MaterialPropertyMaps::get_material(int elem_marker, Mesh *mesh) const 
     { 
       std::string region;

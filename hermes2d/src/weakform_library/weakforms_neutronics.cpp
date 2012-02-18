@@ -4,7 +4,7 @@
 namespace Hermes { namespace Hermes2D { namespace Neutronics
 {
   int keff_eigenvalue_iteration(const Hermes::vector<Solution<double> *>& solutions, 
-                                Common::WeakForms::KeffEigenvalueProblem* wf, const Hermes::vector<Space<double> *>& spaces,
+                                Common::WeakForms::KeffEigenvalueProblem* wf, const Hermes::vector<const Space<double> *>& spaces,
                                 MatrixSolverType matrix_solver, double tol_keff, double tol_flux)
   {
     // Sanity checks.
@@ -47,9 +47,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       memset(coeff_vec, 0, ndof*sizeof(double));
 
       // The matrix doesn't change within the power iteration loop, so we don't have to reassemble the Jacobian again.
-      if (!solver.solve_keep_jacobian(coeff_vec, 1e-8, 3)) 
-        error_function("Newton's iteration failed.");
-          
+      try
+      {
+        solver.solve_keep_jacobian(coeff_vec, 1e-8, 3);
+      }
+      catch(Hermes::Exceptions::Exception e)
+      {
+        e.printMsg();
+        error("Newton's iteration failed.");
+      }
+      
       // Convert coefficients vector into a set of Solution pointers.
       Solution<double>::vector_to_solutions(solver.get_sln_vector(), spaces, new_solutions);
 
@@ -74,8 +81,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           PostProcessor pp(wf->get_method_type(), wf->get_geom_type());
           
           // Normalize both flux iterates with the same criterion (unit integrated fission source).
-          MultipliableSolution<double> sln(solutions[i]);
-          MultipliableSolution<double> new_sln(new_solutions[i]);
+          Solution<double> sln;
+          sln.copy(solutions[i]);
+          Solution<double> new_sln;
+          new_sln.copy(new_solutions[i]);
           
           sln.multiply(1./src_old);
           new_sln.multiply(1./src_new);
