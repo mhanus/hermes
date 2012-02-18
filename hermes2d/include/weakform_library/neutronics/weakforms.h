@@ -85,7 +85,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {
       protected:
         double keff;
-        const Hermes::vector<std::string>& fission_regions;
+        const Hermes::vector<std::string>& fission_materials;
+        Hermes::vector<std::string> fission_regions;
 
         Hermes::vector<Solution<double>*> stored_flux_solutions;
         Hermes::vector<MeshFunction<double>*> scalar_flux_iterates;
@@ -96,10 +97,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                               const MaterialPropertyMaps* matprop,
                               GeomType geom_type, 
                               double initial_keff_guess,
-                              const Hermes::vector<std::string>& fission_regions = Hermes::vector<std::string>()) 
+                              const Hermes::vector<std::string>& fission_materials = Hermes::vector<std::string>()) 
           : NeutronicsProblem(n_eq, matprop, geom_type),
-            keff(initial_keff_guess), fission_regions(fission_regions)
-       { };
+            keff(initial_keff_guess), fission_materials(fission_materials)
+        { 
+          Hermes::vector<std::string>::const_iterator it = fission_materials.begin();
+          Hermes::vector<std::string>::iterator insert_it = fission_regions.begin();
+          for ( ; it != fission_materials.end(); ++it)
+          {
+            Hermes::vector<std::string> regs = matprop->get_regions(*it);
+            fission_regions.insert(insert_it, regs.begin(), regs.end());
+            insert_it += regs.size();
+          }
+        };
         
       public:
         virtual ~KeffEigenvalueProblem() { };
@@ -186,7 +196,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                                                 
         KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
                               const Hermes::vector<Solution<double>*>& iterates, 
-                              const Hermes::vector<std::string>& fission_regions,
+                              const Hermes::vector<std::string>& fission_materials,
                               double initial_keff_guess,
                               GeomType geom_type = HERMES_PLANAR );                                            
                                         
