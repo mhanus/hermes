@@ -1,3 +1,7 @@
+//
+//TODO: MaterialRegionMap
+//
+
 #ifndef ___H2D_NEUTRONICS_MATERIAL_PROPERTIES_H
 #define ___H2D_NEUTRONICS_MATERIAL_PROPERTIES_H
 
@@ -81,6 +85,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         std::set<std::string> materials_list;
         std::map<std::string, std::string> region_material_map;
+        std::map<std::string, Hermes::vector<std::string> > material_region_map;
         
         unsigned int G;
         
@@ -119,7 +124,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         /// Required in order to properly delete derived classes accessed through a pointer to this class.
         virtual ~MaterialPropertyMaps() {}
         
-        std::string get_material(int elem_marker, WeakForm<double> *wf) const;
+        Hermes::vector<std::string> get_regions(const std::string& material) const;
         std::string get_material(int elem_marker, Mesh *mesh) const;
         std::string get_material(const std::string& elem_marker) const;
         

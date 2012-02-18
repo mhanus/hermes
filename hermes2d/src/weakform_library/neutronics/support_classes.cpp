@@ -69,7 +69,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       std::set<std::string>::const_iterator it = source_regions.begin();
       for ( ; it != source_regions.end(); ++it)
-        markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it));
+        markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it).marker);
     }
     
     void SourceFilter::set_active_element(Element* e)
@@ -101,7 +101,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           int o = this->get_fn_order() + ru->get_inv_ref_order();
           if (geom_type == HERMES_AXISYM_X || geom_type == HERMES_AXISYM_Y)
             o++;
-          limit_order(o);
+          limit_order(o, e->get_mode());
           this->set_quad_order(o, H2D_FN_VAL);
           double *uval = this->get_fn_values();
           double result = 0.0;
@@ -141,8 +141,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       if (ne > 0 && ng > 0)
       {
-        sviews = new Views::ScalarView<double>* [n_equations];
-        oviews = new Views::OrderView<double>* [n_equations];
+        sviews = new Views::ScalarView* [n_equations];
+        oviews = new Views::OrderView* [n_equations];
         if (display_meshes)
           mviews = new Views::MeshView* [n_equations];
         else
@@ -233,10 +233,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         std::string title_flux = base_title_flux + itos(g);
         std::string title_order = base_title_order + itos(g);
         
-        sviews[g] = new Views::ScalarView<double>(title_flux.c_str(), new Views::WinGeom(g*452, 0, 450, 450));
+        sviews[g] = new Views::ScalarView(title_flux.c_str(), new Views::WinGeom(g*452, 0, 450, 450));
         sviews[g]->show_mesh(false);
         sviews[g]->set_3d_mode(true);
-        oviews[g] = new Views::OrderView<double>(title_order.c_str(), new Views::WinGeom(g*452, 452, 450, 450));
+        oviews[g] = new Views::OrderView(title_order.c_str(), new Views::WinGeom(g*452, 452, 450, 450));
       }
       
       if (display_meshes)
@@ -269,7 +269,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void Visualization::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
                                     Hermes::vector< Solution<double>* > solutions, bool mode_3D)
     {
-      Views::Linearizer<double> lin;
+      Views::Linearizer lin;
       for (unsigned int g = 0; g < n_groups; g++)
       {
         std::string appendix = std::string("_group_") + itos(g);
@@ -461,7 +461,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         error_function("MomentFilter::OddMomentVal not defined for derivatives.");
       
       Quad2D* quad = this->quads[this->cur_quad];
-      int np = quad->get_num_points(order);
+      int np = quad->get_num_points(order, this->mode);
       Filter<double>::Node* node = new_node(H2D_FN_VAL_0, np);
       
       double **dx = new double* [this->num], **dy = new double* [this->num];
@@ -596,10 +596,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         {
           unsigned int i = mg.pos(m,g);
           
-          sviews[i] = new Views::ScalarView<double>((title_flux + itos(m)).c_str(), new Views::WinGeom(m*452, g*452, 450, 450));
+          sviews[i] = new Views::ScalarView((title_flux + itos(m)).c_str(), new Views::WinGeom(m*452, g*452, 450, 450));
           sviews[i]->show_mesh(false);
           sviews[i]->set_3d_mode(true);
-          oviews[i] = new Views::OrderView<double>((title_order + itos(m)).c_str(), new Views::WinGeom(m*452, n_groups*452 + g*452, 450, 450));
+          oviews[i] = new Views::OrderView((title_order + itos(m)).c_str(), new Views::WinGeom(m*452, n_groups*452 + g*452, 450, 450));
         }
       }
       
@@ -644,7 +644,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           sviews[mg.pos(m,g)]->show(solutions[mg.pos(m,g)]);
     }
     
-    void Visualization::show_even_flux_moment(unsigned int moment, unsigned int group, Views::ScalarView<double>* sview,
+    void Visualization::show_even_flux_moment(unsigned int moment, unsigned int group, Views::ScalarView* sview,
                                               Hermes::vector< Solution<double>* > solutions)
     {
       if ((moment % 2) != 0 || moment >= n_moments)
@@ -661,7 +661,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       sview->show(&mf);
     }
     
-    void Visualization::show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView<double>* vview,
+    void Visualization::show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView* vview,
                                              Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop)
     {
       if ((moment % 2) != 1 || moment >= n_moments)
@@ -685,8 +685,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       if (sviews_app == NULL)
       {
-        sviews_app = new Views::ScalarView<double>* [n_equations];
-        vviews = new Views::VectorView<double>* [n_equations];
+        sviews_app = new Views::ScalarView* [n_equations];
+        vviews = new Views::VectorView* [n_equations];
         
         for (unsigned int g = 0; g < n_groups; g++)
         {
@@ -695,10 +695,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           {
             unsigned int i = mg.pos(m,g);
             
-            sviews_app[i] = new Views::ScalarView<double>((title_flux + itos(2*m)).c_str(), new Views::WinGeom(2*m*452, g*452, 450, 450));
+            sviews_app[i] = new Views::ScalarView((title_flux + itos(2*m)).c_str(), new Views::WinGeom(2*m*452, g*452, 450, 450));
             sviews_app[i]->show_mesh(false);
             sviews_app[i]->set_3d_mode(true);
-            vviews[i] = new Views::VectorView<double>((title_flux + itos(2*m+1)).c_str(), new Views::WinGeom((2*m+1)*452, g*452, 450, 450));
+            vviews[i] = new Views::VectorView((title_flux + itos(2*m+1)).c_str(), new Views::WinGeom((2*m+1)*452, g*452, 450, 450));
           }
         }
       }
@@ -717,7 +717,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void Visualization::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
                                     Hermes::vector< Solution<double>* > solutions, bool mode_3D)
     { 
-      Views::Linearizer<double> lin;
+      Views::Linearizer lin;
       for (unsigned int g = 0; g < n_groups; g++)
       {
         std::string appendix = std::string("_group_") + itos(g);
@@ -783,7 +783,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     std::set<int> markers;
     Hermes::vector<std::string>::const_iterator it = areas.begin();
     for ( ; it != areas.end(); ++it)
-      markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it));
+      markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it).marker);
     
     double integral = 0.0;
     Element* e;
@@ -795,7 +795,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         solution->set_active_element(e);
         RefMap* ru = solution->get_refmap();
         int o = solution->get_fn_order() + ru->get_inv_ref_order();
-        limit_order(o);
+        limit_order(o, e->get_mode());
         solution->set_quad_order(o, H2D_FN_VAL);
         double *uval = solution->get_fn_values();
         double result = 0.0;
@@ -830,16 +830,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   {
     if (integrated_fission_source < 1e-12)
       error_function("PostProcessor::normalize_to_unit_fission_source : Invalid fission source.");
- 
-    // FIXME: Temporary version using the ad-hoc class MultipliableSolution.
-    
+     
     Hermes::vector< Solution<double>* >::iterator sln = solutions->begin();
     for ( ; sln != solutions->end(); ++sln)
-    {
-      MultipliableSolution<double> ms(*sln);
-      ms.multiply(1./integrated_fission_source);
-      (*sln)->copy(&ms);
-    }
+      (*sln)->multiply(1./integrated_fission_source);
   }
 
   void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution<double>* >* solutions, 
@@ -880,7 +874,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     std::set<int> markers;
     Hermes::vector<std::string>::const_iterator it = regions.begin();
     for ( ; it != regions.end(); ++it)
-      markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it));
+      markers.insert(mesh->get_element_markers_conversion().get_internal_marker(*it).marker);
             
     double integral = 0.0;
     Element* e;
@@ -892,7 +886,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         solution->set_active_element(e);
         RefMap* ru = solution->get_refmap();
         int o = solution->get_fn_order() + ru->get_inv_ref_order();
-        limit_order(o);
+        limit_order(o, e->get_mode());
         solution->set_quad_order(o, H2D_FN_VAL);
         double *uval = solution->get_fn_values();
         double result = 0.0;
