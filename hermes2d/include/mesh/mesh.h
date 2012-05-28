@@ -410,7 +410,7 @@ namespace Hermes
       template<typename Scalar> friend class Global;
       friend class KellyTypeAdapt<std::complex<double> >;
       template<typename Scalar> friend class Solution;
-      template<typename Scalar> friend class Filter;
+      //template<typename Scalar> friend class Filter;
       template<typename Scalar> friend class MeshFunction;
       friend class RefMap;
       friend class Traverse;
