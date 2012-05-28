@@ -117,10 +117,10 @@ int main(int argc, char* argv[])
   H1ProjBasedSelector<double> selector(CAND_LIST, CONV_EXP, H2DRS_DEFAULT_ORDER);
 
   // Initialize views.
-  Views::ScalarView<double> sview("Solution", new Views::WinGeom(0, 0, 440, 350));
+  Views::ScalarView sview("Solution", new Views::WinGeom(0, 0, 440, 350));
   sview.fix_scale_width(50);
   sview.show_mesh(false);
-  Views::OrderView<double>  oview("Polynomial orders", new Views::WinGeom(450, 0, 400, 350));
+  Views::OrderView  oview("Polynomial orders", new Views::WinGeom(450, 0, 400, 350));
   
   // DOF and CPU convergence graphs initialization.
   SimpleGraph graph_dof, graph_cpu;
@@ -143,20 +143,22 @@ int main(int argc, char* argv[])
     // Initialize the FE problem.
     DiscreteProblem<double> dp(&wf, ref_space);
 
-    // Initial coefficient vector for the Newton's method.  
-    double* coeff_vec = new double[ndof_ref];
-    memset(coeff_vec, 0, ndof_ref*sizeof(double));
-
     // Perform Newton's iteration on reference emesh.
     NewtonSolver<double> newton(&dp, matrix_solver);
     newton.set_verbose_output(false);
     
-    info("Solving on reference mesh.");
-    if (!newton.solve(coeff_vec)) 
-      error_function("Newton's iteration failed.");
-    else
-      // Translate the resulting coefficient vector into the instance of Solution.
-      Solution<double>::vector_to_solution(newton.get_sln_vector(), ref_space, &ref_sln);
+    try
+    {
+      newton.solve();
+    }
+    catch(Hermes::Exceptions::Exception e)
+    {
+      e.printMsg();
+      error("Newton's iteration failed.");
+    }
+    
+    // Translate the resulting coefficient vector into the instance of Solution.
+    Solution<double>::vector_to_solution(newton.get_sln_vector(), ref_space, &ref_sln);
 
     // Project the fine mesh solution onto the coarse mesh.
     Solution<double> sln;
@@ -206,9 +208,6 @@ int main(int argc, char* argv[])
     }
     if (space.get_num_dofs() >= NDOF_STOP) done = true;
 
-    // Clean up.
-    delete [] coeff_vec;
-    
     if(done == false) 
       delete ref_space->get_mesh();
     delete ref_space;
