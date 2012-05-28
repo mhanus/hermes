@@ -206,7 +206,7 @@ namespace Hermes
       template<typename Scalar> friend class DiscreteProblem;
       template<typename Scalar> friend class Solution;
       template<typename Scalar> friend class NeighborSearch;
-      template<typename Scalar> friend class Filter;
+      //template<typename Scalar> friend class Filter;
       template<typename Scalar> friend class MeshFunction;
       template<typename Scalar> friend class Global;
       template<typename Scalar> friend class RefinementSelectors::Selector;
@@ -554,7 +554,7 @@ namespace Hermes
       template<typename Scalar> friend class Global;
       friend class KellyTypeAdapt<std::complex<double> >;
       template<typename Scalar> friend class Solution;
-      template<typename Scalar> friend class Filter;
+      //template<typename Scalar> friend class Filter;
       template<typename Scalar> friend class MeshFunction;
       friend class RefMap;
       friend class Traverse;
