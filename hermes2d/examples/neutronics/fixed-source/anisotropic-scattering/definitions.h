@@ -4,6 +4,8 @@ using namespace Hermes::Hermes2D;
 #include "weakforms_neutronics.h"
 using namespace Neutronics; 
 
+#include "../../utils.h"
+
 // Choose one of the three following models, leave the other ones commented
 #define USE_SPN
 //#define USE_DIFFUSION_WITH_TRANSPORT_CORRECTION
@@ -48,7 +50,3 @@ class CustomWeakForm : public WeakForms::FixedSourceProblem
       /// Use the default form from Adapt<Scalar>::MatrixFormVolError to evaluate the quadrature order.
   };
 #endif
-
-void report_num_dof(const std::string& msg, const Hermes::vector<Space<double> *> spaces);
-void report_errors(const std::string& msg, const Hermes::vector< double > errors);
-std::string itos(int t);
