@@ -1,6 +1,8 @@
 #include "hermes2d.h"
 using namespace Hermes::Hermes2D;
 
+#include "../../../utils.h"
+
 #include "weakforms_neutronics.h"
 using namespace Neutronics; 
   using namespace SPN;
@@ -20,7 +22,7 @@ class ErrorFormSPN : public Adapt<Scalar>::MatrixFormVolError
     
   public:
     
-    ErrorFormSPN(unsigned int moment1, unsigned int moment2, ProjNormType norm) : Adapt<Scalar>::MatrixFormVolError(norm)
+    ErrorFormSPN(unsigned int moment1, unsigned int moment2, ProjNormType norm) : Adapt<Scalar>::MatrixFormVolError(0,0,norm)
     { 
       factor = Coeffs::even_moment(0, moment1) * Coeffs::even_moment(0, moment2);
     }
@@ -35,7 +37,3 @@ class ErrorFormSPN : public Adapt<Scalar>::MatrixFormVolError
     
     /// Use the default form from Adapt<Scalar>::MatrixFormVolError to evaluate the quadrature order.
 };
-
-void report_num_dof(const std::string& msg, const Hermes::vector<Space<double> *> spaces);
-void report_errors(const std::string& msg, const Hermes::vector< double > errors);
-std::string itos(int t);
