@@ -120,7 +120,7 @@ const MaterialPropertyMap3 Ssn = material_property_map<rank3>
 );
 
 // Reference solutions - average fluxes by composition:
-const Hermes::vector<string> edit_regions = HermesMultiArray<string>
+const Hermes::vector<std::string> edit_regions = HermesMultiArray<std::string>
   ("1")("2")("3")("4")("5");  
 const double ref_average_fluxes_sp3[5] = {
   1.1973E+01, 5.3613E-01, 1.9222E+01, 8.2946E-01, 1.5318E+00
@@ -186,9 +186,11 @@ int main(int argc, char* argv[])
   }
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<Space<double> *> spaces;
+  Hermes::vector<Space<double> *> spaces_;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
-    spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
+    spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
+  
+  ConstantableSpacesVector spaces(&spaces_);
    
   // Initialize the weak formulation.
   CustomWeakForm wf(matprop, SPN_ORDER);
@@ -229,40 +231,41 @@ int main(int argc, char* argv[])
   
   // Adaptivity loop.
   int as = 1; bool done = false;
-  Hermes::vector<Space<double> *>* fine_spaces;
   do 
   {
     info("---- Adaptivity step %d:", as);
     
     // Initialize the fine mesh problem.
-    fine_spaces = Space<double>::construct_refined_spaces(spaces);
-    int ndof_fine = Space<double>::get_num_dofs(*fine_spaces);
+    ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get()));
+    int ndof_fine = Space<double>::get_num_dofs(fine_spaces.get());
+    
+    report_num_dof("Solving on fine meshes, #DOF: ", fine_spaces.get());
   
-    report_num_dof("Solving on fine meshes, #DOF: ", *fine_spaces);
-  
-    DiscreteProblem<double> dp(&wf, *fine_spaces);
+    DiscreteProblem<double> dp(&wf, fine_spaces.get_const());
 
-    // Initial coefficient vector for the Newton's method.  
-    double* coeff_vec = new double[ndof_fine];
-    memset(coeff_vec, 0, ndof_fine * sizeof(double));
-  
     // Perform Newton's iteration on reference mesh.
     NewtonSolver<double> *newton = new NewtonSolver<double>(&dp, matrix_solver);
     newton->set_verbose_output(false);
   
-    if (!newton->solve(coeff_vec)) 
-      error_function("Newton's iteration failed.");
-    else
-      // Translate the resulting coefficient vector into instances of Solution.
-      Solution<double>::vector_to_solutions(newton->get_sln_vector(), *fine_spaces, solutions);
+    try
+    {
+      newton->solve();
+    }
+    catch(Hermes::Exceptions::Exception e)
+    {
+      e.printMsg();
+      error("Newton's iteration failed.");
+    }
     
-    // Clean up.
+    // Translate the resulting coefficient vector into instances of Solution.
+    Solution<double>::vector_to_solutions(newton->get_sln_vector(), fine_spaces.get_const(), solutions);
+
+    // Solution of discrete problem completed, delete the solver object.
     delete newton;
-    delete [] coeff_vec;
     
     // Project the fine mesh solution onto the coarse mesh.
-    report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces);
-    OGProjection<double>::project_global(spaces, solutions, coarse_solutions, matrix_solver);
+    report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces.get());
+    OGProjection<double>::project_global(spaces.get_const(), solutions, coarse_solutions, matrix_solver);
 
     // View the coarse-mesh solutions and polynomial orders.
     if (HERMES_VISUALIZATION)
@@ -272,7 +275,7 @@ int main(int argc, char* argv[])
       if (SHOW_INTERMEDIATE_SOLUTIONS)
         views.show_solutions(coarse_solutions);
       if (SHOW_INTERMEDIATE_ORDERS)
-        views.show_orders(spaces);
+        views.show_orders(spaces.get());
       cpu_time.tick(Hermes::HERMES_SKIP);
     }
     
@@ -332,7 +335,7 @@ int main(int argc, char* argv[])
     // Calculate error estimate for each solution component and the total error estimate.
     info("  --- Calculating total relative error of pseudo-fluxes approximation.");
         
-    Adapt<double> adaptivity(spaces);  
+    Adapt<double> adaptivity(spaces.get());  
         
     MomentGroupFlattener mg(N_GROUPS);  // Creates a single index from the moment-group pair.
     // Set the error estimation/normalization form.
@@ -375,11 +378,43 @@ int main(int argc, char* argv[])
     if (!done)
     {
       for(unsigned int i = 0; i < N_EQUATIONS; i++)
-        delete (*fine_spaces)[i]->get_mesh();
-      delete fine_spaces;
+        delete fine_spaces.get()[i]->get_mesh();
+      delete &fine_spaces.get();
       
       // Increase the adaptivity step counter.
       as++;
+    }
+    else
+    {
+      cpu_time.tick();
+      verbose("Total running time: %g s", cpu_time.accumulated());
+      cpu_time.reset();
+      
+      // Visualization.
+      
+      if (HERMES_VISUALIZATION)
+      {
+        views.show_all_flux_moments(solutions, matprop);    
+        // Wait for the view to be closed.  
+        Views::View::wait();
+      }
+      if (VTK_VISUALIZATION)
+      {
+        views.save_solutions_vtk("flux", "flux", solutions);
+        views.save_orders_vtk("space", spaces.get());
+      }
+  
+      for (unsigned int i = 0; i < N_EQUATIONS; i++)
+      {
+        // Make the fine-mesh spaces the final spaces for further analyses.
+        delete spaces.get()[i]->get_mesh(); // Alternatively "delete meshes[i]".
+        delete spaces.get()[i];
+        spaces.get()[i] = fine_spaces.get()[i]; 
+
+        // Delete the auxiliary coarse-mesh solutions.
+        delete coarse_solutions[i];   
+      }
+      delete &fine_spaces.get(); 
     }
   }
   while (done == false);
@@ -387,41 +422,11 @@ int main(int argc, char* argv[])
   // Save the convergence graphs.
   graph_dof.save(("conv_dof_sp"+itos(SPN_ORDER)+".gp").c_str());
   graph_cpu.save(("conv_cpu_sp"+itos(SPN_ORDER)+".gp").c_str());
-  
-  for (unsigned int i = 0; i < N_EQUATIONS; i++)
-  {
-    // Make the fine-mesh spaces the final spaces for further analyses.
-    delete spaces[i]->get_mesh(); // Alternatively "delete meshes[i]".
-    delete spaces[i];
-    spaces[i] = fine_spaces->at(i); 
-
-    // Delete the auxiliary coarse-mesh solutions.
-    delete coarse_solutions[i];   
-  }
-  delete fine_spaces; 
-    
-  cpu_time.tick();
-  verbose("Total running time: %g s", cpu_time.accumulated());
-  cpu_time.reset();
-  
+        
   //
   // Analysis of the solution.
   //
-  
-  // Visualization.
-  
-  if (HERMES_VISUALIZATION)
-  {
-    views.show_all_flux_moments(solutions, matprop);    
-    // Wait for the view to be closed.  
-    Views::View::wait();
-  }
-  if (VTK_VISUALIZATION)
-  {
-    views.save_solutions_vtk("flux", "flux", solutions);
-    views.save_orders_vtk("space", spaces);
-  }
-  
+    
   Hermes::vector<double> integrated_fluxes;
   pp.get_integrated_scalar_fluxes(solutions, &integrated_fluxes, N_GROUPS, edit_regions);
         
@@ -441,8 +446,8 @@ int main(int argc, char* argv[])
   // Final clean up.
   for(unsigned int i = 0; i < N_EQUATIONS; i++)
   {
-    delete spaces[i]->get_mesh();
-    delete spaces[i];
+    delete spaces.get()[i]->get_mesh();
+    delete spaces.get()[i];
     delete solutions[i];
   }
   
