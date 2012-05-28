@@ -111,9 +111,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         void fill_with(double c, MaterialPropertyMap1 *mrmg_map);
         void fill_with(double c, MaterialPropertyMap2 *mrmg_map);
                   
-        MaterialPropertyMaps(unsigned int G, const std::set<std::string>& mat_list = std::set<std::string>()) 
-          : materials_list(mat_list), G(G)  { };
-          
+        MaterialPropertyMaps(unsigned int G, const std::set<std::string>& mat_list = std::set<std::string>());          
         MaterialPropertyMaps(unsigned int G, const RegionMaterialMap& reg_mat_map);
                     
         virtual void validate();

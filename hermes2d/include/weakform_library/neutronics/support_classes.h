@@ -253,21 +253,29 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         public:       
           EvenMomentVal(unsigned int angular_moment, unsigned int group, unsigned int G, 
                         const Hermes::vector<MeshFunction<double>*>& solutions)
-            : Common(angular_moment, group, G), SimpleFilter<double>(solutions, Hermes::vector<int>())
+            : Common(angular_moment, group, G), SimpleFilter<double>(solutions, Hermes::vector<int>()),
+              angular_moment(angular_moment), group(group), G(G)
           {
             if (odd_req_mom) error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
           };
           EvenMomentVal(unsigned int angular_moment, unsigned int group, unsigned int G,
                         const Hermes::vector<Solution<double>*>& solutions)
-            : Common(angular_moment, group, G), SimpleFilter<double>(solutions, Hermes::vector<int>())
+            : Common(angular_moment, group, G), SimpleFilter<double>(solutions, Hermes::vector<int>()),
+              angular_moment(angular_moment), group(group), G(G)
           {
             if (odd_req_mom) error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
           };
+          
+          virtual MeshFunction<double>* clone();
           
           virtual void set_active_element(Element* e);
           
         protected:             
           void filter_fn(int n, Hermes::vector<double*> values, double* result);
+          
+          unsigned int angular_moment;
+          unsigned int group;
+          unsigned int G;
       };
       
       class EvenMomentValDxDy : protected Common, public DXDYFilter<double>
@@ -275,16 +283,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         public:
           EvenMomentValDxDy(unsigned int angular_moment, unsigned int group, unsigned int G, 
                   const Hermes::vector<MeshFunction<double>*>& solutions)
-            : Common(angular_moment, group, G), DXDYFilter<double>(solutions)
+            : Common(angular_moment, group, G), DXDYFilter<double>(solutions),
+              angular_moment(angular_moment), group(group), G(G)
           {
             if (odd_req_mom) error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
           };
           EvenMomentValDxDy(unsigned int angular_moment, unsigned int group, unsigned int G,
                   const Hermes::vector<Solution<double>*>& solutions)
-            : Common(angular_moment, group, G), DXDYFilter<double>(solutions)
+            : Common(angular_moment, group, G), DXDYFilter<double>(solutions),
+              angular_moment(angular_moment), group(group), G(G)
           {
             if (odd_req_mom) error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
           };
+          
+          virtual MeshFunction<double>* clone();
           
           virtual void set_active_element(Element* e);
           
@@ -292,6 +304,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           void filter_fn(int n, 
                          Hermes::vector<double *> values, Hermes::vector<double *> dx, Hermes::vector<double *> dy, 
                          double* rslt, double* rslt_dx, double* rslt_dy);
+                         
+          unsigned int angular_moment;
+          unsigned int group;
+          unsigned int G;
       };
       
       class OddMomentVal : protected Common, public Filter<double>
@@ -300,7 +316,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           OddMomentVal(unsigned int component, unsigned int angular_moment, unsigned int group, unsigned int G, 
                   const Hermes::vector<MeshFunction<double>*>& solutions,
                   const MaterialProperties::MaterialPropertyMaps *matprop)
-            : Common(angular_moment, group, G), Filter<double>(solutions), component(component), matprop(matprop)
+            : Common(angular_moment, group, G), Filter<double>(solutions), 
+              component(component), matprop(matprop), angular_moment(angular_moment), group(group), G(G)
           {
             if (!odd_req_mom) error_function("MomentFilter::OddMomentVal constructor > %s", Messages::E_ODD_MOMENT_EXPECTED);
             if (component >= 2) error_function("MomentFilter::OddMomentVal > %s", Messages::E_INVALID_COMPONENT);
@@ -308,11 +325,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           OddMomentVal(unsigned int component, unsigned int angular_moment, unsigned int group, unsigned int G,
                   const Hermes::vector<Solution<double>*>& solutions,
                   const MaterialProperties::MaterialPropertyMaps *matprop)
-            : Common(angular_moment, group, G), Filter<double>(solutions), component(component), matprop(matprop)
+            : Common(angular_moment, group, G), Filter<double>(solutions), 
+              component(component), matprop(matprop), angular_moment(angular_moment), group(group), G(G)
           {
             if (!odd_req_mom) error_function("MomentFilter::OddMomentVal constructor > %s", Messages::E_ODD_MOMENT_EXPECTED);
             if (component >= 2) error_function("MomentFilter::OddMomentVal > %s", Messages::E_INVALID_COMPONENT);
           };
+          
+          virtual MeshFunction<double>* clone();
           
           virtual void set_active_element(Element* e);
           
@@ -326,6 +346,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                          
           const MaterialProperties::MaterialPropertyMaps *matprop;
           unsigned int component;
+          unsigned int angular_moment;
+          unsigned int group;
+          unsigned int G;
       };
       
       static void get_scalar_fluxes(const Hermes::vector<Solution<double>*>& angular_fluxes,
