@@ -255,7 +255,7 @@ namespace Hermes
 
       template<typename T> friend class Func;
       template<typename T> friend class Geom;
-      template<typename T> friend class Filter;
+      //template<typename T> friend class Filter;
       template<typename T> friend class SimpleFilter;
       template<typename T> friend class DXDYFilter;
       friend class ComplexFilter;
