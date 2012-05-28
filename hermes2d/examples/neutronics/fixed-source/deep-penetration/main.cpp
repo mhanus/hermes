@@ -20,7 +20,7 @@ using namespace RefinementSelectors;
 
 const unsigned int N_GROUPS = 2;    // Monoenergetic (single group) problem.
 #ifdef USE_SPN
-  const unsigned int SPN_ORDER = 3; // Currently implemented maximum is 9.
+  const unsigned int SPN_ORDER = 5; // Currently implemented maximum is 9.
 #else // DIFFUSION
   const unsigned int SPN_ORDER = 1;
 #endif
@@ -35,18 +35,18 @@ const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
   const int INIT_REF_NUM[N_EQUATIONS] = {
   /* g1 g2 */
   /*-------*/
-    5,  5,     // SP1
-    5,  5/*,     // SP3
-    5,  5,     // SP5
+    1,  1,     // SP1
+    1,  1,     // SP3
+    1,  1/*,     // SP5
     5,  5,     // SP7
     5,  5      // SP9
   */};
   const int P_INIT[N_EQUATIONS] = {
   /* g1 g2 */
   /*-------*/
-    2,  2,     // SP1
-    2,  2/*,     // SP3
-    2,  2,     // SP5
+    1,  1,     // SP1
+    1,  1,     // SP3
+    1,  1/*,     // SP5
     2,  2,     // SP7
     2,  2      // SP9
   */};
@@ -65,7 +65,7 @@ const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
 
 const double THRESHOLD = 0.6;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
-const int STRATEGY = -1;                  // Adaptive strategy:
+const int STRATEGY = 0;                  // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
                                          //   error is processed. If more elements have similar errors, refine
                                          //   all to keep the mesh symmetric. Absolute element errors should be
@@ -100,11 +100,11 @@ const int MAX_ADAPT_NUM = 60;            // Adaptivity process stops when the nu
 Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  
 
 // Visualisation options.
-const bool HERMES_VISUALIZATION = true;         // Set to "true" to enable Hermes OpenGL visualization. 
+const bool HERMES_VISUALIZATION = false;         // Set to "true" to enable Hermes OpenGL visualization. 
 const bool VTK_VISUALIZATION = false;           // Set to "true" to enable VTK output.
 const bool DISPLAY_MESHES = false;              // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
-const bool SHOW_INTERMEDIATE_ORDERS = false;     // Set to "true" to display coarse mesh solutions during adaptivity.
-const bool SHOW_INTERMEDIATE_SOLUTIONS = false;  // Set to "true" to display solutions on intermediate meshes during adaptivity.
+const bool SHOW_INTERMEDIATE_ORDERS = true;     // Set to "true" to display coarse mesh solutions during adaptivity.
+const bool SHOW_INTERMEDIATE_SOLUTIONS = true;  // Set to "true" to display solutions on intermediate meshes during adaptivity.
 
 const bool SAVE_FLUX_PROFILES = true;
 
@@ -161,7 +161,7 @@ const MaterialPropertyMap3 Ssn = material_property_map<rank3>
 );
 
 // Reference solutions - average fluxes by composition:
-const Hermes::vector<string> edit_regions = HermesMultiArray<string>
+const Hermes::vector<std::string> edit_regions = HermesMultiArray<std::string>
   ("source")("media");  
 const double average_fluxes_dragon[N_GROUPS][2] = {
   { 6.9860904E-02, 1.8559563E-03 },
@@ -264,10 +264,12 @@ int main(int argc, char* argv[])
   }
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<Space<double> *> spaces;
+  Hermes::vector<Space<double> *> spaces_;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
-    spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
+    spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
    
+  ConstantableSpacesVector spaces(&spaces_);
+  
   // Initialize the weak formulation.
   CustomWeakForm wf(matprop, SPN_ORDER);
   
@@ -322,40 +324,41 @@ int main(int argc, char* argv[])
     
     // Adaptivity loop.
     int as = 1; bool done = false;
-    Hermes::vector<Space<double> *>* fine_spaces;
     do 
     {
       info("---- Adaptivity step %d:", as);
       
       // Initialize the fine mesh problem.
-      fine_spaces = Space<double>::construct_refined_spaces(spaces);
-      int ndof_fine = Space<double>::get_num_dofs(*fine_spaces);
+      ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get()));
+      int ndof_fine = Space<double>::get_num_dofs(fine_spaces.get());
     
-      report_num_dof("Solving on fine meshes, #DOF: ", *fine_spaces);
+      report_num_dof("Solving on fine meshes, #DOF: ", fine_spaces.get());
     
-      DiscreteProblem<double> dp(&wf, *fine_spaces);
-
-      // Initial coefficient vector for the Newton's method.  
-      double* coeff_vec = new double[ndof_fine];
-      memset(coeff_vec, 0, ndof_fine * sizeof(double));
+      DiscreteProblem<double> dp(&wf, fine_spaces.get_const());
     
       // Perform Newton's iteration on reference mesh.
       NewtonSolver<double> *newton = new NewtonSolver<double>(&dp, matrix_solver);
       newton->set_verbose_output(false);
     
-      if (!newton->solve(coeff_vec)) 
-        error_function("Newton's iteration failed.");
-      else
-        // Translate the resulting coefficient vector into instances of Solution.
-        Solution<double>::vector_to_solutions(newton->get_sln_vector(), *fine_spaces, solutions);
+      try
+      {
+        newton->solve();
+      }
+      catch(Hermes::Exceptions::Exception e)
+      {
+        e.printMsg();
+        error("Newton's iteration failed.");
+      }
+      
+      // Translate the resulting coefficient vector into instances of Solution.
+      Solution<double>::vector_to_solutions(newton->get_sln_vector(), fine_spaces.get_const(), solutions);
       
       // Clean up.
       delete newton;
-      delete [] coeff_vec;
       
       // Project the fine mesh solution onto the coarse mesh.
-      report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces);
-      OGProjection<double>::project_global(spaces, solutions, coarse_solutions, matrix_solver);
+      report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces.get());
+      OGProjection<double>::project_global(spaces.get_const(), solutions, coarse_solutions, matrix_solver);
 
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION)
@@ -365,7 +368,7 @@ int main(int argc, char* argv[])
         if (SHOW_INTERMEDIATE_SOLUTIONS)
           views.show_solutions(coarse_solutions);
         if (SHOW_INTERMEDIATE_ORDERS)
-          views.show_orders(spaces);
+          views.show_orders(spaces.get());
         cpu_time.tick(Hermes::HERMES_SKIP);
       }   
 
@@ -421,7 +424,7 @@ int main(int argc, char* argv[])
       // Calculate error estimate for each solution component and the total error estimate.
       info("  --- Calculating total relative error of the solution approximation.");
           
-      Adapt<double> adaptivity(spaces);  
+      Adapt<double> adaptivity(spaces.get());  
       
   #ifdef USE_SPN    
       MomentGroupFlattener mg(N_GROUPS);  // Creates a single index from the moment-group pair.
@@ -463,8 +466,8 @@ int main(int argc, char* argv[])
       if (!done)
       {
         for(unsigned int i = 0; i < N_EQUATIONS; i++)
-          delete (*fine_spaces)[i]->get_mesh();
-        delete fine_spaces;
+          delete fine_spaces.get()[i]->get_mesh();
+        delete &fine_spaces.get();
         
         // Increase the adaptivity step counter.
         as++;
@@ -480,8 +483,20 @@ int main(int argc, char* argv[])
         {
           info("Visualizing final solutions.");
           views.inspect_solutions(solutions);
-          views.inspect_orders(*fine_spaces);
+          views.inspect_orders(fine_spaces.get());
         }
+        
+        for (unsigned int i = 0; i < N_EQUATIONS; i++)
+        {
+          // Make the fine-mesh spaces the final spaces for further analyses.
+          delete spaces.get()[i]->get_mesh(); // Alternatively "delete meshes[i]".
+          delete spaces.get()[i];
+          spaces.get()[i] = fine_spaces.get()[i]; 
+
+          // Delete the auxiliary coarse-mesh solutions.
+          delete coarse_solutions[i];   
+        }
+        delete &fine_spaces.get();
       }
     }
     while (done == false);
@@ -497,46 +512,32 @@ int main(int argc, char* argv[])
     graph_dof.save("conv_dof_diffusion.gp");
     graph_cpu.save("conv_cpu_diffusion.gp");
   #endif
-    
-    for (unsigned int i = 0; i < N_EQUATIONS; i++)
-    {
-      // Make the fine-mesh spaces the final spaces for further analyses.
-      delete spaces[i]->get_mesh(); // Alternatively "delete meshes[i]".
-      delete spaces[i];
-      spaces[i] = fine_spaces->at(i); 
-
-      // Delete the auxiliary coarse-mesh solutions.
-      delete coarse_solutions[i];   
-    }
-    delete fine_spaces; 
   }
   else
   {
-    report_num_dof("Solving - #DOF: ", spaces);
+    report_num_dof("Solving - #DOF: ", spaces.get());
     
     cpu_time.tick();
-    
-    int ndof = Space<double>::get_num_dofs(spaces);
-    
-    DiscreteProblem<double> dp(&wf, spaces);
-
-    // Initial coefficient vector for the Newton's method.  
-    double* coeff_vec = new double[ndof];
-    memset(coeff_vec, 0, ndof * sizeof(double));
+        
+    DiscreteProblem<double> dp(&wf, spaces.get_const());
   
     // Perform Newton's iteration on reference mesh.
     NewtonSolver<double> newton(&dp, matrix_solver);
     newton.set_verbose_output(true);
+    
+    try
+    {
+      newton.solve();
+    }
+    catch(Hermes::Exceptions::Exception e)
+    {
+      e.printMsg();
+      error("Newton's iteration failed.");
+    }
   
-    if (!newton.solve(coeff_vec)) 
-      error_function("Newton's iteration failed.");
-    else
-      // Translate the resulting coefficient vector into instances of Solution.
-      Solution<double>::vector_to_solutions(newton.get_sln_vector(), spaces, solutions);
-    
-    // Clean up.
-    delete [] coeff_vec;
-    
+    // Translate the resulting coefficient vector into instances of Solution.
+    Solution<double>::vector_to_solutions(newton.get_sln_vector(), spaces.get_const(), solutions);
+      
     cpu_time.tick();
     total_cpu_time = cpu_time.accumulated();
     verbose("Total running time: %g s", total_cpu_time);
@@ -546,7 +547,7 @@ int main(int argc, char* argv[])
     {
       info("Visualizing solutions.");
       views.inspect_solutions(solutions);
-      views.inspect_orders(spaces);
+      views.inspect_orders(spaces.get());
     }
   }
   
@@ -568,7 +569,7 @@ int main(int argc, char* argv[])
   if (VTK_VISUALIZATION)
   {
     views.save_solutions_vtk("flux", "flux", solutions);
-    views.save_orders_vtk("space", spaces);
+    views.save_orders_vtk("space", spaces.get());
   }
   
   // Output file names.
@@ -764,8 +765,8 @@ int main(int argc, char* argv[])
   // Final clean up.
   for(unsigned int i = 0; i < N_EQUATIONS; i++)
   {
-    delete spaces[i]->get_mesh();
-    delete spaces[i];
+    delete spaces.get()[i]->get_mesh();
+    delete spaces.get()[i];
     delete solutions[i];
   }
 
