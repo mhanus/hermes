@@ -22,7 +22,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
     // Initial coefficient vector for the Newton's method.
     int ndof = Space<double>::get_num_dofs(spaces);
-    double* coeff_vec = new double[ndof];
     
     DiscreteProblem<double> dp(wf, spaces);
     NewtonSolver<double> solver(&dp, matrix_solver);
@@ -44,12 +43,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     bool eigen_done = false; int it = 0;
     do 
     {
-      memset(coeff_vec, 0, ndof*sizeof(double));
-
       // The matrix doesn't change within the power iteration loop, so we don't have to reassemble the Jacobian again.
       try
       {
-        solver.solve_keep_jacobian(coeff_vec, 1e-8, 3);
+        solver.solve_keep_jacobian();
       }
       catch(Hermes::Exceptions::Exception e)
       {

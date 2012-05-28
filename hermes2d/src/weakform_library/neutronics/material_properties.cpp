@@ -19,6 +19,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         material_region_map[it->second].push_back(it->first);
       }
     }
+    
+    MaterialPropertyMaps::MaterialPropertyMaps(unsigned int G, const std::set<std::string>& mat_list) 
+      : materials_list(mat_list), G(G)  
+    { 
+      std::set<std::string>::const_iterator it = mat_list.begin();
+      for ( ; it != mat_list.end(); ++it)
+        material_region_map[*it].push_back(*it);
+    };
 
     void MaterialPropertyMaps::extend_to_multigroup(const MaterialPropertyMap0& mrsg_map, 
                                                     MaterialPropertyMap1 *mrmg_map)
