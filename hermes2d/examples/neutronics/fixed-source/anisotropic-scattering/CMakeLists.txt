@@ -1,5 +1,5 @@
 project(anisotropic-scattering)
-add_executable(${PROJECT_NAME} main.cpp definitions.cpp)
+add_executable(${PROJECT_NAME} main.cpp definitions.cpp ../../utils.cpp)
 #set_common_target_properties(${PROJECT_NAME} "HERMES2D")
 
 set (FLAGS "${FLAGS} -g")
