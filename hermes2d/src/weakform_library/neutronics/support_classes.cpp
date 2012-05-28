@@ -415,6 +415,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           order = sln[sol_idx]->get_fn_order();
     }
     
+    MeshFunction<double>* MomentFilter::EvenMomentVal::clone()
+    {
+      Hermes::vector<MeshFunction<double>*> slns;
+
+      for(int i = 0; i < this->num; i++)
+        slns.push_back(this->sln[i]->clone());
+
+      return new EvenMomentVal(angular_moment, group, G, slns);
+    }
+    
     void MomentFilter::EvenMomentValDxDy::filter_fn(int n, Hermes::vector<double *> values, 
                                           Hermes::vector<double *> dx, Hermes::vector<double *> dy, 
                                           double* rslt, double* rslt_dx, double* rslt_dy)
@@ -444,6 +454,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           order = sln[sol_idx]->get_fn_order();
     }
     
+    MeshFunction<double>* MomentFilter::EvenMomentValDxDy::clone()
+    {
+      Hermes::vector<MeshFunction<double>*> slns;
+
+      for(int i = 0; i < this->num; i++)
+        slns.push_back(this->sln[i]->clone());
+
+      return new EvenMomentValDxDy(angular_moment, group, G, slns);
+    }
+    
     void MomentFilter::OddMomentVal::set_active_element(Element* e)
     {
       Filter<double>::set_active_element(e);
@@ -453,6 +473,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       for (unsigned int gfrom = 0; gfrom < matprop->get_G(); gfrom++)
         if (sln[mg.pos(req_mom_idx,gfrom)]->get_fn_order() > order)
           order = sln[mg.pos(req_mom_idx,gfrom)]->get_fn_order();
+    }
+    
+    MeshFunction<double>* MomentFilter::OddMomentVal::clone()
+    {
+      Hermes::vector<MeshFunction<double>*> slns;
+
+      for(int i = 0; i < this->num; i++)
+        slns.push_back(this->sln[i]->clone());
+
+      return new OddMomentVal(component, angular_moment, group, G, slns, matprop);
     }
     
     void MomentFilter::OddMomentVal::precalculate(int order, int mask)
