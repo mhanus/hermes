@@ -19,7 +19,7 @@
 /*! \file linear_solver.cpp
 \brief General linear solver functionality.
 */
-#include "linear_solver.h"
+#include "linear_matrix_solver.h"
 #include "umfpack_solver.h"
 #include "superlu_solver.h"
 #include "amesos_solver.h"
@@ -36,45 +36,45 @@ namespace Hermes
   {
 
     template<typename Scalar>
-    LinearSolver<Scalar>::LinearSolver() 
+    LinearMatrixSolver<Scalar>::LinearMatrixSolver() 
     { 
       sln = NULL; 
       time = -1.0; 
     }
 
     template<typename Scalar>
-    LinearSolver<Scalar>::~LinearSolver() 
+    LinearMatrixSolver<Scalar>::~LinearMatrixSolver() 
     { 
       if (sln != NULL) 
         delete [] sln; 
     }
 
     template<typename Scalar>
-    Scalar *LinearSolver<Scalar>::get_sln_vector() 
+    Scalar *LinearMatrixSolver<Scalar>::get_sln_vector() 
     { 
       return sln; 
     }
 
     template<typename Scalar>
-    int LinearSolver<Scalar>::get_error() 
+    int LinearMatrixSolver<Scalar>::get_error() 
     { 
       return error; 
     }
 
     template<typename Scalar>
-    double LinearSolver<Scalar>::get_time() 
+    double LinearMatrixSolver<Scalar>::get_time() 
     { 
       return time; 
     }
 
     template<typename Scalar>
-    void LinearSolver<Scalar>::set_factorization_scheme()
+    void LinearMatrixSolver<Scalar>::set_factorization_scheme()
     {
       set_factorization_scheme(HERMES_REUSE_FACTORIZATION_COMPLETELY);
     }
 
     template<typename Scalar>
-    LinearSolver<Scalar>* create_linear_solver(Hermes::MatrixSolverType matrix_solver_type, Matrix<Scalar>* matrix, Vector<Scalar>* rhs)
+    LinearMatrixSolver<Scalar>* create_linear_solver(Hermes::MatrixSolverType matrix_solver_type, Matrix<Scalar>* matrix, Vector<Scalar>* rhs)
     {
       _F_;
       Vector<Scalar>* rhs_dummy = NULL;
@@ -117,8 +117,8 @@ namespace Hermes
         {
 #ifdef WITH_PETSC
           info("Using PETSc.");
-          if (rhs != NULL) return new PetscLinearSolver<Scalar>(static_cast<PetscMatrix<Scalar>*>(matrix), static_cast<PetscVector<Scalar>*>(rhs));
-          else return new PetscLinearSolver<Scalar>(static_cast<PetscMatrix<Scalar>*>(matrix), static_cast<PetscVector<Scalar>*>(rhs_dummy));
+          if (rhs != NULL) return new PetscLinearMatrixSolver<Scalar>(static_cast<PetscMatrix<Scalar>*>(matrix), static_cast<PetscVector<Scalar>*>(rhs));
+          else return new PetscLinearMatrixSolver<Scalar>(static_cast<PetscMatrix<Scalar>*>(matrix), static_cast<PetscVector<Scalar>*>(rhs_dummy));
 #else
           error("PETSc not installed.");
 #endif
@@ -128,8 +128,8 @@ namespace Hermes
         {
 #ifdef WITH_UMFPACK
           info("Using UMFPack.");
-          if (rhs != NULL) return new UMFPackLinearSolver<Scalar>(static_cast<UMFPackMatrix<Scalar>*>(matrix), static_cast<UMFPackVector<Scalar>*>(rhs));
-          else return new UMFPackLinearSolver<Scalar>(static_cast<UMFPackMatrix<Scalar>*>(matrix), static_cast<UMFPackVector<Scalar>*>(rhs_dummy));
+          if (rhs != NULL) return new UMFPackLinearMatrixSolver<Scalar>(static_cast<UMFPackMatrix<Scalar>*>(matrix), static_cast<UMFPackVector<Scalar>*>(rhs));
+          else return new UMFPackLinearMatrixSolver<Scalar>(static_cast<UMFPackMatrix<Scalar>*>(matrix), static_cast<UMFPackVector<Scalar>*>(rhs_dummy));
 #else
           error("UMFPACK was not installed.");
 #endif
@@ -170,14 +170,14 @@ namespace Hermes
       this->max_iters = iters;
     }
 
-    template HERMES_API LinearSolver<double>*  create_linear_solver(Hermes::MatrixSolverType matrix_solver,
+    template HERMES_API LinearMatrixSolver<double>*  create_linear_solver(Hermes::MatrixSolverType matrix_solver,
       Matrix<double>* matrix, Vector<double>* rhs);
 
-    template HERMES_API LinearSolver<std::complex<double> >*  create_linear_solver(Hermes::MatrixSolverType matrix_solver,
+    template HERMES_API LinearMatrixSolver<std::complex<double> >*  create_linear_solver(Hermes::MatrixSolverType matrix_solver,
       Matrix<std::complex<double> >* matrix, Vector<std::complex<double> >* rhs);
 
-    template class HERMES_API LinearSolver<double>;
-    template class HERMES_API LinearSolver<std::complex<double> >;
+    template class HERMES_API LinearMatrixSolver<double>;
+    template class HERMES_API LinearMatrixSolver<std::complex<double> >;
     template class HERMES_API DirectSolver<double>;
     template class HERMES_API DirectSolver<std::complex<double> >;
     template class HERMES_API IterSolver<double>;

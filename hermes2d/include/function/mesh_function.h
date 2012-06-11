@@ -51,7 +51,8 @@ namespace Hermes
       virtual void set_active_element(Element* e);
 
       Mesh*   get_mesh() const;
-      RefMap* get_refmap();
+      RefMap* get_refmap(bool update = true);
+      void set_refmap(RefMap* refmap_to_set);
 
       virtual int get_edge_fn_order(int edge);
 
@@ -97,6 +98,7 @@ namespace Hermes
 
       template<typename T> friend class DiscontinuousFunc;
       template<typename T> friend class DiscreteProblem;
+      template<typename T> friend class DiscreteProblemLinear;
       template<typename T> friend class NeighborSearch;
     };
   }

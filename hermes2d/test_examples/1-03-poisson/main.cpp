@@ -26,7 +26,7 @@
 //
 // The following parameters can be changed:
 
-const bool HERMES_VISUALIZATION = true;           // Set to "false" to suppress Hermes OpenGL visualization.
+const bool HERMES_VISUALIZATION = false;           // Set to "false" to suppress Hermes OpenGL visualization.
 const bool VTK_VISUALIZATION = true;              // Set to "true" to enable VTK output.
 const int P_INIT = 2;                             // Uniform polynomial degree of mesh elements.
 const int INIT_REF_NUM = 3;                       // Number of initial uniform mesh refinements.
@@ -43,6 +43,9 @@ const double FIXED_BDY_TEMP = 20.0;        // Fixed temperature on the boundary.
 
 int main(int argc, char* argv[])
 {
+  // Set the number of threads used in Hermes.
+  Hermes::Hermes2D::HermesApi.setParamValue("num_threads", 4);
+
   // Time measurement.
   Hermes::TimePeriod cpu_time;
 
@@ -70,27 +73,22 @@ int main(int argc, char* argv[])
   info("ndof = %d", ndof);
 
   // Initialize the FE problem.
-  Hermes::Hermes2D::DiscreteProblem<double> dp(&wf, &space);
+  Hermes::Hermes2D::DiscreteProblemLinear<double> dp(&wf, &space);
 
-  // Initial coefficient vector for the Newton's method.
-  double* coeff_vec = new double[ndof];
-  memset(coeff_vec, 0, ndof*sizeof(double));
-
-  // Perform Newton's iteration and translate the resulting coefficient vector into a Solution.
+  // Initialize the solution.
   Hermes::Hermes2D::Solution<double> sln;
-  Hermes::Hermes2D::NewtonSolver<double> newton(&dp, matrix_solver_type);
-
-  try
-  {
-    newton.solve(coeff_vec);
-  }
-  catch(Hermes::Exceptions::Exception e)
-  {
-    e.printMsg();
-    error("Newton's iteration failed.");
-  }
   
-  Hermes::Hermes2D::Solution<double>::vector_to_solution(newton.get_sln_vector(), &space, &sln);
+  // Initialize linear solver.
+  Hermes::Hermes2D::LinearSolver<double> linear_solver(&dp, matrix_solver_type);
+
+  // Solve the linear problem.
+  linear_solver.solve();
+
+  // Get the solution vector.
+  double* sln_vector = linear_solver.get_sln_vector();
+
+  // Translate the solution vector into the previously initialized Solution.
+  Hermes::Hermes2D::Solution<double>::vector_to_solution(sln_vector, &space, &sln);
 
   cpu_time.tick();
   printf("Duration %lf\n", cpu_time.accumulated());
@@ -100,8 +98,8 @@ int main(int argc, char* argv[])
   {
     // Output solution in VTK format.
     Hermes::Hermes2D::Views::Linearizer lin;
-    bool mode_3D = true;
-    lin.save_solution_vtk(&sln, "sln.vtk", "Temperature", mode_3D);
+    bool mode_3D = false;
+    lin.save_solution_vtk(&sln, "sln.vtk", "Temperature", mode_3D, 1, Hermes::Hermes2D::Views::HERMES_EPS_LOW);
     info("Solution in VTK format saved to file %s.", "sln.vtk");
 
     // Output mesh and element orders in VTK format.
@@ -119,12 +117,9 @@ int main(int argc, char* argv[])
     // tolerance for that. Options are HERMES_EPS_LOW, HERMES_EPS_NORMAL (default),
     // HERMES_EPS_HIGH and HERMES_EPS_VERYHIGH. The size of the graphics file grows
     // considerably with more accurate representation, so use it wisely.
-    view.show(&sln, Hermes::Hermes2D::Views::HERMES_EPS_HIGH);
+    view.show(&sln, Hermes::Hermes2D::Views::HERMES_EPS_LOW);
     Hermes::Hermes2D::Views::View::wait();
   }
-
-  // Clean up.
-  delete [] coeff_vec;
 
   return 0;
 }
