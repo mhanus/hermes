@@ -144,12 +144,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         void init(unsigned int ne, unsigned int ng);
         
       public:
-        Visualization(bool display_meshes = false, unsigned int width = 450, unsigned int height = 450) 
+        Visualization(unsigned int width = 450, unsigned int height = 450, bool display_meshes = false) 
           : width(width), height(height), display_meshes(display_meshes) { init(0,0); }
-        Visualization(unsigned int n_equations, unsigned int n_groups, unsigned int width, unsigned int height, bool display_meshes = false) 
+        Visualization(unsigned int n_equations, unsigned int n_groups, unsigned int width = 450, unsigned int height = 450, bool display_meshes = false) 
           : width(width), height(height), display_meshes(display_meshes) { init(n_equations, n_groups); }
-        Visualization(unsigned int n_equations, unsigned int n_groups, bool display_meshes = false) 
-          : width(450), height(450), display_meshes(display_meshes) { init(n_equations, n_groups); }
         
         virtual ~Visualization();
         
@@ -182,7 +180,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
       public:
         Visualization(unsigned int G, bool display_meshes = false)
-          : Common::SupportClasses::Visualization(G, G, width, height, display_meshes)
+          : Common::SupportClasses::Visualization(G, G, 450, 450, display_meshes)
         { 
           init(G, 450, 450, display_meshes); 
         }
@@ -459,7 +457,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       public:
         Visualization(unsigned int spn_order, unsigned int G, bool display_meshes = false)
-          : Common::SupportClasses::Visualization(width, height, display_meshes), mg(G), sviews_app(NULL), vviews(NULL)
+          : Common::SupportClasses::Visualization(450, 450, display_meshes), mg(G), sviews_app(NULL), vviews(NULL)
         {
           init(spn_order, G, 450, 450, display_meshes);
         }
