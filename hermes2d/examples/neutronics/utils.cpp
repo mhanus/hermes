@@ -1,3 +1,4 @@
+#define HERMES_REPORT_ALL
 #include "utils.h"
 
 // Utility functions that simplify repeated reporting of number of DOF during adaptivity.
