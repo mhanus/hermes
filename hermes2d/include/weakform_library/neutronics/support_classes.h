@@ -124,6 +124,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {
       protected:
         unsigned int n_equations, n_groups;
+        unsigned int width, height;
         bool display_meshes;
         
         Views::ScalarView** sviews;
@@ -143,9 +144,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         void init(unsigned int ne, unsigned int ng);
         
       public:
-        Visualization(bool display_meshes = false) : display_meshes(display_meshes) { init(0,0); }
+        Visualization(bool display_meshes = false, unsigned int width = 450, unsigned int height = 450) 
+          : width(width), height(height), display_meshes(display_meshes) { init(0,0); }
+        Visualization(unsigned int n_equations, unsigned int n_groups, unsigned int width, unsigned int height, bool display_meshes = false) 
+          : width(width), height(height), display_meshes(display_meshes) { init(n_equations, n_groups); }
         Visualization(unsigned int n_equations, unsigned int n_groups, bool display_meshes = false) 
-          : display_meshes(display_meshes) { init(n_equations, n_groups); }
+          : width(450), height(450), display_meshes(display_meshes) { init(n_equations, n_groups); }
         
         virtual ~Visualization();
         
@@ -159,7 +163,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         Views::ScalarView** get_solution_views(unsigned int* num) { *num = n_equations; return sviews; }
         Views::OrderView** get_order_views(unsigned int* num)     { *num = n_equations; return oviews; }
-        Views::MeshView** get_mesh_views(unsigned int* num)               { *num = n_equations; return mviews; }
+        Views::MeshView** get_mesh_views(unsigned int* num)       { *num = n_equations; return mviews; }
     };
   
   /* SupportClasses */
@@ -173,8 +177,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     class Visualization : public Common::SupportClasses::Visualization
     {
+      protected:
+        void init(unsigned int G, unsigned int width, unsigned int height, bool display_meshes);
+        
       public:
-        Visualization(unsigned int G, bool display_meshes = false);
+        Visualization(unsigned int G, bool display_meshes = false)
+          : Common::SupportClasses::Visualization(G, G, width, height, display_meshes)
+        { 
+          init(G, 450, 450, display_meshes); 
+        }
+        Visualization(unsigned int G, unsigned int width, unsigned int height, bool display_meshes = false)
+          : Common::SupportClasses::Visualization(G, G, width, height, display_meshes)
+        {
+          init(G, width, height, display_meshes); 
+        }
         
         void show_meshes(Hermes::vector<Mesh*> meshes);
         void show_solutions(Hermes::vector< Solution<double>* > solutions);
@@ -438,8 +454,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       Views::ScalarView** sviews_app;
       Views::VectorView** vviews;
       
+      protected:
+        void init(unsigned int spn_order, unsigned int G, unsigned int width, unsigned int height, bool display_meshes);
+      
       public:
-        Visualization(unsigned int spn_order, unsigned int G, bool display_meshes = false);
+        Visualization(unsigned int spn_order, unsigned int G, bool display_meshes = false)
+          : Common::SupportClasses::Visualization(width, height, display_meshes), mg(G), sviews_app(NULL), vviews(NULL)
+        {
+          init(spn_order, G, 450, 450, display_meshes);
+        }
+        Visualization(unsigned int spn_order, unsigned int G, unsigned int width, unsigned int height, bool display_meshes = false)
+          : Common::SupportClasses::Visualization(width, height, display_meshes), mg(G), sviews_app(NULL), vviews(NULL)
+        {
+          init(spn_order, G, width, height, display_meshes);
+        }
         virtual ~Visualization();
         
         void show_meshes(Hermes::vector<Mesh*> meshes);
