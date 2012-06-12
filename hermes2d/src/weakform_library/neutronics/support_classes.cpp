@@ -226,24 +226,24 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   
   namespace Diffusion { namespace SupportClasses
   {
-    Visualization::Visualization(unsigned int G, bool display_meshes) : Common::SupportClasses::Visualization(G, G, display_meshes)
+    void Visualization::init(unsigned int G, unsigned int width, unsigned int height, bool display_meshes)
     {
       for (unsigned int g = 0; g < n_groups; g++)
       {
         std::string title_flux = base_title_flux + itos(g);
         std::string title_order = base_title_order + itos(g);
         
-        sviews[g] = new Views::ScalarView(title_flux.c_str(), new Views::WinGeom(g*452, 0, 450, 450));
+        sviews[g] = new Views::ScalarView(title_flux.c_str(), new Views::WinGeom(g*(width+2), 0, width, height));
         sviews[g]->show_mesh(false);
         sviews[g]->set_3d_mode(true);
-        oviews[g] = new Views::OrderView(title_order.c_str(), new Views::WinGeom(g*452, 452, 450, 450));
+        oviews[g] = new Views::OrderView(title_order.c_str(), new Views::WinGeom(g*(width+2), height+2, width, height));
       }
       
       if (display_meshes)
         for (unsigned int g = 0; g < n_groups; g++)
         {
           std::string title = base_title_mesh + itos(g);
-          mviews[g] = new Views::MeshView(title.c_str(), new Views::WinGeom(g*352, 904, 350, 350));
+          mviews[g] = new Views::MeshView(title.c_str(), new Views::WinGeom(g*(width+2), 2*(height+2), width, height));
         }
     }
     
@@ -611,8 +611,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
     }
     
-    Visualization::Visualization(unsigned int spn_order, unsigned int G, bool display_meshes) 
-      : Common::SupportClasses::Visualization(display_meshes), mg(G), sviews_app(NULL), vviews(NULL)
+    void Visualization::init(unsigned int spn_order, unsigned int G, unsigned int width, unsigned int height, bool display_meshes) 
     {
       n_moments = spn_order+1;
       n_odd_moments = n_moments/2;
@@ -626,10 +625,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         {
           unsigned int i = mg.pos(m,g);
           
-          sviews[i] = new Views::ScalarView((title_flux + itos(m)).c_str(), new Views::WinGeom(m*452, g*452, 450, 450));
+          sviews[i] = new Views::ScalarView((title_flux + itos(m)).c_str(), new Views::WinGeom(m*(width+2), g*(height+2), width, height));
           sviews[i]->show_mesh(false);
           sviews[i]->set_3d_mode(true);
-          oviews[i] = new Views::OrderView((title_order + itos(m)).c_str(), new Views::WinGeom(m*452, n_groups*452 + g*452, 450, 450));
+          oviews[i] = new Views::OrderView((title_order + itos(m)).c_str(), new Views::WinGeom(m*(width+2), n_groups*(height+2) + g*(height+2), width, height));
         }
       }
       
@@ -639,7 +638,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         {
           std::string title = base_title_mesh + itos(g) + std::string(", moment ");
           for (unsigned int m = 0; m < n_odd_moments; m++)
-            mviews[mg.pos(m,g)] = new Views::MeshView((title + itos(m)).c_str(), new Views::WinGeom(m*352, g*352, 350, 350));
+            mviews[mg.pos(m,g)] = new Views::MeshView((title + itos(m)).c_str(), new Views::WinGeom(m*(width+2), g*(height+2), width, height));
         }
       }
     }
@@ -725,10 +724,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           {
             unsigned int i = mg.pos(m,g);
             
-            sviews_app[i] = new Views::ScalarView((title_flux + itos(2*m)).c_str(), new Views::WinGeom(2*m*452, g*452, 450, 450));
+            sviews_app[i] = new Views::ScalarView((title_flux + itos(2*m)).c_str(), new Views::WinGeom(2*m*(width+2), g*(height+2), width, height));
             sviews_app[i]->show_mesh(false);
             sviews_app[i]->set_3d_mode(true);
-            vviews[i] = new Views::VectorView((title_flux + itos(2*m+1)).c_str(), new Views::WinGeom((2*m+1)*452, g*452, 450, 450));
+            vviews[i] = new Views::VectorView((title_flux + itos(2*m+1)).c_str(), new Views::WinGeom((2*m+1)*(width+2), g*(height+2), width, height));
           }
         }
       }
