@@ -2,7 +2,6 @@
 #define ___H2D_NEUTRONICS_COMMON_DEFINITIONS_H
 
 // TODO: Check if both are needed (hermes_2d_common_defs.h was here before)
-#include "global.h"
 #include "common.h"
 
 namespace Hermes
