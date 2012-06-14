@@ -4,7 +4,7 @@
 // Otherwise, the diffusion approximation will be used.
 //
 #include "problem_data.h"
-#include "definitions.h"
+#include "../../utils.h"
 #include "error_estimators.h"
 
 #ifdef USE_SPN
