@@ -1,6 +1,6 @@
 project(stankovski)
-add_executable(${PROJECT_NAME} main.cpp definitions.cpp)
-add_executable(${PROJECT_NAME}-kelly main-kelly.cpp definitions.cpp)
+add_executable(${PROJECT_NAME} main.cpp ../../utils.cpp)
+add_executable(${PROJECT_NAME}-kelly main-kelly.cpp ../../utils.cpp)
 
 #set_common_target_properties(${PROJECT_NAME} "HERMES2D")
 #set_common_target_properties(${PROJECT_NAME}-kelly "HERMES2D")
