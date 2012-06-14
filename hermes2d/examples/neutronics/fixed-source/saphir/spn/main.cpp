@@ -171,7 +171,7 @@ int main(int argc, char* argv[])
   for (int j = 0; j < INIT_REF_NUM[0]; j++) 
     meshes[0]->refine_all_elements();
 
-  SupportClasses::Visualization views(SPN_ORDER, N_GROUPS, DISPLAY_MESHES);
+  SupportClasses::Visualization views(SPN_ORDER, N_GROUPS, 510, 510, DISPLAY_MESHES);
   if (DISPLAY_MESHES && HERMES_VISUALIZATION)
     views.inspect_meshes(meshes);
   
@@ -293,13 +293,14 @@ int main(int argc, char* argv[])
     double scalar_flux_err_est_rel = 0.0;
     double avg_flux_err_est_rel = 0.0;
     double avg_flux_err_s8_rel = 0.0;
-              
+    double scalar_flux_norm = 0.0;
     for (unsigned int g = 0; g < N_GROUPS; g++)
     {
       // Calculate relative error (squared) of the scalar flux approximation (linear comb. of the actual solutions) in specified norm.
       double group_err_est = Hermes::sqr(Global<double>::calc_abs_error(coarse_scalar_fluxes[g], fine_scalar_fluxes[g], HERMES_H1_NORM));
       double group_norm = Hermes::sqr(Global<double>::calc_norm(fine_scalar_fluxes[g], HERMES_H1_NORM));
       scalar_flux_err_est_rel += group_err_est/group_norm;
+      scalar_flux_norm += group_norm;
       
       // Calculate relative error (squared) of the region-averaged fluxes (in l2 norm).
       double avg_group_flux_err_est = 0.0;
@@ -325,7 +326,8 @@ int main(int argc, char* argv[])
     
     scalar_flux_err_est_rel = sqrt(scalar_flux_err_est_rel) * 100;
     avg_flux_err_est_rel = sqrt(avg_flux_err_est_rel) * 100;
-    avg_flux_err_s8_rel = sqrt(avg_flux_err_s8_rel) * 100;    
+    avg_flux_err_s8_rel = sqrt(avg_flux_err_s8_rel) * 100;
+    scalar_flux_norm = sqrt(scalar_flux_norm);
         
     MomentFilter::clear_scalar_fluxes(&coarse_scalar_fluxes);
     MomentFilter::clear_scalar_fluxes(&fine_scalar_fluxes);
@@ -346,7 +348,7 @@ int main(int argc, char* argv[])
               
     // Calculate the element and total error estimates and make them available for mesh adaptation.
     double pseudo_flux_err_est_rel = adaptivity.calc_err_est(coarse_solutions, solutions, NULL, true,
-                                                             HERMES_TOTAL_ERROR_REL | HERMES_ELEMENT_ERROR_ABS) * 100; 
+                                                             HERMES_TOTAL_ERROR_ABS | HERMES_ELEMENT_ERROR_ABS) / scalar_flux_norm * 100; 
             
     // Report results.
     info("  --- pseudo-fluxes rel. error estimate: %g%%", pseudo_flux_err_est_rel);
