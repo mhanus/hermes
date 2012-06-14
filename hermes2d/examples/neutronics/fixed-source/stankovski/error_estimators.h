@@ -17,7 +17,7 @@ class ErrorFormSPN : public Adapt<Scalar>::MatrixFormVolError
     
   public:
     
-    ErrorFormSPN(unsigned int moment1, unsigned int moment2, ProjNormType norm) : Adapt<Scalar>::MatrixFormVolError(norm)
+    ErrorFormSPN(unsigned int moment1, unsigned int moment2, ProjNormType norm) : Adapt<Scalar>::MatrixFormVolError(0,0,norm)
     { 
       factor = Coeffs::even_moment(0, moment1) * Coeffs::even_moment(0, moment2);
     }
