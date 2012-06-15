@@ -1,0 +1,68 @@
+<mesh:mesh xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:mesh="XMLMesh" xmlns:element="XMLMesh" xsi:schemaLocation="XMLMesh /usr/include/hermes2d/xml_schemas/mesh_h2d_xml.xsd">
+	<vertices>
+		<vertex x="0" y="0" i="0"/>
+		<vertex x="1" y="0" i="1"/>
+		<vertex x="2" y="0" i="2"/>
+		<vertex x="4" y="0" i="3"/>
+		<vertex x="5" y="0" i="4"/>
+		<vertex x="7" y="0" i="5"/>
+		<vertex x="8" y="0" i="6"/>
+		<vertex x="10" y="0" i="7"/>
+		<vertex x="10" y="9" i="8"/>
+		<vertex x="0" y="9" i="9"/>
+		<vertex x="2" y="9" i="10"/>
+		<vertex x="1" y="9" i="11"/>
+		<vertex x="5" y="9" i="12"/>
+		<vertex x="4" y="9" i="13"/>
+		<vertex x="8" y="9" i="14"/>
+		<vertex x="7" y="9" i="15"/>
+		<vertex x="10" y="10" i="16"/>
+		<vertex x="0" y="10" i="17"/>
+		<vertex x="8" y="10" i="18"/>
+		<vertex x="7" y="10" i="19"/>
+		<vertex x="5" y="10" i="20"/>
+		<vertex x="4" y="10" i="21"/>
+		<vertex x="2" y="10" i="22"/>
+		<vertex x="1" y="10" i="23"/>
+	</vertices>
+	
+<elements>
+<element:quad v1="9" v2="0" v3="1" v4="11" marker="Bulk"/>		
+<element:quad v1="11" v2="1" v3="2" v4="10" marker="S1"/>		
+<element:quad v1="10" v2="2" v3="3" v4="13" marker="Bulk"/>		
+<element:quad v1="9" v2="11" v3="23" v4="17" marker="Bulk"/>		
+<element:quad v1="23" v2="11" v3="10" v4="22" marker="Bulk"/>		
+<element:quad v1="22" v2="10" v3="13" v4="21" marker="Bulk"/>		
+<element:quad v1="21" v2="13" v3="12" v4="20" marker="Bulk"/>		
+<element:quad v1="3" v2="4" v3="12" v4="13" marker="S2"/>		
+<element:quad v1="12" v2="4" v3="5" v4="15" marker="Bulk"/>		
+<element:quad v1="15" v2="5" v3="6" v4="14" marker="S3"/>		
+<element:quad v1="14" v2="6" v3="7" v4="8" marker="Bulk"/>		
+<element:quad v1="12" v2="15" v3="19" v4="20" marker="Bulk"/>		
+<element:quad v1="19" v2="15" v3="14" v4="18" marker="Bulk"/>		
+<element:quad v1="18" v2="14" v3="8" v4="16" marker="Bulk"/>	
+</elements>
+
+	<edges>
+		<edge v1="0" v2="1" marker="bottom"/>
+		<edge v1="1" v2="2" marker="bottom"/>
+		<edge v1="2" v2="3" marker="bottom"/>
+		<edge v1="3" v2="4" marker="bottom"/>
+		<edge v1="4" v2="5" marker="bottom"/>
+		<edge v1="5" v2="6" marker="bottom"/>
+		<edge v1="6" v2="7" marker="bottom"/>
+		<edge v1="7" v2="8" marker="right"/>
+		<edge v1="8" v2="16" marker="right"/>
+		<edge v1="17" v2="9" marker="left"/>
+		<edge v1="9" v2="0" marker="left"/>
+		<edge v1="16" v2="18" marker="top"/>
+		<edge v1="18" v2="19" marker="top"/>
+		<edge v1="19" v2="20" marker="top"/>
+		<edge v1="20" v2="21" marker="top"/>
+		<edge v1="21" v2="22" marker="top"/>
+		<edge v1="22" v2="23" marker="top"/>
+		<edge v1="23" v2="17" marker="top"/>
+	</edges>
+	<curves>
+	</curves>
+</mesh:mesh>
