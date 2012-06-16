@@ -22,12 +22,27 @@ class ConstantableSpacesVector
         constant->push_back(*it);
     }
     
-    Hermes::vector<const Space<double> *>& get_const()
+    ConstantableSpacesVector& operator=(const ConstantableSpacesVector& other)
+    {
+      if (this != &other)
+      {
+        delete constant;
+        
+        for (int i = 0; i < non_constant->size(); i++)
+          delete non_constant->at(i);
+        
+        this->set(&other.get());
+      }
+      
+      return *this;
+    }
+    
+    Hermes::vector<const Space<double> *>& get_const() const
     {
       return *constant;
     }
     
-    Hermes::vector<Space<double> *>& get()
+    Hermes::vector<Space<double> *>& get() const
     {
       return *non_constant;
     }
