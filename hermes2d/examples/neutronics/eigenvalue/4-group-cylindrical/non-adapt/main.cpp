@@ -87,15 +87,16 @@ int main(int argc, char* argv[])
   H1Space<double> space3(&mesh, P_INIT_3);
   H1Space<double> space4(&mesh, P_INIT_4);
   Hermes::vector<Space<double>*> spaces(&space1, &space2, &space3, &space4);
+  Hermes::vector<const Space<double>*> c_spaces(&space1, &space2, &space3, &space4);
   
   int ndof = Space<double>::get_num_dofs(spaces);
   info("ndof = %d.", ndof);
   
   // Initialize views.
-  Views::ScalarView<double> view1("Neutron flux 1", new Views::WinGeom(0, 0, 320, 600));
-  Views::ScalarView<double> view2("Neutron flux 2", new Views::WinGeom(350, 0, 320, 600));
-  Views::ScalarView<double> view3("Neutron flux 3", new Views::WinGeom(700, 0, 320, 600));
-  Views::ScalarView<double> view4("Neutron flux 4", new Views::WinGeom(1050, 0, 320, 600));
+  Views::ScalarView view1("Neutron flux 1", new Views::WinGeom(0, 0, 320, 600));
+  Views::ScalarView view2("Neutron flux 2", new Views::WinGeom(350, 0, 320, 600));
+  Views::ScalarView view3("Neutron flux 3", new Views::WinGeom(700, 0, 320, 600));
+  Views::ScalarView view4("Neutron flux 4", new Views::WinGeom(1050, 0, 320, 600));
   
   // Do not show meshes.
   view1.show_mesh(false); view1.set_3d_mode(true);
@@ -104,7 +105,7 @@ int main(int argc, char* argv[])
   view4.show_mesh(false); view4.set_3d_mode(true);
   
   // Load physical data of the problem for the 4 energy groups.
-  MaterialProperties::MaterialPropertyMaps matprop(4);
+  MaterialProperties::MaterialPropertyMaps matprop(4, std::set<std::string>(all_regions.begin(), all_regions.end()));
   matprop.set_D(D);
   matprop.set_Sigma_r(Sr);
   matprop.set_Sigma_s(Ss);
@@ -124,10 +125,7 @@ int main(int argc, char* argv[])
   CustomWeakForm wf(matprop, iterates, k_eff, bdy_vacuum);
 
   // Initialize the FE problem.
-  DiscreteProblem<double> dp(&wf, spaces);
-  
-  // Initial coefficient vector for the Newton's method.
-  double* coeff_vec = new double[ndof];
+  DiscreteProblem<double> dp(&wf, c_spaces);
   
   NewtonSolver<double> solver(&dp, matrix_solver);
   solver.set_verbose_output(false);
@@ -148,12 +146,19 @@ int main(int argc, char* argv[])
     
     info("Newton's method (matrix problem solved by %s).", Hermes::MatrixSolverNames[matrix_solver].c_str());
     
-    memset(coeff_vec, 0, ndof*sizeof(double));
+    // The matrix doesn't change within the power iteration loop, so we don't have to reassemble the Jacobian again.
+    try
+    {
+      solver.solve_keep_jacobian();
+    }
+    catch(Hermes::Exceptions::Exception e)
+    {
+      e.printMsg();
+      error("Newton's iteration failed.");
+    }
     
-    if (!solver.solve_keep_jacobian(coeff_vec)) 
-      error_function("Newton's iteration failed.");
-    else
-      Solution<double>::vector_to_solutions(solver.get_sln_vector(), spaces, solutions);
+    // Convert coefficients vector into a set of Solution pointers.
+    Solution<double>::vector_to_solutions(solver.get_sln_vector(), c_spaces, solutions);
     
     solver_time.tick();
     cpu_time.tick();
@@ -193,8 +198,6 @@ int main(int argc, char* argv[])
     }
   }
   while (!done);
-  
-  delete [] coeff_vec;
   
   // Time measurement.
   cpu_time.tick();
