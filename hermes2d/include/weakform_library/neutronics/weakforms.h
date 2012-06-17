@@ -125,6 +125,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                       
         double get_keff() const { return keff; } 
         const Hermes::vector<MeshFunction<double>*>& get_scalar_flux_iterates() const { return scalar_flux_iterates; }
+        const Hermes::vector<std::string>& get_fission_regions() const { return fission_regions; }
     };
     
   /* WeakForms */  
