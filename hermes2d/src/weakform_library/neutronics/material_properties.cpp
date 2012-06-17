@@ -1,5 +1,6 @@
 //
 //TODO: MaterialRegionMap
+//      Create mat_list during validation from given data if not supplied on construction.
 //
 
 #include "neutronics/material_properties.h"
@@ -235,6 +236,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       for (it = material_region_map.begin(); it != material_region_map.end(); ++it)
         if (it->first == material)
           return it->second;
+        
+      return Hermes::vector<std::string>();
     }
         
     std::string MaterialPropertyMaps::get_material(int elem_marker, Mesh *mesh) const 
