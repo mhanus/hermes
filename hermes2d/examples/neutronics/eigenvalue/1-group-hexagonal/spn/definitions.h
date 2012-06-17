@@ -12,6 +12,3 @@ class CustomWeakForm : public WeakForms::KeffEigenvalueProblem
                    const Hermes::vector<std::string>& fission_regions,
                    double init_keff, const std::string& bdy_vacuum);
 };
-
-void report_num_dof(const std::string& msg, const Hermes::vector<Space<double> *> spaces);
-void report_errors(const std::string& msg, const Hermes::vector< double > errors);
