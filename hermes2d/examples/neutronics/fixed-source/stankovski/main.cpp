@@ -204,9 +204,12 @@ int main(int argc, char* argv[])
     solutions.push_back(new Solution<double>());
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<Space<double> *> spaces_;
-  for (unsigned int i = 0; i < N_EQUATIONS; i++) 
+  Hermes::vector<Space<double> *> spaces_, basic_spaces;
+  for (unsigned int i = 0; i < N_EQUATIONS; i++)
+  {
     spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
+    basic_spaces.push_back(new H1Space<double>(basic_meshes[i], P_INIT[i]));
+  }
   
   ConstantableSpacesVector spaces(&spaces_);
   
@@ -461,14 +464,10 @@ int main(int argc, char* argv[])
             views.save_orders_vtk("space", spaces.get());
           }
       
+          // Make the fine-mesh spaces the final spaces for further analyses.
           for (unsigned int i = 0; i < N_EQUATIONS; i++)
-          {
-            // Make the fine-mesh spaces.get() the final spaces.get() for further analyses.
-            delete spaces.get()[i]->get_mesh(); // Alternatively "delete meshes[i]".
-            delete spaces.get()[i];
-            spaces.get()[i] = fine_spaces.get()[i];    
-          }
-          delete &fine_spaces.get(); 
+            delete spaces.get()[i]->get_mesh(); // Alternatively "delete meshes[i]".   
+          spaces = fine_spaces; 
         }
       }
       while (done == false);
@@ -516,15 +515,18 @@ int main(int argc, char* argv[])
         
       // Reset the meshes and spaces for the next run case.
       for(unsigned int i = 0; i < N_EQUATIONS; i++)
-      {
-        delete spaces.get()[i]->get_mesh();
+      {       
+        // Destroy the mesh created by construct_refined_spaces and set it to a new copy of basic_mesh.
+        delete spaces.get()[i]->get_mesh(); 
         meshes[i] = new Mesh();
-        meshes[i]->copy(basic_meshes[i]);
+        meshes[i]->copy(basic_meshes[i]); 
         
-        delete &spaces.get()[i];
-        spaces.get()[i] = spaces.get_const()[i]->dup(meshes[i]);
+        delete spaces.get()[i]; // Destroy the space created by construct_refined_spaces.
+        spaces_[i] = basic_spaces[i]->dup(meshes[i]); // Create a new space over the fresh copy of basic_mesh, duplicating the basic_space.
       }
-      
+      delete &spaces.get(); // Destroy the Hermes::vector<H1Space<double>* > created by construct_refined_spaces.
+      spaces.set(&spaces_); // Set a new ConstantableSpacesVector to point to the newly created spaces.
+            
       // Advance to the next run case ...
     }
     
@@ -615,11 +617,12 @@ int main(int argc, char* argv[])
   for(unsigned int i = 0; i < N_EQUATIONS; i++)
   {
     delete spaces.get()[i]->get_mesh(); // In case of STRATEGY == -1, this is the same as "delete meshes[i]"; 
-                                  // otherwise, it will delete "fine_spaces.get()[i]->get_mesh()".
+                                        // otherwise, it will delete "fine_spaces.get()[i]->get_mesh()".
     delete spaces.get()[i];
     delete solutions[i];
     
     delete basic_meshes[i];
+    delete basic_spaces[i];
   }
   
   return 0;

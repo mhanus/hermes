@@ -54,8 +54,8 @@ public:
   {
     double result = 0.;
     
-    std::string mat = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->elem_marker));
-    std::string mat_neighbor = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->get_neighbor_marker()));
+    std::string mat = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->elem_marker).marker);
+    std::string mat_neighbor = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->get_neighbor_marker()).marker);
     rank1 odd_Sigma_rn_inv = matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto];
     rank1 odd_Sigma_rn_inv_neighbor = matprop.get_odd_Sigma_rn_inv(mat_neighbor)[mrow][gto];
     
@@ -117,7 +117,7 @@ public:
   {
     double result = 0.;
     
-    std::string mat = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->elem_marker));
+    std::string mat = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->elem_marker).marker);
     rank1 odd_Sigma_rn_inv = matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto];
     
     for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
@@ -177,7 +177,7 @@ public:
                         Func<double> *u, Geom<double> *e,
                         ExtData<double> *ext) const
   {
-    std::string mat = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->elem_marker));
+    std::string mat = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->elem_marker).marker);
     
     rank1 odd_Sigma_rn_inv = matprop.get_odd_Sigma_rn_inv(mat)[mrow][gto];
     
@@ -276,8 +276,8 @@ public:
   {
     double result = 0.;
     
-    std::string mat = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->elem_marker));
-    std::string mat_neighbor = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->get_neighbor_marker()));
+    std::string mat = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->elem_marker).marker);
+    std::string mat_neighbor = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->get_neighbor_marker()).marker);
     double D = matprop.get_D(mat)[gto];
     double D_neighbor = matprop.get_D(mat_neighbor)[gto];
     double coeff = (D + D_neighbor) * 0.5;
@@ -321,7 +321,7 @@ public:
   {
     double result = 0.;
     
-    std::string mat = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->elem_marker));
+    std::string mat = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->elem_marker).marker);
     double D = matprop.get_D(mat)[gto];
     
     for (int i = 0; i < n; i++)
