@@ -21,9 +21,11 @@ const std::string core = "core";
 const std::string bdy_vacuum = "vacuum boundary";
 const std::string bdy_symmetry = "symmetry plane";
 
+// This is temporarily needed for creating the MatPropMaps.
+const Hermes::vector<std::string> all_regions(core, reflector);
 // Since Hermes::vector can't be initialized with one argument and we want to define
 // the variable here (not in main()), we need to misuse Neutronics::HermesMultiArray a little.
-const Hermes::vector<std::string> fission_regions = HermesMultiArray<std::string>("core");
+const Hermes::vector<std::string> fission_regions = HermesMultiArray<std::string>(core);
 
 //////  Physical parameters.  /////////////////////////////////////////////////////////////////
 
