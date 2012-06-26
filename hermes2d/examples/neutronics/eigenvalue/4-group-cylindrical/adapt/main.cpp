@@ -1,6 +1,7 @@
 #define HERMES_REPORT_ALL
 #include "../problem_data.h"
 #include "definitions.h"
+#include "../../../utils.h"
 
 using namespace RefinementSelectors;
 
@@ -89,8 +90,10 @@ int main(int argc, char* argv[])
   Hermes::TimePeriod cpu_time;
   cpu_time.tick();
   
-  // Load physical data of the problem.
-  MaterialProperties::MaterialPropertyMaps matprop(N_GROUPS);
+  // Load material data (last argument specifies a list of material, which is required
+  // for automatic fill-in of missing standard data (fission properties in this case)).
+  MaterialProperties::MaterialPropertyMaps matprop(N_GROUPS,
+                                                   std::set<std::string>(all_regions.begin(), all_regions.end()));
   matprop.set_D(D);
   matprop.set_Sigma_r(Sr);
   matprop.set_Sigma_s(Ss);
@@ -134,15 +137,17 @@ int main(int argc, char* argv[])
   }
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<Space<double> *> spaces;
+ Hermes::vector<Space<double> *> spaces_;
   for (unsigned int g = 0; g < matprop.get_G(); g++) 
-    spaces.push_back(new H1Space<double>(meshes[g], P_INIT[g]));
+    spaces_.push_back(new H1Space<double>(meshes[g], P_INIT[g]));
+  
+  ConstantableSpacesVector spaces(&spaces_);
 
   // Initialize views using the neutronics support class.
   SupportClasses::Visualization vis(matprop.get_G());
   
   unsigned int n_views;
-  Views::ScalarView<double>** sviews = vis.get_solution_views(&n_views);
+  Views::ScalarView** sviews = vis.get_solution_views(&n_views);
   for (unsigned int i = 0; i < n_views; i++) 
   { 
     sviews[i]->show_mesh(false);
@@ -185,8 +190,8 @@ int main(int argc, char* argv[])
   Hermes::vector<VectorFormVol<double>*> projection_residual;
   for (unsigned int g = 0; g < matprop.get_G(); g++) 
   {
-    projection_jacobian.push_back(new H1AxisymProjectionJacobian<double>(g));
-    projection_residual.push_back(new H1AxisymProjectionResidual<double>(g, power_iterates[g]));
+    projection_jacobian.push_back(new H1AxisymProjectionJacobian<double>());
+    projection_residual.push_back(new H1AxisymProjectionResidual<double>(power_iterates[g]));
   }
   
   Hermes::vector<ProjNormType> proj_norms_h1, proj_norms_l2;
@@ -197,11 +202,11 @@ int main(int argc, char* argv[])
   }
   
   // Initialize the weak formulation.
-  CustomWeakForm wf(matprop, power_iterates, k_eff, bdy_vacuum);
+  CustomWeakForm wf(matprop, power_iterates, fission_regions, k_eff, bdy_vacuum);
   
   // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
-  report_num_dof("Coarse mesh power iteration, ", spaces);
-  Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, spaces, matrix_solver, TOL_PIT_CM);
+  report_num_dof("Coarse mesh power iteration, ", spaces.get());
+  Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, spaces.get_const(), matrix_solver, TOL_PIT_CM);
   
   // Adaptivity loop:
   int as = 1; bool done = false;
@@ -210,18 +215,7 @@ int main(int argc, char* argv[])
     info("---- Adaptivity step %d:", as);
     
     // Construct globally refined meshes and setup reference spaces on them.
-    Hermes::vector<Space<double> *> ref_spaces;
-    Hermes::vector<Mesh *> ref_meshes;
-    for (unsigned int g = 0; g < matprop.get_G(); g++) 
-    { 
-      ref_meshes.push_back(new Mesh());
-      Mesh *ref_mesh = ref_meshes.back();      
-      ref_mesh->copy(spaces[g]->get_mesh());
-      ref_mesh->refine_all_elements();
-      
-      int order_increase = 1;
-      ref_spaces.push_back(spaces[g]->dup(ref_mesh, order_increase));
-    }
+     ConstantableSpacesVector ref_spaces(Space<double>::construct_refined_spaces(spaces.get()));
 
 #ifdef WITH_PETSC    
     // PETSc assembling is currently slow for larger matrices, so we switch to 
@@ -231,22 +225,24 @@ int main(int argc, char* argv[])
 #endif    
 
     // Solve the fine mesh problem.
-    report_num_dof("Fine mesh power iteration, ", ref_spaces);
-    Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, ref_spaces, matrix_solver, TOL_PIT_RM);
+    report_num_dof("Fine mesh power iteration, ", ref_spaces.get());
+    Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, ref_spaces.get_const(), matrix_solver, TOL_PIT_RM);
     
     // Store the results.
     for (unsigned int g = 0; g < matprop.get_G(); g++) 
       fine_solutions[g]->copy(power_iterates[g]);
 
     info("Projecting fine mesh solutions on coarse meshes.");
-    OGProjection<double>::project_global(spaces, projection_jacobian, projection_residual, coarse_solutions, matrix_solver);
+    OGProjection<double>::project_global(spaces.get_const(), 
+                                         projection_jacobian, projection_residual,
+                                         coarse_solutions, matrix_solver);
 
     // Time measurement.
     cpu_time.tick();
 
     // View the coarse mesh solution and meshes.
     vis.show_solutions(coarse_solutions);
-    vis.show_orders(spaces);
+    vis.show_orders(spaces.get());
 
     // Skip visualization time.
     cpu_time.tick(Hermes::HERMES_SKIP);
@@ -257,8 +253,8 @@ int main(int argc, char* argv[])
          get_num_of_neg(coarse_solutions[2]), get_num_of_neg(coarse_solutions[3]));
 
     // Calculate element errors and total error estimate.
-    Adapt<double> adapt_h1(spaces);
-    Adapt<double> adapt_l2(spaces);    
+    Adapt<double> adapt_h1(spaces.get());
+    Adapt<double> adapt_l2(spaces.get());    
     for (unsigned int g = 0; g < matprop.get_G(); g++)
     {
       adapt_h1.set_error_form(g, g, new ErrorForm<double>(proj_norms_h1[g]));
@@ -276,7 +272,7 @@ int main(int argc, char* argv[])
     double cta = cpu_time.accumulated();
     
     // Report results.
-    report_num_dof("Coarse ndof: ", spaces);
+    report_num_dof("Coarse ndof: ", spaces.get());
 
     // Millipercent eigenvalue error w.r.t. the reference value (see physical_parameters.cpp). 
     double keff_err = 1e5*fabs(wf.get_keff() - REF_K_EFF)/REF_K_EFF;
@@ -288,7 +284,7 @@ int main(int argc, char* argv[])
     info("k_eff err: %g milli-percent", keff_err);
 
     // Add entry to DOF convergence graph.
-    int ndof_coarse = Space<double>::get_num_dofs(spaces);
+    int ndof_coarse = Space<double>::get_num_dofs(spaces.get());
     graph_dof.add_values(0, ndof_coarse, h1_err_est);
     graph_dof.add_values(1, ndof_coarse, l2_err_est);
     graph_dof.add_values(2, ndof_coarse, keff_err);
@@ -299,7 +295,7 @@ int main(int argc, char* argv[])
     graph_cpu.add_values(2, cta, keff_err);
 
     for (unsigned int g = 0; g < matprop.get_G(); g++)
-      graph_dof_evol.add_values(g, as, spaces[g]->get_num_dofs());
+      graph_dof_evol.add_values(g, as, spaces.get()[g]->get_num_dofs());
 
     cpu_time.tick(Hermes::HERMES_SKIP);
 
@@ -311,27 +307,28 @@ int main(int argc, char* argv[])
     {
       info("Adapting the coarse mesh.");
       done = adapt_h1.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);
-      if (Space<double>::get_num_dofs(spaces) >= NDOF_STOP) 
+      if (Space<double>::get_num_dofs(spaces.get_const()) >= NDOF_STOP) 
         done = true;
     }
 
-    // Free reference meshes and spaces.
-    for (unsigned int g = 0; g < matprop.get_G(); g++) 
+    if (!done)
     {
-      delete ref_spaces[g];
-      delete ref_meshes[g];
+      for(unsigned int g = 0; g < matprop.get_G(); g++)
+        delete ref_spaces.get()[g]->get_mesh();
+      delete &ref_spaces.get();
+      
+      // Increase counter.
+      as++;
     }
-
-    as++;
   }
-  while(done == false);
+  while(!done);
 
   cpu_time.tick();
   verbose("Total running time: %g s", cpu_time.accumulated());
   
   for (unsigned int g = 0; g < matprop.get_G(); g++) 
   {
-    delete spaces[g]; delete meshes[g];
+    delete spaces_[g]; delete meshes[g];
     delete coarse_solutions[g], delete fine_solutions[g]; delete power_iterates[g];
   }
 
