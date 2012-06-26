@@ -4,15 +4,13 @@
 using Hermes::Ord;
 
 int get_num_of_neg(MeshFunction<double> *sln);
-void report_num_dof(const std::string& msg, const Hermes::vector<Space<double> *> spaces);
-void report_errors(const std::string& msg, const Hermes::vector< double > errors);
 
 // Jacobian matrix (same as stiffness matrix since projections are linear).
 template <typename Scalar>
 class H1AxisymProjectionJacobian : public MatrixFormVol<Scalar>
 {
 public:
-  H1AxisymProjectionJacobian(int i) : MatrixFormVol<Scalar>(i, i, Hermes::HERMES_ANY, HERMES_SYM) {};
+  H1AxisymProjectionJacobian() : MatrixFormVol<Scalar>(0, 0, Hermes::HERMES_ANY, HERMES_SYM) {};
 
   Scalar value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *u, Func<double> *v,
                Geom<double> *e, ExtData<Scalar> *ext) const
@@ -45,7 +43,7 @@ template <typename Scalar>
 class H1AxisymProjectionResidual : public VectorFormVol<Scalar>
 {
 public:
-  H1AxisymProjectionResidual(int i, MeshFunction<Scalar>* ext) : VectorFormVol<Scalar>(i)
+  H1AxisymProjectionResidual(Solution<Scalar>* ext) : VectorFormVol<Scalar>(0)
   {
     this->ext.push_back(ext);
   }
@@ -82,7 +80,7 @@ template <typename Scalar>
 class ErrorForm : public Adapt<Scalar>::MatrixFormVolError
 {
 public:
-  ErrorForm(ProjNormType type) : Adapt<Scalar>::MatrixFormVolError(type) {};
+  ErrorForm(ProjNormType type) : Adapt<Scalar>::MatrixFormVolError(0,0,type) {};
 
   /// Error bilinear form.
   virtual Scalar value(int n, double *wt, Func<Scalar> *u_ext[],
