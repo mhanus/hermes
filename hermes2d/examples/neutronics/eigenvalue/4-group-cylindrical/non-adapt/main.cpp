@@ -122,7 +122,7 @@ int main(int argc, char* argv[])
   cpu_time.tick(); 
   
   // Initialize the weak formulation.
-  CustomWeakForm wf(matprop, iterates, k_eff, bdy_vacuum);
+  CustomWeakForm wf(matprop, iterates, fission_regions, k_eff, bdy_vacuum);
 
   // Initialize the FE problem.
   DiscreteProblem<double> dp(&wf, c_spaces);
