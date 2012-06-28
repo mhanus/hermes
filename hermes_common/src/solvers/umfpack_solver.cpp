@@ -994,6 +994,16 @@ namespace Hermes
       assert(m != NULL);
       assert(rhs != NULL);
       assert(m->get_size() == rhs->length());
+      
+      static bool flag = true;
+      if (flag)
+      {
+        FILE *fp = fopen("syst.m", "wt");
+        m->dump(fp, "A");
+        rhs->dump(fp, "b");
+        fclose(fp);
+        flag = false;
+      }
 
       this->tick();
 
