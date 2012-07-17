@@ -71,19 +71,18 @@ namespace Hermes
 
         virtual void on_special_key(int key, int x, int y);
         virtual const char* get_help_text() const;
-
       };
 #else
       template<typename Scalar>
       class HERMES_API BaseView : public ScalarView
       {
       public:
-        BaseView(const char* title = "BaseView", WinGeom* wg = NULL) { error("GLUT disabled."); }
-        BaseView(char* title, WinGeom* wg = NULL) { error("GLUT disabled."); }
+        BaseView(const char* title = "BaseView", WinGeom* wg = NULL) { throw Hermes::Exceptions::Exception("GLUT disabled."); }
+        BaseView(char* title, WinGeom* wg = NULL) { throw Hermes::Exceptions::Exception("GLUT disabled."); }
 
-        void show(const Space<Scalar>* space, double eps = HERMES_EPS_LOW, int item = H2D_FN_VAL_0) { error("GLUT disabled."); }
+        void show(const Space<Scalar>* space, double eps = HERMES_EPS_LOW, int item = H2D_FN_VAL_0) { throw Hermes::Exceptions::Exception("GLUT disabled."); }
       };
-      
+
 #endif
     }
   }

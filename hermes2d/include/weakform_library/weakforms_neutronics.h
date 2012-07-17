@@ -112,8 +112,8 @@ namespace Hermes
               void operator() (MaterialPropertyMap1::value_type x) {
                 MaterialPropertyMap1::mapped_type::iterator it;
                 for (it = x.second.begin(); it != x.second.end(); ++it)
-                  if (fabs(*it) > 1e-14)
-                    error(E_INVALID_COMBINATION);
+                  if(fabs(*it) > 1e-14)
+                    throw Hermes::Exceptions::Exception(E_INVALID_COMBINATION);
               }
             };
 
@@ -122,18 +122,18 @@ namespace Hermes
                 : nrows(nrows), ncols(ncols) {};
 
               void operator() (MaterialPropertyMap1::value_type x) {
-                if (x.second.size() != nrows)
-                  error(E_INVALID_SIZE);
+                if(x.second.size() != nrows)
+                  throw Hermes::Exceptions::Exception(E_INVALID_SIZE);
               }
 
               void operator() (MaterialPropertyMap2::value_type x) {
-                if (x.second.size() != nrows)
-                  error(E_INVALID_SIZE);
+                if(x.second.size() != nrows)
+                  throw Hermes::Exceptions::Exception(E_INVALID_SIZE);
 
                 MaterialPropertyMap2::mapped_type::iterator it;
                 for (it = x.second.begin(); it != x.second.end(); ++it)
-                  if (it->size() != ncols)
-                    error(E_INVALID_SIZE);
+                  if(it->size() != ncols)
+                    throw Hermes::Exceptions::Exception(E_INVALID_SIZE);
               }
 
             private:
@@ -155,11 +155,11 @@ namespace Hermes
 
               template <typename NDArrayType>
               static rank0 divide(rank0 x, rank0 y) {
-                if (x == 0 && y == 0)
+                if(x == 0 && y == 0)
                   return 0.0;
-                else if (y == 0)
+                else if(y == 0)
                 {
-                  error(E_INF_VALUE);
+                  throw Hermes::Exceptions::Exception(E_INF_VALUE);
                   return -1.0;
                 }
                 else
@@ -179,8 +179,6 @@ namespace Hermes
               template <typename NDArrayType>
               static rank0 subtract(rank0 x, rank0 y) {
                 rank0 ret = x - y;
-                if(ret < 0)
-                  warning(W_NEG_VALUE);
                 return ret;
               }
 
@@ -295,7 +293,7 @@ namespace Hermes
 #undef for_each_element_in_map
             };
 
-            class HERMES_API MaterialPropertyMaps
+            class HERMES_API MaterialPropertyMaps : public Hermes::Mixins::Loggable
             {
             protected:
 
@@ -663,7 +661,7 @@ namespace Hermes
                   GenericForm(matprop, geom_type),
                   g(g)
                 {};
-                
+
                 Jacobian(unsigned int g,
                   const MaterialPropertyMaps& matprop, Mesh *mesh, GeomType geom_type = HERMES_PLANAR)
                   : MatrixFormVol<Scalar>(g, g, HERMES_ANY),
@@ -720,7 +718,7 @@ namespace Hermes
                   GenericForm(matprop, geom_type),
                   g(g)
                 {};
-                
+
                 Residual(unsigned int g,
                   const MaterialPropertyMaps& matprop, Mesh *mesh, GeomType geom_type = HERMES_PLANAR)
                   : VectorFormVol<Scalar>(g, HERMES_ANY),
@@ -833,8 +831,8 @@ namespace Hermes
                   GenericForm(matprop, geom_type),
                   g(g), keff(keff)
                 {
-                  if (g >= iterates.size())
-                    error(E_INVALID_GROUP_INDEX);
+                  if(g >= iterates.size())
+                    throw Hermes::Exceptions::Exception(E_INVALID_GROUP_INDEX);
                 }
 
                 OuterIterationForm( unsigned int g, std::string area,
@@ -846,10 +844,10 @@ namespace Hermes
                   GenericForm(matprop, geom_type),
                   g(g), keff(keff)
                 {
-                  if (g >= iterates.size())
-                    error(E_INVALID_GROUP_INDEX);
+                  if(g >= iterates.size())
+                    throw Hermes::Exceptions::Exception(E_INVALID_GROUP_INDEX);
                 }
-                
+
                 OuterIterationForm( unsigned int g,
                   const MaterialPropertyMaps& matprop, Mesh *mesh,
                   Hermes::vector<MeshFunction<Scalar>*>& iterates,
@@ -859,8 +857,8 @@ namespace Hermes
                   GenericForm(matprop, mesh, geom_type),
                   g(g), keff(keff)
                 {
-                  if (g >= iterates.size())
-                    error(E_INVALID_GROUP_INDEX);
+                  if(g >= iterates.size())
+                    throw Hermes::Exceptions::Exception(E_INVALID_GROUP_INDEX);
                 }
 
                 OuterIterationForm( unsigned int g, std::string area,
@@ -872,8 +870,8 @@ namespace Hermes
                   GenericForm(matprop, mesh, geom_type),
                   g(g), keff(keff)
                 {
-                  if (g >= iterates.size())
-                    error(E_INVALID_GROUP_INDEX);
+                  if(g >= iterates.size())
+                    throw Hermes::Exceptions::Exception(E_INVALID_GROUP_INDEX);
                 }
 
                 template<typename Real, typename ScalarTestFns>
@@ -920,7 +918,7 @@ namespace Hermes
                   GenericForm(matprop, geom_type),
                   gto(gto), gfrom(gfrom)
                 {};
-                
+
                 Residual( unsigned int gto, unsigned int gfrom,
                   const MaterialPropertyMaps& matprop, Mesh *mesh, GeomType geom_type = HERMES_PLANAR )
                   : VectorFormVol<Scalar>(gto),
@@ -980,7 +978,7 @@ namespace Hermes
                   GenericForm(matprop, geom_type),
                   gto(gto), gfrom(gfrom)
                 {};
-                
+
                 Jacobian( unsigned int gto, unsigned int gfrom,
                   const MaterialPropertyMaps& matprop, Mesh *mesh, GeomType geom_type = HERMES_PLANAR )
                   : MatrixFormVol<Scalar>(gto, gfrom),
@@ -1038,7 +1036,7 @@ namespace Hermes
                   GenericForm(matprop, geom_type),
                   gto(gto), gfrom(gfrom)
                 {};
-                
+
                 Residual( unsigned int gto, unsigned int gfrom,
                   const MaterialPropertyMaps& matprop, Mesh *mesh,
                   GeomType geom_type = HERMES_PLANAR )
@@ -1100,7 +1098,7 @@ namespace Hermes
                   GenericForm(matprop, geom_type),
                   g(g)
                 {};
-                
+
                 LinearForm( unsigned int g,
                   const MaterialPropertyMaps& matprop, Mesh *mesh, GeomType geom_type = HERMES_PLANAR)
                   : VectorFormVol<Scalar>(g),
@@ -1204,10 +1202,10 @@ namespace Hermes
         {
           using MaterialProperties::Common::MaterialPropertyMaps;
           using namespace MaterialProperties::Definitions;
-        
+
           class HERMES_API SourceFilter : public SimpleFilter<double>
           {
-            public: 
+            public:
             SourceFilter(Hermes::vector<MeshFunction<double>*> solutions, const MaterialPropertyMaps* matprop,
                          const std::string& source_area)
               : SimpleFilter<double>(solutions, Hermes::vector<int>())
@@ -1222,11 +1220,11 @@ namespace Hermes
               nu = matprop->get_nu().at(source_area);
               Sigma_f = matprop->get_Sigma_f().at(source_area);
             }
-            
+
           private:
             rank1 nu;
             rank1 Sigma_f;
-            
+
             void filter_fn(int n, Hermes::vector<double*> values, double* result);
           };
         }

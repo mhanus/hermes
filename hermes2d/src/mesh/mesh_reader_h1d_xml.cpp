@@ -91,10 +91,10 @@ namespace Hermes
               int dot_position = strchr(x.c_str(), '.') == NULL ? -1 : strchr(x.c_str(), '.') - x.c_str();
               for(int i = 0; i < dot_position; i++)
                 if(strncmp(x.c_str() + i, "0", 1) != 0)
-                  error("Wrong syntax in the x coordinate of vertex no. %i.", vertices_i % vertices_count + 1);
+                  throw Hermes::Exceptions::MeshLoadFailureException("Wrong syntax in the x coordinate of vertex no. %i.", vertices_i % vertices_count + 1);
               for(int i = dot_position + 1; i < x.length(); i++)
                 if(strncmp(x.c_str() + i, "0", 1) != 0)
-                  error("Wrong syntax in the x coordinate of vertex no. %i.", vertices_i % vertices_count + 1);
+                  throw Hermes::Exceptions::MeshLoadFailureException("Wrong syntax in the x coordinate of vertex no. %i.", vertices_i % vertices_count + 1);
               x_value = std::strtod(x.c_str(), NULL);
             }
 
@@ -186,12 +186,10 @@ namespace Hermes
 
         mesh->nodes[v1_2].bnd = 1;
         mesh->nodes[v2_2].bnd = 1;
-
       }
       catch (const xml_schema::exception& e)
       {
-        std::cerr << e << std::endl;
-        std::exit(1);
+        throw Hermes::Exceptions::MeshLoadFailureException(e.what());
       }
     }
 

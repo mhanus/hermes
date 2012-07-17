@@ -18,12 +18,19 @@
 
 #include "compat.h"
 #include "ord.h"
+#include "exceptions.h"
+#include "mixins.h"
 
 namespace Hermes
 {
+  struct HERMES_API SplineCoeff
+  {
+    double a, b, c, d;    // four coefficients of a cubic spline.
+  };
+
   /// Generic class for functions of one variable.
   template<typename Scalar>
-  class HERMES_API Hermes1DFunction
+  class HERMES_API Hermes1DFunction : public Hermes::Mixins::Loggable
   {
   public:
     /// Constructor.
@@ -57,7 +64,7 @@ namespace Hermes
 
   /// Generic class for functions of two variables.
   template<typename Scalar>
-  class HERMES_API Hermes2DFunction
+  class HERMES_API Hermes2DFunction : public Hermes::Mixins::Loggable
   {
   public:
     /// Constructor.
@@ -73,10 +80,12 @@ namespace Hermes
     virtual Hermes::Ord value(Hermes::Ord x, Hermes::Ord y) const;
 
     /// Two-dimensional function derivative value.
-    virtual Scalar derivative(Scalar x, Scalar y) const;
+    virtual Scalar derivativeX(Scalar x, Scalar y) const;
+    virtual Scalar derivativeY(Scalar x, Scalar y) const;
 
     /// Two-dimensional function derivative integration order.
-    virtual Hermes::Ord derivative(Hermes::Ord x, Hermes::Ord y) const;
+    virtual Hermes::Ord derivativeX(Hermes::Ord x, Hermes::Ord y) const;
+    virtual Hermes::Ord derivativeY(Hermes::Ord x, Hermes::Ord y) const;
 
     /// The function is constant.
     /// Returns the value of is_const.
@@ -91,7 +100,7 @@ namespace Hermes
 
   /// Generic class for functions of two variables.
   template<typename Scalar>
-  class HERMES_API Hermes3DFunction
+  class HERMES_API Hermes3DFunction : public Hermes::Mixins::Loggable
   {
   public:
     /// Constructor.
@@ -107,10 +116,14 @@ namespace Hermes
     virtual Hermes::Ord value(Hermes::Ord x, Hermes::Ord y, Hermes::Ord z) const;
 
     /// Two-dimensional function derivative value.
-    virtual Scalar derivative(Scalar x, Scalar y, Scalar z) const;
+    virtual Scalar derivativeX(Scalar x, Scalar y, Scalar z) const;
+    virtual Scalar derivativeY(Scalar x, Scalar y, Scalar z) const;
+    virtual Scalar derivativeZ(Scalar x, Scalar y, Scalar z) const;
 
     /// Two-dimensional function derivative integration order.
-    virtual Hermes::Ord derivative(Hermes::Ord x, Hermes::Ord y, Hermes::Ord z) const;
+    virtual Hermes::Ord derivativeX(Hermes::Ord x, Hermes::Ord y, Hermes::Ord z) const;
+    virtual Hermes::Ord derivativeY(Hermes::Ord x, Hermes::Ord y, Hermes::Ord z) const;
+    virtual Hermes::Ord derivativeZ(Hermes::Ord x, Hermes::Ord y, Hermes::Ord z) const;
 
     /// The function is constant.
     /// Returns the value of is_const.

@@ -1,6 +1,5 @@
 #define HERMES_REPORT_WARN
 #define HERMES_REPORT_INFO
-#define HERMES_REPORT_VERBOSE
 
 #include "hermes_common.h"
 #include <iostream>
@@ -12,7 +11,7 @@ using namespace Hermes::Solvers;
 // Read matrix and RHS from a file.
 
 // Max row length in input file.
-#define MAX_ROW_LEN	1024
+#define MAX_ROW_LEN  1024
 
 class MatrixEntry
 {
@@ -56,13 +55,10 @@ void show_rhs(const char *msg, std::map<unsigned int, std::complex<double> > mp)
 }
 
 bool testPrint(bool value, const char *msg, bool correct) {
-  info("%s...", msg);
-  if (value == correct) {
-    info("OK.");
+  if(value == correct) {
     return true;
   }
   else {
-    info("failed.");
     return false;
   }
 }
@@ -86,7 +82,7 @@ int read_matrix_and_rhs(char *file_name, int &n, int &nnz,
   std::map<unsigned int, MatrixEntry> &mat, std::map<unsigned int, std::complex<double> > &rhs, bool &cplx_2_real)
 {
   FILE *file = fopen(file_name, "r");
-  if (file == NULL) return TEST_FAILURE;
+  if(file == NULL) return -1;
 
   enum EState {
     STATE_N,
@@ -106,8 +102,8 @@ int read_matrix_and_rhs(char *file_name, int &n, int &nnz,
   while (fgets(row, MAX_ROW_LEN, file) != NULL) {
     switch (state) {
     case STATE_N:
-      if (read_n_nums(row, 1, buffer)) {
-        if (cplx_2_real) {
+      if(read_n_nums(row, 1, buffer)) {
+        if(cplx_2_real) {
           n = 2*((int) buffer[0]);
           rhs_buffer = new double[n];
           for (int i = 0; i < n; i++) {
@@ -122,14 +118,14 @@ int read_matrix_and_rhs(char *file_name, int &n, int &nnz,
       break;
 
     case STATE_NNZ:
-      if (read_n_nums(row, 1, buffer))
+      if(read_n_nums(row, 1, buffer))
         nnz = (int) buffer[0];
 
       state = STATE_MATRIX;
       break;
 
     case STATE_MATRIX:
-      if (read_n_nums(row, 4, buffer)) {
+      if(read_n_nums(row, 4, buffer)) {
         std::complex<double> cmplx_buffer(buffer[2], buffer[3]);
         mat[mat.size()] = (MatrixEntry((int) buffer[0], (int) buffer[1], (std::complex<double>) cmplx_buffer));
       }
@@ -138,7 +134,7 @@ int read_matrix_and_rhs(char *file_name, int &n, int &nnz,
       break;
 
     case STATE_RHS:
-      if (read_n_nums(row, 3, buffer)) {
+      if(read_n_nums(row, 3, buffer)) {
         std::complex<double> cmplx_buffer(buffer[1], buffer[2]);
         rhs[(int) buffer[0]] = (std::complex<double>) cmplx_buffer;
       }
@@ -154,7 +150,7 @@ int read_matrix_and_rhs(char *file_name, int &n, int &nnz,
   // Clear pointer.
   rhs_buffer = NULL;
 
-  return TEST_SUCCESS;
+  return 0;
 }
 
 void build_matrix(int n, std::map<unsigned int, MatrixEntry> &ar_mat, std::map<unsigned int, std::complex<double> > &ar_rhs,
@@ -216,7 +212,7 @@ void build_matrix_block(int n, std::map<unsigned int, MatrixEntry> &ar_mat, std:
 
 // Test code.
 void solve(LinearMatrixSolver<std::complex<double> > &solver, int n) {
-  if (solver.solve()) {
+  if(solver.solve()) {
     std::complex<double> *sln = solver.get_sln_vector();
     for (int i = 0; i < n; i++)
       if(sln[i].imag() < 0.0)
@@ -229,9 +225,7 @@ void solve(LinearMatrixSolver<std::complex<double> > &solver, int n) {
 }
 
 int main(int argc, char *argv[]) {
-  int ret = TEST_SUCCESS;
-
-  if (argc < 2) error("Not enough parameters.");
+  int ret = 0;
 
   int n;
   int nnz;
@@ -240,17 +234,17 @@ int main(int argc, char *argv[]) {
   std::map<unsigned int, MatrixEntry> ar_mat;
   std::map<unsigned int, std::complex<double> > ar_rhs;
 
-  if (argc == 3 && strcasecmp(argv[2], "complex-matrix-to-real") == 0)
+  if(argc == 3 && strcasecmp(argv[2], "complex-matrix-to-real") == 0)
     cplx_2_real = true;
   else
     cplx_2_real = false;
 
-  if (read_matrix_and_rhs((char*)"in/linsys-cplx-4", n, nnz, ar_mat, ar_rhs, cplx_2_real) != TEST_SUCCESS)
-    error("Failed to read the matrix and rhs.");
-
   std::complex<double>* sln;
 
-  if (strcasecmp(argv[1], "petsc") == 0) {
+  if(read_matrix_and_rhs((char*)"in/linsys-cplx-4", n, nnz, ar_mat, ar_rhs, cplx_2_real) != 0)
+    throw Hermes::Exceptions::Exception("Failed to read the matrix and rhs.");
+
+  if(strcasecmp(argv[1], "petsc") == 0) {
 #ifdef WITH_PETSC
     PetscMatrix<std::complex<double> > mat;
     PetscVector<std::complex<double> > rhs;
@@ -261,7 +255,7 @@ int main(int argc, char *argv[]) {
 sln = solver.get_sln_vector();
 #endif
   }
-  else if (strcasecmp(argv[1], "petsc-block") == 0) {
+  else if(strcasecmp(argv[1], "petsc-block") == 0) {
 #ifdef WITH_PETSC
     PetscMatrix<std::complex<double> > mat;
     PetscVector<std::complex<double> > rhs;
@@ -272,7 +266,7 @@ sln = solver.get_sln_vector();
 sln = solver.get_sln_vector();
 #endif
   }
-  else if (strcasecmp(argv[1], "umfpack") == 0) {
+  else if(strcasecmp(argv[1], "umfpack") == 0) {
 #ifdef WITH_UMFPACK
     UMFPackMatrix<std::complex<double> > mat;
     UMFPackVector<std::complex<double> > rhs;
@@ -283,7 +277,7 @@ sln = solver.get_sln_vector();
 sln = solver.get_sln_vector();
 #endif
   }
-  else if (strcasecmp(argv[1], "umfpack-block") == 0) {
+  else if(strcasecmp(argv[1], "umfpack-block") == 0) {
 #ifdef WITH_UMFPACK
     UMFPackMatrix<std::complex<double> > mat;
     UMFPackVector<std::complex<double> > rhs;
@@ -294,7 +288,7 @@ sln = solver.get_sln_vector();
 sln = solver.get_sln_vector();
 #endif
   }
-  else if (strcasecmp(argv[1], "aztecoo") == 0) {
+  else if(strcasecmp(argv[1], "aztecoo") == 0) {
 #ifdef WITH_TRILINOS
     EpetraMatrix<std::complex<double> > mat;
     EpetraVector<std::complex<double> > rhs;
@@ -305,7 +299,7 @@ sln = solver.get_sln_vector();
 sln = solver.get_sln_vector();
 #endif
   }
-  else if (strcasecmp(argv[1], "aztecoo-block") == 0) {
+  else if(strcasecmp(argv[1], "aztecoo-block") == 0) {
 #ifdef WITH_TRILINOS
     EpetraMatrix<std::complex<double> > mat;
     EpetraVector<std::complex<double> > rhs;
@@ -316,33 +310,33 @@ sln = solver.get_sln_vector();
 sln = solver.get_sln_vector();
 #endif
   }
-  else if (strcasecmp(argv[1], "amesos") == 0) {
+  else if(strcasecmp(argv[1], "amesos") == 0) {
 #ifdef WITH_TRILINOS
     EpetraMatrix<std::complex<double> > mat;
     EpetraVector<std::complex<double> > rhs;
     build_matrix(n, ar_mat, ar_rhs, &mat, &rhs);
 
-    if (AmesosSolver<std::complex<double> >::is_available("Klu")) {
+    if(AmesosSolver<std::complex<double> >::is_available("Klu")) {
       AmesosSolver<std::complex<double> > solver("Klu", &mat, &rhs);
       solve(solver, n);
 sln = solver.get_sln_vector();
     }
 #endif
   }
-  else if (strcasecmp(argv[1], "amesos-block") == 0) {
+  else if(strcasecmp(argv[1], "amesos-block") == 0) {
 #ifdef WITH_TRILINOS
     EpetraMatrix<std::complex<double> > mat;
     EpetraVector<std::complex<double> > rhs;
     build_matrix_block(n, ar_mat, ar_rhs, &mat, &rhs);
 
-    if (AmesosSolver<std::complex<double> >::is_available("Klu")) {
+    if(AmesosSolver<std::complex<double> >::is_available("Klu")) {
       AmesosSolver<std::complex<double> > solver("Klu", &mat, &rhs);
       solve(solver, n);
 sln = solver.get_sln_vector();
     }
 #endif
   }
-  else if (strcasecmp(argv[1], "mumps") == 0) {
+  else if(strcasecmp(argv[1], "mumps") == 0) {
 #ifdef WITH_MUMPS
     MumpsMatrix<std::complex<double> > mat;
     MumpsVector<std::complex<double> > rhs;
@@ -353,7 +347,7 @@ sln = solver.get_sln_vector();
 sln = solver.get_sln_vector();
 #endif
   }
-  else if (strcasecmp(argv[1], "mumps-block") == 0) {
+  else if(strcasecmp(argv[1], "mumps-block") == 0) {
 #ifdef WITH_MUMPS
     MumpsMatrix<std::complex<double> > mat;
     MumpsVector<std::complex<double> > rhs;
@@ -365,17 +359,17 @@ sln = solver.get_sln_vector();
 #endif
   }
   else
-    ret = TEST_FAILURE;
+    ret = -1;
 
 std::cout << sln[0] << sln[1] << sln[2];
 
-  if (std::abs(sln[0] - std::complex<double>(0.800000, -0.600000)) > 1E-6 || std::abs(sln[1] - std::complex<double>(0.470588, -0.882353)) > 1E-6 || std::abs(sln[2] - std::complex<double>(0.486486, -0.918919)) > 1E-6)
-    ret = TEST_FAILURE;
+  if(std::abs(sln[0] - std::complex<double>(0.800000, -0.600000)) > 1E-6 || std::abs(sln[1] - std::complex<double>(0.470588, -0.882353)) > 1E-6 || std::abs(sln[2] - std::complex<double>(0.486486, -0.918919)) > 1E-6)
+    ret = -1;
   else
-    ret = TEST_SUCCESS;
+    ret = 0;
 
   // Test
-  if (ret == TEST_FAILURE)
+  if(ret == -1)
     printf("Failure!\n");
   else
     printf("Success!\n");

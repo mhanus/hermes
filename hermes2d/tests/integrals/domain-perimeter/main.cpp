@@ -1,6 +1,5 @@
 #define HERMES_REPORT_WARN
 #define HERMES_REPORT_INFO
-#define HERMES_REPORT_VERBOSE
 #define HERMES_REPORT_FILE "application.log"
 #define PI 4.0*atan(1.0)
 #include "hermes2d.h"
@@ -53,7 +52,7 @@ double CalculateBoundaryLength(Mesh* mesh, int bdryMarker)
   // Loop through all boundary faces of all active elements.
   for_all_active_elements(e, mesh) {
     for(int edge = 0; edge < e->get_num_surf(); ++edge) {
-      if ((e->en[edge]->bnd) && (e->en[edge]->marker == bdryMarker)) {
+      if((e->en[edge]->bnd) && (e->en[edge]->marker == bdryMarker)) {
         rm.set_active_element(e);
         points_location = quad->get_edge_points(edge, quad->get_max_order(e->get_mode()), e->get_mode());
         points = quad->get_points(points_location, e->get_mode());
@@ -74,10 +73,10 @@ double CalculateBoundaryLength(Mesh* mesh, int bdryMarker)
 //
 int main(int argc, char* argv[])
 {
-  if (argc != 3)
+  if(argc != 3)
   {
     printf("Missing mesh filename and domain perimeter as command-line parameters.");
-    return TEST_FAILURE;
+    return -1;
   }
 
   // Load the mesh.
@@ -111,32 +110,25 @@ int main(int argc, char* argv[])
 
   // Calculate the length of the four boundaries segments.
   double l1 = CalculateBoundaryLength(&mesh, 1);
-  info("Length of boundary 1 = %g\n", l1);
 
   double l2 = CalculateBoundaryLength(&mesh, 2);
-  info("Length of boundary 2 = %g\n", l2);
 
   double l3 = CalculateBoundaryLength(&mesh, 3);
-  info("Length of boundary 3 = %g\n", l3);
 
   double l4 = CalculateBoundaryLength(&mesh, 4);
-  info("Length of boundary 4 = %g\n", l4);
 
   double perimeter = l1 + l2 + l3 + l4;
-  info("Computed perimeter = %10.15f\n", perimeter);
 
   // Set exact value from CMakeLists.txt file
-  info("Exact perimeter = %g\n", bdryLengthInput);
 
-  if (fabs(perimeter - bdryLengthInput) < 1e-6) {
+  if(fabs(perimeter - bdryLengthInput) < 1e-6) {
     printf("Success!\n");
-    return TEST_SUCCESS;
+    return 0;
   }
   else {
     printf("Failure!\n");
-    return TEST_FAILURE;
+    return -1;
   }
-
 
   return 0;
 }

@@ -31,6 +31,7 @@ namespace Hermes
     ///
     class Quad2DCheb;
 
+    /// @ingroup meshFunctions
     /// \brief Represents the solution of a PDE.
     ///
     /// The Solution class represents the solution of a PDE. Given a space and a solution vector,
@@ -57,10 +58,10 @@ namespace Hermes
     /// The following is an example of the set of monomials for a cubic quad and a cubic triangle.
     /// (Note that these are actually the definitions of the polynomial spaces on these elements.)
     ///
-    ///   [ x^3*y^3  x^2*y^3  x*y^3  y^3 ]       [                    y^3 ]
-    ///   [ x^3*y^2  x^2*y^2  x*y^2  y^2 ]       [             x*y^2  y^2 ]
-    ///   [ x^3*y    x^2*y    x*y    y   ]       [      x^2*y  x*y    y   ]
-    ///   [ x^3      x^2      x      1   ]       [ x^3  x^2    x      1   ]
+    ///  [ x^3*y^3  x^2*y^3  x*y^3  y^3 ]      [                    y^3 ]
+    ///  [ x^3*y^2  x^2*y^2  x*y^2  y^2 ]      [             x*y^2  y^2 ]
+    ///  [ x^3*y    x^2*y    x*y    y   ]      [      x^2*y  x*y    y   ]
+    ///  [ x^3      x^2      x      1   ]      [ x^3  x^2    x      1   ]
     ///
     /// The number of monomials is (p + 1)^2 for quads and (p + 1)*(p + 2)/2 for triangles, where
     /// 'p' is the polynomial degree.
@@ -77,7 +78,7 @@ namespace Hermes
     {
     public:
       Solution();
-      Solution(Mesh *mesh);
+      Solution(const Mesh *mesh);
       Solution (Space<Scalar>* s, Vector<Scalar>* coeff_vec);
       Solution (Space<Scalar>* s, Scalar* coeff_vec);
       virtual ~Solution();
@@ -141,7 +142,7 @@ namespace Hermes
 
       /// Passes solution components calculated from solution vector as Solutions.
       static void vector_to_solutions(const Scalar* solution_vector, Hermes::vector<const Space<Scalar> *> spaces,
-          Hermes::vector<Solution<Scalar>*> solutions, 
+          Hermes::vector<Solution<Scalar>*> solutions,
           Hermes::vector<bool> add_dir_lift = Hermes::vector<bool>(),
           Hermes::vector<int> start_indices = Hermes::vector<int>());
 
@@ -149,7 +150,7 @@ namespace Hermes
           bool add_dir_lift = true, int start_index = 0);
 
       static void vector_to_solutions(const Vector<Scalar>* vec, Hermes::vector<const Space<Scalar> *> spaces,
-          Hermes::vector<Solution<Scalar>*> solutions, 
+          Hermes::vector<Solution<Scalar>*> solutions,
           Hermes::vector<bool> add_dir_lift = Hermes::vector<bool>(),
           Hermes::vector<int> start_indices = Hermes::vector<int>());
 
@@ -157,15 +158,12 @@ namespace Hermes
           bool add_dir_lift = true, int start_index = 0);
 
       static void vector_to_solutions(const Scalar* solution_vector, Hermes::vector<const Space<Scalar> *> spaces,
-          Hermes::vector<Solution<Scalar>*> solutions, Hermes::vector<PrecalcShapeset *> pss, 
+          Hermes::vector<Solution<Scalar>*> solutions, Hermes::vector<PrecalcShapeset *> pss,
           Hermes::vector<bool> add_dir_lift = Hermes::vector<bool>(),
           Hermes::vector<int> start_indices = Hermes::vector<int>());
 
       static void vector_to_solution(const Scalar* solution_vector, const Space<Scalar>* space, Solution<Scalar>* solution,
           PrecalcShapeset* pss, bool add_dir_lift = true, int start_index = 0);
-
-      /// If this is set to true, the mesh was created by this instance of this class.
-      bool own_mesh;
 
       /// Internal.
       virtual void set_active_element(Element* e);

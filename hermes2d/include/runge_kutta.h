@@ -68,20 +68,23 @@ namespace Hermes
     //     can be found, I think, in newer Butcher's papers or presentation
     //     (he has them online), and possibly in his book.
 
-    template<typename Scalar>
-    class HERMES_API RungeKutta
-    {
 
+    /// @defgroup userSolvingAPI Top-level solving
+
+    /// @ingroup userSolvingAPI
+    template<typename Scalar>
+    class HERMES_API RungeKutta : public Hermes::Mixins::Loggable
+    {
     public:
       /// Constructor.
       /// Parameter start_from_zero_K_vector: if set to true, the last K_vector will NOT be used
       /// as an initial guess for the Newton's method, instead zero vector will be used.
-      RungeKutta(const WeakForm<Scalar>* wf, Hermes::vector<Space<Scalar> *> spaces, ButcherTable* bt, MatrixSolverType matrix_solver = SOLVER_UMFPACK, 
+      RungeKutta(const WeakForm<Scalar>* wf, Hermes::vector<Space<Scalar> *> spaces, ButcherTable* bt,
           bool start_from_zero_K_vector = false, bool residual_as_vector = true);
 
       /// Constructor for one equation.
-      RungeKutta(const WeakForm<Scalar>* wf, Space<Scalar>* space, ButcherTable* bt, MatrixSolverType matrix_solver = SOLVER_UMFPACK, 
-          bool start_from_zero_K_vector = false, bool residual_as_vector = true);
+      RungeKutta(const WeakForm<Scalar>* wf, Space<Scalar>* space, ButcherTable* bt,
+        bool start_from_zero_K_vector = false, bool residual_as_vector = true);
 
       /// Projections will be global orthogonal (default)
       void use_global_projections();
@@ -115,13 +118,12 @@ namespace Hermes
       void rk_time_step_newton(double current_time, double time_step, Hermes::vector<Solution<Scalar>*> slns_time_prev,
                         Hermes::vector<Solution<Scalar>*> slns_time_new, Hermes::vector<Solution<Scalar>*> error_fns,
                         bool freeze_jacobian = true, bool block_diagonal_jacobian = false,
-                        bool verbose = false, double newton_tol = 1e-6,
-                        int newton_max_iter = 20, double newton_damping_coeff = 1.0,
+                        double newton_tol = 1e-6, int newton_max_iter = 20, double newton_damping_coeff = 1.0,
                         double newton_max_allowed_residual_norm = 1e10);
       void rk_time_step_newton(double current_time, double time_step, Solution<Scalar>* slns_time_prev,
                         Solution<Scalar>* slns_time_new, Solution<Scalar>* error_fn,
                         bool freeze_jacobian = true, bool block_diagonal_jacobian = false,
-                        bool verbose = false, double newton_tol = 1e-6, int newton_max_iter = 20,
+                        double newton_tol = 1e-6, int newton_max_iter = 20,
                         double newton_damping_coeff = 1.0, double newton_max_allowed_residual_norm = 1e10);
 
       // This is a wrapper for the previous function if error_fn is not provided
@@ -129,26 +131,29 @@ namespace Hermes
       void rk_time_step_newton(double current_time, double time_step, Hermes::vector<Solution<Scalar>*> slns_time_prev,
                         Hermes::vector<Solution<Scalar>*> slns_time_new,
                         bool freeze_jacobian = true, bool block_diagonal_jacobian = false,
-                        bool verbose = false, double newton_tol = 1e-6, int newton_max_iter = 20,
+                        double newton_tol = 1e-6, int newton_max_iter = 20,
                         double newton_damping_coeff = 1.0, double newton_max_allowed_residual_norm = 1e10);
       void rk_time_step_newton(double current_time, double time_step, Solution<Scalar>* sln_time_prev,
                         Solution<Scalar>* sln_time_new, bool freeze_jacobian = true,
-                        bool block_diagonal_jacobian = false, bool verbose = false,
-                        double newton_tol = 1e-6, int newton_max_iter = 20, double newton_damping_coeff = 1.0,
+                        bool block_diagonal_jacobian = false, double newton_tol = 1e-6, int newton_max_iter = 20, double newton_damping_coeff = 1.0,
                         double newton_max_allowed_residual_norm = 1e10);
 
       /**
        \fn  void RungeKutta::set_filters_to_reinit(Hermes::vector<Filter<Scalar>*> filters_to_reinit);
-      
+
        \brief Sets the filters to reinitialize.
-      
+
        \author  Lk
        \date  10/29/2011
-      
-       \param [in]  filters_to_reinit the filters to reinitialize.
+
+       \param[in]  filters_to_reinit the filters to reinitialize.
        */
 
       void set_filters_to_reinit(Hermes::vector<Filter<Scalar>*> filters_to_reinit);
+
+      /// Sets the integration order in DiscreteProblem instances used to be globally this number, no calculation.
+      void setGlobalIntegrationOrder(unsigned int order);
+
     protected:
       /// Creates an augmented weak formulation for the multi-stage Runge-Kutta problem.
       /// The original discretized equation is M\dot{Y} = F(t, Y) where M is the mass
@@ -214,7 +219,8 @@ namespace Hermes
       Hermes::vector<Filter<Scalar>*> filters_to_reinit;
     private:
       bool do_global_projections;
-      MatrixSolverType matrix_solver;
+      bool globalIntegrationOrderSet;
+      unsigned int globalIntegrationOrder;
     };
   }
 }

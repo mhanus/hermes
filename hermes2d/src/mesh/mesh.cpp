@@ -13,30 +13,33 @@
 // You should have received a copy of the GNU General Public License
 // along with Hermes2D.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "global.h"
 #include "mesh.h"
+#include <algorithm>
+#include "global.h"
 #include "mesh_reader_h2d.h"
 
 namespace Hermes
 {
   namespace Hermes2D
   {
-    bool Node::is_constrained_vertex() const 
-    { 
-      assert(type == HERMES_TYPE_VERTEX); 
-      return ref <= 3 && !bnd; 
+    bool Node::is_constrained_vertex() const
+    {
+      assert(type == HERMES_TYPE_VERTEX);
+      return ref <= 3 && !bnd;
     }
 
     void Node::ref_element(Element* e)
     {
-      if (type == HERMES_TYPE_EDGE)
+      if(type == HERMES_TYPE_EDGE)
       {
         // store the element pointer in a free slot of 'elem'
-        if (elem[0] == NULL) elem[0] = e;
+        if(elem[0] == NULL) elem[0] = e;
         else
         {
-          if (elem[1] == NULL) elem[1] = e;
-          else {assert_msg(false, "No free slot 'elem'");}
+          if(elem[1] == NULL)
+            elem[1] = e;
+          else
+            throw Hermes::Exceptions::Exception(false, "No free slot 'elem'");
         }
       }
       ref++;
@@ -44,17 +47,17 @@ namespace Hermes
 
     void Node::unref_element(HashTable* ht, Element* e)
     {
-      if (type == HERMES_TYPE_VERTEX)
+      if(type == HERMES_TYPE_VERTEX)
       {
-        if (!--ref) ht->remove_vertex_node(id);
+        if(!--ref) ht->remove_vertex_node(id);
       }
       else
       {
         // remove the element from the array 'elem'
-        if (elem[0] == e) elem[0] = NULL;
-        else if (elem[1] == e) elem[1] = NULL;
+        if(elem[0] == e) elem[0] = NULL;
+        else if(elem[1] == e) elem[1] = NULL;
 
-        if (!--ref) ht->remove_edge_node(id);
+        if(!--ref) ht->remove_edge_node(id);
       }
     }
 
@@ -83,72 +86,74 @@ namespace Hermes
 
     Element::Element() : visited(false) {};
 
-    bool Element::is_triangle() const 
+    bool Element::is_triangle() const
     {
       return nvert == 3;
     }
 
-    bool Element::is_quad() const 
+    bool Element::is_quad() const
     {
-      return nvert == 4; 
+      return nvert == 4;
     }
 
-    bool Element::is_curved() const 
+    bool Element::is_curved() const
     {
-      return cm != NULL; 
+      return cm != NULL;
     }
 
-    int Element::get_nvert() const 
+    int Element::get_nvert() const
     {
-      return this->nvert; 
+      return this->nvert;
     }
 
-    ElementMode2D Element::get_mode() const 
+    ElementMode2D Element::get_mode() const
     {
-      return (nvert == 3) ? HERMES_MODE_TRIANGLE : HERMES_MODE_QUAD; 
+      return (nvert == 3) ? HERMES_MODE_TRIANGLE : HERMES_MODE_QUAD;
     }
 
-    unsigned int Element::get_num_surf() 
+    unsigned int Element::get_num_surf()
     {
-      return nvert; 
+      return nvert;
     }
 
-    int Element::next_vert(int i) const 
+    int Element::next_vert(int i) const
     {
-      return (i < (int)nvert-1) ? i + 1 : 0; 
+      return (i < (int)nvert-1) ? i + 1 : 0;
     }
 
-    int Element::prev_vert(int i) const 
+    int Element::prev_vert(int i) const
     {
-      return (i > 0) ? i-1 : nvert-1; 
+      return (i > 0) ? i-1 : nvert-1;
     }
 
-    bool Element::hsplit() const 
+    bool Element::hsplit() const
     {
       if(active)
         return false;
-      return sons[0] != NULL; 
+      return sons[0] != NULL;
     }
 
-    bool Element::vsplit() const 
+    bool Element::vsplit() const
     {
       if(active)
         return false;
-      return sons[2] != NULL; 
+      return sons[2] != NULL;
     }
 
-    bool Element::bsplit() const 
+    bool Element::bsplit() const
     {
       if(active)
         return false;
-      return sons[0] != NULL && sons[2] != NULL; 
+      return sons[0] != NULL && sons[2] != NULL;
     }
 
     Element* Element::get_neighbor(int ie) const
     {
       Element** elem = en[ie]->elem;
-      if (elem[0] == this) return elem[1];
-      if (elem[1] == this) return elem[0];
+      if(elem[0] == this)
+        return elem[1];
+      if(elem[1] == this)
+        return elem[0];
       assert(0);
       return NULL;
     }
@@ -162,7 +167,7 @@ namespace Hermes
       by = vn[2]->y - vn[0]->y;
 
       double area = 0.5*(ax*by - ay*bx);
-      if (is_triangle()) return area;
+      if(is_triangle()) return area;
 
       ax = bx; ay = by;
       bx = vn[3]->x - vn[0]->x;
@@ -174,21 +179,21 @@ namespace Hermes
     double Element::get_diameter() const
     {
       double max, l;
-      if (is_triangle())
+      if(is_triangle())
       {
         max = 0.0;
         for (int i = 0; i < 3; i++)
         {
           int j = next_vert(i);
           l = sqr(vn[i]->x - vn[j]->x) + sqr(vn[i]->y - vn[j]->y);
-          if (l > max) max = l;
+          if(l > max) max = l;
         }
       }
       else
       {
         max = sqr(vn[0]->x - vn[2]->x) + sqr(vn[0]->y - vn[2]->y);
         l   = sqr(vn[1]->x - vn[3]->x) + sqr(vn[1]->y - vn[3]->y);
-        if (l > max) max = l;
+        if(l > max) max = l;
       }
       return sqrt(max);
     }
@@ -250,8 +255,8 @@ namespace Hermes
       for (int i = 0; i < nm; i++)
       {
         Node* en = peek_edge_node(mark[i][0], mark[i][1]);
-        if (en == NULL)
-          error("Boundary data error (edge does not exist)");
+        if(en == NULL)
+          throw Hermes::Exceptions::Exception("Boundary data error (edge does not exist)");
 
         this->boundary_markers_conversion.insert_marker(this->boundary_markers_conversion.min_marker_unused, boundary_markers[i]);
 
@@ -266,37 +271,37 @@ namespace Hermes
       seq = g_mesh_seq++;
     }
 
-    int Mesh::get_num_elements() const 
+    int Mesh::get_num_elements() const
     {
-      if (this == NULL) error("this == NULL in Mesh::get_num_elements().");
+      if(this == NULL) throw Hermes::Exceptions::Exception("this == NULL in Mesh::get_num_elements().");
       return elements.get_num_items();
     }
 
     /// Returns the number of coarse mesh elements.
     int Mesh::get_num_base_elements() const
     {
-      if (this == NULL) error("this == NULL in Mesh::get_num_base_elements().");
+      if(this == NULL) throw Hermes::Exceptions::Exception("this == NULL in Mesh::get_num_base_elements().");
       return nbase;
     }
 
     /// Returns the current number of active elements in the mesh.
     int Mesh::get_num_active_elements() const
     {
-      if (this == NULL) error("this == NULL in Mesh::get_num_active_elements().");
+      if(this == NULL) throw Hermes::Exceptions::Exception("this == NULL in Mesh::get_num_active_elements().");
       return nactive;
     }
 
     /// Returns the maximum node id number plus one.
-    int Mesh::get_max_element_id() const 
+    int Mesh::get_max_element_id() const
     {
-      if (this == NULL) error("this == NULL in Mesh::get_max_element_id().");
+      if(this == NULL) throw Hermes::Exceptions::Exception("this == NULL in Mesh::get_max_element_id().");
       return elements.get_size();
     }
 
     Element* Mesh::get_element(int id) const
     {
-      if (id < 0 || id >= elements.get_size())
-        error("Invalid element ID %d, current range: [0; %d]", id, elements.get_size());
+      if(id < 0 || id >= elements.get_size())
+        throw Hermes::Exceptions::Exception("Invalid element ID %d, current range:[0; %d]", id, elements.get_size());
       return &(elements[id]);
     }
 
@@ -305,12 +310,12 @@ namespace Hermes
       return seq;
     }
 
-    void Mesh::set_seq(unsigned seq) 
+    void Mesh::set_seq(unsigned seq)
     {
-      this->seq = seq; 
+      this->seq = seq;
     }
 
-    Element* Mesh::get_element_fast(int id) const 
+    Element* Mesh::get_element_fast(int id) const
     {
       return &(elements[id]);
     }
@@ -319,18 +324,18 @@ namespace Hermes
     {
       assert(!e->active);
 
-      if (!e->is_triangle())
+      if(!e->is_triangle())
       {
-        if (e->sons[2] == NULL) // horz quad
+        if(e->sons[2] == NULL) // horz quad
         {
-          if (edge == 0 || edge == 2) { son1 = edge >> 1;   return 1; }
-          else if (edge == 1) { son1 = 0; son2 = 1; return 2; }
+          if(edge == 0 || edge == 2) { son1 = edge >> 1;   return 1; }
+          else if(edge == 1) { son1 = 0; son2 = 1; return 2; }
           else { son1 = 1; son2 = 0; return 2; }
         }
-        else if (e->sons[0] == NULL) // vert quad
+        else if(e->sons[0] == NULL) // vert quad
         {
-          if (edge == 1 || edge == 3) { son1 = (edge == 1) ? 3 : 2; return 1; }
-          else if (edge == 0) { son1 = 2; son2 = 3; return 2; }
+          if(edge == 1 || edge == 3) { son1 = (edge == 1) ? 3 : 2; return 1; }
+          else if(edge == 0) { son1 = 2; son2 = 3; return 2; }
           else { son1 = 3; son2 = 2; return 2; }
         }
       }
@@ -406,14 +411,16 @@ namespace Hermes
     {
       // if the top three bits of part are nonzero, we would overflow
       // -- make the element non-curvilinear
-      if (e->cm->part & 0xe000000000000000ULL) return NULL;
+      if(e->cm->part & 0xe000000000000000ULL)
+        return NULL;
 
       // if the parent element is already almost straight-edged,
       // the son will be even more straight-edged
-      if (e->iro_cache == 0) return NULL;
+      if(e->iro_cache == 0)
+        return NULL;
 
       CurvMap* cm = new CurvMap;
-      if (e->cm->toplevel == false)
+      if(e->cm->toplevel == false)
       {
         cm->parent = e->cm->parent;
         cm->part = (e->cm->part << 3) + son + 1;
@@ -445,7 +452,7 @@ namespace Hermes
       memset(cm, 0, sizeof(cm));
 
       // adjust mid-edge coordinates if this is a curved element
-      if (e->is_curved())
+      if(e->is_curved())
       {
         double2 pt[3] = { { 0.0, -1.0 }, { 0.0, 0.0 }, { -1.0, 0.0 } };
         e->cm->get_mid_edge_points(e, pt, 3);
@@ -467,7 +474,7 @@ namespace Hermes
 
       // update coefficients of curved reference mapping
       for (int i = 0; i < 4; i++)
-        if (sons[i]->is_curved())
+        if(sons[i]->is_curved())
           sons[i]->cm->update_refmap_coeffs(sons[i]);
 
       // deactivate this element and unregister from its nodes
@@ -497,7 +504,7 @@ namespace Hermes
       memcpy(e->sons, sons, 4 * sizeof(Element*));
 
       // If sons_out != NULL, copy son pointers there.
-      if (sons_out != NULL)
+      if(sons_out != NULL)
       {
         for(int i = 0; i < 3; i++) sons_out[i] = sons[i];
       }
@@ -541,7 +548,7 @@ namespace Hermes
       // remember the markers of the edge nodes
       int bnd[4] = { e->en[0]->bnd, e->en[1]->bnd, e->en[2]->bnd, e->en[3]->bnd };
       int mrk[4] = { e->en[0]->marker, e->en[1]->marker, e->en[2]->marker, e->en[3]->marker };
-      
+
       // deactivate this element and unregister from its nodes
       e->active = false;
       nactive--;
@@ -552,7 +559,7 @@ namespace Hermes
       memset(cm, 0, sizeof(cm));
 
       // default refinement: one quad to four quads
-      if (refinement == 0)
+      if(refinement == 0)
       {
         // obtain four mid-edge vertex nodes and one mid-element vertex node
         Node* x0, *x1, *x2, *x3, *mid;
@@ -563,7 +570,7 @@ namespace Hermes
         mid = get_vertex_node(x0->id, x2->id);
 
         // adjust mid-edge coordinates if this is a curved element
-        if (e->is_curved())
+        if(e->is_curved())
         {
           double2 pt[5] = { { 0.0, -1.0 }, { 1.0, 0.0 }, { 0.0, 1.0 }, { -1.0, 0.0 }, { 0.0, 0.0 } };
           e->cm->get_mid_edge_points(e, pt, 5);
@@ -598,14 +605,14 @@ namespace Hermes
       }
 
       // refinement '1': one quad to two 'horizontal' quads
-      else if (refinement == 1)
+      else if(refinement == 1)
       {
         Node* x1, *x3;
         x1 = get_vertex_node(e->vn[1]->id, e->vn[2]->id);
         x3 = get_vertex_node(e->vn[3]->id, e->vn[0]->id);
 
         // adjust mid-edge coordinates if this is a curved element
-        if (e->is_curved())
+        if(e->is_curved())
         {
           double2 pt[2] = { { 1.0, 0.0 }, { -1.0, 0.0 } };
           e->cm->get_mid_edge_points(e, pt, 2);
@@ -634,14 +641,14 @@ namespace Hermes
       }
 
       // refinement '2': one quad to two 'vertical' quads
-      else if (refinement == 2)
+      else if(refinement == 2)
       {
         Node* x0, *x2;
         x0 = get_vertex_node(e->vn[0]->id, e->vn[1]->id);
         x2 = get_vertex_node(e->vn[2]->id, e->vn[3]->id);
 
         // adjust mid-edge coordinates if this is a curved element
-        if (e->is_curved())
+        if(e->is_curved())
         {
           double2 pt[2] = { { 0.0, -1.0 }, { 0.0, 1.0 } };
           e->cm->get_mid_edge_points(e, pt, 2);
@@ -672,13 +679,13 @@ namespace Hermes
 
       // update coefficients of curved reference mapping
       for (i = 0; i < 4; i++)
-        if (sons[i] != NULL && sons[i]->cm != NULL)
+        if(sons[i] != NULL && sons[i]->cm != NULL)
           sons[i]->cm->update_refmap_coeffs(sons[i]);
 
       // optimization: iro never gets worse
-      if (e->iro_cache == 0)
+      if(e->iro_cache == 0)
         for (i = 0; i < 4; i++)
-          if (sons[i] != NULL)
+          if(sons[i] != NULL)
             sons[i]->iro_cache = 0;
 
       // set pointers to parent element for sons
@@ -689,7 +696,7 @@ namespace Hermes
       memcpy(e->sons, sons, sizeof(sons));
 
       // If sons_out != NULL, copy son pointers there.
-      if (sons_out != NULL)
+      if(sons_out != NULL)
       {
         for(int i = 0; i < 4; i++) sons_out[i] = sons[i];
       }
@@ -716,10 +723,10 @@ namespace Hermes
       for (i = 0; i < 4; i++)
       {
         Element* son = e->sons[i];
-        if (son != NULL)
+        if(son != NULL)
         {
           son->unref_all_nodes(this);
-          if (son->cm != NULL) delete son->cm;
+          if(son->cm != NULL) delete son->cm;
           elements.remove(son->id);
           this->nactive--;
         }
@@ -745,9 +752,9 @@ namespace Hermes
     {
       this->refinements.push_back(std::pair<unsigned int, int>(e->id, refinement));
 
-      if (e->is_triangle())
+      if(e->is_triangle())
       {
-        if (refinement == 3)
+        if(refinement == 3)
         {
           refine_triangle_to_quads(this, e);
         }
@@ -764,8 +771,8 @@ namespace Hermes
     void Mesh::refine_element_id(int id, int refinement)
     {
       Element* e = this->get_element(id);
-      if (!e->used) error("Invalid element id number.");
-      if (!e->active) error("Attempt to refine element #%d which has been refined already.", e->id);
+      if(!e->used) throw Hermes::Exceptions::Exception("Invalid element id number.");
+      if(!e->active) throw Hermes::Exceptions::Exception("Attempt to refine element #%d which has been refined already.", e->id);
       this->refine_element(e, refinement);
     }
 
@@ -792,7 +799,7 @@ namespace Hermes
       {
         for_all_active_elements(e, this)
         {
-          if ((r = criterion(e)) >= 0)
+          if((r = criterion(e)) >= 0)
             refine_element_id(e->id, r);
         }
       }
@@ -807,7 +814,7 @@ namespace Hermes
     static int rtv_criterion(Element* e)
     {
       for (unsigned int i = 0; i < e->get_num_surf(); i++)
-        if (e->vn[i]->id == rtv_id)
+        if(e->vn[i]->id == rtv_id)
           return 0;
       return -1;
     }
@@ -825,27 +832,27 @@ namespace Hermes
       unsigned int i;
       for (i = 0; i < e->get_num_surf(); i++)
       {
-        if (e->en[i]->marker == rtb_marker || rtb_vert[e->vn[i]->id])
+        if(e->en[i]->marker == rtb_marker || rtb_vert[e->vn[i]->id])
         {
           break;
         }
       }
 
-      if (i >= e->get_num_surf()) return -1;
+      if(i >= e->get_num_surf()) return -1;
       // triangle should be split into 3 quads
-      //  if (e->is_triangle() && rtb_tria_to_quad) return 3;
+      //  if(e->is_triangle() && rtb_tria_to_quad) return 3;
       // triangle should be split into 4 triangles or quad should
       // be split into 4 quads
-      if (e->is_triangle() || !rtb_aniso) return 0;
+      if(e->is_triangle() || !rtb_aniso) return 0;
 
       // quads - anisotropic case 1
-      if ((e->en[0]->marker == rtb_marker && !rtb_vert[e->vn[2]->id] && !rtb_vert[e->vn[3]->id]) ||
+      if((e->en[0]->marker == rtb_marker && !rtb_vert[e->vn[2]->id] && !rtb_vert[e->vn[3]->id]) ||
         (e->en[2]->marker == rtb_marker && !rtb_vert[e->vn[0]->id] && !rtb_vert[e->vn[1]->id]) ||
         (e->en[0]->marker == rtb_marker && e->en[2]->marker == rtb_marker &&
         e->en[1]->marker != rtb_marker && e->en[3]->marker != rtb_marker)) return 1;
 
       // quads - anisotropic case 2
-      if ((e->en[1]->marker == rtb_marker && !rtb_vert[e->vn[3]->id] && !rtb_vert[e->vn[0]->id]) ||
+      if((e->en[1]->marker == rtb_marker && !rtb_vert[e->vn[3]->id] && !rtb_vert[e->vn[0]->id]) ||
         (e->en[3]->marker == rtb_marker && !rtb_vert[e->vn[1]->id] && !rtb_vert[e->vn[2]->id]) ||
         (e->en[1]->marker == rtb_marker && e->en[3]->marker == rtb_marker &&
         e->en[0]->marker != rtb_marker && e->en[2]->marker != rtb_marker)) return 2;
@@ -870,7 +877,7 @@ namespace Hermes
           {
             bool marker_matched = false;
             for(unsigned int marker_i = 0; marker_i < markers.size(); marker_i++)
-              if (e->en[j]->marker == this->boundary_markers_conversion.get_internal_marker(markers[marker_i]).marker)
+              if(e->en[j]->marker == this->boundary_markers_conversion.get_internal_marker(markers[marker_i]).marker)
                 marker_matched = true;
             if(marker_matched)
               rtb_vert[e->vn[j]->id] = rtb_vert[e->vn[e->next_vert(j)]->id] = 1;
@@ -887,7 +894,7 @@ namespace Hermes
     void Mesh::refine_towards_boundary(std::string marker, int depth, bool aniso, bool mark_as_initial)
     {
       if(marker == HERMES_ANY)
-        for(std::map<int, std::string>::iterator it = this->boundary_markers_conversion.conversion_table.begin(); it != this->boundary_markers_conversion.conversion_table.end(); it++)
+        for(std::map<int, std::string>::iterator it = this->boundary_markers_conversion.conversion_table.begin(); it != this->boundary_markers_conversion.conversion_table.end(); ++it)
           refine_towards_boundary(it->second, depth, aniso, mark_as_initial);
 
       else
@@ -906,7 +913,7 @@ namespace Hermes
           for_all_active_elements(e, this)
             for (unsigned int j = 0; j < e->get_num_surf(); j++)
             {
-              if (e->en[j]->marker == this->boundary_markers_conversion.get_internal_marker(marker).marker)
+              if(e->en[j]->marker == this->boundary_markers_conversion.get_internal_marker(marker).marker)
               {
                 rtb_vert[e->vn[j]->id] = rtb_vert[e->vn[e->next_vert(j)]->id] = 1;
               }
@@ -924,11 +931,11 @@ namespace Hermes
     void Mesh::unrefine_element_id(int id)
     {
       Element* e = get_element(id);
-      if (!e->used) error("Invalid element id number.");
-      if (e->active) return;
+      if(!e->used) throw Hermes::Exceptions::Exception("Invalid element id number.");
+      if(e->active) return;
 
       for (int i = 0; i < 4; i++)
-        if (e->sons[i] != NULL)
+        if(e->sons[i] != NULL)
           unrefine_element_id(e->sons[i]->id);
 
       unrefine_element_internal(e);
@@ -944,12 +951,12 @@ namespace Hermes
       {
         bool found = true;
         for (unsigned int i = 0; i < 4; i++)
-          if (e->sons[i] != NULL &&
+          if(e->sons[i] != NULL &&
             (!e->sons[i]->active || (keep_initial_refinements && e->sons[i]->id < ninitial))
             )
           { found = false; break; }
 
-          if (found) list.push_back(e->id);
+          if(found) list.push_back(e->id);
       }
 
       // unrefine the found elements
@@ -1011,16 +1018,15 @@ namespace Hermes
         length_2 = vector_length(v2->x - v1->x, v2->y - v1->y),
         length_3 = vector_length(v0->x - v2->x, v0->y - v2->y);
       if(length_1 < 1e-14 || length_2 < 1e-14 || length_3 < 1e-14)
-        error("Edge of triangular element #%d has length less than 1e-14.", i);
+        throw Hermes::Exceptions::Exception("Edge of triangular element #%d has length less than 1e-14.", i);
 
       // checking that vertices do not lie on the same line
       if(same_line(v0->x, v0->y, v1->x, v1->y, v2->x, v2->y))
-        error("Triangular element #%d: all vertices lie on the same line.", i);
+        throw Hermes::Exceptions::Exception("Triangular element #%d: all vertices lie on the same line.", i);
 
       // checking positive orientation. If not positive, swapping vertices
-      if (!is_convex(v1->x - v0->x, v1->y - v0->y, v2->x - v0->x, v2->y - v0->y))
+      if(!is_convex(v1->x - v0->x, v1->y - v0->y, v2->x - v0->x, v2->y - v0->y))
       {
-        warn("Triangular element #%d not positively oriented, swapping vertices.", i);
         std::swap(v1, v2);
       }
     }
@@ -1034,40 +1040,40 @@ namespace Hermes
         length_3 = vector_length(v3->x - v2->x, v3->y - v2->y),
         length_4 = vector_length(v0->x - v3->x, v0->y - v3->y);
       if(length_1 < 1e-14 || length_2 < 1e-14 || length_3 < 1e-14 || length_4 < 1e-14)
-        error("Edge of quad element #%d has length less than 1e-14.", i);
+        throw Hermes::Exceptions::Exception("Edge of quad element #%d has length less than 1e-14.", i);
 
       // checking that both diagonals have nonzero length
       double
         diag_1 = vector_length(v2->x - v0->x, v2->y - v0->y),
         diag_2 = vector_length(v3->x - v1->x, v3->y - v1->y);
       if(diag_1 < 1e-14 || diag_2 < 1e-14)
-        error("Diagonal of quad element #%d has length less than 1e-14.", i);
+        throw Hermes::Exceptions::Exception("Diagonal of quad element #%d has length less than 1e-14.", i);
 
       // checking that vertices v0, v1, v2 do not lie on the same line
       if(same_line(v0->x, v0->y, v1->x, v1->y, v2->x, v2->y))
-        error("Quad element #%d: vertices v0, v1, v2 lie on the same line.", i);
+        throw Hermes::Exceptions::Exception("Quad element #%d: vertices v0, v1, v2 lie on the same line.", i);
       // checking that vertices v0, v1, v3 do not lie on the same line
       if(same_line(v0->x, v0->y, v1->x, v1->y, v3->x, v3->y))
-        error("Quad element #%d: vertices v0, v1, v3 lie on the same line.", i);
+        throw Hermes::Exceptions::Exception("Quad element #%d: vertices v0, v1, v3 lie on the same line.", i);
       // checking that vertices v0, v2, v3 do not lie on the same line
       if(same_line(v0->x, v0->y, v2->x, v2->y, v3->x, v3->y))
-        error("Quad element #%d: vertices v0, v2, v3 lie on the same line.", i);
+        throw Hermes::Exceptions::Exception("Quad element #%d: vertices v0, v2, v3 lie on the same line.", i);
       // checking that vertices v1, v2, v3 do not lie on the same line
       if(same_line(v1->x, v1->y, v2->x, v2->y, v3->x, v3->y))
-        error("Quad element #%d: vertices v1, v2, v3 lie on the same line.", i);
+        throw Hermes::Exceptions::Exception("Quad element #%d: vertices v1, v2, v3 lie on the same line.", i);
 
       // checking that vertex v1 lies on the right of the diagonal v2-v0
       int vertex_1_ok = is_convex(v1->x - v0->x, v1->y - v0->y, v2->x - v0->x, v2->y - v0->y);
-      if(!vertex_1_ok) error("Vertex v1 of quad element #%d does not lie on the right of the diagonal v2-v0.", i);
+      if(!vertex_1_ok) throw Hermes::Exceptions::Exception("Vertex v1 of quad element #%d does not lie on the right of the diagonal v2-v0.", i);
       // checking that vertex v3 lies on the left of the diagonal v2-v0
       int vertex_3_ok = is_convex(v2->x - v0->x, v2->y - v0->y, v3->x - v0->x, v3->y - v0->y);
-      if(!vertex_3_ok) error("Vertex v3 of quad element #%d does not lie on the left of the diagonal v2-v0.", i);
+      if(!vertex_3_ok) throw Hermes::Exceptions::Exception("Vertex v3 of quad element #%d does not lie on the left of the diagonal v2-v0.", i);
       // checking that vertex v2 lies on the right of the diagonal v3-v1
       int vertex_2_ok = is_convex(v2->x - v1->x, v2->y - v1->y, v3->x - v1->x, v3->y - v1->y);
-      if(!vertex_2_ok) error("Vertex v2 of quad element #%d does not lie on the right of the diagonal v3-v1.", i);
+      if(!vertex_2_ok) throw Hermes::Exceptions::Exception("Vertex v2 of quad element #%d does not lie on the right of the diagonal v3-v1.", i);
       // checking that vertex v0 lies on the left of the diagonal v3-v1
       int vertex_0_ok = is_convex(v3->x - v1->x, v3->y - v1->y, v0->x - v1->x, v0->y - v1->y);
-      if(!vertex_0_ok) error("Vertex v0 of quad element #%d does not lie on the left of the diagonal v2-v1.", i);
+      if(!vertex_0_ok) throw Hermes::Exceptions::Exception("Vertex v0 of quad element #%d does not lie on the left of the diagonal v2-v1.", i);
     }
 
     bool Mesh::rescale(double x_ref, double y_ref)
@@ -1080,10 +1086,9 @@ namespace Hermes
       }
 
       // If curvilinear, throw an exception.
-      bool curved = false;
       Element* e;
       for_all_elements(e, this)
-        if (e->cm != NULL)
+        if(e->cm != NULL)
         {
           throw CurvedException(e->id);
           return false;
@@ -1111,7 +1116,7 @@ namespace Hermes
         for (i = 0; i < e->get_num_surf(); i++)
           e->vn[i] = &nodes[e->vn[i]->id];
 
-        if (e->active)
+        if(e->active)
         {
           // update edge node pointers
           for (i = 0; i < e->get_num_surf(); i++)
@@ -1121,15 +1126,15 @@ namespace Hermes
         {
           // update son pointers
           for (i = 0; i < 4; i++)
-            if (e->sons[i] != NULL)
+            if(e->sons[i] != NULL)
               e->sons[i] = &elements[e->sons[i]->id];
         }
 
         // copy CurvMap, update its parent
-        if (e->cm != NULL)
+        if(e->cm != NULL)
         {
           e->cm = new CurvMap(e->cm);
-          if (!e->cm->toplevel)
+          if(!e->cm->toplevel)
             e->cm->parent = &elements[e->cm->parent->id];
         }
 
@@ -1142,7 +1147,7 @@ namespace Hermes
       Node* node;
       for_all_edge_nodes(node, this)
         for (i = 0; i < 2; i++)
-          if (node->elem[i] != NULL)
+          if(node->elem[i] != NULL)
             node->elem[i] = &elements[node->elem[i]->id];
 
       nbase = mesh->nbase;
@@ -1175,7 +1180,7 @@ namespace Hermes
       for (int i = 0; i < mesh->get_max_node_id(); i++)
       {
         Node* node = &(mesh->nodes[i]);
-        if (node->ref < TOP_LEVEL_REF) break;
+        if(node->ref < TOP_LEVEL_REF) break;
         Node* newnode = nodes.add();
         assert(newnode->id == i && node->type == HERMES_TYPE_VERTEX);
         memcpy(newnode, node, sizeof(Node));
@@ -1188,7 +1193,7 @@ namespace Hermes
       {
         Element* enew;
         Node *v0 = &nodes[e->vn[0]->id], *v1 = &nodes[e->vn[1]->id], *v2 = &nodes[e->vn[2]->id];
-        if (e->is_triangle())
+        if(e->is_triangle())
           enew = this->create_triangle(e->marker, v0, v1, v2, NULL);
         else
           enew = this->create_quad(e->marker, v0, v1, v2, &nodes[e->vn[3]->id], NULL);
@@ -1201,7 +1206,7 @@ namespace Hermes
           enew->en[j]->marker = en->marker;
         }
 
-        if (e->is_curved())
+        if(e->is_curved())
           enew->cm = new CurvMap(e->cm);
       }
 
@@ -1217,7 +1222,7 @@ namespace Hermes
     {
       Element* e;
       for_all_elements(e, this)
-        if (e->cm != NULL)
+        if(e->cm != NULL)
         {
           delete e->cm;
           e->cm = NULL; // fixme!!!
@@ -1240,7 +1245,7 @@ namespace Hermes
       for(int i = 0; i < nodes.get_size(); i++)
       {
         Node& node = nodes[i];
-        if (node.type == HERMES_TYPE_EDGE) { //process only edge nodes
+        if(node.type == HERMES_TYPE_EDGE) { //process only edge nodes
           for(int k = 0; k < 2; k++)
             node.elem[k] = NULL;
         }
@@ -1254,7 +1259,7 @@ namespace Hermes
         Element* enew;
         Node *v0 = &nodes[e->vn[0]->id], *v1 = &nodes[e->vn[1]->id], *v2 = &nodes[e->vn[2]->id];
         Node *e0 = &nodes[e->en[0]->id], *e1 = &nodes[e->en[1]->id], *e2 = &nodes[e->en[2]->id];
-        if (e->is_triangle())
+        if(e->is_triangle())
         {
           // create a new element
           enew = elements.add();
@@ -1305,41 +1310,13 @@ namespace Hermes
           enew->en[j]->marker = en->marker;
         }
 
-        if (e->is_curved())
+        if(e->is_curved())
           enew->cm = new CurvMap(e->cm);
       }
 
       nbase = nactive = ninitial = mesh->nactive;
       ntopvert = mesh->ntopvert = get_num_nodes();
       seq = g_mesh_seq++;
-    }
-
-    void Mesh::convert_triangles_to_quads()
-    {
-      Element* e;
-
-      elements.set_append_only(true);
-      for_all_active_elements(e, this)
-        refine_element_to_quads_id(e->id);
-      elements.set_append_only(false);
-
-      Mesh mesh_tmp_for_convert;
-      mesh_tmp_for_convert.copy_converted(this);
-      for (int i = 0; i < mesh_tmp_for_convert.ntopvert; i++)
-      {
-        if (mesh_tmp_for_convert.nodes[i].type == 1)
-        {
-          mesh_tmp_for_convert.nodes[i].y = 0.0;
-        }
-      }
-      MeshReaderH2D loader_mesh_tmp_for_convert;
-      char* mesh_file_tmp = NULL;
-      mesh_file_tmp = tmpnam(NULL);
-      loader_mesh_tmp_for_convert.save(mesh_file_tmp, &mesh_tmp_for_convert);
-      loader_mesh_tmp_for_convert.load(mesh_file_tmp, &mesh_tmp_for_convert);
-      remove(mesh_file_tmp);
-      copy(&mesh_tmp_for_convert);
-
     }
 
     void Mesh::convert_quads_to_triangles()
@@ -1355,7 +1332,7 @@ namespace Hermes
       mesh_tmp_for_convert.copy_converted(this);
       for (int i = 0; i < mesh_tmp_for_convert.ntopvert; i++)
       {
-        if (mesh_tmp_for_convert.nodes[i].type == 1)
+        if(mesh_tmp_for_convert.nodes[i].type == 1)
         {
           mesh_tmp_for_convert.nodes[i].y = 0.0;
         }
@@ -1382,7 +1359,7 @@ namespace Hermes
       mesh_tmp_for_convert.copy_converted(this);
       for (int i = 0; i < mesh_tmp_for_convert.ntopvert; i++)
       {
-        if (mesh_tmp_for_convert.nodes[i].type == 1)
+        if(mesh_tmp_for_convert.nodes[i].type == 1)
         {
           mesh_tmp_for_convert.nodes[i].y = 0.0;
         }
@@ -1415,7 +1392,7 @@ namespace Hermes
       bool e_inter = true;
       for (unsigned int n = 0; n < e->get_num_surf(); n++)
       {
-        if (bnd[n] == 1)
+        if(bnd[n] == 1)
           e_inter = false;
       }
 
@@ -1423,9 +1400,9 @@ namespace Hermes
       memset(cm, 0, sizeof(cm));
 
       // adjust mid-edge and gravity coordinates if this is a curved element
-      if (e->is_curved())
+      if(e->is_curved())
       {
-        if (!e_inter)
+        if(!e_inter)
         {
           double2 pt[4] = { { 0.0, -1.0 }, { 0.0, 0.0 }, { -1.0, 0.0 }, { -0.33333333, -0.33333333 } };
           e->cm->get_mid_edge_points(e, pt, 4);
@@ -1438,68 +1415,68 @@ namespace Hermes
 
       // get the boundary edge angle.
       double refinement_angle[3] = {0.0, 0.0, 0.0};
-      if (e->is_curved() && (!e_inter))
+      if(e->is_curved() && (!e_inter))
       {
         // for base element.
-        if (e->cm->toplevel == true)
-        {	
+        if(e->cm->toplevel == true)
+        {
           for (unsigned int n = 0; n < e->get_num_surf(); n++)
           {
-            if (e->cm->nurbs[n] != NULL)
+            if(e->cm->nurbs[n] != NULL)
             {
-              //info("angle = %f", e->cm->nurbs[n]->angle);
+              //this->info("angle = %f", e->cm->nurbs[n]->angle);
               refinement_angle[n] = e->cm->nurbs[n]->angle;
             }
           }
         }
         else
           // one level refinement.
-          if (e->parent->cm->toplevel == true)
-          {	
+          if(e->parent->cm->toplevel == true)
+          {
             for (unsigned int n = 0; n < e->get_num_surf(); n++)
             {
-              if (e->parent->cm->nurbs[n] != NULL)
+              if(e->parent->cm->nurbs[n] != NULL)
               {
-                //info("angle = %f", e->parent->cm->nurbs[n]->angle);
+                //this->info("angle = %f", e->parent->cm->nurbs[n]->angle);
                 refinement_angle[n] = e->parent->cm->nurbs[n]->angle / 2;
               }
             }
           }
           else
             // two level refinements.
-            if (e->parent->parent->cm->toplevel == true)
-            {	
+            if(e->parent->parent->cm->toplevel == true)
+            {
               for (unsigned int n = 0; n < e->get_num_surf(); n++)
               {
-                if (e->parent->parent->cm->nurbs[n] != NULL)
+                if(e->parent->parent->cm->nurbs[n] != NULL)
                 {
-                  //info("angle = %f", e->parent->parent->cm->nurbs[n]->angle);
+                  //this->info("angle = %f", e->parent->parent->cm->nurbs[n]->angle);
                   refinement_angle[n] = e->parent->parent->cm->nurbs[n]->angle / 4;
                 }
               }
             }
             else
               // three level refinements.
-              if (e->parent->parent->parent->cm->toplevel == true)
-              {	
+              if(e->parent->parent->parent->cm->toplevel == true)
+              {
                 for (unsigned int n = 0; n < e->get_num_surf(); n++)
                 {
-                  if (e->parent->parent->parent->cm->nurbs[n] != NULL)
+                  if(e->parent->parent->parent->cm->nurbs[n] != NULL)
                   {
-                    //info("angle = %f", e->parent->parent->parent->cm->nurbs[n]->angle);
+                    //this->info("angle = %f", e->parent->parent->parent->cm->nurbs[n]->angle);
                     refinement_angle[n] = e->parent->parent->parent->cm->nurbs[n]->angle / 8;
                   }
                 }
               }
               else
                 // four level refinements.
-                if (e->parent->parent->parent->parent->cm->toplevel == true)
-                {	
+                if(e->parent->parent->parent->parent->cm->toplevel == true)
+                {
                   for (unsigned int n = 0; n < e->get_num_surf(); n++)
                   {
-                    if (e->parent->parent->parent->parent->cm->nurbs[n] != NULL)
+                    if(e->parent->parent->parent->parent->cm->nurbs[n] != NULL)
                     {
-                      //info("angle = %f", e->parent->parent->parent->parent->cm->nurbs[n]->angle);
+                      //this->info("angle = %f", e->parent->parent->parent->parent->cm->nurbs[n]->angle);
                       refinement_angle[n] = e->parent->parent->parent->parent->cm->nurbs[n]->angle / 16;
                     }
                   }
@@ -1509,11 +1486,11 @@ namespace Hermes
       double angle2 = 0.0;
       int idx = 0;
       // create CurvMaps for sons if this is a curved element
-      if ((e->is_curved()) && (!e_inter))
+      if((e->is_curved()) && (!e_inter))
       {
         for (idx = 0; idx < 2; idx++)
         {
-          if (e->cm->nurbs[idx] != NULL)
+          if(e->cm->nurbs[idx] != NULL)
           {
             cm[idx] = new CurvMap;
             memset(cm[idx], 0, sizeof(CurvMap));
@@ -1523,7 +1500,7 @@ namespace Hermes
         }
 
         idx = 0;
-        if (e->cm->nurbs[idx] != NULL)
+        if(e->cm->nurbs[idx] != NULL)
         {
           angle2 = refinement_angle[0] / 2;
           Node* node_temp = this->get_vertex_node(e->vn[idx%3]->id, e->vn[(idx + 1)%3]->id);
@@ -1533,22 +1510,22 @@ namespace Hermes
             int p1, p2;
             int idx2 = 0;
 
-            if (k == 0)
+            if(k == 0)
             {
               p1 = e->vn[(idx)%3]->id;
               p2 = node_temp->id;
-              if (idx == 0) idx2 = 0;
-              if (idx == 1) idx2 = 1;
-              if (idx == 2) continue;
+              if(idx == 0) idx2 = 0;
+              if(idx == 1) idx2 = 1;
+              if(idx == 2) continue;
             }
-            else if (k == 1)
+            else
             {
               p1 = node_temp->id;
               p2 = e->vn[(idx + 1)%3]->id;
               idx = (idx + 1)%3;
-              if (idx == 0) continue;
-              if (idx == 1) idx2 = 0;
-              if (idx == 2) idx2 = 0;
+              if(idx == 0) continue;
+              if(idx == 1) idx2 = 0;
+              if(idx == 2) idx2 = 0;
             }
 
             Nurbs* nurbs = new Nurbs;
@@ -1601,7 +1578,7 @@ namespace Hermes
         }
 
         idx = 1;
-        if (e->cm->nurbs[idx] != NULL)
+        if(e->cm->nurbs[idx] != NULL)
         {
           angle2 = refinement_angle[1] / 2;
           Node* node_temp = this->get_vertex_node(e->vn[idx%3]->id, e->vn[(idx + 1)%3]->id);
@@ -1609,22 +1586,22 @@ namespace Hermes
           {
             int p1, p2;
             int idx2 = 0;
-            if (k == 0)
+            if(k == 0)
             {
               p1 = e->vn[(idx)%3]->id;
               p2 = node_temp->id;
-              if (idx == 0) idx2 = 0;
-              if (idx == 1) idx2 = 1;
-              if (idx == 2) continue;
+              if(idx == 0) idx2 = 0;
+              if(idx == 1) idx2 = 1;
+              if(idx == 2) continue;
             }
-            else if (k == 1)
+            else
             {
               p1 = node_temp->id;
               p2 = e->vn[(idx + 1)%3]->id;
               idx = (idx + 1)%3;
-              if (idx == 0) continue;
-              if (idx == 1) idx2 = 0;
-              if (idx == 2) idx2 = 0;
+              if(idx == 0) continue;
+              if(idx == 1) idx2 = 0;
+              if(idx == 2) idx2 = 0;
             }
 
             Nurbs* nurbs = new Nurbs;
@@ -1683,12 +1660,12 @@ namespace Hermes
 
       // update coefficients of curved reference mapping
       for (int i = 0; i < 3; i++)
-        if (sons[i]->is_curved())
+        if(sons[i]->is_curved())
           sons[i]->cm->update_refmap_coeffs(sons[i]);
 
       // deactivate this element and unregister from its nodes
       e->active = 0;
-      if (mesh != NULL)
+      if(mesh != NULL)
       {
         mesh->nactive += 2;
         e->unref_all_nodes(mesh);
@@ -1713,7 +1690,7 @@ namespace Hermes
       memcpy(e->sons, sons, 3 * sizeof(Element*));
 
       // If sons_out != NULL, copy son pointers there.
-      if (sons_out != NULL)
+      if(sons_out != NULL)
       {
         for(int i = 0; i < 3; i++) sons_out[i] = sons[i];
       }
@@ -1722,10 +1699,10 @@ namespace Hermes
     void Mesh::refine_element_to_quads_id(int id)
     {
       Element* e = get_element(id);
-      if (!e->used) error("Invalid element id number.");
-      if (!e->active) error("Attempt to refine element #%d which has been refined already.", e->id);
+      if(!e->used) throw Hermes::Exceptions::Exception("Invalid element id number.");
+      if(!e->active) throw Hermes::Exceptions::Exception("Attempt to refine element #%d which has been refined already.", e->id);
 
-      if (e->is_triangle())
+      if(e->is_triangle())
         refine_triangle_to_quads(this, e);
       else
         refine_quad_to_quads(e);
@@ -1752,7 +1729,7 @@ namespace Hermes
       double length_y_0_2 = (e->vn[0]->y - e->vn[2]->y)*(e->vn[0]->y - e->vn[2]->y);
       double length_y_1_3 = (e->vn[1]->y - e->vn[3]->y)*(e->vn[1]->y - e->vn[3]->y);
 
-      if ((length_x_0_2 + length_y_0_2) > (length_x_1_3 + length_y_1_3))
+      if((length_x_0_2 + length_y_0_2) > (length_x_1_3 + length_y_1_3))
       {
         bcheck = false;
       }
@@ -1763,30 +1740,30 @@ namespace Hermes
       memset(cm, 0, sizeof(cm));
 
       // create CurvMaps for sons if this is a curved element
-      if (e->is_curved())
+      if(e->is_curved())
       {
         int i_case2 = 0;
-        if (bcheck == true)
+        if(bcheck == true)
         {
-          if ((e->cm->nurbs[0] != NULL) || (e->cm->nurbs[1] != NULL))
+          if((e->cm->nurbs[0] != NULL) || (e->cm->nurbs[1] != NULL))
           {
             cm[0] = new CurvMap;
             memset(cm[0], 0, sizeof(CurvMap));
           }
-          if ((e->cm->nurbs[2] != NULL) || (e->cm->nurbs[3] != NULL))
+          if((e->cm->nurbs[2] != NULL) || (e->cm->nurbs[3] != NULL))
           {
             cm[1] = new CurvMap;
             memset(cm[1], 0, sizeof(CurvMap));
           }
         }
-        else if (bcheck == false)
+        else if(bcheck == false)
         {
-          if ((e->cm->nurbs[1] != NULL) || (e->cm->nurbs[2] != NULL))
+          if((e->cm->nurbs[1] != NULL) || (e->cm->nurbs[2] != NULL))
           {
             cm[0] = new CurvMap;
             memset(cm[0], 0, sizeof(CurvMap));
           }
-          if ((e->cm->nurbs[3] != NULL) || (e->cm->nurbs[0] != NULL))
+          if((e->cm->nurbs[3] != NULL) || (e->cm->nurbs[0] != NULL))
           {
             cm[1] = new CurvMap;
             memset(cm[1], 0, sizeof(CurvMap));
@@ -1798,12 +1775,11 @@ namespace Hermes
         {
           for (idx = 0 + 2*k; idx < 2 + 2*k; idx++)
           {
-            if (e->cm->nurbs[(idx + i_case2)%4] != NULL)
+            if(e->cm->nurbs[(idx + i_case2)%4] != NULL)
             {
               angle2 = e->cm->nurbs[(idx + i_case2)%4]->angle;
 
               int p1, p2;
-              unsigned int idx2 = idx;
 
               p1 = e->vn[(idx + i_case2)%4]->id;
               p2 = e->vn[(idx + i_case2 + 1)%4]->id;  //node_temp->id;
@@ -1862,7 +1838,7 @@ namespace Hermes
 
       // create the four sons
       Element* sons[4];
-      if (bcheck == true)
+      if(bcheck == true)
       {
         sons[0] = this->create_triangle(e->marker, e->vn[0], e->vn[1], e->vn[2], cm[0]);
         sons[1] = this->create_triangle(e->marker, e->vn[2], e->vn[3], e->vn[0], cm[1]);
@@ -1880,7 +1856,7 @@ namespace Hermes
       // update coefficients of curved reference mapping
       for (int i = 0; i < 2; i++)
       {
-        if (sons[i]->is_curved())
+        if(sons[i]->is_curved())
         {
           sons[i]->cm->update_refmap_coeffs(sons[i]);
         }
@@ -1888,7 +1864,7 @@ namespace Hermes
       nactive += 2;
       // now the original edge nodes may no longer exist...
       // set correct boundary status and markers for the new nodes
-      if (bcheck == true)
+      if(bcheck == true)
       {
         sons[0]->en[0]->bnd = bnd[0];  sons[0]->en[0]->marker = mrk[0];
         sons[0]->en[1]->bnd = bnd[1];  sons[0]->en[1]->marker = mrk[1];
@@ -1921,10 +1897,10 @@ namespace Hermes
     void Mesh::refine_element_to_triangles_id(int id)
     {
       Element* e = get_element(id);
-      if (!e->used) error("Invalid element id number.");
-      if (!e->active) error("Attempt to refine element #%d which has been refined already.", e->id);
+      if(!e->used) throw Hermes::Exceptions::Exception("Invalid element id number.");
+      if(!e->active) throw Hermes::Exceptions::Exception("Attempt to refine element #%d which has been refined already.", e->id);
 
-      if (e->is_triangle())
+      if(e->is_triangle())
         return;
       else
         refine_quad_to_triangles(e);
@@ -1935,10 +1911,10 @@ namespace Hermes
     void Mesh::convert_element_to_base_id(int id)
     {
       Element* e = get_element(id);
-      if (!e->used) error("Invalid element id number.");
-      if (!e->active) error("Attempt to refine element #%d which has been refined already.", e->id);
+      if(!e->used) throw Hermes::Exceptions::Exception("Invalid element id number.");
+      if(!e->active) throw Hermes::Exceptions::Exception("Attempt to refine element #%d which has been refined already.", e->id);
 
-      if (e->is_triangle())
+      if(e->is_triangle())
         convert_triangles_to_base(e);
       else
         convert_quads_to_base(e);// FIXME:
@@ -1946,52 +1922,52 @@ namespace Hermes
       seq = g_mesh_seq++;
     }
 
-    Mesh::MarkersConversion::MarkersConversion() : min_marker_unused(1) 
+    Mesh::MarkersConversion::MarkersConversion() : min_marker_unused(1)
     {
     }
 
-    Mesh::MarkersConversion::StringValid::StringValid() 
+    Mesh::MarkersConversion::StringValid::StringValid()
     {
     }
 
-    Mesh::MarkersConversion::StringValid::StringValid(std::string marker, bool valid) : marker(marker), valid(valid) 
+    Mesh::MarkersConversion::StringValid::StringValid(std::string marker, bool valid) : marker(marker), valid(valid)
     {
     }
 
-    Mesh::MarkersConversion::IntValid::IntValid() 
+    Mesh::MarkersConversion::IntValid::IntValid()
     {
     }
 
-    Mesh::MarkersConversion::IntValid::IntValid(int marker, bool valid) : marker(marker), valid(valid) 
+    Mesh::MarkersConversion::IntValid::IntValid(int marker, bool valid) : marker(marker), valid(valid)
     {
     }
 
-    Mesh::ElementMarkersConversion::ElementMarkersConversion() 
+    Mesh::ElementMarkersConversion::ElementMarkersConversion()
     {
     }
 
-    Mesh::MarkersConversion::MarkersConversionType Mesh::ElementMarkersConversion::get_type() 
+    Mesh::MarkersConversion::MarkersConversionType Mesh::ElementMarkersConversion::get_type()
     {
       return HERMES_ELEMENT_MARKERS_CONVERSION;
     }
 
-    Mesh::BoundaryMarkersConversion::BoundaryMarkersConversion() 
+    Mesh::BoundaryMarkersConversion::BoundaryMarkersConversion()
     {
     }
 
-    Mesh::MarkersConversion::MarkersConversionType Mesh::BoundaryMarkersConversion::get_type() 
+    Mesh::MarkersConversion::MarkersConversionType Mesh::BoundaryMarkersConversion::get_type()
     {
       return HERMES_BOUNDARY_MARKERS_CONVERSION;
     }
 
-    Mesh::ElementMarkersConversion &Mesh::get_element_markers_conversion() 
+    Mesh::ElementMarkersConversion &Mesh::get_element_markers_conversion()
     {
       return element_markers_conversion;
     }
 
-    Mesh::BoundaryMarkersConversion &Mesh::get_boundary_markers_conversion() 
+    Mesh::BoundaryMarkersConversion &Mesh::get_boundary_markers_conversion()
     {
-      return boundary_markers_conversion; 
+      return boundary_markers_conversion;
     }
 
     void Mesh::MarkersConversion::insert_marker(int internal_marker, std::string user_marker)
@@ -2015,23 +1991,16 @@ namespace Hermes
       if(internal_marker == H2D_DG_INNER_EDGE_INT)
         return StringValid(H2D_DG_INNER_EDGE, true);
 
-      if(internal_marker == H2D_DG_BOUNDARY_EDGE_INT)
-        return StringValid(H2D_DG_INNER_EDGE, true);
-
       if(conversion_table.find(internal_marker) == conversion_table.end())
         return StringValid("-999", false);
 
       return StringValid(conversion_table.find(internal_marker)->second, true);
-
     }
 
     Mesh::MarkersConversion::IntValid Mesh::MarkersConversion::get_internal_marker(std::string user_marker)
     {
       if(user_marker == H2D_DG_INNER_EDGE)
         return IntValid(H2D_DG_INNER_EDGE_INT, true);
-
-      if(user_marker == H2D_DG_BOUNDARY_EDGE)
-        return IntValid(H2D_DG_BOUNDARY_EDGE_INT, true);
 
       if(conversion_table_inverse.find(user_marker) == conversion_table_inverse.end())
         return IntValid(-999, false);
@@ -2041,16 +2010,16 @@ namespace Hermes
 
     Mesh::CurvedException::CurvedException(int elementId) : elementId(elementId)
     {
-      char * msg = new char[27];
+      char * msg = new char[150];
       sprintf(msg, "Element id %i is curved, this is not supported in this method.", elementId);
       message = msg;
     }
 
     Mesh::CurvedException::CurvedException(const CurvedException & e)
     {
-      char * msg= new char[strlen(e.getMsg())+1];
-      strcpy(msg, e.getMsg());
-      message=msg;
+      char * msg = new char[strlen(e.what())+1];
+      strcpy(msg, e.what());
+      message = msg;
       elementId = e.elementId;
     }
 
@@ -2069,74 +2038,74 @@ namespace Hermes
       bool e_inter = true;
       for (unsigned int n = 0; n < e->get_num_surf(); n++)
       {
-        if (bnd[n] == 1)
+        if(bnd[n] == 1)
           e_inter = false;
       }
 
       // get the boundary edge angle.
       double refinement_angle[3] = {0.0, 0.0, 0.0};
-      if (e->is_curved() && (!e_inter))
+      if(e->is_curved() && (!e_inter))
       {
         // for base element.
-        if (e->cm->toplevel == true)
-        {	
+        if(e->cm->toplevel == true)
+        {
           for (unsigned int n = 0; n < e->get_num_surf(); n++)
           {
-            if (e->cm->nurbs[n] != NULL)
+            if(e->cm->nurbs[n] != NULL)
             {
-              //info("angle = %f", e->cm->nurbs[n]->angle);
+              //this->info("angle = %f", e->cm->nurbs[n]->angle);
               refinement_angle[n] = e->cm->nurbs[n]->angle;
             }
           }
         }
         else
           // one level refinement.
-          if (e->parent->cm->toplevel == true)
-          {	
+          if(e->parent->cm->toplevel == true)
+          {
             for (unsigned int n = 0; n < e->get_num_surf(); n++)
             {
-              if (e->parent->cm->nurbs[n] != NULL)
+              if(e->parent->cm->nurbs[n] != NULL)
               {
-                //info("angle = %f", e->parent->cm->nurbs[n]->angle);
+                //this->info("angle = %f", e->parent->cm->nurbs[n]->angle);
                 refinement_angle[n] = e->parent->cm->nurbs[n]->angle / 2;
               }
             }
           }
           else
             // two level refinements.
-            if (e->parent->parent->cm->toplevel == true)
-            {	
+            if(e->parent->parent->cm->toplevel == true)
+            {
               for (unsigned int n = 0; n < e->get_num_surf(); n++)
               {
-                if (e->parent->parent->cm->nurbs[n] != NULL)
+                if(e->parent->parent->cm->nurbs[n] != NULL)
                 {
-                  //info("angle = %f", e->parent->parent->cm->nurbs[n]->angle);
+                  //this->info("angle = %f", e->parent->parent->cm->nurbs[n]->angle);
                   refinement_angle[n] = e->parent->parent->cm->nurbs[n]->angle / 4;
                 }
               }
             }
             else
               // three level refinements.
-              if (e->parent->parent->parent->cm->toplevel == true)
-              {	
+              if(e->parent->parent->parent->cm->toplevel == true)
+              {
                 for (unsigned int n = 0; n < e->get_num_surf(); n++)
                 {
-                  if (e->parent->parent->parent->cm->nurbs[n] != NULL)
+                  if(e->parent->parent->parent->cm->nurbs[n] != NULL)
                   {
-                    //info("angle = %f", e->parent->parent->parent->cm->nurbs[n]->angle);
+                    //this->info("angle = %f", e->parent->parent->parent->cm->nurbs[n]->angle);
                     refinement_angle[n] = e->parent->parent->parent->cm->nurbs[n]->angle / 8;
                   }
                 }
               }
               else
                 // four level refinements.
-                if (e->parent->parent->parent->parent->cm->toplevel == true)
-                {	
+                if(e->parent->parent->parent->parent->cm->toplevel == true)
+                {
                   for (unsigned int n = 0; n < e->get_num_surf(); n++)
                   {
-                    if (e->parent->parent->parent->parent->cm->nurbs[n] != NULL)
+                    if(e->parent->parent->parent->parent->cm->nurbs[n] != NULL)
                     {
-                      //info("angle = %f", e->parent->parent->parent->parent->cm->nurbs[n]->angle);
+                      //this->info("angle = %f", e->parent->parent->parent->parent->cm->nurbs[n]->angle);
                       refinement_angle[n] = e->parent->parent->parent->parent->cm->nurbs[n]->angle / 16;
                     }
                   }
@@ -2153,19 +2122,19 @@ namespace Hermes
       memset(&cm, 0, sizeof(cm));
 
       // create CurvMaps for sons if this is a curved element
-      if ((e->is_curved()) && (!e_inter))
+      if((e->is_curved()) && (!e_inter))
       {
         cm = new CurvMap;
         memset(cm, 0, sizeof(CurvMap));
 
         for (idx = 0; idx < 3; idx++)
-          if ((e->cm->nurbs[idx] != NULL) && (bnd[idx] == 1))
+          if((e->cm->nurbs[idx] != NULL) && (bnd[idx] == 1))
           {
             angle2 = refinement_angle[idx];
             int p1, p2;
             p1 = e->en[idx]->p1;
             p2 = e->en[idx]->p2;
-            if (p1 > p2) std::swap(p1, p2);
+            if(p1 > p2) std::swap(p1, p2);
 
             Nurbs* nurbs = new Nurbs;
             bool cricle = true;
@@ -2221,7 +2190,7 @@ namespace Hermes
       Node *v0 = &nodes[e->vn[0]->id], *v1 = &nodes[e->vn[1]->id], *v2 = &nodes[e->vn[2]->id];
       enew = this->create_triangle(e->marker, v0, v1, v2, cm);
 
-      if (enew->is_curved())
+      if(enew->is_curved())
       {
         enew->cm->update_refmap_coeffs(enew);
       }
@@ -2247,74 +2216,74 @@ namespace Hermes
       bool e_inter = true;
       for (unsigned int n = 0; n < e->get_num_surf(); n++)
       {
-        if (bnd[n] == 1)
+        if(bnd[n] == 1)
           e_inter = false;
       }
 
       // get the boundary edge angle.
       double refinement_angle[4] = {0.0, 0.0, 0.0, 0.0};
-      if (e->is_curved() && (!e_inter))
+      if(e->is_curved() && (!e_inter))
       {
         // for base element.
-        if (e->cm->toplevel == true)
-        {	
+        if(e->cm->toplevel == true)
+        {
           for (unsigned int n = 0; n < e->get_num_surf(); n++)
           {
-            if ((e->cm->nurbs[n] != NULL) && (bnd[n] == 1))
+            if((e->cm->nurbs[n] != NULL) && (bnd[n] == 1))
             {
-              //info("angle = %f", e->cm->nurbs[n]->angle);
+              //this->info("angle = %f", e->cm->nurbs[n]->angle);
               refinement_angle[n] = e->cm->nurbs[n]->angle;
             }
           }
         }
         else
           // one level refinement.
-          if (e->parent->cm->toplevel == true)
-          {	
+          if(e->parent->cm->toplevel == true)
+          {
             for (unsigned int n = 0; n < e->get_num_surf(); n++)
             {
-              if ((e->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
+              if((e->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
               {
-                //info("angle = %f", e->parent->cm->nurbs[n]->angle);
+                //this->info("angle = %f", e->parent->cm->nurbs[n]->angle);
                 refinement_angle[n] = e->parent->cm->nurbs[n]->angle / 2;
               }
             }
           }
           else
             // two level refinements.
-            if (e->parent->parent->cm->toplevel == true)
-            {	
+            if(e->parent->parent->cm->toplevel == true)
+            {
               for (unsigned int n = 0; n < e->get_num_surf(); n++)
               {
-                if ((e->parent->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
+                if((e->parent->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
                 {
-                  //info("angle = %f", e->parent->parent->cm->nurbs[n]->angle);
+                  //this->info("angle = %f", e->parent->parent->cm->nurbs[n]->angle);
                   refinement_angle[n] = e->parent->parent->cm->nurbs[n]->angle / 4;
                 }
               }
             }
             else
               // three level refinements.
-              if (e->parent->parent->parent->cm->toplevel == true)
-              {	
+              if(e->parent->parent->parent->cm->toplevel == true)
+              {
                 for (unsigned int n = 0; n < e->get_num_surf(); n++)
                 {
-                  if ((e->parent->parent->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
+                  if((e->parent->parent->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
                   {
-                    //info("angle = %f", e->parent->parent->parent->cm->nurbs[n]->angle);
+                    //this->info("angle = %f", e->parent->parent->parent->cm->nurbs[n]->angle);
                     refinement_angle[n] = e->parent->parent->parent->cm->nurbs[n]->angle / 8;
                   }
                 }
               }
               else
                 // four level refinements.
-                if (e->parent->parent->parent->parent->cm->toplevel == true)
-                {	
+                if(e->parent->parent->parent->parent->cm->toplevel == true)
+                {
                   for (unsigned int n = 0; n < e->get_num_surf(); n++)
                   {
-                    if ((e->parent->parent->parent->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
+                    if((e->parent->parent->parent->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
                     {
-                      //info("angle = %f", e->parent->parent->parent->parent->cm->nurbs[n]->angle);
+                      //this->info("angle = %f", e->parent->parent->parent->parent->cm->nurbs[n]->angle);
                       refinement_angle[n] = e->parent->parent->parent->parent->cm->nurbs[n]->angle / 16;
                     }
                   }
@@ -2322,7 +2291,7 @@ namespace Hermes
       }
 
       // FIXME:
-      if (rtb_aniso)
+      if(rtb_aniso)
         for (unsigned int i = 0; i < e->get_num_surf(); i++)
           refinement_angle[i] = refinement_angle[i]*2;
 
@@ -2336,18 +2305,18 @@ namespace Hermes
       memset(&cm, 0, sizeof(cm));
 
       // create CurvMaps for sons if this is a curved element
-      if ((e->is_curved()) && (!e_inter))
+      if((e->is_curved()) && (!e_inter))
       {
         bool create_new = false;
         for (unsigned int i = 0; i < e->get_num_surf(); i++)
         {
-          if (fabs(refinement_angle[i] - 0.0) > 1e-4)
+          if(fabs(refinement_angle[i] - 0.0) > 1e-4)
           {
             create_new = true;
           }
         }
 
-        if (create_new)
+        if(create_new)
 
         {
           cm = new CurvMap;
@@ -2355,13 +2324,13 @@ namespace Hermes
         }
 
         for (idx = 0; idx < 4; idx++)
-          if (fabs(refinement_angle[idx] - 0.0) > 1e-4)
+          if(fabs(refinement_angle[idx] - 0.0) > 1e-4)
           {
             angle2 = refinement_angle[idx];
             int p1, p2;
             p1 = e->en[idx]->p1;
             p2 = e->en[idx]->p2;
-            if (p1 > p2) std::swap(p1, p2);
+            if(p1 > p2) std::swap(p1, p2);
 
             Nurbs* nurbs = new Nurbs;
             bool cricle = true;
@@ -2417,7 +2386,7 @@ namespace Hermes
       Node *v0 = &nodes[e->vn[0]->id], *v1 = &nodes[e->vn[1]->id], *v2 = &nodes[e->vn[2]->id],  *v3 = &nodes[e->vn[3]->id];
       enew = this->create_quad(e->marker, v0, v1, v2, v3, cm);
 
-      if (enew->is_curved())
+      if(enew->is_curved())
       {
         enew->cm->update_refmap_coeffs(enew);
       }
@@ -2445,74 +2414,74 @@ namespace Hermes
       bool e_inter = true;
       for (unsigned int n = 0; n < e->get_num_surf(); n++)
       {
-        if (bnd[n] == 1)
+        if(bnd[n] == 1)
           e_inter = false;
       }
 
       // get the boundary edge angle.
       double refinement_angle[4] = {0.0, 0.0, 0.0, 0.0};
-      if (e->is_curved() && (!e_inter))
+      if(e->is_curved() && (!e_inter))
       {
         // for base element.
-        if (e->cm->toplevel == true)
-        {	
+        if(e->cm->toplevel == true)
+        {
           for (unsigned int n = 0; n < e->get_num_surf(); n++)
           {
-            if ((e->cm->nurbs[n] != NULL) && (bnd[n] == 1))
+            if((e->cm->nurbs[n] != NULL) && (bnd[n] == 1))
             {
-              //info("angle = %f", e->cm->nurbs[n]->angle);
+              //this->info("angle = %f", e->cm->nurbs[n]->angle);
               refinement_angle[n] = e->cm->nurbs[n]->angle;
             }
           }
         }
         else
           // one level refinement.
-          if (e->parent->cm->toplevel == true)
-          {	
+          if(e->parent->cm->toplevel == true)
+          {
             for (unsigned int n = 0; n < e->get_num_surf(); n++)
             {
-              if ((e->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
+              if((e->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
               {
-                //info("angle = %f", e->parent->cm->nurbs[n]->angle);
+                //this->info("angle = %f", e->parent->cm->nurbs[n]->angle);
                 refinement_angle[n] = e->parent->cm->nurbs[n]->angle / 2;
               }
             }
           }
           else
             // two level refinements.
-            if (e->parent->parent->cm->toplevel == true)
-            {	
+            if(e->parent->parent->cm->toplevel == true)
+            {
               for (unsigned int n = 0; n < e->get_num_surf(); n++)
               {
-                if ((e->parent->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
+                if((e->parent->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
                 {
-                  //info("angle = %f", e->parent->parent->cm->nurbs[n]->angle);
+                  //this->info("angle = %f", e->parent->parent->cm->nurbs[n]->angle);
                   refinement_angle[n] = e->parent->parent->cm->nurbs[n]->angle / 4;
                 }
               }
             }
             else
               // three level refinements.
-              if (e->parent->parent->parent->cm->toplevel == true)
-              {	
+              if(e->parent->parent->parent->cm->toplevel == true)
+              {
                 for (unsigned int n = 0; n < e->get_num_surf(); n++)
                 {
-                  if ((e->parent->parent->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
+                  if((e->parent->parent->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
                   {
-                    //info("angle = %f", e->parent->parent->parent->cm->nurbs[n]->angle);
+                    //this->info("angle = %f", e->parent->parent->parent->cm->nurbs[n]->angle);
                     refinement_angle[n] = e->parent->parent->parent->cm->nurbs[n]->angle / 8;
                   }
                 }
               }
               else
                 // four level refinements.
-                if (e->parent->parent->parent->parent->cm->toplevel == true)
-                {	
+                if(e->parent->parent->parent->parent->cm->toplevel == true)
+                {
                   for (unsigned int n = 0; n < e->get_num_surf(); n++)
                   {
-                    if ((e->parent->parent->parent->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
+                    if((e->parent->parent->parent->parent->cm->nurbs[n] != NULL) && (bnd[n] == 1))
                     {
-                      //info("angle = %f", e->parent->parent->parent->parent->cm->nurbs[n]->angle);
+                      //this->info("angle = %f", e->parent->parent->parent->parent->cm->nurbs[n]->angle);
                       refinement_angle[n] = e->parent->parent->parent->parent->cm->nurbs[n]->angle / 16;
                     }
                   }
@@ -2532,7 +2501,7 @@ namespace Hermes
       memset(cm, 0, sizeof(cm));
 
       // default refinement: one quad to four quads
-      if (refinement == 0)
+      if(refinement == 0)
       {
         // obtain four mid-edge vertex nodes and one mid-element vetex node
         Node* x0 = get_vertex_node(e->vn[0]->id, e->vn[1]->id);
@@ -2542,7 +2511,7 @@ namespace Hermes
         Node* mid = get_vertex_node(x0->id, x2->id);
 
         // adjust mid-edge coordinates if this is a curved element
-        if (e->is_curved())
+        if(e->is_curved())
         {
           double2 pt[5] = { { 0.0, -1.0 }, { 1.0, 0.0 }, { 0.0, 1.0 }, { -1.0, 0.0 }, { 0.0, 0.0 } };
           e->cm->get_mid_edge_points(e, pt, 5);
@@ -2554,12 +2523,12 @@ namespace Hermes
         }
 
         // create CurvMaps for sons.
-        if ((e->is_curved()) && (!e_inter))
+        if((e->is_curved()) && (!e_inter))
         {
           //bool create_new = false;
           for (unsigned int i = 0; i < e->get_num_surf(); i++)
           {
-            if (fabs(refinement_angle[i] - 0.0) > 1e-4)
+            if(fabs(refinement_angle[i] - 0.0) > 1e-4)
             {
               cm[i%4] = new CurvMap;
               memset(cm[i%4], 0, sizeof(CurvMap));
@@ -2569,9 +2538,9 @@ namespace Hermes
           }
 
           for (idx = 0; idx < 4; idx++)
-            if (cm[idx] != NULL)
+            if(cm[idx] != NULL)
             {
-              if ((fabs(refinement_angle[idx%4] - 0.0) > 1e-4))
+              if((fabs(refinement_angle[idx%4] - 0.0) > 1e-4))
               {
                 angle2 = refinement_angle[idx%4] / 2;
                 Node* node_temp = this->get_vertex_node(e->vn[idx%4]->id, e->vn[(idx + 1)%4]->id);
@@ -2628,7 +2597,7 @@ namespace Hermes
                 nurbs->ref++;
               }
 
-              if ((fabs(refinement_angle[(idx + 3)%4] - 0.0) > 1e-4))
+              if((fabs(refinement_angle[(idx + 3)%4] - 0.0) > 1e-4))
               {
                 angle2 = refinement_angle[(idx + 3)%4]/2;
                 Node* node_temp = this->get_vertex_node(e->vn[idx%4]->id, e->vn[(idx + 1)%4]->id);
@@ -2709,7 +2678,7 @@ namespace Hermes
 
       // update coefficients of curved reference mapping
       for (i = 0; i < 4; i++)
-        if (sons[i] != NULL && sons[i]->cm != NULL)
+        if(sons[i] != NULL && sons[i]->cm != NULL)
           sons[i]->cm->update_refmap_coeffs(sons[i]);
 
       //set pointers to parent element for sons
@@ -2725,7 +2694,7 @@ namespace Hermes
     {
       int degree = 0;
       Node* v3 = peek_vertex_node(v1->id, v2->id);
-      if (v3 != NULL)
+      if(v3 != NULL)
       {
         degree = 1 + std::max(get_edge_degree(v1, v3), get_edge_degree(v3, v2));
       }
@@ -2743,21 +2712,21 @@ namespace Hermes
         get_edge_degree(e->vn[2], e->vn[0]) };
 
       int sum = eo[0] + eo[1] + eo[2];
-      if (sum == 3)
+      if(sum == 3)
       {
         refine_element_id(e->id);
       }
-      else if (sum > 0)
+      else if(sum > 0)
       {
         // remember the markers of the edge nodes
         int bnd[3] = { e->en[0]->bnd,    e->en[1]->bnd,    e->en[2]->bnd    };
         int mrk[3] = { e->en[0]->marker, e->en[1]->marker, e->en[2]->marker };
 
-        if (sum == 1)
+        if(sum == 1)
         {
           Node* v4;
           for(i = 0; i < 3; i++)
-            if (eo[i] == 1) k = i;
+            if(eo[i] == 1) k = i;
           k1 = e->next_vert(k);
           k2 = e->prev_vert(k);
           v4 = peek_vertex_node(e->vn[k]->id, e->vn[k1]->id);
@@ -2780,11 +2749,11 @@ namespace Hermes
           e->sons[2] = NULL;
           e->sons[3] = NULL;
         }
-        else if (sum == 2)
+        else if(sum == 2)
         {
           Node *v4, *v5;
           for(i = 0; i < 3; i++)
-            if (eo[i] == 0) k = i;
+            if(eo[i] == 0) k = i;
           k1 = e->next_vert(k);
           k2 = e->prev_vert(k);
           v4 = peek_vertex_node(e->vn[k1]->id, e->vn[k2]->id);
@@ -2807,11 +2776,10 @@ namespace Hermes
           e->sons[2] = t[2];
           e->sons[3] = NULL;
         }
-
       }
 
       // store id of parent
-      if (!e->active)
+      if(!e->active)
       {
         for (i = 0; i < 4; i++)
           assign_parent(e, i);
@@ -2830,20 +2798,20 @@ namespace Hermes
         get_edge_degree(e->vn[3], e->vn[0]) };
 
       int sum = eo[0] + eo[1] + eo[2] + eo[3];
-      if (sum == 4)
+      if(sum == 4)
       {
         refine_element_id(e->id);
       }
-      else if (sum > 0)
+      else if(sum > 0)
       {
         // remember the markers of the edge nodes
         int bnd[4] = { e->en[0]->bnd,    e->en[1]->bnd,    e->en[2]->bnd  ,  e->en[3]->bnd  };
         int mrk[4] = { e->en[0]->marker, e->en[1]->marker, e->en[2]->marker, e->en[3]->marker };
 
-        if (sum == 1)
+        if(sum == 1)
         {
           for(i = 0; i < 4; i++)
-            if (eo[i] == 1) k = i;
+            if(eo[i] == 1) k = i;
           k1 = e->next_vert(k);
           k2 = e->next_vert(k1);
           k3 = e->prev_vert(k);
@@ -2870,15 +2838,15 @@ namespace Hermes
           e->sons[2] = t[2];
           e->sons[3] = NULL;
         }
-        else if (sum == 2)
+        else if(sum == 2)
         {
           // two hanging nodes opposite to each other
-          if (eo[0] == 1 && eo[2] == 1) refine_element_id(e->id, 2);
-          else if (eo[1] == 1 && eo[3] == 1) refine_element_id(e->id, 1);
+          if(eo[0] == 1 && eo[2] == 1) refine_element_id(e->id, 2);
+          else if(eo[1] == 1 && eo[3] == 1) refine_element_id(e->id, 1);
           else // two hanging nodes next to each other
           {
             for(i = 0; i < 4; i++)
-              if (eo[i] == 1 && eo[e->next_vert(i)] == 1) k = i;
+              if(eo[i] == 1 && eo[e->next_vert(i)] == 1) k = i;
             k1 = e->next_vert(k);
             k2 = e->next_vert(k1);
             k3 = e->prev_vert(k);
@@ -2907,14 +2875,14 @@ namespace Hermes
         }
         else //sum = 3
         {
-          if (eo[0] == 1 && eo[2] == 1)
+          if(eo[0] == 1 && eo[2] == 1)
           {
             refine_element_id(e->id, 2);
             for (i = 0; i < 4; i++)
               assign_parent(e, i);
             n = 2; m = 3;
           }
-          else if (eo[1] == 1 && eo[3] == 1)
+          else if(eo[1] == 1 && eo[3] == 1)
           {
             refine_element_id(e->id, 1);
             for (i = 0; i < 4; i++)
@@ -2924,13 +2892,11 @@ namespace Hermes
 
           regularize_quad(e->sons[n]);
           regularize_quad(e->sons[m]);
-
         }
-
       }
 
       // store id of parent
-      if (!e->active)
+      if(!e->active)
       {
         for (i = 0; i < 4; i++)
           assign_parent(e, i);
@@ -2942,8 +2908,8 @@ namespace Hermes
       Node* node;
       for_all_edge_nodes(node, this)
       {
-        if (node->elem[0] != NULL) node->elem[0] = (Element*) (node->elem[0]->id + 1);
-        if (node->elem[1] != NULL) node->elem[1] = (Element*) (node->elem[1]->id + 1);
+        if(node->elem[0] != NULL) node->elem[0] = (Element*) (node->elem[0]->id + 1);
+        if(node->elem[1] != NULL) node->elem[1] = (Element*) (node->elem[1]->id + 1);
       }
 
       int* idx = new int[elements.get_size() + 1];
@@ -2964,16 +2930,16 @@ namespace Hermes
 
       for_all_edge_nodes(node, this)
       {
-        if (node->elem[0] != NULL) node->elem[0] = &(elements[idx[((int) (long) node->elem[0]) - 1]]);
-        if (node->elem[1] != NULL) node->elem[1] = &(elements[idx[((int) (long) node->elem[1]) - 1]]);
+        if(node->elem[0] != NULL) node->elem[0] = &(elements[idx[((int) (long) node->elem[0]) - 1]]);
+        if(node->elem[1] != NULL) node->elem[1] = &(elements[idx[((int) (long) node->elem[1]) - 1]]);
       }
     }
 
     void Mesh::assign_parent(Element* e, int i)
     {
-      if (e->sons[i] != NULL)
+      if(e->sons[i] != NULL)
       {
-        if (e->sons[i]->id >= parents_size)
+        if(e->sons[i]->id >= parents_size)
         {
           parents_size = 2 * parents_size;
           parents = (int*) realloc(parents, sizeof(int) * parents_size);
@@ -2988,10 +2954,9 @@ namespace Hermes
       int j;
       bool ok;
       bool reg = false;
-      int iso = 0;
       Element* e;
 
-      if (n < 1)
+      if(n < 1)
       {
         n = 1;
         reg = true;
@@ -3008,21 +2973,21 @@ namespace Hermes
         for_all_active_elements(e, this)
         {
           int iso = -1;
-          if (e->is_triangle())
+          if(e->is_triangle())
           {
             for(unsigned int i = 0; i < e->get_num_surf(); i++)
             {
               j = e->next_vert(i);
-              if (get_edge_degree(e->vn[i], e->vn[j]) > n)
+              if(get_edge_degree(e->vn[i], e->vn[j]) > n)
               { iso = 0; ok = false; break; }
             }
           }
           else
           {
-            if (   ((get_edge_degree(e->vn[0], e->vn[1]) > n)  || (get_edge_degree(e->vn[2], e->vn[3]) > n))
+            if(   ((get_edge_degree(e->vn[0], e->vn[1]) > n)  || (get_edge_degree(e->vn[2], e->vn[3]) > n))
               && (get_edge_degree(e->vn[1], e->vn[2]) <= n) && (get_edge_degree(e->vn[3], e->vn[0]) <= n) )
             { iso = 2; ok = false; }
-            else if (    (get_edge_degree(e->vn[0], e->vn[1]) <= n)  && (get_edge_degree(e->vn[2], e->vn[3]) <= n)
+            else if(    (get_edge_degree(e->vn[0], e->vn[1]) <= n)  && (get_edge_degree(e->vn[2], e->vn[3]) <= n)
               && ((get_edge_degree(e->vn[1], e->vn[2]) > n) || (get_edge_degree(e->vn[3], e->vn[0]) > n)) )
             { iso = 1; ok = false; }
             else
@@ -3030,13 +2995,13 @@ namespace Hermes
               for(unsigned int i = 0; i < e->get_num_surf(); i++)
               {
                 j = e->next_vert(i);
-                if (get_edge_degree(e->vn[i], e->vn[j]) > n)
+                if(get_edge_degree(e->vn[i], e->vn[j]) > n)
                 { iso = 0; ok = false; break; }
               }
             }
           }
 
-          if (iso >= 0)
+          if(iso >= 0)
           {
             refine_element_id(e->id, iso);
             for (int i = 0; i < 4; i++)
@@ -3046,14 +3011,13 @@ namespace Hermes
       }
       while (!ok);
 
-
-      if (reg)
+      if(reg)
       {
         for_all_active_elements(e, this)
         {
-          if (e->is_curved()) error("Regularization of curved elements is not supported.");
+          if(e->is_curved()) throw Hermes::Exceptions::Exception("Regularization of curved elements is not supported.");
 
-          if (e->is_triangle())
+          if(e->is_triangle())
             regularize_triangle(e);
           else
             regularize_quad(e);
@@ -3062,7 +3026,6 @@ namespace Hermes
       }
 
       return parents;
-
     }
   }
 }

@@ -23,13 +23,13 @@
 #include "../weakform/weakform.h"
 
 //#include "epetra.h"
-#if (defined HAVE_NOX && defined HAVE_EPETRA && defined HAVE_TEUCHOS)
+#if(defined HAVE_NOX && defined HAVE_EPETRA && defined HAVE_TEUCHOS)
 #include <NOX.H>
 #ifdef _POSIX_C_SOURCE
-# undef _POSIX_C_SOURCE	// pyconfig.h included by NOX_Epetra defines it
+# undef _POSIX_C_SOURCE  // pyconfig.h included by NOX_Epetra defines it
 #endif
 #ifdef _XOPEN_SOURCE
-# undef _XOPEN_SOURCE	// pyconfig.h included by NOX_Epetra defines it
+# undef _XOPEN_SOURCE  // pyconfig.h included by NOX_Epetra defines it
 #endif
 #include <NOX_Epetra.H>
 
@@ -37,72 +37,62 @@ namespace Hermes
 {
   namespace Hermes2D
   {
-    //const ProjNormType HERMES_DEFAULT_PROJ_NORM = HERMES_H1_NORM;
-
+    /// @ingroup projections
     template<typename Scalar>
-    class HERMES_API OGProjectionNOX
+    class HERMES_API OGProjectionNOX : public Hermes::Mixins::Loggable
     {
     public:
       OGProjectionNOX();
 
       /// Main functionality is in the protected method project_internal().
-      /// This is a wrapper that delivers a Solution instead of a coefficient vector.   
-      static void project_global(const Space<Scalar>* space,
+      /// This is a wrapper that delivers a Solution instead of a coefficient vector.
+      void project_global(const Space<Scalar>* space,
           MatrixFormVol<Scalar>* custom_projection_jacobian,
           VectorFormVol<Scalar>* custom_projection_residual,
-          Scalar* target_vec,
-          Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK, 
-          double newton_tol = 1e-6, int newton_max_iter = 10);
+          Scalar* target_vec, double newton_tol = 1e-6, int newton_max_iter = 10);
 
       /**
        \fn  static void OGProjection::project_global(Space<Scalar>* space,
         MeshFunction<Scalar>* source_meshfn, Scalar* target_vec,
-        Hermes::MatrixSolverType matrix_solver = SOLVER_UMFPACK,
         ProjNormType proj_norm = HERMES_UNSET_NORM, double newton_tol = 1e-6, int newton_max_iter = 10);
-      
+
        \brief The method checks source_meshfn if it is an instance of Solution, if so, it checks its sln_vector, and space_seq
               if they can be used directly.
-      
+
        \author  LK
        \date  10/29/2011
-      
-       \param [in]  space         If non-null, the space.
-       \param [in]  source_meshfn If non-null, source meshfn.
-       \param [out]  target_vec    If non-null, target vector.
+
+       \param[in]  space         If non-null, the space.
+       \param[in]  source_meshfn If non-null, source meshfn.
+       \param[out]  target_vec    If non-null, target vector.
        \param matrix_solver           (optional) the matrix solver.
        \param proj_norm               (optional) the project normalise.
        \param newton_tol              (optional) the newton tolerance.
        \param newton_max_iter         (optional) the newton maximum iterator.
        */
- 
-      static void project_global(const Space<Scalar>* space, MeshFunction<Scalar>* source_meshfn,
-          Scalar* target_vec, Hermes::MatrixSolverType matrix_solver = SOLVER_UMFPACK,
-          ProjNormType proj_norm = HERMES_UNSET_NORM, 
+      void project_global(const Space<Scalar>* space, MeshFunction<Scalar>* source_meshfn,
+          Scalar* target_vec, ProjNormType proj_norm = HERMES_UNSET_NORM,
           double newton_tol = 1e-6, int newton_max_iter = 10);
 
-      /// Wrapper that delivers a Solution instead of coefficient vector. 
-      static void project_global(const Space<Scalar>* space,
+      /// Wrapper that delivers a Solution instead of coefficient vector.
+      void project_global(const Space<Scalar>* space,
           Solution<Scalar>* source_sln, Solution<Scalar>* target_sln,
-          Hermes::MatrixSolverType matrix_solver = SOLVER_UMFPACK,
-          ProjNormType proj_norm = HERMES_UNSET_NORM, 
+          ProjNormType proj_norm = HERMES_UNSET_NORM,
           double newton_tol = 1e-6, int newton_max_iter = 10);
 
-      /// Wrapper for multiple source MeshFunctions that delivers coefficient vector. 
-      static void project_global(Hermes::vector<const Space<Scalar>*> spaces, Hermes::vector<MeshFunction<Scalar>*> source_meshfns,
-          Scalar* target_vec, Hermes::MatrixSolverType matrix_solver = SOLVER_UMFPACK,
-          Hermes::vector<ProjNormType> proj_norms = Hermes::vector<ProjNormType>(), 
+      /// Wrapper for multiple source MeshFunctions that delivers coefficient vector.
+      void project_global(Hermes::vector<const Space<Scalar>*> spaces, Hermes::vector<MeshFunction<Scalar>*> source_meshfns,
+          Scalar* target_vec, Hermes::vector<ProjNormType> proj_norms = Hermes::vector<ProjNormType>(),
           double newton_tol = 1e-6, int newton_max_iter = 10);
 
-      /// Wrapper for multiple source Solutions that delivers coefficient vector. 
-      static void project_global(Hermes::vector<const Space<Scalar>*> spaces, Hermes::vector<Solution<Scalar>*> source_slns,
-          Scalar* target_vec, Hermes::MatrixSolverType matrix_solver = SOLVER_UMFPACK,
-          Hermes::vector<ProjNormType> proj_norms = Hermes::vector<ProjNormType>(), 
+      /// Wrapper for multiple source Solutions that delivers coefficient vector.
+      void project_global(Hermes::vector<const Space<Scalar>*> spaces, Hermes::vector<Solution<Scalar>*> source_slns,
+          Scalar* target_vec, Hermes::vector<ProjNormType> proj_norms = Hermes::vector<ProjNormType>(),
           double newton_tol = 1e-6, int newton_max_iter = 10);
 
-      static void project_global(Hermes::vector<const Space<Scalar>*> spaces,
+      void project_global(Hermes::vector<const Space<Scalar>*> spaces,
           Hermes::vector<Solution<Scalar>*> source_slns, Hermes::vector<Solution<Scalar>*> target_slns,
-          Hermes::MatrixSolverType matrix_solver = SOLVER_UMFPACK,
-          Hermes::vector<ProjNormType> proj_norms = Hermes::vector<ProjNormType>(), bool delete_old_mesh = false, 
+          Hermes::vector<ProjNormType> proj_norms = Hermes::vector<ProjNormType>(), bool delete_old_mesh = false,
           double newton_tol = 1e-6, int newton_max_iter = 10);
 
     protected:
@@ -111,8 +101,8 @@ namespace Hermes
       /// a special projection weak form, which is different from
       /// the weak form of the PDE. If you supply a weak form of the
       /// PDE, the PDE will just be solved.
-      static void project_internal(const Space<Scalar>* space, WeakForm<Scalar>* proj_wf, Scalar* target_vec,
-      Hermes::MatrixSolverType matrix_solver = SOLVER_UMFPACK, double newton_tol = 1e-6, int newton_max_iter = 10);
+      void project_internal(const Space<Scalar>* space, WeakForm<Scalar>* proj_wf, Scalar* target_vec,
+        double newton_tol = 1e-6, int newton_max_iter = 10);
 
       /// Jacobian matrix (same as stiffness matrix since projections are linear).
       class ProjectionMatrixFormVol : public MatrixFormVol<Scalar>
@@ -139,7 +129,7 @@ namespace Hermes
           case HERMES_HDIV_NORM:
             return hdiv_projection_biform<double, Scalar>(n, wt, u_ext, u, v, e, ext);
           default:
-            error("Unknown projection type");
+            throw Hermes::Exceptions::Exception("Unknown projection type");
             return 0.0;
           }
         }
@@ -160,7 +150,7 @@ namespace Hermes
           case HERMES_HDIV_NORM:
             return hdiv_projection_biform<Hermes::Ord, Hermes::Ord>(n, wt, u_ext, u, v, e, ext);
           default:
-            error("Unknown projection type");
+            throw Hermes::Exceptions::Exception("Unknown projection type");
             return Hermes::Ord();
           }
         }
@@ -177,8 +167,7 @@ namespace Hermes
         static SolFunctionDomain h1_projection_biform(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *u,
           Func<TestFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext)
         {
-          _F_
-            SolFunctionDomain result = SolFunctionDomain(0);
+          SolFunctionDomain result = SolFunctionDomain(0);
           for (int i = 0; i < n; i++)
             result += wt[i] * (u->val[i] * v->val[i] + u->dx[i] * v->dx[i] + u->dy[i] * v->dy[i]);
           return result;
@@ -188,8 +177,7 @@ namespace Hermes
         static SolFunctionDomain h1_semi_projection_biform(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *u,
           Func<TestFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext)
         {
-          _F_
-            SolFunctionDomain result = SolFunctionDomain(0);
+          SolFunctionDomain result = SolFunctionDomain(0);
           for (int i = 0; i < n; i++)
             result += wt[i] * (u->dx[i] * v->dx[i] + u->dy[i] * v->dy[i]);
           return result;
@@ -199,8 +187,7 @@ namespace Hermes
         static SolFunctionDomain l2_projection_biform(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *u,
           Func<TestFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext)
         {
-          _F_
-            SolFunctionDomain result = SolFunctionDomain(0);
+          SolFunctionDomain result = SolFunctionDomain(0);
           for (int i = 0; i < n; i++)
             result += wt[i] * (u->val[i] * v->val[i]);
           return result;
@@ -210,8 +197,7 @@ namespace Hermes
         static SolFunctionDomain hcurl_projection_biform(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *u,
           Func<TestFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext)
         {
-          _F_
-            SolFunctionDomain result = SolFunctionDomain(0);
+          SolFunctionDomain result = SolFunctionDomain(0);
           for (int i = 0; i < n; i++) {
             result += wt[i] * (u->curl[i] * conj(v->curl[i]));
             result += wt[i] * (u->val0[i] * conj(v->val0[i]) + u->val1[i] * conj(v->val1[i]));
@@ -223,8 +209,7 @@ namespace Hermes
         static SolFunctionDomain hdiv_projection_biform(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *u,
           Func<TestFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext)
         {
-          _F_
-            SolFunctionDomain result = SolFunctionDomain(0);
+          SolFunctionDomain result = SolFunctionDomain(0);
           for (int i = 0; i < n; i++) {
             result += wt[i] * (u->div[i] * conj(v->div[i]));
             result += wt[i] * (u->val0[i] * conj(v->val0[i]) + u->val1[i] * conj(v->val1[i]));
@@ -260,7 +245,7 @@ namespace Hermes
           case HERMES_HDIV_NORM:
             return hdiv_projection_residual<double, Scalar>(n, wt, u_ext, v, e, ext);
           default:
-            error("Unknown projection type");
+            throw Hermes::Exceptions::Exception("Unknown projection type");
             return 0.0;
           }
         }
@@ -281,11 +266,11 @@ namespace Hermes
           case HERMES_HDIV_NORM:
             return hdiv_projection_residual<Hermes::Ord, Hermes::Ord>(n, wt, u_ext, v, e, ext);
           default:
-            error("Unknown projection type");
+            throw Hermes::Exceptions::Exception("Unknown projection type");
             return Hermes::Ord();
           }
         }
-        
+
         VectorFormVol<Scalar>* clone()
         {
           return new ProjectionVectorFormVol(*this);
@@ -298,8 +283,7 @@ namespace Hermes
         SolFunctionDomain h1_projection_residual(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *v,
           Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext) const
         {
-          _F_
-            SolFunctionDomain result = SolFunctionDomain(0);
+          SolFunctionDomain result = SolFunctionDomain(0);
           for (int i = 0; i < n; i++)
             result += wt[i] * ((u_ext[this->i]->val[i] - ext->fn[0]->val[i]) * v->val[i]
           + (u_ext[this->i]->dx[i] - ext->fn[0]->dx[i]) * v->dx[i]
@@ -311,8 +295,7 @@ namespace Hermes
         SolFunctionDomain h1_semi_projection_residual(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *v,
           Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext) const
         {
-          _F_
-            SolFunctionDomain result = SolFunctionDomain(0);
+          SolFunctionDomain result = SolFunctionDomain(0);
           for (int i = 0; i < n; i++)
             result += wt[i] * ((u_ext[this->i]->dx[i] - ext->fn[0]->dx[i]) * v->dx[i]
           + (u_ext[this->i]->dy[i] - ext->fn[0]->dy[i]) * v->dy[i]);
@@ -323,8 +306,7 @@ namespace Hermes
         SolFunctionDomain l2_projection_residual(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *v,
           Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext) const
         {
-          _F_
-            SolFunctionDomain result = SolFunctionDomain(0);
+          SolFunctionDomain result = SolFunctionDomain(0);
           for (int i = 0; i < n; i++)
             result += wt[i] * (u_ext[this->i]->val[i] - ext->fn[0]->val[i]) * v->val[i];
           return result;
@@ -334,8 +316,7 @@ namespace Hermes
         SolFunctionDomain hcurl_projection_residual(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *v,
           Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext) const
         {
-          _F_
-            SolFunctionDomain result = SolFunctionDomain(0);
+          SolFunctionDomain result = SolFunctionDomain(0);
           for (int i = 0; i < n; i++) {
             result += wt[i] * (u_ext[this->i]->curl[i] - ext->fn[0]->curl[i]) * conj(v->curl[i]);
             result += wt[i] * ((u_ext[this->i]->val0[i] - ext->fn[0]->val0[i]) * conj(v->val0[i])
@@ -349,8 +330,7 @@ namespace Hermes
         SolFunctionDomain hdiv_projection_residual(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *v,
           Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext) const
         {
-          _F_
-            SolFunctionDomain result = SolFunctionDomain(0);
+          SolFunctionDomain result = SolFunctionDomain(0);
           for (int i = 0; i < n; i++) {
             result += wt[i] * (u_ext[this->i]->div[i] - ext->fn[0]->div[i]) * conj(v->div[i]);
             result += wt[i] * ((u_ext[this->i]->val0[i] - ext->fn[0]->val0[i]) * conj(v->val0[i])
@@ -361,7 +341,7 @@ namespace Hermes
         }
       };
 
-      static int ndof;
+      int ndof;
     };
   }
 }

@@ -57,8 +57,8 @@ int main(int argc, char* argv[])
   mloader.load("square_quad.mesh", &mesh);
 
   // Avoid zero ndof situation.
-  if (P_INIT == 1) {
-    if (is_hp(CAND_LIST)) P_INIT++;
+  if(P_INIT == 1) {
+    if(is_hp(CAND_LIST)) P_INIT++;
     else mesh.refine_element_id(0, 0);
   }
 
@@ -83,6 +83,9 @@ int main(int argc, char* argv[])
   // Initialize refinement selector.
   H1ProjBasedSelector<double> selector(CAND_LIST, CONV_EXP, H2DRS_DEFAULT_ORDER);
 
+  // Assemble the discrete problem.
+  DiscreteProblem<double> dp(&wf, &space);
+
   // Adaptivity loop:
   int as = 1; bool done = false;
   do
@@ -91,35 +94,29 @@ int main(int argc, char* argv[])
     Space<double>* ref_space = Space<double>::construct_refined_space(&space);
     int ndof_ref = ref_space->get_num_dofs();
 
-    info("---- Adaptivity step %d (%d DOF):", as, ndof_ref);
-
-    info("Solving on reference mesh.");
-
-    // Assemble the discrete problem.
-    DiscreteProblem<double> dp(&wf, ref_space);
+    dp.set_space(ref_space);
 
     // Initial coefficient vector for the Newton's method.
     double* coeff_vec = new double[ndof_ref];
     memset(coeff_vec, 0, ndof_ref * sizeof(double));
 
-    NewtonSolver<double> newton(&dp, matrix_solver);
+    NewtonSolver<double> newton(&dp);
     newton.set_verbose_output(false);
 
     Solution<double> ref_sln;
     try{
       newton.solve(coeff_vec);
     }
-    catch(Hermes::Exceptions::Exception e)
+    catch(Hermes::Exceptions::Exception& e)
     {
       e.printMsg();
-      error("Newton's iteration failed.");
     }
     // Translate the resulting coefficient vector into the instance of Solution.
     Solution<double>::vector_to_solution(newton.get_sln_vector(), ref_space, &ref_sln);
 
     // Project the fine mesh solution onto the coarse mesh.
-    info("Calculating error estimate and exact error.");
-    OGProjection<double>::project_global(&space, &ref_sln, &sln, matrix_solver);
+    OGProjection<double> ogProjection;
+    ogProjection.project_global(&space, &ref_sln, &sln);
 
     // Calculate element errors and total error estimate.
     Adapt<double> adaptivity(&space);
@@ -129,18 +126,16 @@ int main(int argc, char* argv[])
     double err_exact_rel = Global<double>::calc_rel_error(&sln, &exact_sln, HERMES_H1_NORM) * 100;
 
     // Report results.
-    info("ndof_coarse: %d, ndof_fine: %d", space.get_num_dofs(), ref_space->get_num_dofs());
-    info("err_est_rel: %g%%, err_exact_rel: %g%%", err_est_rel, err_exact_rel);
 
     // If err_est too large, adapt the mesh. The NDOF test must be here, so that the solution may be visualized
     // after ending due to this criterion.
-    if (err_exact_rel < ERR_STOP || space.get_num_dofs() >= NDOF_STOP)
+    if(err_exact_rel < ERR_STOP || space.get_num_dofs() >= NDOF_STOP)
       done = true;
     else
       done = adaptivity.adapt(&selector, THRESHOLD, STRATEGY, MESH_REGULARITY);
 
     // Increase the counter of adaptivity steps.
-    if (done == false)
+    if(done == false)
       as++;
 
     // Clean up.
@@ -152,15 +147,11 @@ int main(int argc, char* argv[])
   }
   while (done == false);
 
-  if (space.get_mesh()->get_num_active_elements() == 1)
+  if(space.get_mesh()->get_num_active_elements() == 1)
   {
-    info("Success!");
-    return TEST_SUCCESS;
+    return 0;
   }
   else {
-    info("Failure!");
-    return TEST_FAILURE;
+    return -1;
   }
 }
-
-

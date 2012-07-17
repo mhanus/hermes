@@ -72,41 +72,51 @@ int main(int argc, char* argv[])
 {
   // Choose a Butcher's table or define your own.
   ButcherTable bt(butcher_table_type);
-  if (bt.is_explicit()) info("Using a %d-stage explicit R-K method.", bt.get_size());
-  if (bt.is_diagonally_implicit()) info("Using a %d-stage diagonally implicit R-K method.", bt.get_size());
-  if (bt.is_fully_implicit()) info("Using a %d-stage fully implicit R-K method.", bt.get_size());
 
-  // Load the mesh.
+  // Class for progressive saving of solutions and all necessary classes for the computation.
+  CalculationContinuity<double> continuity(CalculationContinuity<double>::onlyTime);
+
+  // Initialize the time.
+  double current_time = 0;
+
+  // Mesh.
   Mesh mesh;
+
+  // Init mesh.
   MeshReaderH2D mloader;
   mloader.load("cathedral.mesh", &mesh);
 
   // Perform initial mesh refinements.
-  for(int i = 0; i < INIT_REF_NUM; i++) mesh.refine_all_elements();
+  for(int i = 0; i < INIT_REF_NUM; i++)
+    mesh.refine_all_elements();
   mesh.refine_towards_boundary("Boundary_air", INIT_REF_NUM_BDY);
   mesh.refine_towards_boundary("Boundary_ground", INIT_REF_NUM_BDY);
-
-  // Previous and next time level solutions.
-  Solution<double>* sln_time_prev = new ConstantSolution<double>(&mesh, TEMP_INIT);
-  Solution<double>* sln_time_new = new Solution<double>(&mesh);
-
-  // Initialize the weak formulation.
-  double current_time = 0;
-
-  CustomWeakFormHeatRK wf("Boundary_air", ALPHA, LAMBDA, HEATCAP, RHO,
-                          &current_time, TEMP_INIT, T_FINAL);
 
   // Initialize boundary conditions.
   Hermes::Hermes2D::DefaultEssentialBCConst<double> bc_essential("Boundary_ground", TEMP_INIT);
   Hermes::Hermes2D::EssentialBCs<double> bcs(&bc_essential);
 
-  // Create an H1 space with default shapeset.
+  // Space.
   H1Space<double> space(&mesh, &bcs, P_INIT);
-  int ndof = space.get_num_dofs();
-  info("ndof = %d", ndof);
 
-  // Initialize the FE problem.
-  DiscreteProblem<double> dp(&wf, &space);
+  // Solution pointer.
+  Solution<double>* sln_time_prev = new ConstantSolution<double>(&mesh, TEMP_INIT);
+
+  if(continuity.have_record_available())
+  {
+    continuity.get_last_record()->load_mesh(&mesh);
+    continuity.get_last_record()->load_space(&space, HERMES_H1_SPACE, &mesh);
+    space.set_essential_bcs(&bcs);
+    continuity.get_last_record()->load_solution(sln_time_prev, &space);
+    current_time = continuity.get_last_record()->get_time();
+  }
+
+  CustomWeakFormHeatRK wf("Boundary_air", ALPHA, LAMBDA, HEATCAP, RHO,
+                          &current_time, TEMP_INIT, T_FINAL);
+
+  Solution<double>* sln_time_new = new Solution<double>(&mesh);
+
+  int ndof = space.get_num_dofs();
 
   // Initialize views.
   Hermes::Hermes2D::Views::ScalarView Tview("Temperature", new Hermes::Hermes2D::Views::WinGeom(0, 0, 450, 600));
@@ -114,24 +124,26 @@ int main(int argc, char* argv[])
   Tview.fix_scale_width(30);
 
   // Initialize Runge-Kutta time stepping.
-  RungeKutta<double> runge_kutta(&wf, &space, &bt, matrix_solver_type);
+  RungeKutta<double> runge_kutta(&wf, &space, &bt);
+
+  bool freeze_jacobian = false;
+  runge_kutta.set_verbose_output(true);
+  runge_kutta.setGlobalIntegrationOrder(10);
+
+  // Iteration number.
+  int iteration = 0;
 
   // Time stepping loop:
   do
   {
     // Perform one Runge-Kutta time step according to the selected Butcher's table.
-    info("Runge-Kutta time step (t = %g s, tau = %g s, stages: %d).",
-         current_time, time_step, bt.get_size());
-    bool freeze_jacobian = true;
-    bool verbose = true;
     try
     {
       runge_kutta.rk_time_step_newton(current_time, time_step, sln_time_prev,
-                                  sln_time_new, freeze_jacobian, true, verbose);
+                                  sln_time_new, freeze_jacobian, true);
     }
     catch(Exceptions::Exception& e){
       e.printMsg();
-      error("Runge-Kutta time step failed");
     }
 
     // Show the new time level solution.
@@ -140,11 +152,18 @@ int main(int argc, char* argv[])
     Tview.set_title(title);
     Tview.show(sln_time_new);
 
+    // Save the progress.
+    if(iteration > 0)
+    {
+      continuity.add_record(current_time, &mesh, &space, sln_time_prev);
+    }
+
     // Copy solution for the new time step.
     sln_time_prev->copy(sln_time_new);
 
     // Increase current time and time step counter.
     current_time += time_step;
+    iteration++;
   }
   while (current_time < T_FINAL);
 

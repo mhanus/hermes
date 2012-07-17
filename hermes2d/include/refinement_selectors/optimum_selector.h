@@ -19,14 +19,13 @@
 #include <ostream>
 #include "order_permutator.h"
 #include "selector.h"
-#include "common_time_period.h"
+#include "shapeset.h"
 
 namespace Hermes
 {
   namespace Hermes2D
   {
     namespace RefinementSelectors {
-
       /// Predefined list of candidates. \ingroup g_selectors
       enum CandList {
         H2D_NONE,  ///< No adaptivity. (Used only in modules.)
@@ -120,7 +119,7 @@ namespace Hermes
             case H2D_REFINEMENT_ANISO_V:
               return 2;
             default:
-              error("Invalid refinement type %d.", split);
+              throw Hermes::Exceptions::Exception("Invalid refinement type %d.", split);
               return -1;
               break;
             }
@@ -175,7 +174,7 @@ namespace Hermes
         /// Fill a list of candidates.
         /** Override to generate or adjust generated candidates. The method has to initialize the array OptimumSelector::candidates.
         *  If triangle, all generated candidates have to have the vertical order equal to the horizontal order.
-        *  An order of any element of any candidate has to fit into a range [OptimumSelector::current_min_order, OptimumSelector::current_max_order].
+        *  An order of any element of any candidate has to fit into a range[OptimumSelector::current_min_order, OptimumSelector::current_max_order].
         *  \param[in] e An element that is being refined.
         *  \param[in] quad_order An encoded order of the element. If triangle, the vertical order is equal to the horizontal order.
         *  \param[in] max_ha_quad_order A maximum encoded order of an element of a H-candidate or an ANISO-candidate. In the case of ANIO-candidates, the maximum is applied only to modified orders.
@@ -282,9 +281,9 @@ namespace Hermes
           *  \param[in] type A type of the shape function. */
           ShapeInx(int order_h, int order_v, int inx, ShapeType type) : order_h(order_h), order_v(order_v), inx(inx), type(type) {};
         };
-        
+
         /// Range of values.
-        class Range 
+        class Range
         {
         protected:
           int lower_bound;    ///< Lower boundary.

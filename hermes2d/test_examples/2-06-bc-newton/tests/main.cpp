@@ -51,10 +51,8 @@ int main(int argc, char* argv[])
   bool success = true;
   for (int p_init = 1; p_init <= 10; p_init++)
   {
-    info("********* p_init = %d *********\n", p_init);
     space.set_uniform_order(p_init);
     int ndof = space.get_num_dofs();
-    info("ndof = %d", ndof);
 
     // Initialize the FE problem.
     Hermes::Hermes2D::DiscreteProblem<double> dp(&wf, &space);
@@ -65,14 +63,13 @@ int main(int argc, char* argv[])
 
     // Perform Newton's iteration and translate the resulting coefficient vector into a Solution.
     Hermes::Hermes2D::Solution<double> sln;
-    Hermes::Hermes2D::NewtonSolver<double> newton(&dp, matrix_solver_type);
+    Hermes::Hermes2D::NewtonSolver<double> newton(&dp);
     try{
       newton.solve(coeff_vec);
     }
-    catch(Hermes::Exceptions::Exception e)
+    catch(Hermes::Exceptions::Exception& e)
     {
       e.printMsg();
-      error("Newton's iteration failed.");
     }
     Hermes::Hermes2D::Solution<double>::vector_to_solution(newton.get_sln_vector(), &space, &sln);
 
@@ -83,27 +80,27 @@ int main(int argc, char* argv[])
     // Actual test. The values of 'sum' depend on the
     // current shapeset. If you change the shapeset,
     // you need to correct these numbers.
-    if (p_init == 1 && fabs(sum - 61.8227) > 1e-1) success = false;
-    if (p_init == 2 && fabs(sum - 60.8105) > 1e-1) success = false;
-    if (p_init == 3 && fabs(sum - 61.5511) > 1e-1) success = false;
-    if (p_init == 4 && fabs(sum - 60.8191) > 1e-1) success = false;
-    if (p_init == 5 && fabs(sum - 61.5304) > 1e-1) success = false;
-    if (p_init == 6 && fabs(sum - 60.8064) > 1e-1) success = false;
-    if (p_init == 7 && fabs(sum - 61.5323) > 1e-1) success = false;
-    if (p_init == 8 && fabs(sum - 60.7863) > 1e-1) success = false;
-    if (p_init == 9 && fabs(sum - 61.5408) > 1e-1) success = false;
-    if (p_init == 10 && fabs(sum - 60.7637) > 1e-1) success = false;
+    if(p_init == 1 && fabs(sum - 61.8227) > 1e-1) success = false;
+    if(p_init == 2 && fabs(sum - 60.8105) > 1e-1) success = false;
+    if(p_init == 3 && fabs(sum - 61.5511) > 1e-1) success = false;
+    if(p_init == 4 && fabs(sum - 60.8191) > 1e-1) success = false;
+    if(p_init == 5 && fabs(sum - 61.5304) > 1e-1) success = false;
+    if(p_init == 6 && fabs(sum - 60.8064) > 1e-1) success = false;
+    if(p_init == 7 && fabs(sum - 61.5323) > 1e-1) success = false;
+    if(p_init == 8 && fabs(sum - 60.7863) > 1e-1) success = false;
+    if(p_init == 9 && fabs(sum - 61.5408) > 1e-1) success = false;
+    if(p_init == 10 && fabs(sum - 60.7637) > 1e-1) success = false;
 
     // Clean up.
     delete [] coeff_vec;
   }
 
-  if (success == 1) {
+  if(success == 1) {
     printf("Success!\n");
-    return TEST_SUCCESS;
+    return 0;
   }
   else {
     printf("Failure!\n");
-    return TEST_FAILURE;
+    return -1;
   }
 }

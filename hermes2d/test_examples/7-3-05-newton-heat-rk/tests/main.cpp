@@ -12,8 +12,6 @@ const int INIT_REF_NUM_BDY = 3;                   // Number of initial uniform m
 const double time_step = 1;                       // Time step in seconds.
 const double NEWTON_TOL = 1e-5;                   // Stopping criterion for the Newton's method.
 const int NEWTON_MAX_ITER = 100;                  // Maximum allowed number of Newton iterations.
-MatrixSolverType matrix_solver_type = SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
-                                                  // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
 
 // Choose one of the following time-integration methods, or define your own Butcher's table. The last number
 // in the name of each method is its order. The one before last, if present, is the number of stages.
@@ -45,9 +43,6 @@ int main(int argc, char* argv[])
 {
   // Choose a Butcher's table or define your own.
   ButcherTable bt(butcher_table_type);
-  if (bt.is_explicit()) info("Using a %d-stage explicit R-K method.", bt.get_size());
-  if (bt.is_diagonally_implicit()) info("Using a %d-stage diagonally implicit R-K method.", bt.get_size());
-  if (bt.is_fully_implicit()) info("Using a %d-stage fully implicit R-K method.", bt.get_size());
 
   // Load the mesh.
   Mesh mesh;
@@ -55,7 +50,8 @@ int main(int argc, char* argv[])
   mloader.load("../cathedral.mesh", &mesh);
 
   // Perform initial mesh refinements.
-  for(int i = 0; i < INIT_REF_NUM; i++) mesh.refine_all_elements();
+  for(int i = 0; i < INIT_REF_NUM; i++)
+    mesh.refine_all_elements();
   mesh.refine_towards_boundary("Boundary_air", INIT_REF_NUM_BDY);
   mesh.refine_towards_boundary("Boundary_ground", INIT_REF_NUM_BDY);
 
@@ -76,29 +72,26 @@ int main(int argc, char* argv[])
   // Create an H1 space with default shapeset.
   H1Space<double> space(&mesh, &bcs, P_INIT);
   int ndof = space.get_num_dofs();
-  info("ndof = %d", ndof);
 
   // Initialize the FE problem.
   DiscreteProblem<double> dp(&wf, &space);
 
   // Initialize Runge-Kutta time stepping.
-  RungeKutta<double> runge_kutta(&wf, &space, &bt, matrix_solver_type);
+  RungeKutta<double> runge_kutta(&wf, &space, &bt);
 
+  bool freeze_jacobian = true;
+  runge_kutta.set_verbose_output(false);
+    
   // Time stepping loop:
   do
   {
     // Perform one Runge-Kutta time step according to the selected Butcher's table.
-    info("Runge-Kutta time step (t = %g s, tau = %g s, stages: %d).",
-         current_time, time_step, bt.get_size());
-    bool freeze_jacobian = true;
-    bool verbose = true;
     try
     {
       runge_kutta.rk_time_step_newton(current_time, time_step, sln_time_prev,
-                                  sln_time_new, freeze_jacobian, verbose);
+                                  sln_time_new, freeze_jacobian);
     }catch(Exceptions::Exception& e){
       e.printMsg();
-      error("Runge-Kutta time step failed");
     }
 
     // Copy solution for the new time step.
@@ -111,29 +104,22 @@ int main(int argc, char* argv[])
 
   /* Begin test */
 
-  info("Coordinate (-2.0, 2.0) value = %lf", sln_time_new->get_pt_value(-3.5, 17.0));
-  info("Coordinate (-1.0, 2.0) value = %lf", sln_time_new->get_pt_value(-1.0, 2.0));
-  info("Coordinate ( 0.0, 2.0) value = %lf", sln_time_new->get_pt_value(0.0, 9.5));
-  info("Coordinate ( 1.0, 2.0) value = %lf", sln_time_new->get_pt_value(1.0, 2.0));
-  info("Coordinate ( 2.0, 2.0) value = %lf", sln_time_new->get_pt_value(3.5, 17.0));
-
   bool success = true;
 
-  if (fabs(sln_time_new->get_pt_value(-3.5, 17.0) - 10.005262) > 1E-6) success = false;
-  if (fabs(sln_time_new->get_pt_value(-1.0, 2.0) - 10.0) > 1E-6) success = false;
-  if (fabs(sln_time_new->get_pt_value(0.0, 9.5) - 9.995515) > 1E-6) success = false;
-  if (fabs(sln_time_new->get_pt_value( 1.0, 2.0) - 10.0) > 1E-6) success = false;
-  if (fabs(sln_time_new->get_pt_value(3.5, 17.0) - 10.005262) > 1E-6) success = false;
+  if(fabs(sln_time_new->get_pt_value(-3.5, 17.0) - 10.005262) > 1E-6) success = false;
+  if(fabs(sln_time_new->get_pt_value(-1.0, 2.0) - 10.0) > 1E-6) success = false;
+  if(fabs(sln_time_new->get_pt_value(0.0, 9.5) - 9.995515) > 1E-6) success = false;
+  if(fabs(sln_time_new->get_pt_value( 1.0, 2.0) - 10.0) > 1E-6) success = false;
+  if(fabs(sln_time_new->get_pt_value(3.5, 17.0) - 10.005262) > 1E-6) success = false;
 
-  if (success)
+  if(success)
   {
     printf("Success!\n");
-    return TEST_SUCCESS;
+    return 0;
   }
   else
   {
     printf("Failure!\n");
-    return TEST_FAILURE;
+    return -1;
   }
 }
-

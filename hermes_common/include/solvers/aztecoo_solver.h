@@ -39,9 +39,9 @@ namespace Hermes
     class HERMES_API AztecOOSolver : public IterSolver<Scalar>
     {
     public:
-      
+
       /// Set the type of the solver
-      /// @param[in] solver - name of the solver [ gmres | cg | cgs | tfqmr | bicgstab ]
+      /// @param[in] solver - name of the solver[ gmres | cg | cgs | tfqmr | bicgstab ]
       void set_solver(const char *solver);
       /// Set the convergence tolerance
       /// @param[in] tol - the tolerance to set
@@ -51,9 +51,9 @@ namespace Hermes
       void set_max_iters(int iters);
 
       /// Set Aztec internal preconditioner
-      /// @param[in] name - name of the preconditioner [ none | jacobi | neumann | least-squares ]
+      /// @param[in] name - name of the preconditioner[ none | jacobi | neumann | least-squares ]
       virtual void set_precond(const char *name);
-      
+
       AztecOOSolver(EpetraMatrix<Scalar> *m, EpetraVector<Scalar> *rhs);
       virtual ~AztecOOSolver();
       virtual bool solve();
@@ -78,7 +78,7 @@ namespace Hermes
 
       Precond<Scalar> *pc;
 
-      template<typename T> friend LinearMatrixSolver<T>* create_linear_solver(Hermes::MatrixSolverType matrix_solver_type, Matrix<T>* matrix, Vector<T>* rhs);
+      template<typename T> friend LinearMatrixSolver<T>* create_linear_solver(Matrix<T>* matrix, Vector<T>* rhs);
     };
   }
 }

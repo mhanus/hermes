@@ -20,48 +20,39 @@
     \brief File containing functionality for investigating call stack.
 */
 #include "callstack.h"
-#include "third_party_codes/trilinos-teuchos/Teuchos_stacktrace.hpp"
 #include <signal.h>
 #include <stdlib.h>
 
-/// Definition of the global CallStack instance.
-CallStack callstack;
+// Basically GNU stuff
+#ifdef EXECINFO_FOUND
+  #include <execinfo.h>
+  void handler(int sig)
+  {
+    void *array[20];
+    size_t size;
 
-CallStackObj::CallStackObj(int ln, const char *func, const char *file)
-{
-}
+    // get void*'s for all entries on the stack
+    size = backtrace(array, 20);
 
-CallStackObj::~CallStackObj()
-{
-}
+    // print out all the frames to stderr
+    printf("Error: signal %d:\n", sig);
+    backtrace_symbols_fd(array, size, 2);
+    exit(1);
+  }
 
-static void sighandler(int signo)
-{
-}
+#endif
 
-void callstack_initialize()
+void CallStack::dump(int signalCode)
 {
-}
-
-void callstack_finalize()
-{
-}
-
-CallStack::CallStack(int max_size)
-{
-}
-
-CallStack::~CallStack()
-{
-}
-
-void CallStack::dump()
-{
-}
-const char * CallStack::getLastFunc()
-{
-  if (size>0)
-    return stack[size-1]->func;
-  else
-    return NULL;
+// Basically WIN stuff
+#ifdef WITH_STACKTRACE
+  #ifdef WIN32
+    MyStackWalker sw;
+    sw.ShowCallstack();
+  #else
+    #ifdef EXECINFO_FOUND
+      handler(signalCode);
+    #endif
+  #endif
+#endif
 }

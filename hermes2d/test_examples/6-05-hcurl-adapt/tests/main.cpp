@@ -1,6 +1,5 @@
 #define HERMES_REPORT_WARN
 #define HERMES_REPORT_INFO
-#define HERMES_REPORT_VERBOSE
 #define HERMES_REPORT_FILE "application.log"
 #include "hermes2d.h"
 
@@ -59,10 +58,6 @@ const double ERR_STOP = 10.0;
 // over this limit. This is to prevent h-adaptivity to go on forever.
 const int NDOF_STOP = 60000;
 
-// Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
-// SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
-MatrixSolverType matrix_solver_type = SOLVER_UMFPACK;
-
 // Problem parameters.
 const double MU_R   = 1.0;
 const double KAPPA  = 1.0;
@@ -73,10 +68,6 @@ const double LAMBDA = 1.0;
 
 int main(int argc, char* argv[])
 {
-  // Time measurement
-  Hermes::TimePeriod cpu_time;
-  cpu_time.tick();
-
   // Load the mesh.
   Mesh mesh;
   MeshReaderH2D mloader;
@@ -94,7 +85,6 @@ int main(int argc, char* argv[])
   // Create an Hcurl space with default shapeset.
   HcurlSpace<std::complex<double> > space(&mesh, &bcs, P_INIT);
   int ndof = space.get_num_dofs();
-  info("ndof = %d", ndof);
 
   // Initialize the weak formulation.
   CustomWeakForm wf(MU_R, KAPPA);
@@ -108,49 +98,38 @@ int main(int argc, char* argv[])
   // Initialize refinement selector.
   HcurlProjBasedSelector selector(CAND_LIST, CONV_EXP, H2DRS_DEFAULT_ORDER);
 
+  DiscreteProblem<std::complex<double> > dp(&wf, &space);
+  
   // Adaptivity loop:
   int as = 1; bool done = false;
   do
   {
-    info("---- Adaptivity step %d:", as);
-
     // Construct globally refined reference mesh and setup reference space.
     Space<std::complex<double> >* ref_space = Space<std::complex<double> >::construct_refined_space(&space);
+    dp.set_space(ref_space);
     int ndof_ref = ref_space->get_num_dofs();
-
-    // Initialize reference problem.
-    info("Solving on reference mesh.");
-    DiscreteProblem<std::complex<double> > dp(&wf, ref_space);
-
-    // Time measurement.
-    cpu_time.tick();
 
     // Initial coefficient vector for the Newton's method.
     std::complex<double>* coeff_vec = new std::complex<double>[ndof_ref];
     memset(coeff_vec, 0, ndof_ref * sizeof(std::complex<double>));
 
     // Perform Newton's iteration and translate the resulting coefficient vector into a Solution.
-    Hermes::Hermes2D::NewtonSolver<std::complex<double> > newton(&dp, matrix_solver_type);
+    Hermes::Hermes2D::NewtonSolver<std::complex<double> > newton(&dp);
 
     try{
       newton.solve(coeff_vec);
     }
-    catch(Hermes::Exceptions::Exception e)
+    catch(Hermes::Exceptions::Exception& e)
     {
       e.printMsg();
-      error("Newton's iteration failed.");
     }
     Hermes::Hermes2D::Solution<std::complex<double> >::vector_to_solution(newton.get_sln_vector(), ref_space, &ref_sln);
 
-    // Time measurement.
-    cpu_time.tick();
-
     // Project the fine mesh solution onto the coarse mesh.
-    info("Projecting reference solution on coarse mesh.");
-    OGProjection<std::complex<double> >::project_global(&space, &ref_sln, &sln, matrix_solver_type);
+    OGProjection<std::complex<double> > ogProjection;
+    ogProjection.project_global(&space, &ref_sln, &sln);
 
     // Calculate element errors and total error estimate.
-    info("Calculating error estimate and exact error.");
     Adapt<std::complex<double> >* adaptivity = new Adapt<std::complex<double> >(&space);
     double err_est_rel = adaptivity->calc_err_est(&sln, &ref_sln) * 100;
 
@@ -158,25 +137,16 @@ int main(int argc, char* argv[])
     bool solutions_for_adapt = false;
     double err_exact_rel = adaptivity->calc_err_exact(&sln, &sln_exact, solutions_for_adapt) * 100;
 
-    // Report results.
-    info("ndof_coarse: %d, ndof_fine: %d",
-      space.get_num_dofs(), ref_space->get_num_dofs());
-    info("err_est_rel: %g%%, err_exact_rel: %g%%", err_est_rel, err_exact_rel);
-
-    // Time measurement.
-    cpu_time.tick();
-
     // If err_est_rel too large, adapt the mesh.
-    if (err_est_rel < ERR_STOP) done = true;
+    if(err_est_rel < ERR_STOP) done = true;
     else
     {
-      info("Adapting coarse mesh.");
       done = adaptivity->adapt(&selector, THRESHOLD, STRATEGY, MESH_REGULARITY);
 
       // Increase the counter of performed adaptivity steps.
-      if (done == false)  as++;
+      if(done == false)  as++;
     }
-    if (space.get_num_dofs() >= NDOF_STOP) done = true;
+    if(space.get_num_dofs() >= NDOF_STOP) done = true;
 
     // Clean up.
     delete [] coeff_vec;
@@ -187,17 +157,15 @@ int main(int argc, char* argv[])
   }
   while (done == false);
 
-  verbose("Total running time: %g s", cpu_time.accumulated());
-
   ndof = space.get_num_dofs();
 
-  if (ndof == 382) // Tested value as of 12 Jul 2011.
+  if(ndof == 382) // Tested value as of 12 Jul 2011.
   {
     printf("Success!\n");
-    return TEST_SUCCESS;
+    return 0;
   }
   else {
     printf("Failure!\n");
-    return TEST_FAILURE;
+    return -1;
   }
 }

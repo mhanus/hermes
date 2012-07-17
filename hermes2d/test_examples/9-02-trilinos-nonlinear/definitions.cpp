@@ -1,5 +1,14 @@
 #include "definitions.h"
 
+const std::string MatrixSolverNames[6] = {
+  "UMFPACK",
+  "PETSc",
+  "MUMPS",
+  "SuperLU",
+  "Trilinos/Amesos",
+  "Trilinos/AztecOO"
+};
+
 double CustomRightHandSide::value(double x, double y) const
 {
   return - kx(x, y) * dudx(x, y) - ky(x, y) * dudy(x, y) - k(x, y) * (dudxx(x, y) + dudyy(x, y));
@@ -66,7 +75,6 @@ Real CustomRightHandSide::ky(Real x, Real y) const
                    (2.0 * dudx(x, y) * dudxy(x, y) + 2.0 * dudy(x, y) * dudyy(x, y));
 }
 
-
 double CustomExactSolution::value(double x, double y) const
 {
   return  x * y * (1-x) * (1-y);
@@ -117,7 +125,6 @@ Ord CustomWeakForm::JacobianFormVol::ord(int n, double *wt, Func<Ord> *u_ext[], 
   return Ord(10);
 }
 
-
 double CustomWeakForm::ResidualFormVol::value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
                                               Geom<double> *e, ExtData<double> *ext) const
 {
@@ -136,7 +143,6 @@ Ord CustomWeakForm::ResidualFormVol::ord(int n, double *wt, Func<Ord> *u_ext[], 
   return Ord(10);
 }
 
-
 double CustomWeakForm::PrecondFormVol::value(int n, double *wt, Func<double> *u_ext[], Func<double> *u,
                                              Func<double> *v, Geom<double> *e, ExtData<double> *ext) const
 {
@@ -152,4 +158,3 @@ Ord CustomWeakForm::PrecondFormVol::ord(int n, double *wt, Func<Ord> *u_ext[], F
   // Returning the sum of the degrees of the basis and test function plus two.
   return Ord(10);
 }
-

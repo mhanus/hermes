@@ -14,17 +14,7 @@
 // along with Hermes2D.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "space.h"
-
-// This is here mainly because XSD uses its own error, therefore it has to be undefined here.
-#ifdef error(...)
-#undef error(...)
-#endif
 #include "space_h2d_xml.h"
-// This is here mainly because XSD uses its own error, therefore it had to be undefined previously.
-#ifndef error(...)
-#define error(...) hermes_exit_if(hermes_log_message_if(true, HERMES_BUILD_LOG_INFO(HERMES_EC_ERROR), __VA_ARGS__))
-#endif
-
 #include <iostream>
 
 namespace Hermes
@@ -37,8 +27,8 @@ namespace Hermes
     Space<Scalar>::Space(Mesh* mesh, Shapeset* shapeset, EssentialBCs<Scalar>* essential_bcs, int p_init)
       : shapeset(shapeset), essential_bcs(essential_bcs), mesh(mesh)
     {
-      _F_;
-      if (mesh == NULL) error("Space must be initialized with an existing mesh.");
+      if(mesh == NULL)
+        throw Hermes::Exceptions::NullException(0);
       this->default_tri_order = -1;
       this->default_quad_order = -1;
       this->ndata = NULL;
@@ -53,8 +43,10 @@ namespace Hermes
       if(essential_bcs != NULL)
         for(typename Hermes::vector<EssentialBoundaryCondition<Scalar>*>::const_iterator it = essential_bcs->begin(); it != essential_bcs->end(); it++)
           for(unsigned int i = 0; i < (*it)->markers.size(); i++)
+          {
             if(mesh->get_boundary_markers_conversion().conversion_table_inverse.find((*it)->markers.at(i)) == mesh->get_boundary_markers_conversion().conversion_table_inverse.end())
-              error("A boundary condition defined on a non-existent marker.");
+              throw Hermes::Exceptions::Exception("A boundary condition defined on a non-existent marker %s.", (*it)->markers.at(i).c_str());
+          }
 
       own_shapeset = (shapeset == NULL);
     }
@@ -62,40 +54,40 @@ namespace Hermes
     template<typename Scalar>
     Space<Scalar>::~Space()
     {
-      _F_;
       free();
     }
 
     template<typename Scalar>
     void Space<Scalar>::free()
     {
-      _F_;
       free_bc_data();
-      if (nsize) { ::free(ndata); ndata = NULL; }
-      if (esize) { ::free(edata); edata = NULL; }
+      if(nsize) { ::free(ndata); ndata = NULL; }
+      if(esize) { ::free(edata); edata = NULL; }
     }
-    
+
     template<typename Scalar>
     Node* Space<Scalar>::get_mid_edge_vertex_node(Element* e, int i, int j)
     {
-      if (e->is_triangle()) return e->sons[3]->vn[e->prev_vert(i)];
-      else if (e->sons[2] == NULL) return i == 1 ? e->sons[0]->vn[2] : i == 3 ? e->sons[0]->vn[3] : NULL;
-      else if (e->sons[0] == NULL) return i == 0 ? e->sons[2]->vn[1] : i == 2 ? e->sons[2]->vn[2] : NULL;
+      if(e->is_triangle())
+        return e->sons[3]->vn[e->prev_vert(i)];
+      else if(e->sons[2] == NULL)
+        return i == 1 ? e->sons[0]->vn[2] : i == 3 ? e->sons[0]->vn[3] : NULL;
+      else if(e->sons[0] == NULL)
+        return i == 0 ? e->sons[2]->vn[1] : i == 2 ? e->sons[2]->vn[2] : NULL;
       else return e->sons[i]->vn[j];
     }
 
     template<typename Scalar>
     void Space<Scalar>::resize_tables()
     {
-      _F_;
-      if ((nsize < mesh->get_max_node_id()) || (ndata == NULL))
+      if((nsize < mesh->get_max_node_id()) || (ndata == NULL))
       {
         //HACK: definition of allocated size and the result number of elements
         nsize = mesh->get_max_node_id();
-        if ((nsize > ndata_allocated) || (ndata == NULL))
+        if((nsize > ndata_allocated) || (ndata == NULL))
         {
           int prev_allocated = ndata_allocated;
-          if (ndata_allocated == 0)
+          if(ndata_allocated == 0)
             ndata_allocated = 1024;
           while (ndata_allocated < nsize)
             ndata_allocated = ndata_allocated * 3 / 2;
@@ -105,11 +97,13 @@ namespace Hermes
         }
       }
 
-      if ((esize < mesh->get_max_element_id()) || (edata == NULL))
+      if((esize < mesh->get_max_element_id()) || (edata == NULL))
       {
         int oldsize = esize;
-        if (!esize) esize = 1024;
-        while (esize < mesh->get_max_element_id()) esize = esize * 3 / 2;
+        if(!esize)
+          esize = 1024;
+        while (esize < mesh->get_max_element_id())
+          esize = esize * 3 / 2;
         edata = (ElementData*) realloc(edata, sizeof(ElementData) * esize);
         for (int i = oldsize; i < esize; i++)
           edata[i].order = -1;
@@ -157,7 +151,6 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::set_element_order(int id, int order)
     {
-      _F_;
       set_element_order_internal(id, order);
 
       // since space changed, enumerate basis functions
@@ -167,17 +160,12 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::set_element_order_internal(int id, int order)
     {
-      _F_;
-      //NOTE: We need to take into account that L2 and Hcurl may use zero orders. The latter has its own version of this method, however.
-      assert_msg(mesh->get_element(id)->is_triangle() || get_type() == HERMES_L2_SPACE || H2D_GET_V_ORDER(order) != 0, "Element #%d is quad but given vertical order is zero", id);
-      assert_msg(mesh->get_element(id)->is_quad() || H2D_GET_V_ORDER(order) == 0, "Element #%d is triangle but vertical is not zero", id);
-
-      if (id < 0 || id >= mesh->get_max_element_id())
-        error("Invalid element id.");
+      if(id < 0 || id >= mesh->get_max_element_id())
+        throw Hermes::Exceptions::Exception("Space<Scalar>::set_element_order_internal: Invalid element id.");
 
       resize_tables();
 
-      if (mesh->get_element(id)->is_quad() && get_type() != HERMES_L2_SPACE && H2D_GET_V_ORDER(order) == 0)
+      if(mesh->get_element(id)->is_quad() && get_type() != HERMES_L2_SPACE && H2D_GET_V_ORDER(order) == 0)
         order = H2D_MAKE_QUAD_ORDER(order, order);
 
       edata[id].order = order;
@@ -186,11 +174,11 @@ namespace Hermes
 
     template<typename Scalar>
     Hermes::vector<Space<Scalar>*>* Space<Scalar>::construct_refined_spaces(Hermes::vector<Space<Scalar>*> coarse, int order_increase, int refinement_type) {
-      _F_;
       Hermes::vector<Space<Scalar>*> * ref_spaces = new Hermes::vector<Space<Scalar>*>;
       bool same_meshes = true;
       unsigned int same_seq = coarse[0]->get_mesh()->get_seq();
-      for (unsigned int i = 0; i < coarse.size(); i++) {
+      for (unsigned int i = 0; i < coarse.size(); i++) 
+      {
         if(coarse[i]->get_mesh()->get_seq() != same_seq)
           same_meshes = false;
         Mesh* ref_mesh = new Mesh;
@@ -210,7 +198,6 @@ namespace Hermes
                                                           int order_increase,
                                                           int refinement_type)
     {
-      _F_;
       Mesh* ref_mesh = new Mesh;
       ref_mesh->copy(coarse->get_mesh());
       ref_mesh->refine_all_elements(refinement_type);
@@ -224,7 +211,8 @@ namespace Hermes
     void Space<Scalar>::update_essential_bc_values(Hermes::vector<Space<Scalar>*> spaces, double time)
     {
       int n = spaces.size();
-      for (int i = 0; i < n; i++) {
+      for (int i = 0; i < n; i++)
+      {
         if(spaces[i]->get_essential_bcs() != NULL)
           spaces[i]->get_essential_bcs()->set_current_time(time);
         spaces[i]->update_essential_bc_values();
@@ -241,22 +229,18 @@ namespace Hermes
     template<typename Scalar>
     int Space<Scalar>::get_num_dofs(Hermes::vector<const Space<Scalar>*> spaces)
     {
-      _F_;
       int ndof = 0;
-      for (unsigned int i = 0; i<spaces.size(); i++) {
+      for (unsigned int i = 0; i<spaces.size(); i++)
         ndof += spaces[i]->get_num_dofs();
-      }
       return ndof;
     }
 
     template<typename Scalar>
     int Space<Scalar>::get_num_dofs(Hermes::vector<Space<Scalar>*> spaces)
     {
-      _F_;
       int ndof = 0;
-      for (unsigned int i = 0; i<spaces.size(); i++) {
+      for (unsigned int i = 0; i<spaces.size(); i++)
         ndof += spaces[i]->get_num_dofs();
-      }
       return ndof;
     }
 
@@ -275,9 +259,8 @@ namespace Hermes
     template<typename Scalar>
     int Space<Scalar>::assign_dofs(Hermes::vector<Space<Scalar>*> spaces)
     {
-      _F_;
       int n = spaces.size();
-      // assigning dofs to each space
+
       int ndof = 0;
       for (int i = 0; i < n; i++) {
         ndof += spaces[i]->assign_dofs(ndof);
@@ -286,18 +269,18 @@ namespace Hermes
       return ndof;
     }
 
-
     template<typename Scalar>
     int Space<Scalar>::get_element_order(int id) const
     {
-      _F_;
       // sanity checks (for internal purposes)
-      if (this->mesh == NULL) error("NULL Mesh pointer detected in Space<Scalar>::get_element_order().");
-      if(edata == NULL) error("NULL edata detected in Space<Scalar>::get_element_order().");
-      if (id >= esize)
+      if(this->mesh == NULL)
+        throw Hermes::Exceptions::Exception("NULL Mesh pointer detected in Space<Scalar>::get_element_order().");
+      if(edata == NULL)
+        throw Hermes::Exceptions::Exception("NULL edata detected in Space<Scalar>::get_element_order().");
+      if(id >= esize)
       {
-        warn("Element index %d in Space<Scalar>::get_element_order() while maximum is %d.", id, esize);
-        error("Wring element index in Space<Scalar>::get_element_order().");
+        this->warn("Element index %d in Space<Scalar>::get_element_order() while maximum is %d.", id, esize);
+        throw Hermes::Exceptions::Exception("Wrong element index in Space<Scalar>::get_element_order().");
       }
       return edata[id].order;
     }
@@ -305,7 +288,6 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::set_uniform_order(int order, std::string marker)
     {
-      _F_;
       if(marker == HERMES_ANY)
         set_uniform_order_internal(order, -1234);
       else
@@ -318,17 +300,16 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::set_uniform_order_internal(int order, int marker)
     {
-      _F_;
       resize_tables();
       int quad_order = H2D_MAKE_QUAD_ORDER(order, order);
 
       Element* e;
       for_all_active_elements(e, mesh)
       {
-        if (marker == HERMES_ANY_INT || e->marker == marker)
+        if(marker == HERMES_ANY_INT || e->marker == marker)
         {
           ElementData* ed = &edata[e->id];
-          if (e->is_triangle())
+          if(e->is_triangle())
             ed->order = order;
           else
             ed->order = quad_order;
@@ -340,7 +321,6 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::set_element_orders(int* elem_orders_)
     {
-      _F_;
       resize_tables();
 
       Element* e;
@@ -349,7 +329,7 @@ namespace Hermes
       {
         assert(elem_orders_[counter] >= 0 && elem_orders_[counter] <= shapeset->get_max_order());
         ElementData* ed = &edata[e->id];
-        if (e->is_triangle())
+        if(e->is_triangle())
           ed->order = elem_orders_[counter];
         else
           ed->order = H2D_MAKE_QUAD_ORDER(elem_orders_[counter], elem_orders_[counter]);
@@ -360,7 +340,6 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::adjust_element_order(int order_change, int min_order)
     {
-      _F_;
       Element* e;
       for_all_active_elements(e, this->get_mesh())
       {
@@ -369,7 +348,7 @@ namespace Hermes
         else
         {
           int h_order, v_order;
-          // check that we are not imposing smaller than minimal orders.
+
           if(H2D_GET_H_ORDER(get_element_order(e->id)) + order_change < min_order)
             h_order = min_order;
           else
@@ -389,13 +368,12 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::adjust_element_order(int horizontal_order_change, int vertical_order_change, unsigned int horizontal_min_order, unsigned int vertical_min_order)
     {
-      _F_;
       Element* e;
       for_all_active_elements(e, this->get_mesh())
       {
         if(e->is_triangle())
         {
-          warn("Using quad version of Space<Scalar>::adjust_element_order(), only horizontal orders will be used.");
+          this->warn("Using quad version of Space<Scalar>::adjust_element_order(), only horizontal orders will be used.");
           set_element_order_internal(e->id, std::max<int>(horizontal_min_order, get_element_order(e->id) + horizontal_order_change));
         }
         else
@@ -429,12 +407,12 @@ namespace Hermes
       {
         bool found = true;
         for (unsigned int i = 0; i < 4; i++)
-          if (e->sons[i] != NULL &&
+          if(e->sons[i] != NULL &&
             (!e->sons[i]->active || (keep_initial_refinements && e->sons[i]->id < this->mesh->ninitial))
             )
           { found = false; break; }
 
-          if (found) list.push_back(e->id);
+          if(found) list.push_back(e->id);
       }
 
       // unrefine the found elements
@@ -442,7 +420,7 @@ namespace Hermes
       {
         unsigned int order = 0, h_order = 0, v_order = 0;
         unsigned int num_sons = 0;
-        if (this->mesh->get_element_fast(list[i])->bsplit())
+        if(this->mesh->get_element_fast(list[i])->bsplit())
         {
           num_sons = 4;
           for (int sons_i = 0; sons_i < 4; sons_i++)
@@ -461,7 +439,7 @@ namespace Hermes
         }
         else
         {
-          if (this->mesh->get_element_fast(list[i])->hsplit())
+          if(this->mesh->get_element_fast(list[i])->hsplit())
           {
             num_sons = 2;
             if(this->mesh->get_element_fast(list[i])->sons[0]->active)
@@ -531,26 +509,24 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::copy_orders_recurrent(Element* e, int order)
     {
-      _F_;
-      if (e->active)
+      if(e->active)
         edata[e->id].order = order;
       else
         for (int i = 0; i < 4; i++)
-          if (e->sons[i] != NULL)
+          if(e->sons[i] != NULL)
             copy_orders_recurrent(e->sons[i], order);
     }
 
     template<typename Scalar>
     void Space<Scalar>::copy_orders(const Space<Scalar>* space, int inc)
     {
-      _F_;
       Element* e;
       resize_tables();
       for_all_active_elements(e, space->get_mesh())
       {
         int o = space->get_element_order(e->id);
-        if (o < 0)
-          error("Source space has an uninitialized order (element id = %d)", e->id);
+        if(o < 0)
+          throw Hermes::Exceptions::Exception("Source space has an uninitialized order (element id = %d)", e->id);
 
         int mo = shapeset->get_max_order();
         int lower_limit = (get_type() == HERMES_L2_SPACE || get_type() == HERMES_HCURL_SPACE) ? 0 : 1; // L2 and Hcurl may use zero orders.
@@ -559,6 +535,7 @@ namespace Hermes
         o = e->is_triangle() ? ho : H2D_MAKE_QUAD_ORDER(ho, vo);
 
         copy_orders_recurrent(mesh->get_element(e->id), o);
+        
         if(space->edata[e->id].changed_in_last_adaptation)
         {
           if(mesh->get_element(e->id)->active)
@@ -582,11 +559,10 @@ namespace Hermes
     template<typename Scalar>
     int Space<Scalar>::get_edge_order(Element* e, int edge) const
     {
-      _F_;
       Node* en = e->en[edge];
-      if (en->id >= nsize || edge >= (int)e->get_num_surf()) return 0;
+      if(en->id >= nsize || edge >= (int)e->get_num_surf()) return 0;
 
-      if (ndata[en->id].n == -1)
+      if(ndata[en->id].n == -1)
         return get_edge_order_internal(ndata[en->id].base); // constrained node
       else
         return get_edge_order_internal(en);
@@ -595,38 +571,36 @@ namespace Hermes
     template<typename Scalar>
     int Space<Scalar>::get_edge_order_internal(Node* en) const
     {
-      _F_;
       assert(en->type == HERMES_TYPE_EDGE);
       Element** e = en->elem;
       int o1 = 1000, o2 = 1000;
       assert(e[0] != NULL || e[1] != NULL);
 
-      if (e[0] != NULL)
+      if(e[0] != NULL)
       {
-        if (e[0]->is_triangle() || en == e[0]->en[0] || en == e[0]->en[2])
+        if(e[0]->is_triangle() || en == e[0]->en[0] || en == e[0]->en[2])
           o1 = H2D_GET_H_ORDER(edata[e[0]->id].order);
         else
           o1 = H2D_GET_V_ORDER(edata[e[0]->id].order);
       }
 
-      if (e[1] != NULL)
+      if(e[1] != NULL)
       {
-        if (e[1]->is_triangle() || en == e[1]->en[0] || en == e[1]->en[2])
+        if(e[1]->is_triangle() || en == e[1]->en[0] || en == e[1]->en[2])
           o2 = H2D_GET_H_ORDER(edata[e[1]->id].order);
         else
           o2 = H2D_GET_V_ORDER(edata[e[1]->id].order);
       }
 
-      if (o1 == 0) return o2 == 1000 ? 0 : o2;
-      if (o2 == 0) return o1 == 1000 ? 0 : o1;
+      if(o1 == 0) return o2 == 1000 ? 0 : o2;
+      if(o2 == 0) return o1 == 1000 ? 0 : o1;
       return std::min(o1, o2);
     }
 
     template<typename Scalar>
     void Space<Scalar>::set_mesh(Mesh* mesh)
     {
-      _F_;
-      if (this->mesh == mesh) return;
+      if(this->mesh == mesh) return;
       free();
       this->mesh = mesh;
       this->mesh_seq = mesh->get_seq();
@@ -639,7 +613,6 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::set_mesh_seq(int seq)
     {
-      _F_;
       this->mesh_seq = seq;
       this->mesh->set_seq(seq);
     }
@@ -663,14 +636,13 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::distribute_orders(Mesh* mesh, int* parents)
     {
-      _F_;
       int num = mesh->get_max_element_id();
       int* orders = new int[num + 1];
       Element* e;
       for_all_active_elements(e, mesh)
       {
         int p = get_element_order(parents[e->id]);
-        if (e->is_triangle() && (H2D_GET_V_ORDER(p) != 0))
+        if(e->is_triangle() && (H2D_GET_V_ORDER(p) != 0))
           p = std::max(H2D_GET_H_ORDER(p), H2D_GET_V_ORDER(p));
         orders[e->id] = p;
       }
@@ -682,9 +654,10 @@ namespace Hermes
     template<typename Scalar>
     int Space<Scalar>::assign_dofs(int first_dof, int stride)
     {
-      _F_;
-      if (first_dof < 0) error("Invalid first_dof.");
-      if (stride < 1)    error("Invalid stride.");
+      if(first_dof < 0)
+        throw Hermes::Exceptions::ValueException("first_dof", first_dof, 0);
+      if(stride < 1)
+        throw Hermes::Exceptions::ValueException("stride", stride, 1);
 
       resize_tables();
 
@@ -693,13 +666,15 @@ namespace Hermes
       //check validity of orders
       for_all_active_elements(e, mesh)
       {
-        if (e->id >= esize || edata[e->id].order < 0)
+        if(e->id >= esize || edata[e->id].order < 0)
         {
           printf("e->id = %d\n", e->id);
           printf("esize = %d\n", esize);
           printf("edata[%d].order = %d\n", e->id, edata[e->id].order);
-          error("Uninitialized element order.");
+          throw
+            Hermes::Exceptions::Exception("Uninitialized element order in Space::assign_dofs().");
         }
+        this->edata[e->id].changed_in_last_adaptation = true;
       }
 
       this->first_dof = next_dof = first_dof;
@@ -725,7 +700,6 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::reset_dof_assignment()
     {
-      _F_;
       // First assume that all vertex nodes are part of a natural BC. the member NodeData::n
       // is misused for this purpose, since it stores nothing at this point. Also assume
       // that all DOFs are unassigned.
@@ -743,7 +717,7 @@ namespace Hermes
       {
         for (unsigned int i = 0; i < e->get_num_surf(); i++)
         {
-          if (e->en[i]->bnd)
+          if(e->en[i]->bnd)
             if(essential_bcs != NULL)
               if(essential_bcs->get_boundary_condition(mesh->boundary_markers_conversion.get_user_marker(e->en[i]->marker).marker) != NULL)
               {
@@ -758,12 +732,11 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::get_element_assembly_list(Element* e, AsmList<Scalar>* al, unsigned int first_dof) const
     {
-      _F_;
       // some checks
-      if (e->id >= esize || edata[e->id].order < 0)
-        error("Uninitialized element order (id = #%d).", e->id);
-      if (!is_up_to_date())
-        error("The space is out of date. You need to update it with assign_dofs()"
+      if(e->id >= esize || edata[e->id].order < 0)
+        throw Hermes::Exceptions::Exception("Uninitialized element order in get_element_assembly_list(id = #%d).", e->id);
+      if(!is_up_to_date())
+        throw Hermes::Exceptions::Exception("The space in get_element_assembly_list() is out of date. You need to update it with assign_dofs()"
         " any time the mesh changes.");
 
       // add vertex, edge and bubble functions to the assembly list
@@ -781,7 +754,6 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::get_boundary_assembly_list(Element* e, int surf_num, AsmList<Scalar>* al, unsigned int first_dof) const
     {
-      _F_;
       al->cnt = 0;
       get_vertex_assembly_list(e, surf_num, al);
       get_vertex_assembly_list(e, e->next_vert(surf_num), al);
@@ -794,10 +766,9 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::get_bubble_assembly_list(Element* e, AsmList<Scalar>* al) const
     {
-      _F_;
       ElementData* ed = &edata[e->id];
 
-      if (!ed->n) return;
+      if(!ed->n) return;
 
       int* indices = shapeset->get_bubble_indices(ed->order, e->get_mode());
       for (int i = 0, dof = ed->bdof; i < ed->n; i++, dof += stride, indices++)
@@ -807,7 +778,6 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::set_essential_bcs(EssentialBCs<Scalar>* essential_bcs)
     {
-      _F_;
       this->essential_bcs = essential_bcs;
 
       // since space changed, enumerate basis functions
@@ -817,7 +787,6 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::precalculate_projection_matrix(int nv, double**& mat, double*& p)
     {
-      _F_;
       int n = shapeset->get_max_order() + 1 - nv;
       mat = new_matrix<double>(n, n);
       int component = (get_type() == HERMES_HDIV_SPACE) ? 1 : 0;
@@ -848,14 +817,13 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::update_edge_bc(Element* e, SurfPos* surf_pos)
     {
-      _F_;
-      if (e->active)
+      if(e->active)
       {
         Node* en = e->en[surf_pos->surf_num];
         NodeData* nd = &ndata[en->id];
         nd->edge_bc_proj = NULL;
 
-        if (nd->dof != H2D_UNASSIGNED_DOF && en->bnd)
+        if(nd->dof != H2D_UNASSIGNED_DOF && en->bnd)
           if(essential_bcs != NULL)
             if(essential_bcs->get_boundary_condition(mesh->boundary_markers_conversion.get_user_marker(en->marker).marker) != NULL)
             {
@@ -872,7 +840,7 @@ namespace Hermes
       else
       {
         int son1, son2;
-        if (mesh->get_edge_sons(e, surf_pos->surf_num, son1, son2) == 2)
+        if(mesh->get_edge_sons(e, surf_pos->surf_num, son1, son2) == 2)
         {
           double mid = (surf_pos->lo + surf_pos->hi) * 0.5, tmp = surf_pos->hi;
           surf_pos->hi = mid;
@@ -888,14 +856,13 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::update_essential_bc_values()
     {
-      _F_;
       Element* e;
       for_all_base_elements(e, mesh)
       {
         for (unsigned int i = 0; i < e->get_num_surf(); i++)
         {
           int j = e->next_vert(i);
-          if (e->vn[i]->bnd && e->vn[j]->bnd)
+          if(e->vn[i]->bnd && e->vn[j]->bnd)
           {
             SurfPos surf_pos = {0, i, e, e->vn[i]->id, e->vn[j]->id, 0.0, 0.0, 1.0};
             update_edge_bc(e, &surf_pos);
@@ -907,7 +874,6 @@ namespace Hermes
     template<typename Scalar>
     void Space<Scalar>::free_bc_data()
     {
-      _F_;
       for (unsigned int i = 0; i < bc_data.size(); i++)
         delete (bc_data[i]);
       bc_data.clear();
@@ -947,7 +913,7 @@ namespace Hermes
         for(typename Hermes::vector<EssentialBoundaryCondition<Scalar>*>::const_iterator it = essential_bcs->begin(); it != essential_bcs->end(); it++)
           for(unsigned int i = 0; i < (*it)->markers.size(); i++)
             if(mesh->get_boundary_markers_conversion().conversion_table_inverse.find((*it)->markers.at(i)) == mesh->get_boundary_markers_conversion().conversion_table_inverse.end())
-              error("A boundary condition defined on a non-existent marker.");
+              throw Hermes::Exceptions::Exception("A boundary condition defined on a non-existent marker.");
 
       this->resize_tables();
 
@@ -967,8 +933,7 @@ namespace Hermes
       }
       catch (const xml_schema::exception& e)
       {
-        std::cerr << e << std::endl;
-        std::exit(1);
+        throw Hermes::Exceptions::SpaceLoadFailureException(e.what());
       }
 
       this->assign_dofs();

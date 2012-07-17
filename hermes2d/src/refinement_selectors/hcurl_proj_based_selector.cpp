@@ -18,8 +18,8 @@ namespace Hermes
       {
         if(user_shapeset != NULL)
         {
-          warning("Warning: The user shapeset provided for the selector has to have a correct copy constructor implemented.");
-          warning("Warning: The functionality for cloning user shapeset is to be implemented yet.");
+          this->warn("Warning: The user shapeset provided for the selector has to have a correct copy constructor implemented.");
+          this->warn("Warning: The functionality for cloning user shapeset is to be implemented yet.");
         }
       }
 
@@ -30,13 +30,13 @@ namespace Hermes
 
       HcurlProjBasedSelector::~HcurlProjBasedSelector()
       {
-        delete[] precalc_rvals_curl;
+        delete [] precalc_rvals_curl;
       }
 
       void HcurlProjBasedSelector::set_current_order_range(Element* element)
       {
         current_max_order = this->max_order;
-        if (current_max_order == H2DRS_DEFAULT_ORDER)
+        if(current_max_order == H2DRS_DEFAULT_ORDER)
           current_max_order = std::min(H2DRS_MAX_HCURL_ORDER, (20 - element->iro_cache)/2 - 1); // default
         else
           current_max_order = std::min(max_order, (20 - element->iro_cache)/2 - 1); // user specified
@@ -82,16 +82,17 @@ namespace Hermes
           }
 
           //move to the next transformation
-          if (inx_trf == H2D_TRF_IDENTITY)
+          if(inx_trf == H2D_TRF_IDENTITY)
             done = true;
           else
           {
             inx_trf++;
-            if (inx_trf >= num_noni_trfs) //if all transformations were processed, move to the identity transformation
+            if(inx_trf >= num_noni_trfs) //if all transformations were processed, move to the identity transformation
               inx_trf = H2D_TRF_IDENTITY;
           }
         }
-        error_if(!done, "All transformation processed but identity transformation not found."); //identity transformation has to be the last transformation
+        if(!done)
+              throw Exceptions::Exception("All transformation processed but identity transformation not found."); //identity transformation has to be the last transformation
       }
 
       void HcurlProjBasedSelector::precalc_ortho_shapes(const double3* gip_points, const int num_gip_points, const Trf* trfs, const int num_noni_trfs, const Hermes::vector<ShapeInx>& shapes, const int max_shape_inx, TrfShape& svals, ElementMode2D mode)
@@ -135,16 +136,17 @@ namespace Hermes
               }
 
               //move to the next transformation
-              if (inx_trf == H2D_TRF_IDENTITY)
+              if(inx_trf == H2D_TRF_IDENTITY)
                 done = true;
               else
               {
                 inx_trf++;
-                if (inx_trf >= num_noni_trfs) //if all transformations were processed, move to the identity transformation
+                if(inx_trf >= num_noni_trfs) //if all transformations were processed, move to the identity transformation
                   inx_trf = H2D_TRF_IDENTITY;
               }
             }
-            error_if(!done, "All transformation processed but identity transformation not found."); //identity transformation has to be the last transformation
+            if(!done)
+              throw Exceptions::Exception("All transformation processed but identity transformation not found."); //identity transformation has to be the last transformation
           }
 
           //normalize
@@ -159,7 +161,8 @@ namespace Hermes
             norm_squared += gip_points[k][H2D_GIP2D_W] * sum;
           }
           double norm = sqrt(norm_squared);
-          assert_msg(finite(1/norm), "Norm (%g) is almost zero.", norm);
+          if(!finite(1/norm))
+            throw Exceptions::Exception("Norm (%g) is almost zero.", norm);
 
           //for all transformations: normalize
           int inx_trf = 0;
@@ -175,16 +178,17 @@ namespace Hermes
             }
 
             //move to the next transformation
-            if (inx_trf == H2D_TRF_IDENTITY)
+            if(inx_trf == H2D_TRF_IDENTITY)
               done = true;
             else
             {
               inx_trf++;
-              if (inx_trf >= num_noni_trfs) //if all transformations were processed, move to the identity transformation
+              if(inx_trf >= num_noni_trfs) //if all transformations were processed, move to the identity transformation
                 inx_trf = H2D_TRF_IDENTITY;
             }
           }
-          error_if(!done, "All transformation processed but identity transformation not found."); //identity transformation has to be the last transformation
+          if(!done)
+            throw Exceptions::Exception("All transformation processed but identity transformation not found."); //identity transformation has to be the last transformation
         }
       }
 
@@ -196,7 +200,7 @@ namespace Hermes
         const int num_gip = rsln->get_quad_2d()->get_num_points(intr_gip_order, rsln->get_active_element()->get_mode());
 
         //allocate space for Curl
-        if (precalc_rvals_curl == NULL)
+        if(precalc_rvals_curl == NULL)
           precalc_rvals_curl = new_matrix<std::complex<double> >(H2D_MAX_ELEMENT_SONS, num_gip);
 
         //prepre for curl

@@ -154,7 +154,7 @@ namespace Hermes
       unsigned int nnz;
 
       friend class Solvers::SuperLUSolver<Scalar>;
-      template<typename T> friend SparseMatrix<T>*  create_matrix(Hermes::MatrixSolverType matrix_solver_type);
+      template<typename T> friend SparseMatrix<T>*  create_matrix();
     };
 
     /** \brief Vector used with SuperLU solver */
@@ -184,11 +184,9 @@ namespace Hermes
 
       friend class Solvers::SuperLUSolver<Scalar>;
     };
-
   }
   namespace Solvers
   {
-
     /// Encapsulation of SUPERLU linear solver.
     ///
     /// @ingroup solvers
@@ -248,7 +246,6 @@ namespace Hermes
         double *rcond, double *ferr, double *berr, slu_memusage_t *mem_usage, SuperLUStat_t *stat, int *info);
       void create_dense_matrix (SuperMatrix *X, int m, int n, typename SuperLuType<Scalar>::Scalar *x, int ldx, Stype_t stype, Dtype_t dtype, Mtype_t mtype);
 #endif  //SLU_MT
-    
 
 #ifndef SLU_MT
       char equed[1];              ///< Form of equilibration that was done on A.
@@ -256,7 +253,7 @@ namespace Hermes
       equed_t equed;              ///< Form of equilibration that was done on A.
       SuperMatrix AC;             ///< Matrix A permuted by perm_c.
 #endif //SLU_MT
-      template<typename T> friend LinearMatrixSolver<T>* create_linear_solver(Hermes::MatrixSolverType matrix_solver_type, Matrix<T>* matrix, Vector<T>* rhs);
+      template<typename T> friend LinearMatrixSolver<T>* create_linear_solver(Matrix<T>* matrix, Vector<T>* rhs);
     };
   }
 }

@@ -1,11 +1,11 @@
-#define HERMES_REPORT_WARN
+#include "proj_based_selector.h"
+#include <algorithm>
 #include "global.h"
 #include "solution.h"
 #include "discrete_problem.h"
 #include "quad_all.h"
 #include "element_to_refine.h"
 #include "order_permutator.h"
-#include "proj_based_selector.h"
 
 namespace Hermes
 {
@@ -13,7 +13,6 @@ namespace Hermes
   {
     namespace RefinementSelectors
     {
-
       template<typename Scalar>
       ProjBasedSelector<Scalar>::ProjBasedSelector(CandList cand_list, double conv_exp, int
         max_order, Shapeset* shapeset, const typename OptimumSelector<Scalar>::Range& vertex_order, const
@@ -53,8 +52,8 @@ namespace Hermes
           for(int i = 0; i < H2DRS_MAX_ORDER + 1; i++)
             for(int k = 0; k < H2DRS_MAX_ORDER + 1; k++)
             {
-              if (proj_matrix_cache[m][i][k] != NULL)
-                delete[] proj_matrix_cache[m][i][k];
+              if(proj_matrix_cache[m][i][k] != NULL)
+                delete [] proj_matrix_cache[m][i][k];
             }
 
         delete [] cached_shape_vals_valid;
@@ -73,52 +72,49 @@ namespace Hermes
       template<typename Scalar>
       double ProjBasedSelector<Scalar>::get_error_weight_h() const
       {
-        return error_weight_h; 
+        return error_weight_h;
       }
 
       template<typename Scalar>
       double ProjBasedSelector<Scalar>::get_error_weight_p() const
       {
-        return error_weight_p; 
+        return error_weight_p;
       }
 
       template<typename Scalar>
       double ProjBasedSelector<Scalar>::get_error_weight_aniso() const
       {
-        return error_weight_aniso; 
+        return error_weight_aniso;
       }
 
       template<typename Scalar>
       ProjBasedSelector<Scalar>::TrfShapeExp::TrfShapeExp() : num_gip(0), num_expansion(0), values(NULL) {};
 
-
       template<typename Scalar>
-      ProjBasedSelector<Scalar>::TrfShapeExp::~TrfShapeExp() 
+      ProjBasedSelector<Scalar>::TrfShapeExp::~TrfShapeExp()
       {
-        delete[] values; 
+        delete [] values;
       }
 
       template<typename Scalar>
-      void ProjBasedSelector<Scalar>::TrfShapeExp::allocate(int num_expansion, int num_gip) 
+      void ProjBasedSelector<Scalar>::TrfShapeExp::allocate(int num_expansion, int num_gip)
       {
-        delete[] values;
+        delete [] values;
         values = new_matrix<double>(num_expansion, num_gip);
         this->num_expansion = num_expansion;
         this->num_gip = num_gip;
       }
 
       template<typename Scalar>
-      double* ProjBasedSelector<Scalar>::TrfShapeExp::operator[](int inx_expansion) 
+      double* ProjBasedSelector<Scalar>::TrfShapeExp::operator[](int inx_expansion)
       {
-        assert_msg(values != NULL, "Function expansions not allocated.");
-        assert_msg(inx_expansion < num_expansion, "Index (%d) of an expansion out of range [0, %d]", inx_expansion, num_expansion-1);
         return values[inx_expansion];
       }
 
       template<typename Scalar>
       bool ProjBasedSelector<Scalar>::TrfShapeExp::empty() const
       {
-        return values == NULL; 
+        return values == NULL;
       }
 
       template<typename Scalar>
@@ -143,7 +139,7 @@ namespace Hermes
         {
           typename OptimumSelector<Scalar>::Cand& c = this->candidates[i];
           double error_squared = 0.0;
-          if (tri) { //triangle
+          if(tri) { //triangle
             switch(c.split)
             {
             case H2D_REFINEMENT_H:
@@ -164,7 +160,7 @@ namespace Hermes
               break;
 
             default:
-              error("Unknown split type \"%d\" at candidate %d", c.split, i);
+              throw Hermes::Exceptions::Exception("Unknown split type \"%d\" at candidate %d", c.split, i);
             }
           }
           else { //quad
@@ -198,7 +194,7 @@ namespace Hermes
               break;
 
             default:
-              error("Unknown split type \"%d\" at candidate %d", c.split, i);
+              throw Hermes::Exceptions::Exception("Unknown split type \"%d\" at candidate %d", c.split, i);
             }
           }
 
@@ -212,11 +208,11 @@ namespace Hermes
           case H2D_REFINEMENT_ANISO_H:
           case H2D_REFINEMENT_ANISO_V: c.error *= error_weight_aniso; break;
           case H2D_REFINEMENT_P: c.error *= error_weight_p; break;
-          default: error("Unknown split type \"%d\" at candidate %d", c.split, i);
+          default: throw Hermes::Exceptions::Exception("Unknown split type \"%d\" at candidate %d", c.split, i);
           }
 
           //calculate statistics
-          if (i == 0 || c.error <= unrefined_c.error)
+          if(i == 0 || c.error <= unrefined_c.error)
           {
             sum_err += log10(c.error);
             sum_sqr_err += Hermes::sqr(log10(c.error));
@@ -231,10 +227,6 @@ namespace Hermes
       template<typename Scalar>
       void ProjBasedSelector<Scalar>::calc_projection_errors(Element* e, const typename OptimumSelector<Scalar>::CandsInfo& info_h, const typename OptimumSelector<Scalar>::CandsInfo& info_p, const  typename OptimumSelector<Scalar>::CandsInfo& info_aniso, Solution<Scalar>* rsln, CandElemProjError herr[4], CandElemProjError perr, CandElemProjError anisoerr[4])
       {
-        assert_msg(info_h.is_empty() || (H2D_GET_H_ORDER(info_h.max_quad_order) <= H2DRS_MAX_ORDER && H2D_GET_V_ORDER(info_h.max_quad_order) <= H2DRS_MAX_ORDER), "Maximum allowed order of a son of H-candidate is %d but order (H:%d, V:%d) requested.", H2DRS_MAX_ORDER, H2D_GET_H_ORDER(info_h.max_quad_order), H2D_GET_V_ORDER(info_h.max_quad_order));
-        assert_msg(info_p.is_empty() || (H2D_GET_H_ORDER(info_p.max_quad_order) <= H2DRS_MAX_ORDER && H2D_GET_V_ORDER(info_p.max_quad_order) <= H2DRS_MAX_ORDER), "Maximum allowed order of a son of P-candidate is %d but order (H:%d, V:%d) requested.", H2DRS_MAX_ORDER, H2D_GET_H_ORDER(info_p.max_quad_order), H2D_GET_V_ORDER(info_p.max_quad_order));
-        assert_msg(info_aniso.is_empty() || (H2D_GET_H_ORDER(info_aniso.max_quad_order) <= H2DRS_MAX_ORDER && H2D_GET_V_ORDER(info_aniso.max_quad_order) <= H2DRS_MAX_ORDER), "Maximum allowed order of a son of ANISO-candidate is %d but order (H:%d, V:%d) requested.", H2DRS_MAX_ORDER, H2D_GET_H_ORDER(info_aniso.max_quad_order), H2D_GET_V_ORDER(info_aniso.max_quad_order));
-
         ElementMode2D mode = e->get_mode();
 
         // select quadrature, obtain integration points and weights
@@ -251,8 +243,8 @@ namespace Hermes
         Element* base_element = rsln->get_mesh()->get_element(e->id);
         if(base_element->active)
         {
-          info("Have you calculated element errors twice with solutions_for_adaptivity == true?");
-          error("Program is aborting based on a failed assertion in ProjBasedSelector<Scalar>::calc_projection_errors().");
+          this->info("Have you calculated element errors twice with solutions_for_adaptivity == true?");
+          throw Hermes::Exceptions::Exception("Program is aborting based on a failed assertion in ProjBasedSelector<Scalar>::calc_projection_errors().");
         };
         for (int son = 0; son < H2D_MAX_ELEMENT_SONS; son++)
         {
@@ -267,7 +259,7 @@ namespace Hermes
         //retrieve transformations
         Trf* trfs = NULL;
         int num_noni_trfs = 0;
-        if (mode == HERMES_MODE_TRIANGLE)
+        if(mode == HERMES_MODE_TRIANGLE)
         {
           trfs = tri_trf;
           num_noni_trfs = H2D_TRF_TRI_NUM;
@@ -283,7 +275,7 @@ namespace Hermes
 
 #pragma omp critical (cached_shape_vals_valid)
         {
-          if (!cached_shape_vals_valid[mode])
+          if(!cached_shape_vals_valid[mode])
           {
             precalc_ortho_shapes(gip_points, num_gip_points, trfs, num_noni_trfs, this->shape_indices[mode], this->max_shape_inx[mode], cached_shape_ortho_vals[mode], mode);
             precalc_shapes(gip_points, num_gip_points, trfs, num_noni_trfs, this->shape_indices[mode], this->max_shape_inx[mode], cached_shape_vals[mode], mode);
@@ -291,20 +283,20 @@ namespace Hermes
           }
         }
         //issue a warning if ortho values are defined and the selected cand_list might benefit from that but it cannot because elements do not have uniform orders
-        if (!warn_uniform_orders && mode == HERMES_MODE_QUAD && !cached_shape_ortho_vals[mode][H2D_TRF_IDENTITY].empty())
+        if(!warn_uniform_orders && mode == HERMES_MODE_QUAD && !cached_shape_ortho_vals[mode][H2D_TRF_IDENTITY].empty())
         {
           warn_uniform_orders = true;
-          if (this->cand_list == H2D_H_ISO || this->cand_list == H2D_H_ANISO || this->cand_list == H2D_P_ISO || this->cand_list == H2D_HP_ISO || this->cand_list == H2D_HP_ANISO_H)
+          if(this->cand_list == H2D_H_ISO || this->cand_list == H2D_H_ANISO || this->cand_list == H2D_P_ISO || this->cand_list == H2D_HP_ISO || this->cand_list == H2D_HP_ANISO_H)
           {
             warn_if(!info_h.uniform_orders || !info_aniso.uniform_orders || !info_p.uniform_orders, "Possible inefficiency: %s might be more efficient if the input mesh contains elements with uniform orders strictly.", get_cand_list_str(this->cand_list));
           }
         }
-          
+
         TrfShape& svals = cached_shape_vals[mode];
         TrfShape& ortho_svals = cached_shape_ortho_vals[mode];
 
         //H-candidates
-        if (!info_h.is_empty())
+        if(!info_h.is_empty())
         {
           Trf* p_trf_identity[1] = { &trfs[H2D_TRF_IDENTITY] };
           Hermes::vector<TrfShapeExp>* p_trf_svals[1] = { &svals[H2D_TRF_IDENTITY] };
@@ -320,7 +312,7 @@ namespace Hermes
         }
 
         //ANISO-candidates
-        if (!info_aniso.is_empty())
+        if(!info_aniso.is_empty())
         {
           const int sons[4][2] = { {0, 1}, {3, 2}, {0, 3}, {1, 2} }; //indices of sons for sub-areas
           const int tr[4][2]   = { {6, 7}, {6, 7}, {4, 5}, {4, 5} }; //indices of ref. domain transformations for sub-areas
@@ -338,7 +330,7 @@ namespace Hermes
         }
 
         //P-candidates
-        if (!info_p.is_empty())
+        if(!info_p.is_empty())
         {
           Trf* sub_trfs[4] = { &trfs[0], &trfs[1], &trfs[2], &trfs[3] };
           Scalar **sub_rval[4] = { rval[0], rval[1], rval[2], rval[3] };
@@ -397,9 +389,10 @@ namespace Hermes
           while (inx_shape < full_shape_indices.size())
           {
             typename OptimumSelector<Scalar>::ShapeInx& shape = full_shape_indices[inx_shape];
-            if (order_h >= shape.order_h && order_v >= shape.order_v)
+            if(order_h >= shape.order_h && order_v >= shape.order_v)
             {
-              assert_msg(num_shapes < max_num_shapes, "more shapes than predicted, possible incosistency");
+              if(num_shapes >= max_num_shapes)
+                throw Exceptions::Exception("more shapes than predicted, possible incosistency");
               shape_inxs[num_shapes] = shape.inx;
               num_shapes++;
             }
@@ -407,7 +400,7 @@ namespace Hermes
           }
 
           //continue only if there are shapes to process
-          if (num_shapes > 0)
+          if(num_shapes > 0)
           {
             bool use_ortho = ortho_svals_available && order_perm.get_order_h() == order_perm.get_order_v();
 
@@ -416,9 +409,9 @@ namespace Hermes
             Hermes::vector<TrfShapeExp>** sub_svals = use_ortho ? sub_ortho_svals : sub_nonortho_svals;
 
             //calculate projection matrix iff no ortho is used
-            if (!use_ortho)
+            if(!use_ortho)
             {
-              if (proj_matrices[order_h][order_v] == NULL)
+              if(proj_matrices[order_h][order_v] == NULL)
                 proj_matrices[order_h][order_v] = build_projection_matrix(gip_points, num_gip_points, shape_inxs, num_shapes, mode);
               copy_matrix(proj_matrix, proj_matrices[order_h][order_v], num_shapes, num_shapes); //copy projection matrix because original matrix will be modified
             }
@@ -435,7 +428,7 @@ namespace Hermes
               {
                 int shape_inx = shape_inxs[k];
                 ValueCacheItem<Scalar>& shape_rhs_cache = rhs_cache[shape_inx];
-                if (!shape_rhs_cache.is_valid())
+                if(!shape_rhs_cache.is_valid())
                 {
                   TrfShapeExp empty_sub_vals;
                   ElemSubShapeFunc this_sub_shape = { shape_inx, this_sub_svals.empty() ? empty_sub_vals : this_sub_svals[shape_inx] };
@@ -453,7 +446,7 @@ namespace Hermes
             }
 
             //solve iff no ortho is used
-            if (!use_ortho)
+            if(!use_ortho)
             {
               ludcmp(proj_matrix, num_shapes, indx, d);
               lubksb<Scalar>(proj_matrix, num_shapes, indx, right_side);
@@ -475,11 +468,11 @@ namespace Hermes
         } while (order_perm.next());
 
         //clenaup
-        delete[] proj_matrix;
-        delete[] right_side;
-        delete[] shape_inxs;
-        delete[] indx;
-        delete[] d;
+        delete [] proj_matrix;
+        delete [] right_side;
+        delete [] shape_inxs;
+        delete [] indx;
+        delete [] d;
       }
 
       template class HERMES_API ProjBasedSelector<double>;

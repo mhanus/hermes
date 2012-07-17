@@ -43,6 +43,8 @@ using namespace Hermes::Hermes2D;
 // tutorial for comparisons.
 const bool STOKES = false;
 
+const bool HERMES_VISUALIZATION = true;
+
 #define PRESSURE_IN_L2
 
 // Initial polynomial degree for velocity components.
@@ -89,6 +91,7 @@ double current_time = 0;
 
 int main(int argc, char* argv[])
 {
+  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 8);
   // Load the mesh.
   Mesh mesh;
   MeshReaderH2D mloader;
@@ -118,7 +121,6 @@ int main(int argc, char* argv[])
 
   // Calculate and report the number of degrees of freedom.
   int ndof = Space<double>::get_num_dofs(Hermes::vector<const Space<double> *>(&xvel_space, &yvel_space, &p_space));
-  info("ndof = %d.", ndof);
 
   // Define projection norms.
   ProjNormType vel_proj_norm = HERMES_H1_NORM;
@@ -129,7 +131,6 @@ int main(int argc, char* argv[])
 #endif
 
   // Solutions for the Newton's iteration and time stepping.
-  info("Setting initial conditions.");
   ZeroSolution<double> xvel_prev_time(&mesh), yvel_prev_time(&mesh), p_prev_time(&mesh);
 
   // Initialize weak formulation.
@@ -140,68 +141,68 @@ int main(int argc, char* argv[])
   DiscreteProblem<double> dp(wf, Hermes::vector<const Space<double> *>(&xvel_space, &yvel_space, &p_space));
 
   // Initialize the Newton solver.
-  Hermes::Hermes2D::NewtonSolver<double> newton(&dp, matrix_solver_type);
+  Hermes::Hermes2D::NewtonSolver<double> newton(&dp);
 
   // Initialize views.
-  Views::VectorView vview("velocity [m/s]", new Views::WinGeom(0, 0, 750, 240));
-  Views::ScalarView pview("pressure [Pa]", new Views::WinGeom(0, 290, 750, 240));
+  Views::VectorView vview("velocity[m/s]", new Views::WinGeom(0, 0, 750, 240));
+  Views::ScalarView pview("pressure[Pa]", new Views::WinGeom(0, 290, 750, 240));
   vview.set_min_max_range(0, 1.6);
   vview.fix_scale_width(80);
   //pview.set_min_max_range(-0.9, 1.0);
   pview.fix_scale_width(80);
+if(HERMES_VISUALIZATION)
   pview.show_mesh(true);
 
   // Project the initial condition on the FE space to obtain initial
   // coefficient vector for the Newton's method.
   double* coeff_vec = new double[Space<double>::get_num_dofs(Hermes::vector<const Space<double> *>(&xvel_space, &yvel_space, &p_space))];
-  info("Projecting initial condition to obtain initial vector for the Newton's method.");
-  OGProjection<double>::project_global(Hermes::vector<const Space<double> *>(&xvel_space, &yvel_space, &p_space),
+  OGProjection<double> ogProjection;
+
+  ogProjection.project_global(Hermes::vector<const Space<double> *>(&xvel_space, &yvel_space, &p_space),
     Hermes::vector<MeshFunction<double> *>(&xvel_prev_time, &yvel_prev_time, &p_prev_time),
-    coeff_vec, matrix_solver_type,
-    Hermes::vector<ProjNormType>(vel_proj_norm, vel_proj_norm, p_proj_norm));
+    coeff_vec, Hermes::vector<ProjNormType>(vel_proj_norm, vel_proj_norm, p_proj_norm));
 
   // Time-stepping loop:
   char title[100];
   int num_time_steps = T_FINAL / TAU;
   for (int ts = 1; ts <= num_time_steps; ts++)
   {
+    std::cout << ts << std::endl;
     current_time += TAU;
-    info("---- Time step %d, time = %g:", ts, current_time);
 
     // Update time-dependent essential BCs.
-    if (current_time <= STARTUP_TIME)
+    if(current_time <= STARTUP_TIME)
     {
-      info("Updating time-dependent essential BC.");
       Space<double>::update_essential_bc_values(Hermes::vector<Space<double> *>(&xvel_space, &yvel_space, &p_space), current_time);
     }
 
-    // Perform Newton's iteration.
-    bool verbose = true;
     // Perform Newton's iteration and translate the resulting coefficient vector into previous time level solutions.
-    newton.set_verbose_output(verbose);
     try{
       newton.solve(coeff_vec, NEWTON_TOL, NEWTON_MAX_ITER);
     }
-    catch(Hermes::Exceptions::Exception e)
+    catch(Hermes::Exceptions::Exception& e)
     {
       e.printMsg();
-      error("Newton's iteration failed.");
     }
     Hermes::vector<Solution<double> *> tmp(&xvel_prev_time, &yvel_prev_time, &p_prev_time);
     Hermes::Hermes2D::Solution<double>::vector_to_solutions(newton.get_sln_vector(), Hermes::vector<const Space<double> *>(&xvel_space, &yvel_space, &p_space), tmp);
 
     // Show the solution at the end of time step.
-    sprintf(title, "Velocity, time %g", current_time);
-    vview.set_title(title);
-    vview.show(&xvel_prev_time, &yvel_prev_time, Views::HERMES_EPS_LOW);
-    sprintf(title, "Pressure, time %g", current_time);
-    pview.set_title(title);
-    pview.show(&p_prev_time);
+    if(HERMES_VISUALIZATION)
+    {
+      sprintf(title, "Velocity, time %g", current_time);
+      vview.set_title(title);
+      vview.show(&xvel_prev_time, &yvel_prev_time);
+      sprintf(title, "Pressure, time %g", current_time);
+      pview.set_title(title);
+      pview.show(&p_prev_time);
+    }
   }
 
   delete [] coeff_vec;
 
   // Wait for all views to be closed.
-  Views::View::wait();
+  if(HERMES_VISUALIZATION)
+    Views::View::wait();
   return 0;
 }

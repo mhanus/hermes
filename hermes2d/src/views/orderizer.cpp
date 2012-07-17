@@ -55,7 +55,6 @@ namespace Hermes
         };
 
         virtual void dummy_fn() {}
-
       } quad_ord;
 
       Orderizer::Orderizer() : LinearizerBase()
@@ -72,7 +71,7 @@ namespace Hermes
           for (int j = 0; j <= 10; j++)
           {
             assert((unsigned) p < sizeof(buffer)-5);
-            if (i == j)
+            if(i == j)
               sprintf(buffer + p, "%d", i);
             else
               sprintf(buffer + p, "%d|%d", i, j);
@@ -84,7 +83,7 @@ namespace Hermes
 
       int Orderizer::add_vertex()
       {
-        if (this->vertex_count >= this->vertex_size)
+        if(this->vertex_count >= this->vertex_size)
         {
           this->vertex_size *= 2;
           verts = (double3*) realloc(verts, sizeof(double3) * vertex_size);
@@ -105,10 +104,10 @@ namespace Hermes
       void Orderizer::process_space(const Space<Scalar>* space)
       {
         // sanity check
-        if (space == NULL) error("Space is NULL in Orderizer:process_solution().");
+        if(space == NULL) throw Hermes::Exceptions::Exception("Space is NULL in Orderizer:process_solution().");
 
-        if (!space->is_up_to_date())
-          error("The space is not up to date.");
+        if(!space->is_up_to_date())
+          throw Hermes::Exceptions::Exception("The space is not up to date.");
 
         int type = 1;
         label_count = 0;
@@ -118,9 +117,9 @@ namespace Hermes
 
         // estimate the required number of vertices and triangles
         Mesh* mesh = space->get_mesh();
-        if (mesh == NULL)
+        if(mesh == NULL)
         {
-          error("Mesh is NULL in Orderizer:process_solution().");
+          throw Hermes::Exceptions::Exception("Mesh is NULL in Orderizer:process_solution().");
         }
         int nn = mesh->get_num_active_elements();
         vertex_size = 77 * nn;
@@ -161,7 +160,7 @@ namespace Hermes
           assert(np <= 80);
 
           int mode = e->get_mode();
-          if (e->is_quad())
+          if(e->is_quad())
           {
             o[4] = H2D_GET_H_ORDER(oo);
             o[5] = H2D_GET_V_ORDER(oo);
@@ -176,7 +175,7 @@ namespace Hermes
 
           for (int i = 0; i < num_edge[mode][type]; i++)
           {
-            if (e->en[ord_edge[mode][type][i][2]]->bnd || (y[ord_edge[mode][type][i][0] + 1] < y[ord_edge[mode][type][i][1] + 1]) ||
+            if(e->en[ord_edge[mode][type][i][2]]->bnd || (y[ord_edge[mode][type][i][0] + 1] < y[ord_edge[mode][type][i][1] + 1]) ||
               ((y[ord_edge[mode][type][i][0] + 1] == y[ord_edge[mode][type][i][1] + 1]) &&
               (x[ord_edge[mode][type][i][0] + 1] < x[ord_edge[mode][type][i][1] + 1])))
             {
@@ -187,10 +186,10 @@ namespace Hermes
           double xmin = 1e100, ymin = 1e100, xmax = -1e100, ymax = -1e100;
           for (unsigned int k = 0; k < e->get_num_surf(); k++)
           {
-            if (e->vn[k]->x < xmin) xmin = e->vn[k]->x;
-            if (e->vn[k]->x > xmax) xmax = e->vn[k]->x;
-            if (e->vn[k]->y < ymin) ymin = e->vn[k]->y;
-            if (e->vn[k]->y > ymax) ymax = e->vn[k]->y;
+            if(e->vn[k]->x < xmin) xmin = e->vn[k]->x;
+            if(e->vn[k]->x > xmax) xmax = e->vn[k]->x;
+            if(e->vn[k]->y < ymin) ymin = e->vn[k]->y;
+            if(e->vn[k]->y > ymax) ymax = e->vn[k]->y;
           }
           lbox[label_count][0] = xmax - xmin;
           lbox[label_count][1] = ymax - ymin;
@@ -202,17 +201,17 @@ namespace Hermes
 
       Orderizer::~Orderizer()
       {
-        if (lvert != NULL)
+        if(lvert != NULL)
         {
           ::free(lvert);
           lvert = NULL;
         }
-        if (ltext != NULL)
+        if(ltext != NULL)
         {
           ::free(ltext);
           ltext = NULL;
         }
-        if (lbox != NULL)
+        if(lbox != NULL)
         {
           ::free(lbox);
           lbox = NULL;
@@ -225,7 +224,7 @@ namespace Hermes
         process_space(space);
 
         FILE* f = fopen(file_name, "wb");
-        if (f == NULL) error("Could not open %s for writing.", file_name);
+        if(f == NULL) throw Hermes::Exceptions::Exception("Could not open %s for writing.", file_name);
         lock_data();
 
         // Output header for vertices.
@@ -282,7 +281,8 @@ namespace Hermes
 
       void Orderizer::calc_vertices_aabb(double* min_x, double* max_x, double* min_y, double* max_y) const
       {
-        assert_msg(verts != NULL, "Cannot calculate AABB from NULL vertices");
+        if(verts == NULL)
+          throw Exceptions::Exception("Cannot calculate AABB from NULL vertices");
         calc_aabb(&verts[0][0], &verts[0][1], sizeof(double3), vertex_count, min_x, max_x, min_y, max_y);
       }
 

@@ -60,7 +60,6 @@ int main(int argc, char* argv[])
   // Create an H1 space with default shapeset.
   Hermes::Hermes2D::H1Space<double> space(&mesh, &bcs, P_INIT);
   int ndof = space.get_num_dofs();
-  info("ndof = %d", ndof);
 
   // Initialize the FE problem.
   Hermes::Hermes2D::DiscreteProblem<double> dp(&wf, &space);
@@ -70,7 +69,7 @@ int main(int argc, char* argv[])
   memset(coeff_vec, 0, ndof*sizeof(double));
 
   // Initialize the Newton solver.
-  Hermes::Hermes2D::NewtonSolver<double> newton(&dp, matrix_solver_type);
+  Hermes::Hermes2D::NewtonSolver<double> newton(&dp);
 
   // Perform Newton's iteration and translate the resulting coefficient vector into a Solution.
   Hermes::Hermes2D::Solution<double> sln;
@@ -80,26 +79,23 @@ int main(int argc, char* argv[])
   catch(Hermes::Exceptions::Exception e)
   {
     e.printMsg();
-    error("Newton's iteration failed.");
   }
   Hermes::Hermes2D::Solution<double>::vector_to_solution(newton.get_sln_vector(), &space, &sln);
 
   // VTK output.
-  if (VTK_VISUALIZATION) {
+  if(VTK_VISUALIZATION) {
     // Output solution in VTK format.
     Hermes::Hermes2D::Views::Linearizer lin;
     bool mode_3D = true;
     lin.save_solution_vtk(&sln, "sln.vtk", "Temperature", mode_3D);
-    info("Solution in VTK format saved to file %s.", "sln.vtk");
 
     // Output mesh and element orders in VTK format.
     Hermes::Hermes2D::Views::Orderizer ord;
     ord.save_orders_vtk(&space, "ord.vtk");
-    info("Element orders in VTK format saved to file %s.", "ord.vtk");
-  }
+    }
 
   // Visualize the solution.
-  if (HERMES_VISUALIZATION) {
+  if(HERMES_VISUALIZATION) {
     Hermes::Hermes2D::Views::ScalarView view("Solution", new Hermes::Hermes2D::Views::WinGeom(0, 0, 440, 350));
     view.show(&sln, Hermes::Hermes2D::Views::HERMES_EPS_VERYHIGH);
     Hermes::Hermes2D::Views::View::wait();
@@ -110,4 +106,3 @@ int main(int argc, char* argv[])
 
   return 0;
 }
-

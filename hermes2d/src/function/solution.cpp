@@ -15,17 +15,10 @@
 
 #include "exact_solution.h"
 
-// This is here mainly because XSD uses its own error, therefore it has to be undefined here.
-#ifdef error(...)
-#undef error(...)
-#endif
 #include "solution_h2d_xml.h"
-// This is here mainly because XSD uses its own error, therefore it had to be undefined previously.
-#ifndef error(...)
-#define error(...) hermes_exit_if(hermes_log_message_if(true, HERMES_BUILD_LOG_INFO(HERMES_EC_ERROR), __VA_ARGS__))
-#endif
 
 #include <iostream>
+#include <algorithm>
 
 namespace Hermes
 {
@@ -76,11 +69,10 @@ namespace Hermes
       {
         for (int mode_i = 0; mode_i <= 1; mode_i++)
           for (int k = 1; k <= 10; k++)
-            delete[] tables[mode_i][k];
+            delete [] tables[mode_i][k];
       }
 
       virtual void dummy_fn() {}
-
     } g_quad_2d_cheb;
 
     template<typename Scalar>
@@ -93,7 +85,6 @@ namespace Hermes
       sln_type = HERMES_UNDEF;
       sln_vector = NULL;
       space = NULL;
-      own_mesh = false;
       this->num_components = 0;
       e_last = NULL;
 
@@ -120,12 +111,11 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    Solution<Scalar>::Solution(Mesh *mesh) : MeshFunction<Scalar>(mesh)
+    Solution<Scalar>::Solution(const Mesh *mesh) : MeshFunction<Scalar>(mesh)
     {
       space_type = HERMES_INVALID_SPACE;
       this->init();
       this->mesh = mesh;
-      this->own_mesh = false;
     }
 
     template<typename Scalar>
@@ -135,7 +125,6 @@ namespace Hermes
       space = s;
       this->init();
       this->mesh = s->get_mesh();
-      this->own_mesh = false;
       Solution<Scalar>::vector_to_solution(coeff_vec, s, this);
     }
 
@@ -146,15 +135,14 @@ namespace Hermes
       space = s;
       this->init();
       this->mesh = s->get_mesh();
-      this->own_mesh = false;
       Solution<Scalar>::vector_to_solution(coeff_vec, s, this);
     }
 
     template<typename Scalar>
     void Solution<Scalar>::assign(Solution<Scalar>* sln)
     {
-      if (sln->sln_type == HERMES_UNDEF) error("Solution being assigned is uninitialized.");
-      if (sln->sln_type != HERMES_SLN) { copy(sln); return; }
+      if(sln->sln_type == HERMES_UNDEF) throw Hermes::Exceptions::Exception("Solution being assigned is uninitialized.");
+      if(sln->sln_type != HERMES_SLN) { copy(sln); return; }
 
       free();
 
@@ -164,9 +152,6 @@ namespace Hermes
       space = sln->space;
       space_type = sln->get_space_type();
       space_seq = sln->get_space_seq();
-
-      own_mesh = sln->own_mesh;
-      sln->own_mesh = false;
 
       mono_coeffs = sln->mono_coeffs;        sln->mono_coeffs = NULL;
       elem_coeffs[0] = sln->elem_coeffs[0];  sln->elem_coeffs[0] = NULL;
@@ -185,21 +170,18 @@ namespace Hermes
     template<typename Scalar>
     void Solution<Scalar>::copy(const Solution<Scalar>* sln)
     {
-      if (sln->sln_type == HERMES_UNDEF) error("Solution being copied is uninitialized.");
+      if(sln->sln_type == HERMES_UNDEF) throw Hermes::Exceptions::Exception("Solution being copied is uninitialized.");
 
       free();
 
-      this->mesh = new Mesh;
-      //printf("Copying mesh from Solution and setting own_mesh = true.\n");
-      this->mesh->copy(sln->mesh);
-      own_mesh = true;
+      this->mesh = sln->mesh;
 
       sln_type = sln->sln_type;
       space_type = sln->get_space_type();
       this->num_components = sln->num_components;
       num_dofs = sln->num_dofs;
 
-      if (sln->sln_type == HERMES_SLN) // standard solution: copy coefficient arrays
+      if(sln->sln_type == HERMES_SLN) // standard solution: copy coefficient arrays
       {
         num_coeffs = sln->num_coeffs;
         num_elems = sln->num_elems;
@@ -225,7 +207,7 @@ namespace Hermes
           this->sln_vector[i] = sln->sln_vector[i];
       }
       else // Const, exact handled differently.
-        error("Undefined or exact solutions cannot be copied into an instance of Solution already coming from computation.");
+        throw Hermes::Exceptions::Exception("Undefined or exact solutions cannot be copied into an instance of Solution already coming from computation.");
 
       space = sln->space;
       space_seq = sln->space_seq;
@@ -264,20 +246,13 @@ namespace Hermes
     template<typename Scalar>
     void Solution<Scalar>::free()
     {
-      if (mono_coeffs  != NULL) { delete [] mono_coeffs;   mono_coeffs = NULL;  }
-      if (elem_orders != NULL) { delete [] elem_orders;  elem_orders = NULL; }
-      if (dxdy_buffer != NULL) { delete [] dxdy_buffer;  dxdy_buffer = NULL; }
+      if(mono_coeffs  != NULL) { delete [] mono_coeffs;   mono_coeffs = NULL;  }
+      if(elem_orders != NULL) { delete [] elem_orders;  elem_orders = NULL; }
+      if(dxdy_buffer != NULL) { delete [] dxdy_buffer;  dxdy_buffer = NULL; }
 
       for (int i = 0; i < this->num_components; i++)
-        if (elem_coeffs[i] != NULL)
+        if(elem_coeffs[i] != NULL)
         { delete [] elem_coeffs[i];  elem_coeffs[i] = NULL; }
-
-        if (own_mesh == true && this->mesh != NULL)
-        {
-          //printf("Deleting mesh in Solution (own_mesh == true).\n");
-          delete this->mesh;
-          own_mesh = false;
-        }
 
         e_last = NULL;
 
@@ -317,7 +292,7 @@ namespace Hermes
       {
         for (int m = 0; m <= 1; m++)
           for (int i = 0; i <= 10; i++)
-            if (mat[m][i] != NULL) {
+            if(mat[m][i] != NULL) {
               delete [] mat[m][i];
               delete [] perm[m][i];
             }
@@ -355,54 +330,51 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    void Solution<Scalar>::set_coeff_vector(const Space<Scalar>* space, const Vector<Scalar>* vec, 
+    void Solution<Scalar>::set_coeff_vector(const Space<Scalar>* space, const Vector<Scalar>* vec,
         bool add_dir_lift, int start_index)
     {
-      _F_
       // Sanity check.
-      if (space == NULL) throw Exceptions::NullException(1);
-      if (vec == NULL) throw Exceptions::NullException(2);
+      if(space == NULL) throw Exceptions::NullException(1);
+      if(vec == NULL) throw Exceptions::NullException(2);
 
       space_type = space->get_type();
-      Scalar* coeffs = new Scalar [vec->length()];
+      Scalar* coeffs = new Scalar[vec->length()];
       vec->extract(coeffs);
       this->set_coeff_vector(space, coeffs, add_dir_lift, start_index);
       delete [] coeffs;
     }
 
     template<typename Scalar>
-    void Solution<Scalar>::set_coeff_vector(const Space<Scalar>* space, const Scalar* coeffs, 
+    void Solution<Scalar>::set_coeff_vector(const Space<Scalar>* space, const Scalar* coeffs,
         bool add_dir_lift, int start_index)
     {
-      _F_
       // Sanity check.
-      if (space == NULL) throw Exceptions::NullException(1);
+      if(space == NULL) throw Exceptions::NullException(1);
 
       // Initialize precalc shapeset using the space's shapeset.
       Shapeset *shapeset = space->shapeset;
-      if (space->shapeset == NULL) throw Exceptions::Exception("Space->shapeset == NULL in Solution<Scalar>::set_coeff_vector().");
+      if(space->shapeset == NULL) throw Exceptions::Exception("Space->shapeset == NULL in Solution<Scalar>::set_coeff_vector().");
       PrecalcShapeset *pss = new PrecalcShapeset(shapeset);
-      if (pss == NULL) throw Exceptions::Exception("PrecalcShapeset could not be allocated in Solution<Scalar>::set_coeff_vector().");
+      if(pss == NULL) throw Exceptions::Exception("PrecalcShapeset could not be allocated in Solution<Scalar>::set_coeff_vector().");
       set_coeff_vector(space, pss, coeffs, add_dir_lift, start_index);
       delete pss;
     }
 
     template<typename Scalar>
-    void Solution<Scalar>::set_coeff_vector(const Space<Scalar>* space, PrecalcShapeset* pss, 
+    void Solution<Scalar>::set_coeff_vector(const Space<Scalar>* space, PrecalcShapeset* pss,
         const Scalar* coeff_vec, bool add_dir_lift, int start_index)
     {
-      _F_
       int o;
 
       // Sanity checks.
-      if (space == NULL) throw Exceptions::NullException(1);
-      if (space->get_mesh() == NULL) throw Exceptions::Exception("Mesh == NULL in Solution<Scalar>::set_coeff_vector().");
-      if (pss == NULL) throw Exceptions::NullException(2);
-      if (coeff_vec == NULL) throw Exceptions::NullException(3);
-      if (coeff_vec == NULL) throw Exceptions::Exception("Coefficient vector == NULL in Solution<Scalar>::set_coeff_vector().");
-      if (!space->is_up_to_date())
+      if(space == NULL) throw Exceptions::NullException(1);
+      if(space->get_mesh() == NULL) throw Exceptions::Exception("Mesh == NULL in Solution<Scalar>::set_coeff_vector().");
+      if(pss == NULL) throw Exceptions::NullException(2);
+      if(coeff_vec == NULL) throw Exceptions::NullException(3);
+      if(coeff_vec == NULL) throw Exceptions::Exception("Coefficient vector == NULL in Solution<Scalar>::set_coeff_vector().");
+      if(!space->is_up_to_date())
         throw Exceptions::Exception("Provided 'space' is not up to date.");
-      if (space->shapeset != pss->shapeset)
+      if(space->shapeset != pss->shapeset)
         throw Exceptions::Exception("Provided 'space' and 'pss' must have the same shapesets.");
 
       free();
@@ -411,7 +383,7 @@ namespace Hermes
         delete [] this->sln_vector;
       int ndof = space->get_num_dofs();
       this->sln_vector = new Scalar[ndof];
-      for(int i = 0; i < ndof; i++) 
+      for(int i = 0; i < ndof; i++)
       {
         // By adding start_index we move to the desired section of coeff_vec.
         this->sln_vector[i] = coeff_vec[i + start_index];
@@ -424,7 +396,7 @@ namespace Hermes
       this->num_components = pss->get_num_components();
       sln_type = HERMES_SLN;
 
-      // Copy the mesh.  
+      // Copy the mesh.
       this->mesh = space->get_mesh();
 
       // Allocate the coefficient arrays.
@@ -452,11 +424,11 @@ namespace Hermes
         for (unsigned int k = 0; k < e->get_num_surf(); k++)
         {
           int eo = space->get_edge_order(e, k);
-          if (eo > o) o = eo;
+          if(eo > o) o = eo;
         }
 
         // Hcurl and Hdiv: actual order of functions is one higher than element order
-        if ((space->shapeset)->get_num_components() == 2) o++;
+        if((space->shapeset)->get_num_components() == 2) o++;
 
         num_coeffs += this->mode ? sqr(o + 1) : (o + 1)*(o + 2)/2;
         elem_orders[e->id] = o;
@@ -492,8 +464,8 @@ namespace Hermes
             pss->set_quad_order(o, H2D_FN_VAL);
             int dof = al.dof[k];
             double dir_lift_coeff = add_dir_lift ? 1.0 : 0.0;
-            // By subtracting space->first_dof we make sure that it does not matter where the 
-            // enumeration of dofs in the space starts. This ca be either zero or there can be some 
+            // By subtracting space->first_dof we make sure that it does not matter where the
+            // enumeration of dofs in the space starts. This ca be either zero or there can be some
             // offset. By adding start_index we move to the desired section of coeff_vec.
             Scalar coef = al.coef[k] * (dof >= 0 ? coeff_vec[dof  - space->first_dof + start_index] : dir_lift_coeff);
             double* shape = pss->get_fn_values(l);
@@ -503,41 +475,40 @@ namespace Hermes
           mono += np;
 
           // solve for the monomial coefficients
-          if (mono_lu.mat[this->mode][o] == NULL)
+          if(mono_lu.mat[this->mode][o] == NULL)
             mono_lu.mat[this->mode][o] = calc_mono_matrix(o, mono_lu.perm[this->mode][o]);
           lubksb(mono_lu.mat[this->mode][o], np, mono_lu.perm[this->mode][o], val);
         }
       }
 
-      if(this->mesh == NULL) error("mesh == NULL.\n");
+      if(this->mesh == NULL) throw Hermes::Exceptions::Exception("mesh == NULL.\n");
       init_dxdy_buffer();
       this->element = NULL;
     }
 
     template<typename Scalar>
     void Solution<Scalar>::vector_to_solutions(const Scalar* solution_vector,
-        Hermes::vector<const Space<Scalar>*> spaces, Hermes::vector<Solution<Scalar>*> solutions, 
+        Hermes::vector<const Space<Scalar>*> spaces, Hermes::vector<Solution<Scalar>*> solutions,
         Hermes::vector<bool> add_dir_lift, Hermes::vector<int> start_indices)
     {
-      _F_
-      if (solution_vector == NULL) throw Exceptions::NullException(1);
-      if (spaces.size() != solutions.size()) throw Exceptions::LengthException(2, 3, spaces.size(), solutions.size());
+      if(solution_vector == NULL) throw Exceptions::NullException(1);
+      if(spaces.size() != solutions.size()) throw Exceptions::LengthException(2, 3, spaces.size(), solutions.size());
 
       // If start indices are not given, calculate them using the dimension of each space.
       Hermes::vector<int> start_indices_new;
-      if (start_indices.empty())
+      if(start_indices.empty())
       {
         int counter = 0;
-        for (int i=0; i < spaces.size(); i++) 
+        for (int i=0; i < spaces.size(); i++)
         {
           start_indices_new.push_back(counter);
           counter += spaces[i]->get_num_dofs();
         }
       }
-      else 
+      else
       {
-        if (start_indices.size() != spaces.size()) error("Mismatched start indices in vector_to_solutions().");
-        for (int i=0; i < spaces.size(); i++) 
+        if(start_indices.size() != spaces.size()) throw Hermes::Exceptions::Exception("Mismatched start indices in vector_to_solutions().");
+        for (int i=0; i < spaces.size(); i++)
         {
           start_indices_new.push_back(start_indices[i]);
         }
@@ -558,11 +529,10 @@ namespace Hermes
     void Solution<Scalar>::vector_to_solution(const Scalar* solution_vector, const Space<Scalar>* space,
         Solution<Scalar>* solution, bool add_dir_lift, int start_index)
     {
-      _F_
       // Sanity checks.
-      if (solution_vector == NULL) throw Exceptions::NullException(1);
-      if (space == NULL) throw Exceptions::NullException(2);
-      if (solution == NULL) throw Exceptions::NullException(3);
+      if(solution_vector == NULL) throw Exceptions::NullException(1);
+      if(space == NULL) throw Exceptions::NullException(2);
+      if(solution == NULL) throw Exceptions::NullException(3);
 
       solution->set_coeff_vector(space, solution_vector, add_dir_lift, start_index);
     }
@@ -571,25 +541,24 @@ namespace Hermes
     void Solution<Scalar>::vector_to_solutions(const Vector<Scalar>* solution_vector, Hermes::vector<const Space<Scalar>*> spaces,
       Hermes::vector<Solution<Scalar>*> solutions, Hermes::vector<bool> add_dir_lift, Hermes::vector<int> start_indices)
     {
-      _F_
-        if (solution_vector == NULL) throw Exceptions::NullException(1);
-      if (spaces.size() != solutions.size()) throw Exceptions::LengthException(2, 3, spaces.size(), solutions.size());
+      if(solution_vector == NULL) throw Exceptions::NullException(1);
+      if(spaces.size() != solutions.size()) throw Exceptions::LengthException(2, 3, spaces.size(), solutions.size());
 
       // If start indices are not given, calculate them using the dimension of each space.
       Hermes::vector<int> start_indices_new;
-      if (start_indices.empty())
+      if(start_indices.empty())
       {
         int counter = 0;
-        for (int i=0; i < spaces.size(); i++) 
+        for (int i=0; i < spaces.size(); i++)
         {
           start_indices_new.push_back(counter);
           counter += spaces[i]->get_num_dofs();
         }
       }
-      else 
+      else
       {
-        if (start_indices.size() != spaces.size()) error("Mismatched start indices in vector_to_solutions().");
-        for (int i=0; i < spaces.size(); i++) 
+        if(start_indices.size() != spaces.size()) throw Hermes::Exceptions::Exception("Mismatched start indices in vector_to_solutions().");
+        for (int i=0; i < spaces.size(); i++)
         {
           start_indices_new.push_back(start_indices[i]);
         }
@@ -610,39 +579,37 @@ namespace Hermes
     void Solution<Scalar>::vector_to_solution(const Vector<Scalar>* solution_vector, const Space<Scalar>* space,
         Solution<Scalar>* solution, bool add_dir_lift, int start_index)
     {
-      _F_
-        // Sanity checks.
-        if (solution_vector == NULL) throw Exceptions::NullException(1);
-      if (space == NULL) throw Exceptions::NullException(2);
-      if (solution == NULL) throw Exceptions::NullException(3);
+      // Sanity checks.
+        if(solution_vector == NULL) throw Exceptions::NullException(1);
+      if(space == NULL) throw Exceptions::NullException(2);
+      if(solution == NULL) throw Exceptions::NullException(3);
 
       solution->set_coeff_vector(space, solution_vector, add_dir_lift, start_index);
     }
 
     template<typename Scalar>
     void Solution<Scalar>::vector_to_solutions(const Scalar* solution_vector, Hermes::vector<const Space<Scalar>*> spaces,
-        Hermes::vector<Solution<Scalar>*> solutions, Hermes::vector<PrecalcShapeset *> pss, 
+        Hermes::vector<Solution<Scalar>*> solutions, Hermes::vector<PrecalcShapeset *> pss,
         Hermes::vector<bool> add_dir_lift, Hermes::vector<int> start_indices)
     {
-      _F_;
-      if (solution_vector==NULL) throw Exceptions::NullException(1);
-      if (spaces.size() != solutions.size()) throw Exceptions::LengthException(2, 3, spaces.size(), solutions.size());
+      if(solution_vector==NULL) throw Exceptions::NullException(1);
+      if(spaces.size() != solutions.size()) throw Exceptions::LengthException(2, 3, spaces.size(), solutions.size());
 
       // If start indices are not given, calculate them using the dimension of each space.
       Hermes::vector<int> start_indices_new;
-      if (start_indices.empty())
+      if(start_indices.empty())
       {
         int counter = 0;
-        for (int i=0; i < spaces.size(); i++) 
+        for (int i=0; i < spaces.size(); i++)
         {
           start_indices_new.push_back(counter);
           counter += spaces[i]->get_num_dofs();
         }
       }
-      else 
+      else
       {
-        if (start_indices.size() != spaces.size()) error("Mismatched start indices in vector_to_solutions().");
-        for (int i=0; i < spaces.size(); i++) 
+        if(start_indices.size() != spaces.size()) throw Hermes::Exceptions::Exception("Mismatched start indices in vector_to_solutions().");
+        for (int i=0; i < spaces.size(); i++)
         {
           start_indices_new.push_back(start_indices[i]);
         }
@@ -663,11 +630,10 @@ namespace Hermes
     void Solution<Scalar>::vector_to_solution(const Scalar* solution_vector, const Space<Scalar>* space, Solution<Scalar>* solution,
         PrecalcShapeset* pss, bool add_dir_lift, int start_index)
     {
-      _F_
-        if (solution_vector == NULL) throw Exceptions::NullException(1);
-      if (space == NULL) throw Exceptions::NullException(2);
-      if (solution == NULL) throw Exceptions::NullException(3);
-      if (pss == NULL) throw Exceptions::NullException(4);
+      if(solution_vector == NULL) throw Exceptions::NullException(1);
+      if(space == NULL) throw Exceptions::NullException(2);
+      if(solution == NULL) throw Exceptions::NullException(3);
+      if(pss == NULL) throw Exceptions::NullException(4);
 
       solution->set_coeff_vector(space, pss, solution_vector, add_dir_lift, start_index);
     }
@@ -688,22 +654,22 @@ namespace Hermes
     template<typename Scalar>
     void Solution<Scalar>::enable_transform(bool enable)
     {
-      if (transform != enable) free_tables();
+      if(transform != enable) free_tables();
       transform = enable;
     }
 
     template<typename Scalar>
     void Solution<Scalar>::multiply(Scalar coef)
     {
-      if (sln_type == HERMES_SLN)
+      if(sln_type == HERMES_SLN)
       {
         for (int i = 0; i < num_coeffs; i++)
           mono_coeffs[i] *= coef;
       }
-      else if (sln_type == HERMES_EXACT)
+      else if(sln_type == HERMES_EXACT)
         dynamic_cast<ExactSolution<Scalar>*>(this)->exact_multiplicator *= coef;
       else
-        error("Uninitialized solution.");
+        throw Hermes::Exceptions::Exception("Uninitialized solution.");
     }
 
     template<typename Scalar>
@@ -723,7 +689,7 @@ namespace Hermes
     static void make_dy_coeffs(int mode, int o, Scalar* mono, Scalar* result)
     {
       int i, j;
-      if (mode) {
+      if(mode) {
         for (j = 0; j <= o; j++)
           *result++= 0.0;
         for (i = 0; i < o; i++)
@@ -742,7 +708,7 @@ namespace Hermes
     template<typename Scalar>
     void Solution<Scalar>::init_dxdy_buffer()
     {
-      if (dxdy_buffer != NULL)
+      if(dxdy_buffer != NULL)
       {
         delete [] dxdy_buffer;
         dxdy_buffer = NULL;
@@ -753,17 +719,17 @@ namespace Hermes
     template<typename Scalar>
     void Solution<Scalar>::set_active_element(Element* e)
     {
-      // if (e == element) return; // FIXME
-      if (!e->active) error("Cannot select inactive element. Wrong mesh?");
+      // if(e == element) return; // FIXME
+      if(!e->active) throw Hermes::Exceptions::Exception("Cannot select inactive element. Wrong mesh?");
       MeshFunction<Scalar>::set_active_element(e);
 
       // try finding an existing table for e
       for (cur_elem = 0; cur_elem < 4; cur_elem++)
-        if (elems[this->cur_quad][cur_elem] == e)
+        if(elems[this->cur_quad][cur_elem] == e)
           break;
 
       // if not found, free the oldest one and use its slot
-      if (cur_elem >= 4)
+      if(cur_elem >= 4)
       {
         if(tables[this->cur_quad][oldest[this->cur_quad]] != NULL)
         {
@@ -782,13 +748,13 @@ namespace Hermes
         tables[this->cur_quad][oldest[this->cur_quad]] = new std::map<uint64_t, LightArray<struct Function<Scalar>::Node*>*>;
 
         cur_elem = oldest[this->cur_quad];
-        if (++oldest[this->cur_quad] >= 4)
+        if(++oldest[this->cur_quad] >= 4)
           oldest[this->cur_quad] = 0;
 
         elems[this->cur_quad][cur_elem] = e;
       }
 
-      if (sln_type == HERMES_SLN)
+      if(sln_type == HERMES_SLN)
       {
         int o = this->order = elem_orders[this->element->id];
         int n = this->mode ? sqr(o + 1) : (o + 1)*(o + 2)/2;
@@ -805,12 +771,12 @@ namespace Hermes
           make_dx_coeffs(this->mode, o, dxdy_coeffs[i][2], dxdy_coeffs[i][5] = dxdy_buffer + m);  m += n;
         }
       }
-      else if (sln_type == HERMES_EXACT)
+      else if(sln_type == HERMES_EXACT)
       {
         this->order = Hermes::Hermes2D::g_max_quad;
       }
       else
-        error("Uninitialized solution.");
+        throw Hermes::Exceptions::Exception("Uninitialized solution.");
 
       this->sub_tables = tables[this->cur_quad][cur_elem];
 
@@ -850,10 +816,10 @@ namespace Hermes
       int i, mstep = 0;
 
       // H1 space
-      if (space_type == HERMES_H1_SPACE)
+      if(space_type == HERMES_H1_SPACE)
       {
 #ifdef H2D_SECOND_DERIVATIVES_ENABLED
-        if (((newmask & H2D_SECOND) == H2D_SECOND && (oldmask & H2D_SECOND) != H2D_SECOND))
+        if(((newmask & H2D_SECOND) == H2D_SECOND && (oldmask & H2D_SECOND) != H2D_SECOND))
         {
           this->update_refmap();
           mat = this->refmap->get_inv_ref_map(order);
@@ -872,11 +838,11 @@ namespace Hermes
           }
         }
 #endif
-        if ((newmask & H2D_GRAD) == H2D_GRAD && (oldmask & H2D_GRAD) != H2D_GRAD)
+        if((newmask & H2D_GRAD) == H2D_GRAD && (oldmask & H2D_GRAD) != H2D_GRAD)
         {
           this->update_refmap();
           mat = this->refmap->get_const_inv_ref_map();
-          if (!this->refmap->is_jacobian_const()) { mat = this->refmap->get_inv_ref_map(order); mstep = 1; }
+          if(!this->refmap->is_jacobian_const()) { mat = this->refmap->get_inv_ref_map(order); mstep = 1; }
 
           for (i = 0, m = mat; i < np; i++, m += mstep)
           {
@@ -889,28 +855,28 @@ namespace Hermes
       }
 
       // Hcurl space
-      else if (space_type == HERMES_HCURL_SPACE)
+      else if(space_type == HERMES_HCURL_SPACE)
       {
         bool trans_val = false, trans_curl = false;
-        if ((newmask & H2D_FN_VAL) == H2D_FN_VAL && (oldmask & H2D_FN_VAL) != H2D_FN_VAL) trans_val  = true;
-        if ((newmask &   H2D_CURL) ==   H2D_CURL && (oldmask &   H2D_CURL) !=   H2D_CURL) trans_curl = true;
+        if((newmask & H2D_FN_VAL) == H2D_FN_VAL && (oldmask & H2D_FN_VAL) != H2D_FN_VAL) trans_val  = true;
+        if((newmask &   H2D_CURL) ==   H2D_CURL && (oldmask &   H2D_CURL) !=   H2D_CURL) trans_curl = true;
 
-        if (trans_val || trans_curl)
+        if(trans_val || trans_curl)
         {
           this->update_refmap();
           mat = this->refmap->get_const_inv_ref_map();
-          if (!this->refmap->is_jacobian_const()) { mat = this->refmap->get_inv_ref_map(order); mstep = 1; }
+          if(!this->refmap->is_jacobian_const()) { mat = this->refmap->get_inv_ref_map(order); mstep = 1; }
 
           for (i = 0, m = mat; i < np; i++, m += mstep)
           {
-            if (trans_val)
+            if(trans_val)
             {
               Scalar vx = node->values[0][0][i];
               Scalar vy = node->values[1][0][i];
               node->values[0][0][i] = (*m)[0][0]*vx + (*m)[0][1]*vy;
               node->values[1][0][i] = (*m)[1][0]*vx + (*m)[1][1]*vy;
             }
-            if (trans_curl)
+            if(trans_curl)
             {
               Scalar e0x = node->values[0][1][i], e0y = node->values[0][2][i];
               Scalar e1x = node->values[1][1][i], e1y = node->values[1][2][i];
@@ -922,13 +888,13 @@ namespace Hermes
       }
 
       // Hdiv space
-      else if (space_type == HERMES_HDIV_SPACE)
+      else if(space_type == HERMES_HDIV_SPACE)
       {
-        if ((newmask & H2D_FN_VAL) == H2D_FN_VAL && (oldmask & H2D_FN_VAL) != H2D_FN_VAL)
+        if((newmask & H2D_FN_VAL) == H2D_FN_VAL && (oldmask & H2D_FN_VAL) != H2D_FN_VAL)
         {
           this->update_refmap();
           mat = this->refmap->get_const_inv_ref_map();
-          if (!this->refmap->is_jacobian_const()) { mat = this->refmap->get_inv_ref_map(order); mstep = 1; }
+          if(!this->refmap->is_jacobian_const()) { mat = this->refmap->get_inv_ref_map(order); mstep = 1; }
 
           for (i = 0, m = mat; i < np; i++, m += mstep)
           {
@@ -949,24 +915,24 @@ namespace Hermes
       Quad2D* quad = this->quads[this->cur_quad];
       int np = quad->get_num_points(order, this->mode);
 
-      if (sln_type == HERMES_SLN)
+      if(sln_type == HERMES_SLN)
       {
         // if we are required to transform vectors, we must precalculate both their components
         const int H2D_GRAD = H2D_FN_DX_0 | H2D_FN_DY_0;
         const int H2D_SECOND = H2D_FN_DXX_0 | H2D_FN_DXY_0 | H2D_FN_DYY_0;
         const int H2D_CURL = H2D_FN_DX | H2D_FN_DY; // sic
-        if (transform)
+        if(transform)
         {
-          if (this->num_components == 1)                                            // H1 space or L2 space
+          if(this->num_components == 1)                                            // H1 space or L2 space
           {
-            if ((mask & H2D_FN_DX_0)  || (mask & H2D_FN_DY_0))  mask |= H2D_GRAD;
-            if ((mask & H2D_FN_DXX_0)  || (mask & H2D_FN_DXY_0) || (mask & H2D_FN_DYY_0))  mask |= H2D_SECOND;
+            if((mask & H2D_FN_DX_0)  || (mask & H2D_FN_DY_0))  mask |= H2D_GRAD;
+            if((mask & H2D_FN_DXX_0)  || (mask & H2D_FN_DXY_0) || (mask & H2D_FN_DYY_0))  mask |= H2D_SECOND;
           }
-          else if (space_type == HERMES_HCURL_SPACE)                                           // Hcurl space
-          { if ((mask & H2D_FN_VAL_0) || (mask & H2D_FN_VAL_1)) mask |= H2D_FN_VAL;
-          if ((mask & H2D_FN_DX_1)  || (mask & H2D_FN_DY_0))  mask |= H2D_CURL; }
+          else if(space_type == HERMES_HCURL_SPACE)                                           // Hcurl space
+          { if((mask & H2D_FN_VAL_0) || (mask & H2D_FN_VAL_1)) mask |= H2D_FN_VAL;
+          if((mask & H2D_FN_DX_1)  || (mask & H2D_FN_DY_0))  mask |= H2D_CURL; }
           else                                                                // Hdiv space
-          { if ((mask & H2D_FN_VAL_0) || (mask & H2D_FN_VAL_1)) mask |= H2D_FN_VAL; }
+          { if((mask & H2D_FN_VAL_0) || (mask & H2D_FN_VAL_1)) mask |= H2D_FN_VAL; }
         }
 
         int oldmask = (this->cur_node != NULL) ? this->cur_node->mask : 0;
@@ -990,10 +956,10 @@ namespace Hermes
         {
           for (k = 0; k < 6; k++)
           {
-            if (newmask & this->idx2mask[k][l])
+            if(newmask & this->idx2mask[k][l])
             {
               Scalar* result = node->values[l][k];
-              if (oldmask & this->idx2mask[k][l])
+              if(oldmask & this->idx2mask[k][l])
               {
                 // copy the old table if we have it already
                 memcpy(result, this->cur_node->values[l][k], np * sizeof(Scalar));
@@ -1008,8 +974,10 @@ namespace Hermes
                   for (j = 1; j <= (this->mode ? o : i); j++)
                     vec_x_vec_p_num(np, tx, x, *mono++);
 
-                  if (!i) memcpy(result, tx, sizeof(Scalar)*np);
-                  else vec_x_vec_p_vec(np, result, y, tx);
+                  if(!i)
+                    memcpy(result, tx, sizeof(Scalar)*np);
+                  else
+                    vec_x_vec_p_vec(np, result, y, tx);
                 }
               }
             }
@@ -1021,13 +989,13 @@ namespace Hermes
         delete [] tx;
 
         // transform gradient or vector solution, if required
-        if (transform)
+        if(transform)
           transform_values(order, node, newmask, oldmask, np);
       }
-      else if (sln_type == HERMES_EXACT)
+      else if(sln_type == HERMES_EXACT)
       {
-        if (mask & ~H2D_FN_DEFAULT)
-          error("Cannot obtain second derivatives of an exact solution.");
+        if(mask & ~H2D_FN_DEFAULT)
+          throw Hermes::Exceptions::Exception("Cannot obtain second derivatives of an exact solution.");
         node = this->new_node(mask = H2D_FN_DEFAULT, np);
 
         this->update_refmap();
@@ -1035,15 +1003,15 @@ namespace Hermes
         double* y = this->refmap->get_phys_y(order);
 
         // evaluate the exact solution
-        if (this->num_components == 1)
+        if(this->num_components == 1)
         {
           // untransform values
-          if (!transform)
+          if(!transform)
           {
             double2x2 *mat, *m;
             int mstep = 0;
             mat = this->refmap->get_const_inv_ref_map();
-            if (!this->refmap->is_jacobian_const()) { mat = this->refmap->get_inv_ref_map(order); mstep = 1; }
+            if(!this->refmap->is_jacobian_const()) { mat = this->refmap->get_inv_ref_map(order); mstep = 1; }
 
             for (i = 0, m = mat; i < np; i++, m += mstep)
             {
@@ -1084,7 +1052,7 @@ namespace Hermes
       }
       else
       {
-        error("Cannot obtain values -- uninitialized solution. The solution was either "
+        throw Hermes::Exceptions::Exception("Cannot obtain values -- uninitialized solution. The solution was either "
           "not calculated yet or you used the assignment operator which destroys "
           "the solution on its right-hand side.");
       }
@@ -1101,14 +1069,14 @@ namespace Hermes
     template<>
     void Solution<double>::save(const char* filename) const
     {
-      if (sln_type == HERMES_EXACT)
-        error("Exact solution cannot be saved to a file.");
-      if (sln_type == HERMES_UNDEF)
-        error("Cannot save -- uninitialized solution.");
+      if(sln_type == HERMES_EXACT)
+        throw Exceptions::Exception("Exact solution cannot be saved to a file.");
+      if(sln_type == HERMES_UNDEF)
+        throw Exceptions::Exception("Cannot save -- uninitialized solution.");
 
       try
       {
-        XMLSolution::solution xmlsolution(XMLSolution::sln_vector(), this->num_components, 
+        XMLSolution::solution xmlsolution(XMLSolution::sln_vector(), this->num_components,
           this->num_elems, this->num_coeffs, this->space->get_num_dofs());
 
         for(unsigned int coeffs_i = 0; coeffs_i < this->num_coeffs; coeffs_i++)
@@ -1141,8 +1109,7 @@ namespace Hermes
       }
       catch (const xml_schema::exception& e)
       {
-        std::cerr << e << std::endl;
-        std::exit(1);
+        throw Hermes::Exceptions::SolutionSaveFailureException(e.what());
       }
       return;
     }
@@ -1150,10 +1117,10 @@ namespace Hermes
     template<>
     void Solution<std::complex<double> >::save(const char* filename) const
     {
-      if (sln_type == HERMES_EXACT)
-        error("Exact solution cannot be saved to a file.");
-      if (sln_type == HERMES_UNDEF)
-        error("Cannot save -- uninitialized solution.");
+      if(sln_type == HERMES_EXACT)
+        throw Exceptions::Exception("Exact solution cannot be saved to a file.");
+      if(sln_type == HERMES_UNDEF)
+        throw Exceptions::Exception("Cannot save -- uninitialized solution.");
 
       try
       {
@@ -1195,8 +1162,7 @@ namespace Hermes
       }
       catch (const xml_schema::exception& e)
       {
-        std::cerr << e << std::endl;
-        std::exit(1);
+        throw Hermes::Exceptions::SolutionSaveFailureException(e.what());
       }
       return;
     }
@@ -1218,13 +1184,13 @@ namespace Hermes
         this->num_dofs = parsed_xml_solution->num_dofs();
 
         this->mono_coeffs = new double[num_coeffs];
+        memset(this->mono_coeffs, 0, this->num_coeffs*sizeof(double));
 
         for(unsigned int component_i = 0; component_i < num_components; component_i++)
           elem_coeffs[component_i] = new int[num_elems];
 
         this->elem_orders = new int[num_elems];
         this->sln_vector = new double[num_dofs];
-
 
         for (unsigned int coeffs_i = 0; coeffs_i < num_coeffs; coeffs_i++)
           this->mono_coeffs[parsed_xml_solution->mono_coeffs().at(coeffs_i).id()] = parsed_xml_solution->mono_coeffs().at(coeffs_i).real();
@@ -1243,8 +1209,7 @@ namespace Hermes
       }
       catch (const xml_schema::exception& e)
       {
-        std::cerr << e << std::endl;
-        std::exit(1);
+        throw Hermes::Exceptions::SolutionLoadFailureException(e.what());
       }
       return;
     }
@@ -1266,6 +1231,7 @@ namespace Hermes
         this->num_dofs = parsed_xml_solution->num_dofs();
 
         this->mono_coeffs = new std::complex<double>[num_coeffs];
+        memset(this->mono_coeffs, 0, this->num_coeffs*sizeof(std::complex<double>));
 
         for(unsigned int component_i = 0; component_i < num_components; component_i++)
           elem_coeffs[component_i] = new int[num_elems];
@@ -1290,8 +1256,7 @@ namespace Hermes
       }
       catch (const xml_schema::exception& e)
       {
-        std::cerr << e << std::endl;
-        std::exit(1);
+        throw Hermes::Exceptions::SolutionLoadFailureException(e.what());
       }
       return;
     }
@@ -1299,8 +1264,7 @@ namespace Hermes
     template<typename Scalar>
     Scalar Solution<Scalar>::get_ref_value(Element* e, double xi1, double xi2, int component, int item)
     {
-      _F_
-        if (e==NULL) throw Exceptions::NullException(1);
+      if(e==NULL) throw Exceptions::NullException(1);
       set_active_element(e);
 
       int o = elem_orders[e->id];
@@ -1317,7 +1281,6 @@ namespace Hermes
       return result;
     }
 
-
     static bool is_in_ref_domain(Element* e, double xi1, double xi2)
     {
       const double TOL = 1e-11;
@@ -1327,25 +1290,23 @@ namespace Hermes
         return (xi1 - 1.0 <= TOL) && (xi1 + 1.0 >= -TOL) && (xi2 - 1.0 <= TOL) && (xi2 + 1.0 >= -TOL);
     }
 
-
     template<typename Scalar>
     Scalar Solution<Scalar>::get_ref_value_transformed(Element* e, double xi1, double xi2, int a, int b)
     {
-      _F_
-        if (e==NULL) throw Exceptions::NullException(1);
-      if (this->num_components == 1)
+      if(e==NULL) throw Exceptions::NullException(1);
+      if(this->num_components == 1)
       {
-        if (b == 0)
+        if(b == 0)
           return get_ref_value(e, xi1, xi2, a, b);
-        if (b == 1 || b == 2)
+        if(b == 1 || b == 2)
         {
           double2x2 m;
           double xx, yy;
           this->refmap->inv_ref_map_at_point(xi1, xi2, xx, yy, m);
           Scalar dx = get_ref_value(e_last = e, xi1, xi2, a, 1);
           Scalar dy = get_ref_value(e, xi1, xi2, a, 2);
-          if (b == 1) return m[0][0]*dx + m[0][1]*dy; // H2D_FN_DX
-          if (b == 2) return m[1][0]*dx + m[1][1]*dy; // H2D_FN_DY
+          if(b == 1) return m[0][0]*dx + m[0][1]*dy; // H2D_FN_DX
+          if(b == 2) return m[1][0]*dx + m[1][1]*dy; // H2D_FN_DY
         }
         else
         {
@@ -1362,31 +1323,31 @@ namespace Hermes
           Scalar vxx = get_ref_value(e, xi1, xi2, a, 3);
           Scalar vyy = get_ref_value(e, xi1, xi2, a, 4);
           Scalar vxy = get_ref_value(e, xi1, xi2, a, 5);
-          if (b == 3)
+          if(b == 3)
             return sqr(mat[0][0])*vxx + 2*mat[0][1]*mat[0][0]*vxy + sqr(mat[0][1])*vyy + mat2[0][0]*vx + mat2[0][1]*vy;   // dxx
-          if (b == 4)
+          if(b == 4)
             return sqr(mat[1][0])*vxx + 2*mat[1][1]*mat[1][0]*vxy + sqr(mat[1][1])*vyy + mat2[2][0]*vx + mat2[2][1]*vy;   // dyy
-          if (b == 5)
+          if(b == 5)
             return mat[0][0]*mat[1][0]*vxx + (mat[0][0]*mat[1][1] + mat[1][0]*mat[0][1])*vxy + mat[0][1]*mat[1][1]*vyy + mat2[1][0]*vx + mat2[1][1]*vy;   //dxy
 #endif
         }
       }
       else // vector solution
       {
-        if (b == 0)
+        if(b == 0)
         {
           double2x2 m;
           double xx, yy;
           this->refmap->inv_ref_map_at_point(xi1, xi2, xx, yy, m);
           Scalar vx = get_ref_value(e, xi1, xi2, 0, 0);
           Scalar vy = get_ref_value(e, xi1, xi2, 1, 0);
-          if (a == 0) return m[0][0]*vx + m[0][1]*vy; // H2D_FN_VAL_0
-          if (a == 1) return m[1][0]*vx + m[1][1]*vy; // H2D_FN_VAL_1
+          if(a == 0) return m[0][0]*vx + m[0][1]*vy; // H2D_FN_VAL_0
+          if(a == 1) return m[1][0]*vx + m[1][1]*vy; // H2D_FN_VAL_1
         }
         else
-          error("Getting derivatives of the vector solution: Not implemented yet.");
+          throw Hermes::Exceptions::Exception("Getting derivatives of the vector solution: Not implemented yet.");
       }
-      error("internal error: reached end of non-void function");
+      throw Hermes::Exceptions::Exception("internal error: reached end of non-void function");
       return 0;
     }
 
@@ -1396,40 +1357,40 @@ namespace Hermes
       double xi1, xi2;
 
       int a = 0, b = 0, mask = item; // a = component, b = val, dx, dy, dxx, dyy, dxy
-      if (this->num_components == 1) mask = mask & H2D_FN_COMPONENT_0;
-      if ((mask & (mask - 1)) != 0) error("'item' is invalid. ");
-      if (mask >= 0x40) { a = 1; mask >>= 6; }
+      if(this->num_components == 1) mask = mask & H2D_FN_COMPONENT_0;
+      if((mask & (mask - 1)) != 0) throw Hermes::Exceptions::Exception("'item' is invalid. ");
+      if(mask >= 0x40) { a = 1; mask >>= 6; }
       while (!(mask & 1)) { mask >>= 1; b++; }
 
-      if (sln_type == HERMES_EXACT)
+      if(sln_type == HERMES_EXACT)
       {
-        if (this->num_components == 1)
+        if(this->num_components == 1)
         {
           Scalar val, dx = 0.0, dy = 0.0;
           val = (static_cast<ExactSolutionScalar<Scalar>*>(this))->exact_function(x, y, dx, dy);
-          if (b == 0) return val * (static_cast<ExactSolutionScalar<Scalar>*>(this))->exact_multiplicator;
-          if (b == 1) return dx * (static_cast<ExactSolutionScalar<Scalar>*>(this))->exact_multiplicator;
-          if (b == 2) return dy * (static_cast<ExactSolutionScalar<Scalar>*>(this))->exact_multiplicator;
+          if(b == 0) return val * (static_cast<ExactSolutionScalar<Scalar>*>(this))->exact_multiplicator;
+          if(b == 1) return dx * (static_cast<ExactSolutionScalar<Scalar>*>(this))->exact_multiplicator;
+          if(b == 2) return dy * (static_cast<ExactSolutionScalar<Scalar>*>(this))->exact_multiplicator;
         }
         else
         {
           Scalar2<Scalar> dx(0.0, 0.0), dy(0.0, 0.0);
           Scalar2<Scalar> val = (static_cast<ExactSolutionVector<Scalar>*>(this))->exact_function(x, y, dx, dy);
-          if (b == 0) return val[a] * (static_cast<ExactSolutionScalar<Scalar>*>(this))->exact_multiplicator;
-          if (b == 1) return dx[a] * (static_cast<ExactSolutionScalar<Scalar>*>(this))->exact_multiplicator;
-          if (b == 2) return dy[a] * (static_cast<ExactSolutionScalar<Scalar>*>(this))->exact_multiplicator;
+          if(b == 0) return val[a] * (static_cast<ExactSolutionScalar<Scalar>*>(this))->exact_multiplicator;
+          if(b == 1) return dx[a] * (static_cast<ExactSolutionScalar<Scalar>*>(this))->exact_multiplicator;
+          if(b == 2) return dy[a] * (static_cast<ExactSolutionScalar<Scalar>*>(this))->exact_multiplicator;
         }
-        error("Cannot obtain second derivatives of an exact solution.");
+        throw Hermes::Exceptions::Exception("Cannot obtain second derivatives of an exact solution.");
       }
-      else if (sln_type == HERMES_UNDEF)
+      else if(sln_type == HERMES_UNDEF)
       {
-        error("Cannot obtain values -- uninitialized solution. The solution was either "
+        throw Hermes::Exceptions::Exception("Cannot obtain values -- uninitialized solution. The solution was either "
           "not calculated yet or you used the assignment operator which destroys "
           "the solution on its right-hand side.");
       }
 
       // try the last visited element and its neighbours
-      if (e_last != NULL)
+      if(e_last != NULL)
       {
         Element* elem[5];
         elem[0] = e_last;
@@ -1437,11 +1398,11 @@ namespace Hermes
           elem[i] = e_last->get_neighbor(i-1);
 
         for (unsigned int i = 0; i <= e_last->get_num_surf(); i++)
-          if (elem[i] != NULL)
+          if(elem[i] != NULL)
           {
             this->refmap->set_active_element(elem[i]);
             this->refmap->untransform(elem[i], x, y, xi1, xi2);
-            if (is_in_ref_domain(elem[i], xi1, xi2))
+            if(is_in_ref_domain(elem[i], xi1, xi2))
             {
               e_last = elem[i];
               return get_ref_value_transformed(elem[i], xi1, xi2, a, b);
@@ -1455,17 +1416,16 @@ namespace Hermes
       {
         this->refmap->set_active_element(e);
         this->refmap->untransform(e, x, y, xi1, xi2);
-        if (is_in_ref_domain(e, xi1, xi2))
+        if(is_in_ref_domain(e, xi1, xi2))
         {
           e_last = e;
           return get_ref_value_transformed(e, xi1, xi2, a, b);
         }
       }
 
-      warn("Point (%g, %g) does not lie in any element.", x, y);
+      this->warn("Point (%g, %g) does not lie in any element.", x, y);
       return NAN;
     }
-
 
     template<typename Scalar>
     const Space<Scalar>* Solution<Scalar>::get_space()
@@ -1474,7 +1434,7 @@ namespace Hermes
         return space;
       else
       {
-        error("Solution<Scalar>::get_space() called with an instance where FEM space is not defined.");
+        throw Hermes::Exceptions::Exception("Solution<Scalar>::get_space() called with an instance where FEM space is not defined.");
         return NULL;
       }
     }
@@ -1486,7 +1446,7 @@ namespace Hermes
         return space_seq;
       else
       {
-        error("Solution<Scalar>::get_space_seq() called with an instance where FEM space is not defined.");
+        throw Hermes::Exceptions::Exception("Solution<Scalar>::get_space_seq() called with an instance where FEM space is not defined.");
         return NULL;
       }
     }
@@ -1498,7 +1458,7 @@ namespace Hermes
         return sln_vector;
       else
       {
-        error("Solution<Scalar>::get_sln_vector() called with an instance where FEM space is not defined.");
+        throw Hermes::Exceptions::Exception("Solution<Scalar>::get_sln_vector() called with an instance where FEM space is not defined.");
         return NULL;
       }
     }

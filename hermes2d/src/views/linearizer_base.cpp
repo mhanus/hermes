@@ -51,12 +51,12 @@ namespace Hermes
       }
       LinearizerBase::~LinearizerBase()
       {
-        if (tris != NULL)
+        if(tris != NULL)
         {
           ::free(tris);
           tris = NULL;
         }
-        if (edges != NULL)
+        if(edges != NULL)
         {
           ::free(edges);
           edges = NULL;
@@ -65,19 +65,19 @@ namespace Hermes
       }
 
       void LinearizerBase::lock_data() const
-      { 
+      {
         pthread_mutex_lock(&data_mutex);
       }
 
-      void LinearizerBase::unlock_data() const 
+      void LinearizerBase::unlock_data() const
       {
-        pthread_mutex_unlock(&data_mutex); 
+        pthread_mutex_unlock(&data_mutex);
       }
 
       void LinearizerBase::process_edge(int iv1, int iv2, int marker)
       {
         int mid = peek_vertex(iv1, iv2);
-        if (mid != -1)
+        if(mid != -1)
         {
           process_edge(iv1, mid, marker);
           process_edge(mid, iv2, marker);
@@ -86,12 +86,74 @@ namespace Hermes
           add_edge(iv1, iv2, marker);
       }
 
+      void LinearizerBase::regularize_triangle(int iv0, int iv1, int iv2, int mid0, int mid1, int mid2)
+      {
+        // count the number of hanging mid-edge vertices
+        int n = 0;
+        if(mid0 >= 0) n++;
+        if(mid1 >= 0) n++;
+        if(mid2 >= 0) n++;
+        if(n == 3)
+        {
+          // three hanging vertices: split into four triangles
+          regularize_triangle(iv0, mid0, mid2, peek_vertex(iv0, mid0), -1, peek_vertex(mid2, iv0));
+          regularize_triangle(mid0, iv1, mid1, peek_vertex(mid0, iv1), peek_vertex(iv1, mid1), -1);
+          regularize_triangle(mid2, mid1, iv2, -1, peek_vertex(mid1, iv2), peek_vertex(iv2, mid2));
+          regularize_triangle(mid0, mid1, mid2, -1, -1, -1);
+        }
+        else if(n == 2)
+        {
+          // two hanging vertices: split into three triangles
+          if(mid0 < 0)
+          {
+            regularize_triangle(iv0, iv1, mid1, peek_vertex(iv0, iv1), peek_vertex(iv1, mid1), -1);
+            regularize_triangle(mid2, iv0, mid1, peek_vertex(mid2, iv0), -1, -1);
+            regularize_triangle(mid2, mid1, iv2, -1, peek_vertex(mid1, iv2), peek_vertex(iv2, mid2));
+          }
+          else if(mid1 < 0)
+          {
+            regularize_triangle(iv1, iv2, mid2, peek_vertex(iv1, iv2), peek_vertex(iv2, mid2), -1);
+            regularize_triangle(mid0, iv1, mid2, peek_vertex(mid0, iv1), -1, -1);
+            regularize_triangle(mid0, mid2, iv0, -1, peek_vertex(mid2, iv0), peek_vertex(iv0, mid0));
+          }
+          else
+          {
+            regularize_triangle(iv2, iv0, mid0, peek_vertex(iv2, iv0), peek_vertex(iv0, mid0), -1);
+            regularize_triangle(mid1, iv2, mid0, peek_vertex(mid1, iv2), -1, -1);
+            regularize_triangle(mid1, mid0, iv1, -1, peek_vertex(mid0, iv1), peek_vertex(iv1, mid1));
+          }
+        }
+        else if(n == 1)
+        {
+          // one hanging vertex: split into two triangles
+          if(mid0 >= 0)
+          {
+            regularize_triangle(iv0, mid0, iv2, peek_vertex(iv0, mid0), -1, peek_vertex(iv2, iv0));
+            regularize_triangle(mid0, iv1, iv2, peek_vertex(mid0, iv1), peek_vertex(iv1, iv2), -1);
+          }
+          else if(mid1 >= 0)
+          {
+            regularize_triangle(iv1, mid1, iv0, peek_vertex(iv1, mid1), -1, peek_vertex(iv0, iv1));
+            regularize_triangle(mid1, iv2, iv0, peek_vertex(mid1, iv2), peek_vertex(iv2, iv0), -1);
+          }
+          else
+          {
+            regularize_triangle(iv2, mid2, iv1, peek_vertex(iv2, mid2), -1, peek_vertex(iv1, iv2));
+            regularize_triangle(mid2, iv0, iv1, peek_vertex(mid2, iv0), peek_vertex(iv0, iv1), -1);
+          }
+        }
+        else
+        {
+          // no hanging vertices: produce a single triangle
+          add_triangle(iv0, iv1, iv2);
+        }
+      }
 
       void LinearizerBase::add_edge(int iv1, int iv2, int marker)
       {
 #pragma omp critical(realloc_edges)
-        { 
-          if (edges_count >= edges_size)
+        {
+          if(edges_count >= edges_size)
             edges = (int3*) realloc(edges, sizeof(int3) * (edges_size = edges_size * 3 / 2));
         edges[edges_count][0] = iv1;
         edges[edges_count][1] = iv2;
@@ -102,12 +164,12 @@ namespace Hermes
       int LinearizerBase::peek_vertex(int p1, int p2)
       {
         // search for a vertex with parents p1, p2
-        if (p1 > p2) std::swap(p1, p2);
+        if(p1 > p2) std::swap(p1, p2);
         int index = hash(p1, p2);
         int i = hash_table[index];
         while (i >= 0)
         {
-          if (info[i][0] == p1 && info[i][1] == p2) return i;
+          if(info[i][0] == p1 && info[i][1] == p2) return i;
           i = info[i][2];
         }
         return -1;
@@ -118,16 +180,20 @@ namespace Hermes
         int index;
 #pragma omp critical(realloc_triangles)
         {
-          if (triangle_count >= triangle_size)
+          if(this->del_slot >= 0) // reuse a slot after a deleted triangle
           {
-            tris = (int3*) realloc(tris, sizeof(int3) * (triangle_size = triangle_size * 2));
-            verbose("Linearizer::add_triangle(): realloc to %d", triangle_size);
+            index = this->del_slot;
+            del_slot = -1;
           }
-        index = triangle_count++;
+          {
+            if(triangle_count >= triangle_size)
+              tris = (int3*) realloc(tris, sizeof(int3) * (triangle_size = triangle_size * 2));
+            index = triangle_count++;
 
-        tris[index][0] = iv0;
-        tris[index][1] = iv1;
-        tris[index][2] = iv2;
+            tris[index][0] = iv0;
+            tris[index][1] = iv1;
+            tris[index][2] = iv2;
+          }
         }
       }
 
@@ -139,7 +205,7 @@ namespace Hermes
       void LinearizerBase::set_max_absolute_value(double max_abs)
       {
         if(max_abs < 0.0)
-          warning("Setting of maximum absolute value in Linearizer with a negative value");
+          this->warn("Setting of maximum absolute value in Linearizer with a negative value");
         else
         {
           this->auto_max = false;

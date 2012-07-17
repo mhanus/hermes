@@ -42,16 +42,15 @@ int main(int argc, char* argv[])
   // Create an H1 space with default shapeset.
   Hermes::Hermes2D::H1Space<double> space(&mesh, &bcs, P_INIT);
   int ndof = space.get_num_dofs();
-  info("ndof = %d", ndof);
 
   // Initialize the FE problem.
   Hermes::Hermes2D::DiscreteProblemLinear<double> dp(&wf, &space);
 
   // Initialize the solution.
   Hermes::Hermes2D::Solution<double> sln;
-  
+
   // Initialize linear solver.
-  Hermes::Hermes2D::LinearSolver<double> linear_solver(&dp, matrix_solver_type);
+  Hermes::Hermes2D::LinearSolver<double> linear_solver(&dp);
 
   // Solve the linear problem.
   linear_solver.solve();
@@ -65,17 +64,16 @@ int main(int argc, char* argv[])
   printf("coefficient sum = %f\n", sum);
 
   bool success = true;
-  if (std::abs(sum + 2761.840589) > 1e-4) success = false;
+  if(std::abs(sum + 2761.840589) > 1e-4) success = false;
 
-  if (success == true)
+  if(success == true)
   {
     printf("Success!\n");
-    return TEST_SUCCESS;
+    return 0;
   }
   else
   {
     printf("Failure!\n");
-    return TEST_FAILURE;
+    return -1;
   }
 }
-

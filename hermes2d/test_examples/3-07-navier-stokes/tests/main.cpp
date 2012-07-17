@@ -1,6 +1,5 @@
 #define HERMES_REPORT_WARN
 #define HERMES_REPORT_INFO
-#define HERMES_REPORT_VERBOSE
 #define HERMES_REPORT_FILE "application.log"
 #include "hermes2d.h"
 
@@ -39,10 +38,6 @@ const int NEWTON_MAX_ITER = 10;                   // Maximum allowed number of N
 // Domain height (necessary to define the parabolic
 // velocity profile at inlet).
 const double H = 5;
-
-// Possibilities: Hermes::SOLVER_AMESOS, Hermes::SOLVER_AZTECOO, Hermes::SOLVER_MUMPS,
-// Hermes::SOLVER_PETSC, Hermes::SOLVER_SUPERLU, Hermes::SOLVER_UMFPACK.
-Hermes::MatrixSolverType matrix_solver_type = Hermes::SOLVER_UMFPACK;
 
 // Boundary markers.
 const std::string BDY_BOTTOM = "1";
@@ -89,7 +84,6 @@ int main(int argc, char* argv[])
 
   // Calculate and report the number of degrees of freedom.
   int ndof = Space<double>::get_num_dofs(Hermes::vector<const Space<double> *>(&xvel_space, &yvel_space, &p_space));
-  info("ndof = %d.", ndof);
 
   // Define projection norms.
   ProjNormType vel_proj_norm = HERMES_H1_NORM;
@@ -100,7 +94,6 @@ int main(int argc, char* argv[])
 #endif
 
   // Solutions for the Newton's iteration and time stepping.
-  info("Setting initial conditions.");
   ZeroSolution<double> xvel_prev_time(&mesh), yvel_prev_time(&mesh), p_prev_time(&mesh);
 
   // Initialize weak formulation.
@@ -110,42 +103,37 @@ int main(int argc, char* argv[])
   DiscreteProblem<double> dp(wf, Hermes::vector<const Space<double> *>(&xvel_space, &yvel_space, &p_space));
 
   // Initialize the Newton solver.
-  Hermes::Hermes2D::NewtonSolver<double> newton(&dp, matrix_solver_type);
+  Hermes::Hermes2D::NewtonSolver<double> newton(&dp);
 
   // Project the initial condition on the FE space to obtain initial
   // coefficient vector for the Newton's method.
   double* coeff_vec = new double[Space<double>::get_num_dofs(Hermes::vector<const Space<double> *>(&xvel_space, &yvel_space, &p_space))];
-  info("Projecting initial condition to obtain initial vector for the Newton's method.");
-  OGProjection<double>::project_global(Hermes::vector<const Space<double> *>(&xvel_space, &yvel_space, &p_space),
+  OGProjection<double> ogProjection;
+
+  ogProjection.project_global(Hermes::vector<const Space<double> *>(&xvel_space, &yvel_space, &p_space),
     Hermes::vector<MeshFunction<double> *>(&xvel_prev_time, &yvel_prev_time, &p_prev_time),
-    coeff_vec, matrix_solver_type,
-    Hermes::vector<ProjNormType>(vel_proj_norm, vel_proj_norm, p_proj_norm));
+    coeff_vec, Hermes::vector<ProjNormType>(vel_proj_norm, vel_proj_norm, p_proj_norm));
 
   // Time-stepping loop:
   int num_time_steps = T_FINAL / TAU;
   for (int ts = 1; ts <= num_time_steps; ts++)
   {
     current_time += TAU;
-    info("---- Time step %d, time = %g:", ts, current_time);
 
     // Update time-dependent essential BCs.
-    if (current_time <= STARTUP_TIME)
+    if(current_time <= STARTUP_TIME)
     {
-      info("Updating time-dependent essential BC.");
       Space<double>::update_essential_bc_values(Hermes::vector<Space<double> *>(&xvel_space, &yvel_space, &p_space), current_time);
     }
 
-    // Perform Newton's iteration.
-    bool verbose = true;
     // Perform Newton's iteration and translate the resulting coefficient vector into previous time level solutions.
-    newton.set_verbose_output(verbose);
+    newton.set_verbose_output(true);
     try{
       newton.solve(coeff_vec, NEWTON_TOL, NEWTON_MAX_ITER);
     }
-    catch(Hermes::Exceptions::Exception e)
+    catch(Hermes::Exceptions::Exception& e)
     {
       e.printMsg();
-      error("Newton's iteration failed.");
     }
     Hermes::vector<Solution<double> *> tmp(&xvel_prev_time, &yvel_prev_time, &p_prev_time);
     Hermes::Hermes2D::Solution<double>::vector_to_solutions(newton.get_sln_vector(), Hermes::vector<const Space<double> *>(&xvel_space, &yvel_space, &p_space), tmp);
@@ -153,78 +141,64 @@ int main(int argc, char* argv[])
 
   delete [] coeff_vec;
 
-  info("Coordinate (   0, 2.5) xvel value = %lf", xvel_prev_time.get_pt_value(0.0, 2.5));
-  info("Coordinate (   5, 2.5) xvel value = %lf", xvel_prev_time.get_pt_value(5.0, 2.5));
-  info("Coordinate ( 7.5, 2.5) xvel value = %lf", xvel_prev_time.get_pt_value(7.5, 2.5));
-  info("Coordinate (  10, 2.5) xvel value = %lf", xvel_prev_time.get_pt_value(10.0, 2.5));
-  info("Coordinate (12.5, 2.5) xvel value = %lf", xvel_prev_time.get_pt_value(12.5, 2.5));
-  info("Coordinate (  15, 2.5) xvel value = %lf", xvel_prev_time.get_pt_value(15.0, 2.5));
-
-  info("Coordinate (   0, 2.5) yvel value = %lf", yvel_prev_time.get_pt_value(0.0, 2.5));
-  info("Coordinate (   5, 2.5) yvel value = %lf", yvel_prev_time.get_pt_value(5.0, 2.5));
-  info("Coordinate ( 7.5, 2.5) yvel value = %lf", yvel_prev_time.get_pt_value(7.5, 2.5));
-  info("Coordinate (  10, 2.5) yvel value = %lf", yvel_prev_time.get_pt_value(10.0, 2.5));
-  info("Coordinate (12.5, 2.5) yvel value = %lf", yvel_prev_time.get_pt_value(12.5, 2.5));
-  info("Coordinate (  15, 2.5) yvel value = %lf", yvel_prev_time.get_pt_value(15.0, 2.5));
-
   int success = 1;
   double eps = 1e-5;
-  if (fabs(xvel_prev_time.get_pt_value(0.0, 2.5) - 0.200000) > eps) {
+  if(fabs(xvel_prev_time.get_pt_value(0.0, 2.5) - 0.200000) > eps) {
     printf("Coordinate (   0, 2.5) xvel value is %g\n", xvel_prev_time.get_pt_value(0.0, 2.5));
     success = 0;
   }
-  if (fabs(xvel_prev_time.get_pt_value(5, 2.5) - 0.134291) > eps) {
+  if(fabs(xvel_prev_time.get_pt_value(5, 2.5) - 0.134291) > eps) {
     printf("Coordinate (   5, 2.5) xvel value is %g\n", xvel_prev_time.get_pt_value(5, 2.5));
     success = 0;
   }
-  if (fabs(xvel_prev_time.get_pt_value(7.5, 2.5) - 0.135088) > eps) {
+  if(fabs(xvel_prev_time.get_pt_value(7.5, 2.5) - 0.135088) > eps) {
     printf("Coordinate ( 7.5, 2.5) xvel value is %g\n", xvel_prev_time.get_pt_value(7.5, 2.5));
     success = 0;
   }
-  if (fabs(xvel_prev_time.get_pt_value(10, 2.5) - 0.134944) > eps) {
+  if(fabs(xvel_prev_time.get_pt_value(10, 2.5) - 0.134944) > eps) {
     printf("Coordinate (  10, 2.5) xvel value is %g\n", xvel_prev_time.get_pt_value(10, 2.5));
     success = 0;
   }
-  if (fabs(xvel_prev_time.get_pt_value(12.5, 2.5) - 0.134888) > eps) {
+  if(fabs(xvel_prev_time.get_pt_value(12.5, 2.5) - 0.134888) > eps) {
     printf("Coordinate (12.5, 2.5) xvel value is %g\n", xvel_prev_time.get_pt_value(12.5, 2.5));
     success = 0;
   }
-  if (fabs(xvel_prev_time.get_pt_value(15, 2.5) - 0.134864) > eps) {
+  if(fabs(xvel_prev_time.get_pt_value(15, 2.5) - 0.134864) > eps) {
     printf("Coordinate (  15, 2.5) xvel value is %g\n", xvel_prev_time.get_pt_value(15, 2.5));
     success = 0;
   }
 
-  if (fabs(yvel_prev_time.get_pt_value(0.0, 2.5) - 0.000000) > eps) {
+  if(fabs(yvel_prev_time.get_pt_value(0.0, 2.5) - 0.000000) > eps) {
     printf("Coordinate (   0, 2.5) yvel value is %g\n", yvel_prev_time.get_pt_value(0.0, 2.5));
     success = 0;
   }
-  if (fabs(yvel_prev_time.get_pt_value(5, 2.5) - 0.000493) > eps) {
+  if(fabs(yvel_prev_time.get_pt_value(5, 2.5) - 0.000493) > eps) {
     printf("Coordinate (   5, 2.5) yvel value is %g\n", yvel_prev_time.get_pt_value(5, 2.5));
     success = 0;
   }
-  if (fabs(yvel_prev_time.get_pt_value(7.5, 2.5) - 0.000070) > eps) {
+  if(fabs(yvel_prev_time.get_pt_value(7.5, 2.5) - 0.000070) > eps) {
     printf("Coordinate ( 7.5, 2.5) yvel value is %g\n", yvel_prev_time.get_pt_value(7.5, 2.5));
     success = 0;
   }
-  if (fabs(yvel_prev_time.get_pt_value(10, 2.5) - 0.000008) > eps) {
+  if(fabs(yvel_prev_time.get_pt_value(10, 2.5) - 0.000008) > eps) {
     printf("Coordinate (  10, 2.5) yvel value is %g\n", yvel_prev_time.get_pt_value(10, 2.5));
     success = 0;
   }
-  if (fabs(yvel_prev_time.get_pt_value(12.5, 2.5) + 0.000003) > eps) {
+  if(fabs(yvel_prev_time.get_pt_value(12.5, 2.5) + 0.000003) > eps) {
     printf("Coordinate (12.5, 2.5) yvel value is %g\n", yvel_prev_time.get_pt_value(12.5, 2.5));
     success = 0;
   }
-  if (fabs(yvel_prev_time.get_pt_value(15, 2.5) + 0.000006) > eps) {
+  if(fabs(yvel_prev_time.get_pt_value(15, 2.5) + 0.000006) > eps) {
     printf("Coordinate (  15, 2.5) yvel value is %g\n", yvel_prev_time.get_pt_value(15, 2.5));
     success = 0;
   }
 
-  if (success == 1) {
+  if(success == 1) {
     printf("Success!\n");
-    return TEST_SUCCESS;
+    return 0;
   }
   else {
     printf("Failure!\n");
-    return TEST_FAILURE;
+    return -1;
   }
 }

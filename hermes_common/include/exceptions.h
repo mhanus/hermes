@@ -22,35 +22,33 @@
 #ifndef __HERMES_COMMON_EXCEPTIONS_H_
 #define __HERMES_COMMON_EXCEPTIONS_H_
 
-#include<stdio.h>
-#include<string>
-#include"callstack.h"
-#include<string.h>
+#include "common.h"
+#include "compat.h"
 
 namespace Hermes
 {
   namespace Exceptions
   {
     /// \brief Exception interface
-    class HERMES_API Exception
+    class HERMES_API Exception : public std::exception
     {
       public:
         /// \brief Init exception with default message.
         Exception();
         /// Init exception with message.
         /// \param[in] msg message
-        Exception(const char * msg);
+        Exception(const char * msg, ...);
         /// \brief print error message to stderr
         void printMsg() const;
         /// \brief get pointer to error message
-        const char * getMsg() const;
+        virtual const char * what() const throw();
         /// \return name of function where exception was created.
         const char * getFuncName() const;
-        virtual ~Exception(){};
+        virtual ~Exception() throw() {};
+
+        virtual Exception* clone();
       protected:
-        const char * message;
-      private:
-        const char * func;
+        char * message;
     };
 
     /// \brief Null parameter exception.
@@ -69,8 +67,9 @@ namespace Hermes
         int getParamIdx() const;
         /// \return index of null item in array parameter. Returns -1 if bad parrameter is not array with null item.
         int getItemIdx() const;
-        ~NullException();
+        ~NullException() throw() {};
         NullException(const NullException & e);
+        virtual Exception* clone();
       private:
         int paramIdx, itemIdx;
     };
@@ -99,8 +98,9 @@ namespace Hermes
         int getFirstLength() const;
         /// \return expected length of first parameter.
         int getExpectedLength() const;
-        ~LengthException();
+        ~LengthException() throw() {};
         LengthException(const LengthException & e);
+        virtual Exception* clone();
       private:
         int fstParamIdx, sndParamIdx, wrong, right;
     };
@@ -112,13 +112,14 @@ namespace Hermes
         /// \brief Linear solver failed from unknown reason.
         LinearMatrixSolverException();
         /// Linear solver failed from spevific reason.
-        /// \param[in] reasen specification of solver fail.
+        /// \param[in] reason specification of solver fail.
         LinearMatrixSolverException(const char * reason);
-        ~LinearMatrixSolverException();
+        ~LinearMatrixSolverException() throw() {};
         LinearMatrixSolverException(const LinearMatrixSolverException & e);
+        virtual Exception* clone();
     };
 
-    /// \brief Value is out of allowed range
+    /// \brief Numeric value is out of allowed range
     class HERMES_API ValueException : public Exception
     {
       public:
@@ -139,10 +140,71 @@ namespace Hermes
         double getValue() const;
         /// return allowed value of variable.
         double getAllowed() const;
-        ~ValueException();
+        ~ValueException() throw() {};
         ValueException(const ValueException & e);
+        virtual Exception* clone();
       private:
         double value, allowed;
+    };
+
+    /// \brief Linear solver failed.
+    class HERMES_API FunctionNotOverridenException : public Exception
+    {
+      public:
+        /// Constructor
+        /// \param[in] name Name of the function.
+        FunctionNotOverridenException(const char * msg, ...);
+        ~FunctionNotOverridenException() throw() {};
+        FunctionNotOverridenException(const FunctionNotOverridenException & e);
+        virtual Exception* clone();
+    };
+
+    /// \brief Linear solver failed.
+    class HERMES_API MeshLoadFailureException : public Exception
+    {
+      public:
+        /// Constructor
+        /// \param[in] name Name of the function.
+        MeshLoadFailureException(const char * msg, ...);
+        ~MeshLoadFailureException() throw() {};
+        MeshLoadFailureException(const MeshLoadFailureException & e);
+        virtual Exception* clone();
+    };
+
+    /// \brief Linear solver failed.
+    class HERMES_API SpaceLoadFailureException : public Exception
+    {
+      public:
+        /// Constructor
+        /// \param[in] name Name of the function.
+        SpaceLoadFailureException(const char * msg, ...);
+        ~SpaceLoadFailureException() throw() {};
+        SpaceLoadFailureException(const SpaceLoadFailureException & e);
+        virtual Exception* clone();
+    };
+
+    /// \brief Linear solver failed.
+    class HERMES_API SolutionSaveFailureException : public Exception
+    {
+      public:
+        /// Constructor
+        /// \param[in] name Name of the function.
+        SolutionSaveFailureException(const char * msg, ...);
+        ~SolutionSaveFailureException() throw() {};
+        SolutionSaveFailureException(const SolutionSaveFailureException & e);
+        virtual Exception* clone();
+    };
+
+    /// \brief Linear solver failed.
+    class HERMES_API SolutionLoadFailureException : public Exception
+    {
+      public:
+        /// Constructor
+        /// \param[in] name Name of the function.
+        SolutionLoadFailureException(const char * msg, ...);
+        ~SolutionLoadFailureException() throw() {};
+        SolutionLoadFailureException(const SolutionLoadFailureException & e);
+        virtual Exception* clone();
     };
   }
 }
