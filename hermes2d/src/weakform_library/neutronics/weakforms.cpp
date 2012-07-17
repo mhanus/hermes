@@ -447,7 +447,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                 {
                   if (present[i][j]) {
                     double Sigma_rn_local = 0.;
-                    for (unsigned int k = 0; k <= m; k++)
+                    for (unsigned int k = 0; k < m; k++)
                       Sigma_rn_local += Coeffs::system_matrix(m, n, k) * Sigma_rn[2*k][gto][gfrom];
       
                     matrix_forms.push_back( new OffDiagonalReactions::Jacobian( regions, m, n, gto, gfrom, G, 
