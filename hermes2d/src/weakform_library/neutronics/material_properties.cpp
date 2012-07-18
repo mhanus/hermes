@@ -240,11 +240,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       return Hermes::vector<std::string>();
     }
         
-    std::string MaterialPropertyMaps::get_material(int elem_marker, Mesh *mesh) const 
+    std::string MaterialPropertyMaps::get_material(int elem_marker, const Mesh *mesh) const 
     { 
       std::string region;
       
-      if (elem_marker == HERMES_DUMMY_ELEM_MARKER)
+      if (elem_marker < 0)
         region = this->nu.begin()->first; 
       else
         region = mesh->get_element_markers_conversion().get_user_marker(elem_marker).marker;

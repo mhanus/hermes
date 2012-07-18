@@ -1,8 +1,7 @@
 #ifndef ___H2D_NEUTRONICS_COMMON_DEFINITIONS_H
 #define ___H2D_NEUTRONICS_COMMON_DEFINITIONS_H
 
-// TODO: Check if both are needed (hermes_2d_common_defs.h was here before)
-#include "common.h"
+#include "hermes_common.h"
 
 namespace Hermes
 {
@@ -14,8 +13,6 @@ namespace Hermes
       enum ReactionType { 
         ABSORPTION, TOTAL, IN_SCATTERING, SELF_SCATTERING, OUT_SCATTERING, FISSION, NU_FISSION 
       };
-      
-      using namespace Hermes::Error;
       
       namespace Messages
       {
@@ -67,6 +64,39 @@ namespace Hermes
         static const char* E_INVALID_COMPONENT = 
           "Only component == 0 (x) and component == 1 (y) are allowed.";
       }
+      
+      namespace ErrorHandling
+      {
+        static void report(const char *prefix, const char *err, va_list params)
+        {
+          char msg[1024];
+          vsnprintf(msg, sizeof(msg), err, params);
+          fprintf(stderr, "%s%s\n", prefix, msg);
+        }
+        
+        /// \brief Report unrecoverable error (no call stack or location dumped)
+        void error_function(char const *err, ...)
+        {
+          va_list params;
+
+          va_start(params, err);
+          report("FATAL ERROR: ", err, params);
+          va_end(params);
+          exit(128);
+        }
+
+        /// \brief Notify the user about warning (the execution continues), neither location or call stack is dumped.
+        void warning(const char *warn, ...)
+        {
+          va_list params;
+
+          va_start(params, warn);
+          report("WARNING: ", warn, params);
+          va_end(params);
+        }
+      }
+      
+      using namespace ErrorHandling;
       
       template <typename NDArrayType>
       class StdMultiArray
