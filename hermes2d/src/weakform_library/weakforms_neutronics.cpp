@@ -9,7 +9,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   {
     // Sanity checks.
     if (spaces.size() != solutions.size()) 
-      error_function("Spaces and solutions supplied to power_iteration do not match.");
+      ErrorHandling::error_function("Spaces and solutions supplied to power_iteration do not match.");
                                   
     // The following variables will store pointers to solutions obtained at each iteration and will be needed for 
     // updating the eigenvalue. 
@@ -51,7 +51,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       catch(Hermes::Exceptions::Exception e)
       {
         e.printMsg();
-        error_function("Newton's iteration failed.");
+        ErrorHandling::error_function("Newton's iteration failed.");
       }
       
       // Convert coefficients vector into a set of Solution pointers.

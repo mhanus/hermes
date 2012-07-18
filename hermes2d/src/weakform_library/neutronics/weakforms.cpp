@@ -181,7 +181,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
     {
       if (minus_f_src.size() != G)
-        error_function(Messages::E_INVALID_SIZE);
+        ErrorHandling::error_function(Messages::E_INVALID_SIZE);
       
       homogeneous_part = new HomogeneousPart(&matprop, geom_type, true);
       add_forms_from_homogeneous_part();
@@ -201,7 +201,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
     {
       if (minus_f_src.size() != G)
-        error_function(Messages::E_INVALID_SIZE);
+        ErrorHandling::error_function(Messages::E_INVALID_SIZE);
       
       homogeneous_part = new HomogeneousPart(&matprop, geom_type, true);
       add_forms_from_homogeneous_part();
@@ -544,7 +544,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         SPNWeakForm(N, matprop.get_G())
     {
       if (minus_isotropic_sources.size() != G)
-        error_function(Messages::E_INVALID_SIZE);
+        ErrorHandling::error_function(Messages::E_INVALID_SIZE);
       
       homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, true);
       add_forms_from_homogeneous_part();
@@ -567,7 +567,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         SPNWeakForm(N, matprop.get_G())
     {
       if (minus_isotropic_sources.size() != G)
-        error_function(Messages::E_INVALID_SIZE);
+        ErrorHandling::error_function(Messages::E_INVALID_SIZE);
       
       homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, true);
       add_forms_from_homogeneous_part();
