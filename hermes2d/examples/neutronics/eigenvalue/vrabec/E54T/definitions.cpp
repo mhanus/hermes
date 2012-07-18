@@ -26,7 +26,7 @@ void report_num_dof(const std::string& msg, const Hermes::vector< Space<double>*
   if (spaces.size() > 1)
     ss << " = " << Space<double>::get_num_dofs(spaces);
   
-  info(ss.str().c_str());
+  Loggable::Static::info(ss.str().c_str());
 }
 
 void report_errors(const std::string& msg, const Hermes::vector< double > errors)
@@ -39,5 +39,5 @@ void report_errors(const std::string& msg, const Hermes::vector< double > errors
   
   ss << errors.back()*100 << "%%";
   
-  info(ss.str().c_str());
+  Loggable::Static::info(ss.str().c_str());
 }
