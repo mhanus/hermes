@@ -24,7 +24,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     int ndof = Space<double>::get_num_dofs(spaces);
     
     DiscreteProblem<double> dp(wf, spaces);
-    NewtonSolver<double> solver(&dp, matrix_solver);
+    NewtonSolver<double> solver(&dp);
         
     // NOTE:
     //  According to the 'physical' definitions of keff as a fraction of neutron sources and sinks, keff should be 
@@ -51,7 +51,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       catch(Hermes::Exceptions::Exception e)
       {
         e.printMsg();
-        error("Newton's iteration failed.");
+        error_function("Newton's iteration failed.");
       }
       
       // Convert coefficients vector into a set of Solution pointers.
@@ -63,7 +63,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       double k_new = wf->get_keff() * src_new / src_old;
       
       double diff_keff = fabs(wf->get_keff() - k_new) / k_new;
-      info("      dominant eigenvalue (est): %g, rel. difference: %g", k_new, diff_keff);
+      Hermes::Mixins::Loggable::Static::info("      dominant eigenvalue (est): %g, rel. difference: %g", k_new, diff_keff);
       
       // Stopping criteria.
       if (diff_keff < tol_keff) 

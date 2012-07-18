@@ -30,7 +30,6 @@ private:
   static SolFunctionDomain h1_axisym_projection_biform(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *u,
                                                        Func<TestFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext)
   {
-    _F_
     SolFunctionDomain result(0);
     for (int i = 0; i < n; i++)
       result += wt[i] * e->x[i] * (u->val[i] * v->val[i] + u->dx[i] * v->dx[i] + u->dy[i] * v->dy[i]);
