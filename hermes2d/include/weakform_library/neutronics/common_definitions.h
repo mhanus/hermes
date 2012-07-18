@@ -75,7 +75,7 @@ namespace Hermes
         }
         
         /// \brief Report unrecoverable error (no call stack or location dumped)
-        void error_function(char const *err, ...)
+        static void error_function(char const *err, ...)
         {
           va_list params;
 
@@ -86,7 +86,7 @@ namespace Hermes
         }
 
         /// \brief Notify the user about warning (the execution continues), neither location or call stack is dumped.
-        void warning(const char *warn, ...)
+        static void warning(const char *warn, ...)
         {
           va_list params;
 
@@ -95,9 +95,7 @@ namespace Hermes
           va_end(params);
         }
       }
-      
-      using namespace ErrorHandling;
-      
+            
       template <typename NDArrayType>
       class StdMultiArray
       {
@@ -162,7 +160,7 @@ namespace Hermes
             return 0.0;
           else if (y == 0)
           {
-            error_function(Messages::E_INF_VALUE);
+            ErrorHandling::error_function(Messages::E_INF_VALUE);
             return -1.0;
           }
           else
@@ -183,7 +181,7 @@ namespace Hermes
         static rank0 subtract(rank0 x, rank0 y) {
           rank0 ret = x - y;
           if(ret < 0)
-            warning(Messages::W_NEG_VALUE);
+            ErrorHandling::warning(Messages::W_NEG_VALUE);
           return ret;
         }
         

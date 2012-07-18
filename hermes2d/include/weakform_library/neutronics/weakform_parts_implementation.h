@@ -114,7 +114,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {         
       
       if ((unsigned)ext->get_nf() != nu.size() || (unsigned)ext->get_nf() != Sigma_f.size())
-        error_function(Messages::E_INVALID_GROUP_INDEX);
+        ErrorHandling::error_function(Messages::E_INVALID_GROUP_INDEX);
       
       Real result(0);
       for (int i = 0; i < n; i++) 
