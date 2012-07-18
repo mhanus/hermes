@@ -2,6 +2,7 @@
 #include "hermes2d.h"
 
 using namespace Hermes::Hermes2D;
+using namespace Hermes::Mixins;
 using namespace WeakFormsH1;
 using namespace RefinementSelectors;
 
@@ -53,8 +54,6 @@ const double CONV_EXP = 1.0;                      // Default value is 1.0. This 
                                                   // cancidates in hp-adaptivity. See get_optimal_refinement() for details.
 const int NDOF_STOP = 60000;                      // Adaptivity process stops when the number of degrees of freedom grows
                                                   // over this limit. This is to prevent h-adaptivity to go on forever.
-Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
-                                                  // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
 
 // Problem parameters.
 double L = 30;                           // Edge of square.
@@ -85,7 +84,7 @@ int main(int argc, char* argv[])
   // Load the mesh.
   Mesh mesh;
   MeshReaderExodusII mloader;
-  if (!mloader.load("iron-water.e", &mesh)) error("ExodusII mesh load failed.");
+  if (!mloader.load("iron-water.e", &mesh)) Neutronics::ErrorHandling::error_function("ExodusII mesh load failed.");
    
   // Perform initial uniform mesh refinement.
   for (int i = 0; i < INIT_REF_NUM; i++) mesh.refine_all_elements();
@@ -134,7 +133,7 @@ int main(int argc, char* argv[])
   Solution<double> ref_sln;
   do
   {
-    info("---- Adaptivity step %d:", as);
+    Loggable::Static::info("---- Adaptivity step %d:", as);
 
     // Construct globally refined reference mesh and setup reference space.
     Space<double>* ref_space = Space<double>::construct_refined_space(&space);
@@ -144,7 +143,7 @@ int main(int argc, char* argv[])
     DiscreteProblem<double> dp(&wf, ref_space);
 
     // Perform Newton's iteration on reference emesh.
-    NewtonSolver<double> newton(&dp, matrix_solver);
+    NewtonSolver<double> newton(&dp);
     newton.set_verbose_output(false);
     
     try
@@ -154,7 +153,7 @@ int main(int argc, char* argv[])
     catch(Hermes::Exceptions::Exception e)
     {
       e.printMsg();
-      error("Newton's iteration failed.");
+      Neutronics::ErrorHandling::error_function("Newton's iteration failed.");
     }
     
     // Translate the resulting coefficient vector into the instance of Solution.
@@ -162,8 +161,8 @@ int main(int argc, char* argv[])
 
     // Project the fine mesh solution onto the coarse mesh.
     Solution<double> sln;
-    info("Projecting reference solution on coarse mesh.");
-    OGProjection<double>::project_global(&space, &ref_sln, &sln, matrix_solver); 
+    Loggable::Static::info("Projecting reference solution on coarse mesh.");
+    OGProjection<double>::project_global(&space, &ref_sln, &sln); 
 
     // Time measurement.
     cpu_time.tick();
@@ -173,15 +172,15 @@ int main(int argc, char* argv[])
     oview.show(&space);
 
     // Skip visualization time.
-    cpu_time.tick(Hermes::HERMES_SKIP);
+    cpu_time.tick(TimeMeasurable::HERMES_SKIP);
 
     // Calculate element errors and total error estimate.
-    info("Calculating error estimate."); 
+    Loggable::Static::info("Calculating error estimate."); 
     Adapt<double> adaptivity(&space);
     double err_est_rel = adaptivity.calc_err_est(&sln, &ref_sln) * 100;
 
     // Report results.
-    info("ndof_coarse: %d, ndof_fine: %d, err_est_rel: %g%%", 
+    Loggable::Static::info("ndof_coarse: %d, ndof_fine: %d, err_est_rel: %g%%", 
          space.get_num_dofs(), ref_space->get_num_dofs(), err_est_rel);
 
     // Time measurement.
@@ -194,13 +193,13 @@ int main(int argc, char* argv[])
     graph_cpu.save("conv_cpu_est.dat");
     
     // Skip graphing time.
-    cpu_time.tick(Hermes::HERMES_SKIP);
+    cpu_time.tick(TimeMeasurable::HERMES_SKIP);
 
     // If err_est too large, adapt the mesh.
     if (err_est_rel < ERR_STOP) done = true;
     else 
     {
-      info("Adapting coarse mesh.");
+      Loggable::Static::info("Adapting coarse mesh.");
       done = adaptivity.adapt(&selector, THRESHOLD, STRATEGY, MESH_REGULARITY);
       
       // Increase the counter of performed adaptivity steps.
@@ -215,7 +214,7 @@ int main(int argc, char* argv[])
   while (done == false);
   
   cpu_time.tick();
-  verbose("Total running time: %g s", cpu_time.accumulated());
+  Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
 
   // Show the reference solution - the final result.
   sview.set_title("Fine mesh solution");

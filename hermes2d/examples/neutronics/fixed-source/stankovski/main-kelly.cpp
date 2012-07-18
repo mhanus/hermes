@@ -278,7 +278,7 @@ int main(int argc, char* argv[])
     // Initial coefficient vector for the Newton's method.  
     
     // Perform Newton's iteration.
-    NewtonSolver<double> newton(&dp, matrix_solver);
+    NewtonSolver<double> newton(&dp);
     newton.set_verbose_output(true);
     newton.attach_timer(&cpu_time);
     
@@ -289,7 +289,7 @@ int main(int argc, char* argv[])
     catch(Hermes::Exceptions::Exception e)
     {
       e.printMsg();
-      error("Newton's iteration failed.");
+      error_function("Newton's iteration failed.");
     }
     
     // Translate the resulting coefficient vector into instances of Solution.
@@ -297,10 +297,10 @@ int main(int argc, char* argv[])
     
     cpu_time.tick();
 
-    info("\t --- time taken: %g s", cpu_time.accumulated());
-    info("\t -------- setup: %g s", newton.get_setup_time());
-    info("\t -------- assem: %g s", newton.get_assemble_time());
-    info("\t -------- solve: %g s", newton.get_solve_time());
+    Loggable::Static::info("\t --- time taken: %g s", cpu_time.accumulated());
+    Loggable::Static::info("\t -------- setup: %g s", newton.get_setup_time());
+    Loggable::Static::info("\t -------- assem: %g s", newton.get_assemble_time());
+    Loggable::Static::info("\t -------- solve: %g s", newton.get_solve_time());
 
     cpu_time.reset();
   }
@@ -309,8 +309,8 @@ int main(int argc, char* argv[])
   unsigned int run_number = 0;  
   for (std::set<int>::const_iterator run = run_cases.begin(); run != run_cases.end(); ++run, ++run_number)
   {
-    info("_______________________________________________________________________________________________");
-    info(("____________________________________________"+itos(*run)+"__________________________________________________").c_str());
+    Loggable::Static::info("_______________________________________________________________________________________________");
+    Loggable::Static::info(("____________________________________________"+itos(*run)+"__________________________________________________").c_str());
 
     // Norm in which to calculate errors.
     ProjNormType error_norm;
@@ -399,7 +399,7 @@ int main(int argc, char* argv[])
     int as = 1; bool done = false;
     do 
     {
-      info("---- Adaptivity step %d:", as);
+      Loggable::Static::info("---- Adaptivity step %d:", as);
                         
       // Initialize the discrete problem.
       DiscreteProblem<double> dp(&wf, spaces.get_const());
@@ -409,7 +409,7 @@ int main(int argc, char* argv[])
       // very large during the h-adaptivity, we destroy the NewtonSolver instance right after
       // it finishes its job to save some memory for error calculations.
 
-      NewtonSolver<double> *newton = new NewtonSolver<double>(&dp, matrix_solver);
+      NewtonSolver<double> *newton = new NewtonSolver<double>(&dp);
       newton->set_verbose_output(false);
     
       try
@@ -419,7 +419,7 @@ int main(int argc, char* argv[])
       catch(Hermes::Exceptions::Exception e)
       {
         e.printMsg();
-        error("Newton's iteration failed.");
+        error_function("Newton's iteration failed.");
       }
       
       // Translate the resulting coefficient vector into instances of Solution.
@@ -432,7 +432,7 @@ int main(int argc, char* argv[])
       if (HERMES_VISUALIZATION)
       {
         cpu_time.tick();
-        info("Visualizing.");
+        Loggable::Static::info("Visualizing.");
         if (SHOW_INTERMEDIATE_SOLUTIONS)
           views.show_solutions(solutions);
         if (SHOW_INTERMEDIATE_ORDERS)
@@ -441,7 +441,7 @@ int main(int argc, char* argv[])
       }
       
       // Calculate element errors.
-      info("Calculating error estimate.");
+      Loggable::Static::info("Calculating error estimate.");
       
       Hermes::vector<ProjNormType> norms;
       if (error_norm != HERMES_UNSET_NORM)
@@ -480,7 +480,7 @@ int main(int argc, char* argv[])
       {
         cpu_time.tick();
         
-        info("  --- Calculating group-wise errors of scalar flux.");
+        Loggable::Static::info("  --- Calculating group-wise errors of scalar flux.");
                     
   #ifdef USE_SPN        
   
@@ -516,22 +516,22 @@ int main(int argc, char* argv[])
         err_scalar_flux = sqrt(err_scalar_flux);
         
         if (error_flags & HERMES_TOTAL_ERROR_REL)
-          info("  --- total H1 relative error (w.r.t. reference solution): %g%%", err_scalar_flux*100);
+          Loggable::Static::info("  --- total H1 relative error (w.r.t. reference solution): %g%%", err_scalar_flux*100);
         else
-          info("  --- total H1 relative error (w.r.t. reference solution): %g", err_scalar_flux);
+          Loggable::Static::info("  --- total H1 relative error (w.r.t. reference solution): %g", err_scalar_flux);
         
         cpu_time.tick(Hermes::HERMES_SKIP);
       }
       
-      info("Calculating element error estimates for adaptivity and total error for each pseudo-flux approximation.");
+      Loggable::Static::info("Calculating element error estimates for adaptivity and total error for each pseudo-flux approximation.");
       Hermes::vector<double> err_est_rel;
       
       double err_solutions = adaptivity.calc_err_est(solutions, &err_est_rel, error_flags);
 
       if (error_flags & HERMES_TOTAL_ERROR_REL)
-        info("  --- total H1 relative error estimate: %g%%", err_solutions * 100);
+        Loggable::Static::info("  --- total H1 relative error estimate: %g%%", err_solutions * 100);
       else
-        info("  --- total H1 absolute error estimate: %g", err_solutions);
+        Loggable::Static::info("  --- total H1 absolute error estimate: %g", err_solutions);
       
       cpu_time.tick();
 
@@ -556,7 +556,7 @@ int main(int argc, char* argv[])
         done = true;
       else 
       {
-        info("Adapting the coarse meshes.");
+        Loggable::Static::info("Adapting the coarse meshes.");
         done = adaptivity.adapt(threshold, strategy, MESH_REGULARITY);        
       }
       
@@ -569,7 +569,7 @@ int main(int argc, char* argv[])
     graph_cpu_est.save(("conv_cpu_est_sp"+itos(SPN_ORDER)+".gp").c_str());
           
     cpu_time.tick();
-    verbose("Total running time: %g s", cpu_time.accumulated());
+    Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
     cpu_time.reset();
     
     //
@@ -613,13 +613,13 @@ int main(int argc, char* argv[])
     }
     
     for (int i = 0; i < 2*n_pins; i++)
-      info("Absorption rate integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, absorption_rates[i], 
+      Loggable::Static::info("Absorption rate integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, absorption_rates[i], 
           fabs(absorption_rates[i] - ref_integrated_absorption_rates[i])/ref_integrated_absorption_rates[i] * 100);
     for (int i = 0; i < 2*n_pins; i++)
-      info("Scalar flux integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, integrated_fluxes[i],
+      Loggable::Static::info("Scalar flux integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, integrated_fluxes[i],
           fabs(integrated_fluxes[i] - ref_integrated_fluxes[i])/ref_integrated_fluxes[i] * 100);
     for (int i = 0; i < 2*n_pins; i++)
-      info("Area of %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, areas[i],
+      Loggable::Static::info("Area of %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, areas[i],
           fabs(areas[i] - ref_regions_areas[i])/ref_regions_areas[i] * 100);
           
     for(unsigned int i = 0; i < N_EQUATIONS; i++)
