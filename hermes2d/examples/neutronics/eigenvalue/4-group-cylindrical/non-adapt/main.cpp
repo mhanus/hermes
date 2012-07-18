@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
   Hermes::vector<Solution<double>*> solutions(&sln1, &sln2, &sln3, &sln4);
   
   // Define initial conditions.
-  info("Setting initial conditions.");
+  Loggable::Static::info("Setting initial conditions.");
   ConstantSolution<double> iter1(&mesh, 1.0), 
                            iter2(&mesh, 1.0), 
                            iter3(&mesh, 1.0), 
@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
   Hermes::vector<const Space<double>*> c_spaces(&space1, &space2, &space3, &space4);
   
   int ndof = Space<double>::get_num_dofs(spaces);
-  info("ndof = %d.", ndof);
+  Loggable::Static::info("ndof = %d.", ndof);
   
   // Initialize views.
   Views::ScalarView view1("Neutron flux 1", new Views::WinGeom(0, 0, 320, 600));
@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
   // Initialize the FE problem.
   DiscreteProblem<double> dp(&wf, c_spaces);
   
-  NewtonSolver<double> solver(&dp, matrix_solver);
+  NewtonSolver<double> solver(&dp);
   solver.set_verbose_output(false);
   
   if (matrix_solver == Hermes::SOLVER_AZTECOO) 
@@ -142,9 +142,9 @@ int main(int argc, char* argv[])
   {
     solver_time.tick();
     
-    info("------------ Power iteration %d:", it);
+    Loggable::Static::info("------------ Power iteration %d:", it);
     
-    info("Newton's method (matrix problem solved by %s).", Hermes::MatrixSolverNames[matrix_solver].c_str());
+    Loggable::Static::info("Newton's method (matrix problem solved by %s).", Hermes::MatrixSolverNames[matrix_solver].c_str());
     
     // The matrix doesn't change within the power iteration loop, so we don't have to reassemble the Jacobian again.
     try
@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
     catch(Hermes::Exceptions::Exception e)
     {
       e.printMsg();
-      error("Newton's iteration failed.");
+      error_function("Newton's iteration failed.");
     }
     
     // Convert coefficients vector into a set of Solution pointers.
@@ -177,7 +177,7 @@ int main(int argc, char* argv[])
     SupportClasses::SourceFilter source_prev(iterates, matprop, fission_regions, HERMES_AXISYM_Y);
     
     double k_new = k_eff * (source.integrate() / source_prev.integrate());
-    info("Largest eigenvalue: %.8g, rel. difference from previous it.: %g", k_new, fabs((k_eff - k_new) / k_new));
+    Loggable::Static::info("Largest eigenvalue: %.8g, rel. difference from previous it.: %g", k_new, fabs((k_eff - k_new) / k_new));
     
     // Stopping criterion.
     if (fabs((k_eff - k_new) / k_new) < ERROR_STOP) done = true;
@@ -204,7 +204,7 @@ int main(int argc, char* argv[])
   solver_time.tick(Hermes::HERMES_SKIP);
   
   // Print timing information.
-  verbose("Average solver time for one power iteration: %g s", solver_time.accumulated() / it);
+  Loggable::Static::info("Average solver time for one power iteration: %g s", solver_time.accumulated() / it);
   
   // Show solutions.
   view1.show(&sln1);
@@ -216,7 +216,7 @@ int main(int argc, char* argv[])
   cpu_time.tick(Hermes::HERMES_SKIP);
 
   // Print timing information.
-  verbose("Total running time: %g s", cpu_time.accumulated());
+  Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
     
   // Wait for all views to be closed.
   Views::View::wait();

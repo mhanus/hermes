@@ -212,7 +212,7 @@ int main(int argc, char* argv[])
   int as = 1; bool done = false;
   do 
   {
-    info("---- Adaptivity step %d:", as);
+    Loggable::Static::info("---- Adaptivity step %d:", as);
     
     // Construct globally refined meshes and setup reference spaces on them.
      ConstantableSpacesVector ref_spaces(Space<double>::construct_refined_spaces(spaces.get()));
@@ -232,10 +232,10 @@ int main(int argc, char* argv[])
     for (unsigned int g = 0; g < matprop.get_G(); g++) 
       fine_solutions[g]->copy(power_iterates[g]);
 
-    info("Projecting fine mesh solutions on coarse meshes.");
+    Loggable::Static::info("Projecting fine mesh solutions on coarse meshes.");
     OGProjection<double>::project_global(spaces.get_const(), 
                                          projection_jacobian, projection_residual,
-                                         coarse_solutions, matrix_solver);
+                                         coarse_solutions);
 
     // Time measurement.
     cpu_time.tick();
@@ -248,7 +248,7 @@ int main(int argc, char* argv[])
     cpu_time.tick(Hermes::HERMES_SKIP);
 
     // Report the number of negative eigenfunction values.
-    info("Num. of negative values: %d, %d, %d, %d",
+    Loggable::Static::info("Num. of negative values: %d, %d, %d, %d",
          get_num_of_neg(coarse_solutions[0]), get_num_of_neg(coarse_solutions[1]),
          get_num_of_neg(coarse_solutions[2]), get_num_of_neg(coarse_solutions[3]));
 
@@ -262,7 +262,7 @@ int main(int argc, char* argv[])
     }
     
     // Calculate element errors and error estimates in H1 and L2 norms. Use the H1 estimate to drive adaptivity.
-    info("Calculating errors.");
+    Loggable::Static::info("Calculating errors.");
     Hermes::vector<double> h1_group_errors, l2_group_errors;
     double h1_err_est = adapt_h1.calc_err_est(coarse_solutions, fine_solutions, &h1_group_errors) * 100;
     double l2_err_est = adapt_l2.calc_err_est(coarse_solutions, fine_solutions, &l2_group_errors, false) * 100;
@@ -279,9 +279,9 @@ int main(int argc, char* argv[])
 
     report_errors("per-group err_est_coarse (H1): ", h1_group_errors);
     report_errors("per-group err_est_coarse (L2): ", l2_group_errors);
-    info("total err_est_coarse (H1): %g%%", h1_err_est);
-    info("total err_est_coarse (L2): %g%%", l2_err_est);
-    info("k_eff err: %g milli-percent", keff_err);
+    Loggable::Static::info("total err_est_coarse (H1): %g%%", h1_err_est);
+    Loggable::Static::info("total err_est_coarse (L2): %g%%", l2_err_est);
+    Loggable::Static::info("k_eff err: %g milli-percent", keff_err);
 
     // Add entry to DOF convergence graph.
     int ndof_coarse = Space<double>::get_num_dofs(spaces.get());
@@ -305,7 +305,7 @@ int main(int argc, char* argv[])
       done = true;
     else 
     {
-      info("Adapting the coarse mesh.");
+      Loggable::Static::info("Adapting the coarse mesh.");
       done = adapt_h1.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);
       if (Space<double>::get_num_dofs(spaces.get_const()) >= NDOF_STOP) 
         done = true;
@@ -324,7 +324,7 @@ int main(int argc, char* argv[])
   while(!done);
 
   cpu_time.tick();
-  verbose("Total running time: %g s", cpu_time.accumulated());
+  Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
   
   for (unsigned int g = 0; g < matprop.get_G(); g++) 
   {

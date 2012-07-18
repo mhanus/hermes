@@ -1,5 +1,6 @@
 #include "hermes2d.h"
 using namespace Hermes::Hermes2D;
+using namespace Hermes::Mixins;
 
 class ConstantableSpacesVector
 {

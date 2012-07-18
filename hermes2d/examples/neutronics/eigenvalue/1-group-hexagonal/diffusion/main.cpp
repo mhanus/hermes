@@ -183,10 +183,10 @@ int main(int argc, char* argv[])
     int as = 1; bool done = false;
     do 
     {
-      info("---- Adaptivity step %d:", as);
+      Loggable::Static::info("---- Adaptivity step %d:", as);
       
       // Initialize the fine mesh problem.
-      info("Solving on fine meshes.");
+      Loggable::Static::info("Solving on fine meshes.");
       
       ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get()));
             
@@ -195,13 +195,13 @@ int main(int argc, char* argv[])
       Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, fine_spaces.get_const(), matrix_solver, TOL_PIT_FM);
             
       report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces.get());
-      OGProjection<double>::project_global(spaces.get_const(), power_iterates, coarse_solutions, matrix_solver);
+      OGProjection<double>::project_global(spaces.get_const(), power_iterates, coarse_solutions);
       
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION && INTERMEDIATE_VISUALIZATION)
       {
         cpu_time.tick();
-        info("Visualizing.");
+        Loggable::Static::info("Visualizing.");
         views.show_solutions(coarse_solutions);
         views.show_orders(spaces.get());
         cpu_time.tick(Hermes::HERMES_SKIP);
@@ -209,7 +209,7 @@ int main(int argc, char* argv[])
       
       Adapt<double> adaptivity(spaces.get());
       
-      info("Calculating errors.");
+      Loggable::Static::info("Calculating errors.");
       Hermes::vector<double> h1_moment_errors;
       double h1_err_est = adaptivity.calc_err_est(coarse_solutions, power_iterates, &h1_moment_errors) * 100;
       
@@ -223,8 +223,8 @@ int main(int argc, char* argv[])
       double keff_err = 1e5*fabs(wf.get_keff() - REF_K_EFF)/REF_K_EFF;
       
       report_errors("odd moment err_est_coarse (H1): ", h1_moment_errors);
-      info("total err_est_coarse (H1): %g%%", h1_err_est);
-      info("k_eff err: %g milli-percent", keff_err);
+      Loggable::Static::info("total err_est_coarse (H1): %g%%", h1_err_est);
+      Loggable::Static::info("k_eff err: %g milli-percent", keff_err);
       
       // Add entry to DOF convergence graph.
       int ndof_coarse = Space<double>::get_num_dofs(spaces.get());
@@ -242,7 +242,7 @@ int main(int argc, char* argv[])
         done = true;
       else 
       {
-        info("Adapting the coarse meshes.");
+        Loggable::Static::info("Adapting the coarse meshes.");
         done = adaptivity.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);        
         if (Space<double>::get_num_dofs(spaces.get()) >= NDOF_STOP) 
           done = true;
@@ -275,11 +275,11 @@ int main(int argc, char* argv[])
     
     // Millipercent eigenvalue error w.r.t. the reference value (see physical_parameters.cpp). 
     double keff_err = 1e5*fabs(wf.get_keff() - REF_K_EFF)/REF_K_EFF;
-    info("K_eff error = %g pcm", keff_err);
+    Loggable::Static::info("K_eff error = %g pcm", keff_err);
   }
     
   cpu_time.tick();
-  verbose("Total running time: %g s", cpu_time.accumulated());
+  Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
   
   Views::View::wait(Views::HERMES_WAIT_KEYPRESS);
   
@@ -289,7 +289,7 @@ int main(int argc, char* argv[])
   views.show_solutions(power_iterates);
   
   SupportClasses::SourceFilter sf(power_iterates, *matprop, wf.get_fission_regions());
-  info("Total fission source by normalized flux: %g.", sf.integrate());
+  Loggable::Static::info("Total fission source by normalized flux: %g.", sf.integrate());
   
   delete matprop;
   
