@@ -323,7 +323,7 @@ int main(int argc, char* argv[])
     int as = 1; bool done = false;
     do 
     {
-      info("---- Adaptivity step %d:", as);
+      Loggable::Static::info("---- Adaptivity step %d:", as);
       
       // Initialize the fine mesh problem.
       int order_increase = 1;          // FIXME: This should be increase in the x-direction only.
@@ -336,7 +336,7 @@ int main(int argc, char* argv[])
       DiscreteProblem<double> dp(&wf, fine_spaces.get_const());
     
       // Perform Newton's iteration on reference mesh.
-      NewtonSolver<double> *newton = new NewtonSolver<double>(&dp, matrix_solver);
+      NewtonSolver<double> *newton = new NewtonSolver<double>(&dp);
       newton->set_verbose_output(false);
     
       try
@@ -346,7 +346,7 @@ int main(int argc, char* argv[])
       catch(Hermes::Exceptions::Exception e)
       {
         e.printMsg();
-        error("Newton's iteration failed.");
+        error_function("Newton's iteration failed.");
       }
       
       // Translate the resulting coefficient vector into instances of Solution.
@@ -357,13 +357,13 @@ int main(int argc, char* argv[])
       
       // Project the fine mesh solution onto the coarse mesh.
       report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces.get());
-      OGProjection<double>::project_global(spaces.get_const(), solutions, coarse_solutions, matrix_solver);
+      OGProjection<double>::project_global(spaces.get_const(), solutions, coarse_solutions);
 
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION)
       {
         cpu_time.tick();
-        info("Visualizing.");
+        Loggable::Static::info("Visualizing.");
         if (SHOW_INTERMEDIATE_SOLUTIONS)
           views.show_solutions(coarse_solutions);
         if (SHOW_INTERMEDIATE_ORDERS)
@@ -374,9 +374,9 @@ int main(int argc, char* argv[])
       cpu_time.tick();
       
       // Calculate element errors.
-      info("Calculating error estimate.");
+      Loggable::Static::info("Calculating error estimate.");
       
-      info("  --- Calculating total relative error of scalar flux approximation.");
+      Loggable::Static::info("  --- Calculating total relative error of scalar flux approximation.");
       
   #ifdef USE_SPN    
       Hermes::vector< MeshFunction<double>* >* scalar_fluxes = new Hermes::vector< MeshFunction<double>* >();    
@@ -400,7 +400,7 @@ int main(int argc, char* argv[])
       cpu_time.tick(Hermes::HERMES_SKIP);
       
       // Calculate error estimate for each solution component and the total error estimate.
-      info("  --- Calculating total relative error of the solution approximation.");
+      Loggable::Static::info("  --- Calculating total relative error of the solution approximation.");
           
       Adapt<double> adaptivity(spaces.get());  
       
@@ -418,8 +418,8 @@ int main(int argc, char* argv[])
                                                             HERMES_TOTAL_ERROR_REL | HERMES_ELEMENT_ERROR_ABS) * 100; 
               
       // Report results.
-      info("  --- H1 norm of rel. solution error estimates : %g%%", solution_err_est_rel);
-      info("  --- l2 norm of rel. errors in pointwise scalar fluxes: %g%%", pointwise_flux_rel_err_ref);
+      Loggable::Static::info("  --- H1 norm of rel. solution error estimates : %g%%", solution_err_est_rel);
+      Loggable::Static::info("  --- l2 norm of rel. errors in pointwise scalar fluxes: %g%%", pointwise_flux_rel_err_ref);
       
       // Add the results to convergence graphs.
       cpu_time.tick();
@@ -434,7 +434,7 @@ int main(int argc, char* argv[])
         done = true;
       else 
       {
-        info("Adapting the coarse meshes.");
+        Loggable::Static::info("Adapting the coarse meshes.");
         done = adaptivity.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);
       }
       
@@ -451,12 +451,12 @@ int main(int argc, char* argv[])
       {
         cpu_time.tick();
         total_cpu_time = cpu_time.accumulated();
-        verbose("Total running time: %g s", total_cpu_time);
+        Loggable::Static::info("Total running time: %g s", total_cpu_time);
         cpu_time.reset();
         
         if (HERMES_VISUALIZATION)
         {
-          info("Visualizing final solutions.");
+          Loggable::Static::info("Visualizing final solutions.");
           views.inspect_solutions(solutions);
           views.inspect_orders(fine_spaces.get());
         }
@@ -499,7 +499,7 @@ int main(int argc, char* argv[])
     DiscreteProblem<double> dp(&wf, spaces.get_const());
 
     // Perform Newton's iteration on reference mesh.
-    NewtonSolver<double> newton(&dp, matrix_solver);
+    NewtonSolver<double> newton(&dp);
     newton.set_verbose_output(true);
   
     try
@@ -509,7 +509,7 @@ int main(int argc, char* argv[])
     catch(Hermes::Exceptions::Exception e)
     {
       e.printMsg();
-      error("Newton's iteration failed.");
+      error_function("Newton's iteration failed.");
     }
     
     // Translate the resulting coefficient vector into instances of Solution.
@@ -517,12 +517,12 @@ int main(int argc, char* argv[])
     
     cpu_time.tick();
     total_cpu_time = cpu_time.accumulated();
-    verbose("Total running time: %g s", total_cpu_time);
+    Loggable::Static::info("Total running time: %g s", total_cpu_time);
     cpu_time.reset();
         
     if (HERMES_VISUALIZATION)
     {
-      info("Visualizing solutions.");
+      Loggable::Static::info("Visualizing solutions.");
       views.inspect_solutions(solutions);
       views.inspect_orders(spaces.get());
     }
@@ -562,7 +562,7 @@ int main(int argc, char* argv[])
 #endif
 
   std::cout << std::endl;
-  info("Calculating errors of pointwise fluxes w.r.t. ANISN and saving to %s (errors only: %s)", file.c_str(), file_err.c_str());
+  Loggable::Static::info("Calculating errors of pointwise fluxes w.r.t. ANISN and saving to %s (errors only: %s)", file.c_str(), file_err.c_str());
   std::cout << std::endl;
 
   FILE *fp = fopen(file.c_str(), "wt");
@@ -580,9 +580,9 @@ int main(int argc, char* argv[])
 
   for (unsigned int g = 0; g < N_GROUPS; g++)
   {
-    info(" GROUP %d ", g);
+    Loggable::Static::info(" GROUP %d ", g);
     std::cout << std::endl;
-    info("Scalar flux at");
+    Loggable::Static::info("Scalar flux at");
     
     fprintf(fp, " GROUP %d \n", g);
     fprintf(fp, "Scalar flux at\n");
@@ -591,7 +591,7 @@ int main(int argc, char* argv[])
     for (int i = 0; i < points_of_interest.size(); i++)
     {
       double pt_flux = scalar_fluxes->at(g)->get_pt_value(points_of_interest[i], 0);
-      info("\t x = %.3f : %g (error w.r.t ANISN = %g%%)", points_of_interest[i], pt_flux, fabs(pt_flux - ref_solutions[g][i])/ref_solutions[g][i] * 100);
+      Loggable::Static::info("\t x = %.3f : %g (error w.r.t ANISN = %g%%)", points_of_interest[i], pt_flux, fabs(pt_flux - ref_solutions[g][i])/ref_solutions[g][i] * 100);
       fprintf(fp, "\t x = %.3f : %g (error w.r.t ANISN = %g%%)\n", points_of_interest[i], pt_flux, fabs(pt_flux - ref_solutions[g][i])/ref_solutions[g][i] * 100);
       fprintf(fp_err, "%g\n", fabs(pt_flux - ref_solutions[g][i])/ref_solutions[g][i] * 100);
     }
