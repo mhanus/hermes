@@ -135,7 +135,7 @@ void setup_convergence_graph(GnuplotGraph *graph, const std::set<int>& run_cases
 int main(int argc, char* argv[])
 {  
   // Time measurement.
-  Hermes::TimePeriod cpu_time;
+  TimeMeasurable cpu_time;
   cpu_time.tick();
 
   // Load material data.
@@ -309,7 +309,7 @@ int main(int argc, char* argv[])
   #ifdef USE_SPN            
 
         cpu_time.tick();
-        Hermes::TimePeriod cpu_time2;
+        TimeMeasurable cpu_time2;
         cpu_time2.tick();
         
         info("  --- Calculating total relative error of scalar flux approximation.");

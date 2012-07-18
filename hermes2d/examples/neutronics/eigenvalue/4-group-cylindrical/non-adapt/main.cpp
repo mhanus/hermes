@@ -118,7 +118,7 @@ int main(int argc, char* argv[])
   std::cout << matprop;
   
   // Time measurement.
-  Hermes::TimePeriod cpu_time, solver_time;
+  TimeMeasurable cpu_time, solver_time;
   cpu_time.tick(); 
   
   // Initialize the weak formulation.

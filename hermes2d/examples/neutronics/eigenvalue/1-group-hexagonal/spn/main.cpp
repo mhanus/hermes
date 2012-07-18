@@ -63,7 +63,7 @@ double TOL_PIT_FM = 1e-6;   // Tolerance for eigenvalue convergence on the fine 
 int main(int argc, char* argv[])
 {
   // Time measurement.
-  Hermes::TimePeriod cpu_time;
+  TimeMeasurable cpu_time;
   cpu_time.tick();
    
   MaterialProperties::MaterialPropertyMaps matprop(N_GROUPS, SPN_ORDER, rm_map);
