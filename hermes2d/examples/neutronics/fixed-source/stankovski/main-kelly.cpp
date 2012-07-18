@@ -265,7 +265,7 @@ int main(int argc, char* argv[])
   setup_convergence_graph(&graph_cpu_est, run_cases);
   
   // Time measurement.
-  Hermes::TimePeriod cpu_time;
+  TimeMeasurable cpu_time;
   cpu_time.tick();
 
   if (CALCULATE_REFERENCE_SOLUTION)

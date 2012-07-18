@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
   SimpleGraph graph_dof, graph_cpu;
   
   // Time measurement.
-  Hermes::TimePeriod cpu_time;
+  TimeMeasurable cpu_time;
   cpu_time.tick();
 
   // Adaptivity loop:

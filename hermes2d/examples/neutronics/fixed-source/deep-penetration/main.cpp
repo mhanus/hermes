@@ -174,7 +174,7 @@ const double areas_dragon[2] = {
 int main(int argc, char* argv[])
 {
   // Time measurement.
-  Hermes::TimePeriod cpu_time;
+  TimeMeasurable cpu_time;
   double total_cpu_time;
   cpu_time.tick();
 
