@@ -410,10 +410,10 @@ namespace Hermes
 
         /// Lookup functions.
         /// Find a user marker for this internal marker.
-        StringValid get_user_marker(int internal_marker);
+        StringValid get_user_marker(int internal_marker) const;
 
         /// Find an internal marker for this user_marker.
-        IntValid get_internal_marker(std::string user_marker);
+        IntValid get_internal_marker(std::string user_marker) const;
 
         enum MarkersConversionType {
           HERMES_ELEMENT_MARKERS_CONVERSION = 0,
@@ -505,6 +505,8 @@ namespace Hermes
       friend class Views::ScalarView;
       friend class Views::Orderizer;
     public:
+      const ElementMarkersConversion &get_element_markers_conversion() const;
+      const BoundaryMarkersConversion &get_boundary_markers_conversion() const;
       ElementMarkersConversion &get_element_markers_conversion();
       BoundaryMarkersConversion &get_boundary_markers_conversion();
 
