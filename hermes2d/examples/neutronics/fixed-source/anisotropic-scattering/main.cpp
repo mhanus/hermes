@@ -184,7 +184,7 @@ const std::vector<rank1> ref_solutions = StdMultiArray<rank1>(
 int main(int argc, char* argv[])
 {
   // Time measurement.
-  Hermes::TimePeriod cpu_time;
+  TimeMeasurable cpu_time;
   double total_cpu_time;
   cpu_time.tick();
 
