@@ -272,7 +272,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
               keff(keff), geom_type(geom_type)
           {
             if (g >= iterates.size())
-              error_function(Messages::E_INVALID_GROUP_INDEX);
+              ErrorHandling::error_function(Messages::E_INVALID_GROUP_INDEX);
           }
           
           OuterIterationForm( const std::string& area, 
@@ -286,7 +286,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
               keff(keff), geom_type(geom_type)
           {
             if (g >= iterates.size())
-              error_function(Messages::E_INVALID_GROUP_INDEX);
+              ErrorHandling::error_function(Messages::E_INVALID_GROUP_INDEX);
           }
           
           OuterIterationForm( const Hermes::vector<std::string>& areas,
@@ -300,7 +300,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
               keff(keff), geom_type(geom_type)
           {
             if (g >= iterates.size())
-              error_function(Messages::E_INVALID_GROUP_INDEX);
+              ErrorHandling::error_function(Messages::E_INVALID_GROUP_INDEX);
           }
           
           template<typename Real>
