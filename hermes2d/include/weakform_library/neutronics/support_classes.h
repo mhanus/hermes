@@ -120,7 +120,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         virtual void post_init();
     };
   
-    class Visualization
+    class Visualization : public Hermes::Mixins::Loggable
     {
       protected:
         unsigned int n_equations, n_groups;
