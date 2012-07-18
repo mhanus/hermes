@@ -807,7 +807,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   {
     Quad2D* quad = &g_quad_2d_std;
     solution->set_quad_2d(quad);
-    Mesh* mesh = solution->get_mesh();
+    const Mesh* mesh = solution->get_mesh();
     
     std::set<int> markers;
     Hermes::vector<std::string>::const_iterator it = areas.begin();
@@ -898,7 +898,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     Quad2D* quad = &g_quad_2d_std;
     solution->set_quad_2d(quad);
-    Mesh* mesh = solution->get_mesh();
+    const Mesh* mesh = solution->get_mesh();
     
     std::set<int> markers;
     Hermes::vector<std::string>::const_iterator it = regions.begin();
