@@ -247,8 +247,8 @@ int main(int argc, char* argv[])
     unsigned int run_number = 0;
     for (std::set<int>::const_iterator run = run_cases.begin(); run != run_cases.end(); ++run, ++run_number)
     {
-      info("_______________________________________________________________________________");
-      info(("____________________________________"+itos(*run)+"__________________________________________").c_str());
+      Loggable::Static::info("_______________________________________________________________________________");
+      Loggable::Static::info(("____________________________________"+itos(*run)+"__________________________________________").c_str());
 
       ProjNormType error_norm = HERMES_H1_NORM;
 
@@ -256,7 +256,7 @@ int main(int argc, char* argv[])
       int as = 1; bool done = false;
       do 
       {
-        info("---- Adaptivity step %d:", as);
+        Loggable::Static::info("---- Adaptivity step %d:", as);
         
         // Initialize the fine mesh problem.
         ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get()));
@@ -267,7 +267,7 @@ int main(int argc, char* argv[])
         DiscreteProblem<double> dp(&wf, fine_spaces.get_const());
 
         // Perform Newton's iteration on reference mesh.
-        NewtonSolver<double> *newton = new NewtonSolver<double>(&dp, matrix_solver);
+        NewtonSolver<double> *newton = new NewtonSolver<double>(&dp);
         newton->set_verbose_output(false);
       
         try
@@ -277,7 +277,7 @@ int main(int argc, char* argv[])
         catch(Hermes::Exceptions::Exception e)
         {
           e.printMsg();
-          error("Newton's iteration failed.");
+          error_function("Newton's iteration failed.");
         }
         
         // Translate the resulting coefficient vector into instances of Solution.
@@ -288,13 +288,13 @@ int main(int argc, char* argv[])
         
         // Project the fine mesh solution onto the coarse mesh.
         report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces.get());
-        OGProjection<double>::project_global(spaces.get_const(), solutions, coarse_solutions, matrix_solver);
+        OGProjection<double>::project_global(spaces.get_const(), solutions, coarse_solutions);
 
         // View the coarse-mesh solutions and polynomial orders.
         if (HERMES_VISUALIZATION)
         {
           cpu_time.tick();
-          info("Visualizing.");
+          Loggable::Static::info("Visualizing.");
           if (SHOW_INTERMEDIATE_SOLUTIONS)
             views.show_solutions(coarse_solutions);
           if (SHOW_INTERMEDIATE_ORDERS)
@@ -303,7 +303,7 @@ int main(int argc, char* argv[])
         }
         
         // Calculate element errors.
-        info("Calculating error estimate."); 
+        Loggable::Static::info("Calculating error estimate."); 
         Adapt<double> adaptivity(spaces.get());
                 
   #ifdef USE_SPN            
@@ -312,7 +312,7 @@ int main(int argc, char* argv[])
         TimeMeasurable cpu_time2;
         cpu_time2.tick();
         
-        info("  --- Calculating total relative error of scalar flux approximation.");
+        Loggable::Static::info("  --- Calculating total relative error of scalar flux approximation.");
         Hermes::vector< MeshFunction<double>* > coarse_scalar_fluxes, fine_scalar_fluxes;
         // If error_norm == HERMES_L2_NORM, MomentFilter::get_scalar_fluxes can be used instead (derivatives will not be needed).
         MomentFilter::get_scalar_fluxes_with_derivatives(coarse_solutions, &coarse_scalar_fluxes, N_GROUPS);
@@ -340,11 +340,11 @@ int main(int argc, char* argv[])
         MomentFilter::clear_scalar_fluxes(&fine_scalar_fluxes);
         
         cpu_time2.tick();
-        info("  ------- Time taken (not included in the total running time): %g s", cpu_time2.last());
+        Loggable::Static::info("  ------- Time taken (not included in the total running time): %g s", cpu_time2.last());
         cpu_time.tick(Hermes::HERMES_SKIP);
         
         // Calculate error estimate for each solution component and the total error estimate.
-        info("  --- Calculating total relative error of pseudo-fluxes approximation.");
+        Loggable::Static::info("  --- Calculating total relative error of pseudo-fluxes approximation.");
         
         // Set the combination of error estimation form / error normalization form corresponding to the current run case.
         for (unsigned int g = 0; g < N_GROUPS; g++)
@@ -388,7 +388,7 @@ int main(int argc, char* argv[])
   #else // DIFFUSION
 
         if (*run != 0)
-          error("Only one run case possible for the diffusion model.");
+          error_function("Only one run case possible for the diffusion model.");
         
         double scalar_flux_err_est_rel = adaptivity.calc_err_est(coarse_solutions, solutions, NULL, true, 
                                                                  HERMES_TOTAL_ERROR_REL | HERMES_ELEMENT_ERROR_ABS) * 100;
@@ -402,10 +402,10 @@ int main(int argc, char* argv[])
         
         // Report results.
   #ifdef USE_SPN
-        info("  --- pseudo-fluxes rel. error estimate: %g%%", pseudo_flux_err_est_rel);
+        Loggable::Static::info("  --- pseudo-fluxes rel. error estimate: %g%%", pseudo_flux_err_est_rel);
   #endif
-        info("  --- scalar flux rel. error estimate: %g%%", scalar_flux_err_est_rel);
-        info("  --- integrated absorption rate rel. error estimate: %g%%", absorb_rate_err_est_rel);
+        Loggable::Static::info("  --- scalar flux rel. error estimate: %g%%", scalar_flux_err_est_rel);
+        Loggable::Static::info("  --- integrated absorption rate rel. error estimate: %g%%", absorb_rate_err_est_rel);
         
         // Add the results to convergence graphs.
         cpu_time.tick();
@@ -429,7 +429,7 @@ int main(int argc, char* argv[])
           done = true;
         else 
         {
-          info("Adapting the coarse meshes.");
+          Loggable::Static::info("Adapting the coarse meshes.");
           done = adaptivity.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);
         }
         
@@ -445,7 +445,7 @@ int main(int argc, char* argv[])
         else
         {
           cpu_time.tick();
-          verbose("Total running time: %g s", cpu_time.accumulated());
+          Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
           cpu_time.reset();
           
           // Visualization.
@@ -504,13 +504,13 @@ int main(int argc, char* argv[])
       }
       
       for (int i = 0; i < 2*n_pins; i++)
-        info("Absorption rate integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, absorption_rates[i], 
+        Loggable::Static::info("Absorption rate integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, absorption_rates[i], 
             fabs(absorption_rates[i] - ref_integrated_absorption_rates[i])/ref_integrated_absorption_rates[i] * 100);
       for (int i = 0; i < 2*n_pins; i++)
-        info("Scalar flux integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, integrated_fluxes[i],
+        Loggable::Static::info("Scalar flux integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, integrated_fluxes[i],
             fabs(integrated_fluxes[i] - ref_integrated_fluxes[i])/ref_integrated_fluxes[i] * 100);
       for (int i = 0; i < 2*n_pins; i++)
-        info("Area of %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, areas[i],
+        Loggable::Static::info("Area of %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, areas[i],
             fabs(areas[i] - ref_regions_areas[i])/ref_regions_areas[i] * 100);
         
       // Reset the meshes and spaces for the next run case.
@@ -543,7 +543,7 @@ int main(int argc, char* argv[])
     DiscreteProblem<double> dp(&wf, spaces.get_const());
   
     // Perform Newton's iteration on reference mesh.
-    NewtonSolver<double> newton(&dp, matrix_solver);
+    NewtonSolver<double> newton(&dp);
     newton.set_verbose_output(true);
   
     try
@@ -553,14 +553,14 @@ int main(int argc, char* argv[])
     catch(Hermes::Exceptions::Exception e)
     {
       e.printMsg();
-      error("Newton's iteration failed.");
+      error_function("Newton's iteration failed.");
     }
   
     // Translate the resulting coefficient vector into instances of Solution.
     Solution<double>::vector_to_solutions(newton.get_sln_vector(), spaces.get_const(), solutions);
     
     cpu_time.tick();
-    verbose("Total running time: %g s", cpu_time.accumulated());
+    Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
     
     //
     // Analysis of the solution (the same as if adaptivity was used).
@@ -602,13 +602,13 @@ int main(int argc, char* argv[])
     }
     
     for (int i = 0; i < 2*n_pins; i++)
-      info("Absorption rate integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, absorption_rates[i], 
+      Loggable::Static::info("Absorption rate integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, absorption_rates[i], 
           fabs(absorption_rates[i] - ref_integrated_absorption_rates[i])/ref_integrated_absorption_rates[i] * 100);
     for (int i = 0; i < 2*n_pins; i++)
-      info("Scalar flux integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, integrated_fluxes[i],
+      Loggable::Static::info("Scalar flux integrated over %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, integrated_fluxes[i],
           fabs(integrated_fluxes[i] - ref_integrated_fluxes[i])/ref_integrated_fluxes[i] * 100);
     for (int i = 0; i < 2*n_pins; i++)
-      info("Area of %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, areas[i],
+      Loggable::Static::info("Area of %s (DRAGON reg. #%d) = %f (error %g%%)", edit_regions[i].c_str(), i+1, areas[i],
           fabs(areas[i] - ref_regions_areas[i])/ref_regions_areas[i] * 100);
 
   } 
