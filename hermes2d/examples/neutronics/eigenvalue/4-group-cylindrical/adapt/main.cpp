@@ -87,7 +87,7 @@ double TOL_PIT_RM = 5e-6;   // Tolerance for eigenvalue convergence on the fine 
 int main(int argc, char* argv[])
 {
   // Time measurement.
-  Hermes::TimePeriod cpu_time;
+  TimeMeasurable cpu_time;
   cpu_time.tick();
   
   // Load material data (last argument specifies a list of material, which is required

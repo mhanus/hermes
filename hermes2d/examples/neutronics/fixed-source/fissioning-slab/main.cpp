@@ -329,7 +329,7 @@ const double diag_flux_dragon[N_GROUPS][n_diag_pts] =
 int main(int argc, char* argv[])
 {
   // Time measurement.
-  Hermes::TimePeriod cpu_time;
+  TimeMeasurable cpu_time;
   double total_cpu_time;
   cpu_time.tick();
 
