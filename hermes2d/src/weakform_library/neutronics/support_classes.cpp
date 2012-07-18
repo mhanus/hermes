@@ -26,7 +26,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {
       num = matprop.get_G();
       if(num > 10)
-        error_function("Unable to create an instance of SourceFilter: Hermes is currently able to handle"
+        ErrorHandling::error_function("Unable to create an instance of SourceFilter: Hermes is currently able to handle"
               "only 10 functions in filters.");
       
       for (int i = 0; i < 10; i++)
@@ -42,7 +42,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void SourceFilter::assign_solutions(const Hermes::vector< Solution<double>* >& solutions)
     {
       if (solutions.size() != (unsigned) num)
-        error_function("SourceFilter: Number of solutions does not match the size of data.");
+        ErrorHandling::error_function("SourceFilter: Number of solutions does not match the size of data.");
       
       free();
       for (int i = 0; i < num; i++)
@@ -54,7 +54,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void SourceFilter::assign_solutions(const Hermes::vector< MeshFunction<double>* >& solutions)
     {
       if (solutions.size() != (unsigned) num)
-        error_function("SourceFilter: Number of solutions does not match the size of data.");
+        ErrorHandling::error_function("SourceFilter: Number of solutions does not match the size of data.");
       
       free();
       for (int i = 0; i < num; i++)
@@ -358,13 +358,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     double Coeffs::system_matrix(unsigned int m, unsigned int n, unsigned int k_of_Sigma_t2k)
     {
       if (m >= N_MAX || n >= N_MAX)
-        error_function("For the maximum implemented SPN order (N = %d), both m, n must lie in the range [0,%d]."
+        ErrorHandling::error_function("For the maximum implemented SPN order (N = %d), both m, n must lie in the range [0,%d]."
               "Entered (m,n) = (%d,%d).", 2*N_MAX-1, N_MAX-1, m, n);
       
       if (m > n) std::swap(m,n);
       
       if (k_of_Sigma_t2k > n)
-        error_function("In the m-th SPN equation, m = %d, the coefficients at the unknown generalized fluxes involve"
+        ErrorHandling::error_function("In the m-th SPN equation, m = %d, the coefficients at the unknown generalized fluxes involve"
               "Sigma_tk with k up to %d. Entered k = %d.", n, 2*n, 2*k_of_Sigma_t2k);
       
       return SYSTEM_MATRIX[m][n-m][k_of_Sigma_t2k];
@@ -373,7 +373,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     double Coeffs::D_grad_F(unsigned int m, unsigned int n)
     {
       if (m >= N_MAX || n >= N_MAX)
-        error_function("For the maximum implemented SPN order (N = %d), both m, n must lie in the range [0,%d]."
+        ErrorHandling::error_function("For the maximum implemented SPN order (N = %d), both m, n must lie in the range [0,%d]."
               "Entered (m,n) = (%d,%d).", 2*N_MAX-1, N_MAX-1, m, n);
       
       if (m > n) std::swap(m,n); 
@@ -383,10 +383,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     double Coeffs::even_moment(unsigned int m, unsigned int n)
     {
       if (m >= N_MAX)
-        error_function("For the maximum implemented SPN order (N = %d), there are %d even moment(s)."
+        ErrorHandling::error_function("For the maximum implemented SPN order (N = %d), there are %d even moment(s)."
               "Tried to access moment #%d.", 2*N_MAX-1, N_MAX, m+1);
       if (n > N_MAX || n < m)
-        error_function("The even moment #%d must be expressed in terms of %d odd moment(s), starting with %d."
+        ErrorHandling::error_function("The even moment #%d must be expressed in terms of %d odd moment(s), starting with %d."
               "Tried to use odd moment #%d.", m+1, N_MAX-m, m+1, n+1);
               
       return EVEN_MOMENTS[m][n-m];
@@ -488,7 +488,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void MomentFilter::OddMomentVal::precalculate(int order, int mask)
     {
       if (mask & (H2D_FN_DX | H2D_FN_DY | H2D_FN_DXX | H2D_FN_DYY | H2D_FN_DXY))
-        error_function("MomentFilter::OddMomentVal not defined for derivatives.");
+        ErrorHandling::error_function("MomentFilter::OddMomentVal not defined for derivatives.");
       
       Quad2D* quad = this->quads[this->cur_quad];
       int np = quad->get_num_points(order, this->mode);
@@ -678,12 +678,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {
       if ((moment % 2) != 0 || moment >= n_moments)
       {
-        warning("Invalid moment specified for Visualization::show_even_flux_moment.");
+        ErrorHandling::warning("Invalid moment specified for Visualization::show_even_flux_moment.");
         return;
       }
       if (group >= n_groups)
       {
-        warning("Invalid group specified for Visualization::show_even_flux_moment.");
+        ErrorHandling::warning("Invalid group specified for Visualization::show_even_flux_moment.");
         return;
       }
       MomentFilter::EvenMomentVal mf(moment, group, n_groups, solutions);
@@ -695,12 +695,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {
       if ((moment % 2) != 1 || moment >= n_moments)
       {
-        warning("Invalid moment specified for Visualization::show_odd_flux_moment.");
+        ErrorHandling::warning("Invalid moment specified for Visualization::show_odd_flux_moment.");
         return;
       }
       if (group >= n_groups)
       {
-        warning("Invalid group specified for Visualization::show_odd_flux_moment.");
+        ErrorHandling::warning("Invalid group specified for Visualization::show_odd_flux_moment.");
         return;
       }
       MomentFilter::OddMomentVal mfx(0, moment, group, n_groups, solutions, &matprop);
@@ -858,7 +858,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                        double integrated_fission_source) const
   {
     if (integrated_fission_source < 1e-12)
-      error_function("PostProcessor::normalize_to_unit_fission_source : Invalid fission source.");
+      ErrorHandling::error_function("PostProcessor::normalize_to_unit_fission_source : Invalid fission source.");
      
     Hermes::vector< Solution<double>* >::iterator sln = solutions->begin();
     for ( ; sln != solutions->end(); ++sln)
@@ -894,7 +894,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                                       unsigned int this_group, int other_group) const
   {    
     if (this_group > matprop.get_G())
-      error_function(Messages::E_INVALID_GROUP_INDEX);
+      ErrorHandling::error_function(Messages::E_INVALID_GROUP_INDEX);
     
     Quad2D* quad = &g_quad_2d_std;
     solution->set_quad_2d(quad);
@@ -948,7 +948,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             break;
           case IN_SCATTERING:
             if (other_group > (int) matprop.get_G() || other_group < 0)
-              error_function(Messages::E_INVALID_GROUP_INDEX);
+              ErrorHandling::error_function(Messages::E_INVALID_GROUP_INDEX);
             
             xsec = matprop.compute_Sigma_s(mat)[this_group][other_group];
             break;
@@ -957,7 +957,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             break;
           case OUT_SCATTERING:
             if (other_group > (int) matprop.get_G() || other_group < 0)
-              error_function(Messages::E_INVALID_GROUP_INDEX);
+              ErrorHandling::error_function(Messages::E_INVALID_GROUP_INDEX);
             
             xsec = matprop.compute_Sigma_s(mat)[other_group][this_group];
             break;
