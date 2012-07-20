@@ -79,12 +79,12 @@ namespace Hermes
       /// Constructor.
       /// Parameter start_from_zero_K_vector: if set to true, the last K_vector will NOT be used
       /// as an initial guess for the Newton's method, instead zero vector will be used.
-      RungeKutta(const WeakForm<Scalar>* wf, Hermes::vector<Space<Scalar> *> spaces, ButcherTable* bt,
-          bool start_from_zero_K_vector = false, bool residual_as_vector = true);
+      RungeKutta(const WeakForm<Scalar>* wf, Hermes::vector<const Space<Scalar> *> spaces, ButcherTable* bt,
+          bool start_from_zero_K_vector = false, bool residual_as_vector = true, bool block_diagonal_jacobian = false);
 
       /// Constructor for one equation.
-      RungeKutta(const WeakForm<Scalar>* wf, Space<Scalar>* space, ButcherTable* bt,
-        bool start_from_zero_K_vector = false, bool residual_as_vector = true);
+      RungeKutta(const WeakForm<Scalar>* wf, const Space<Scalar>* space, ButcherTable* bt,
+        bool start_from_zero_K_vector = false, bool residual_as_vector = true, bool block_diagonal_jacobian = false);
 
       /// Projections will be global orthogonal (default)
       void use_global_projections();
@@ -160,9 +160,10 @@ namespace Hermes
       /// matrix, Y the coefficient vector, and F the (nonlinear) stationary residual.
       /// Below, "stage_wf_left" and "stage_wf_right" refer to the left-hand side M\dot{Y}
       /// and right-hand side F(t, Y) of the above equation, respectively.
-      void create_stage_wf(unsigned int size, double current_time, double time_step,
-                           Hermes::vector<Solution<Scalar>*> slns_time_prev,
-                           bool block_diagonal_jacobian);
+      void create_stage_wf(unsigned int size, bool block_diagonal_jacobian);
+      
+      /// Updates the augmented weak formulation.
+      void update_stage_wf(double current_time, double time_step, Hermes::vector<Solution<Scalar>*> slns_time_prev);
 
       // Prepare u_ext_vec.
       void prepare_u_ext_vec(double time_step);
@@ -194,13 +195,16 @@ namespace Hermes
       // For the main part equation (written on the right),
       /// size num_stages*ndof times num_stages*ndof.
       WeakForm<Scalar> stage_wf_right;
+      DiscreteProblem<Scalar>* stage_dp_right;
 
       /// For the matrix M (size ndof times ndof).
       WeakForm<Scalar> stage_wf_left;
+      DiscreteProblem<Scalar>* stage_dp_left;
 
       bool start_from_zero_K_vector;
 
       bool residual_as_vector;
+      Hermes::vector<Solution<Scalar>*> residuals_vector;
 
       /// Vector K_vector of length num_stages * ndof. will represent
       /// the 'K_i' vectors in the usual R-K notation.
