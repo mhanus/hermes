@@ -5,18 +5,18 @@
 using namespace Hermes;
 using namespace Hermes::Hermes2D;
 using namespace Hermes::Hermes2D::Views;
-using namespace Hermes::Hermes2D::RefinementSelectors;
 
 class CustomWeakForm : public WeakForm<double>
 {
 public:
-  CustomWeakForm(std::string left_bottom_bnd_part, Mesh* mesh);
+  CustomWeakForm(const std::string& left_bottom_bnd_part, Mesh* mesh);
 
 private:
   class CustomMatrixFormVol : public MatrixFormVol<double>
   {
   public:
-    CustomMatrixFormVol(int i, int j) : MatrixFormVol<double>(i, j) {};
+    CustomMatrixFormVol(int i, int j) : MatrixFormVol<double>(i, j)
+    {};
 
     template<typename Real, typename Scalar>
     Scalar matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u, Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
@@ -31,7 +31,8 @@ private:
   class CustomVectorFormVol : public VectorFormVol<double>
   {
   public:
-    CustomVectorFormVol(int i) : VectorFormVol<double>(i) {};
+    CustomVectorFormVol(int i) : VectorFormVol<double>(i)
+    {};
 
     template<typename Real, typename Scalar>
     Scalar vector_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
@@ -49,7 +50,8 @@ private:
   class CustomMatrixFormSurface : public MatrixFormSurf<double>
   {
   public:
-    CustomMatrixFormSurface(int i, int j) : MatrixFormSurf<double>(i, j, HERMES_ANY) {};
+    CustomMatrixFormSurface(int i, int j) : MatrixFormSurf<double>(i, j, HERMES_ANY)
+    {};
 
     template<typename Real, typename Scalar>
     Scalar matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u, Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
@@ -65,7 +67,8 @@ private:
   class CustomMatrixFormInterface : public MatrixFormSurf<double>
   {
   public:
-    CustomMatrixFormInterface(int i, int j) : MatrixFormSurf<double>(i, j, H2D_DG_INNER_EDGE) {};
+    CustomMatrixFormInterface(int i, int j) : MatrixFormSurf<double>(i, j, H2D_DG_INNER_EDGE) 
+    {};
 
     template<typename Real, typename Scalar>
     Scalar matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u, Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
@@ -81,7 +84,9 @@ private:
   class CustomVectorFormSurface : public VectorFormSurf<double>
   {
   public:
-    CustomVectorFormSurface(int i, std::string left_bottom_bnd_part) : VectorFormSurf<double>(i, HERMES_ANY), left_bottom_bnd_part(left_bottom_bnd_part) {};
+    CustomVectorFormSurface(int i, const std::string& left_bottom_bnd_part) : VectorFormSurf<double>(i, HERMES_ANY),
+      left_bottom_bnd_part(left_bottom_bnd_part) 
+    {};
 
     virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
 
