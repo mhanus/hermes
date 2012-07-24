@@ -9,7 +9,7 @@ using namespace Hermes::Hermes2D::Views;
 class CustomWeakForm : public WeakForm<double>
 {
 public:
-  CustomWeakForm(const std::string& left_bottom_bnd_part, Mesh* mesh);
+  CustomWeakForm(const std::string& inflow_boundary, Mesh* mesh);
 
 private:
   class CustomMatrixFormVol : public MatrixFormVol<double>
@@ -21,11 +21,23 @@ private:
     template<typename Real, typename Scalar>
     Scalar matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u, Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
 
-    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
+    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, ExtData<double> *ext) const
+    {
+      return matrix_form<double, double>(n, wt, u_ext, u, v, e, ext);
+    }
 
-    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;
+    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
+    {
+      return matrix_form<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
+    }
 
-    MatrixFormVol<double>* clone();
+    MatrixFormVol<double>* clone()
+    {
+      return new CustomWeakForm::CustomMatrixFormVol(*this);
+    }
+    
+    template<typename Real, typename Scalar>
+    Scalar b(Real x, Real y) const;
   };
 
   class CustomVectorFormVol : public VectorFormVol<double>
@@ -37,14 +49,23 @@ private:
     template<typename Real, typename Scalar>
     Scalar vector_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
 
-    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
+    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v, Geom<double> *e, ExtData<double> *ext) const
+    {
+      return vector_form<double, double>(n, wt, u_ext, v, e, ext);
+    }
 
-    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;
+    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
+    {
+      return vector_form<Ord, Ord>(n, wt, u_ext, v, e, ext);
+    }    
+    
+    VectorFormVol<double>* clone()
+    {
+      return new CustomWeakForm::CustomVectorFormVol(*this);
+    }
 
-    VectorFormVol<double>* clone();
-
-    template<typename Real>
-    Real F(Real x, Real y) const;
+    double F(double x, double y) const;
+    Ord F(Ord x, Ord y) const;
   };
 
   class CustomMatrixFormSurface : public MatrixFormSurf<double>
@@ -56,12 +77,20 @@ private:
     template<typename Real, typename Scalar>
     Scalar matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u, Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
 
-    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
+    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, ExtData<double> *ext) const
+    {
+      return matrix_form<double, double>(n, wt, u_ext, u, v, e, ext);
+    }    
 
-    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;
-
-    MatrixFormSurf<double>* clone();
-
+    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
+    {
+      return matrix_form<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
+    }
+    
+    MatrixFormSurf<double>* clone()
+    {
+      return new CustomWeakForm::CustomMatrixFormSurface(*this);
+    }
   };
 
   class CustomMatrixFormInterface : public MatrixFormSurf<double>
@@ -73,35 +102,43 @@ private:
     template<typename Real, typename Scalar>
     Scalar matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u, Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
 
-    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
+    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, ExtData<double> *ext) const
+    {
+      return matrix_form<double, double>(n, wt, u_ext, u, v, e, ext);
+    }
 
-    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;
+    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
+    {
+      return matrix_form<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
+    }
 
-    MatrixFormSurf<double>* clone();
-
+    MatrixFormSurf<double>* clone()
+    {
+      return new CustomWeakForm::CustomMatrixFormInterface(*this);
+    }
   };
 
   class CustomVectorFormSurface : public VectorFormSurf<double>
   {
   public:
-    CustomVectorFormSurface(int i, const std::string& left_bottom_bnd_part) : VectorFormSurf<double>(i, HERMES_ANY),
-      left_bottom_bnd_part(left_bottom_bnd_part) 
+    CustomVectorFormSurface(int i, const std::string& inflow_boundary) : VectorFormSurf<double>(i, HERMES_ANY),
+      inflow_boundary(inflow_boundary) 
     {};
 
     virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
 
     virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;
 
-    VectorFormSurf<double>* clone();
-
-    template<typename Real>
-    Real F(Real x, Real y) const;
+    VectorFormSurf<double>* clone()
+    {
+      return new CustomWeakForm::CustomVectorFormSurface(*this);
+    }
 
     template<typename Real, typename Scalar>
-    Scalar g(std::string ess_bdy_marker, Real x, Real y) const;
+    Scalar g(const std::string& bdy_marker, Real x, Real y) const;
     
     // Member.
-    std::string left_bottom_bnd_part;
+    std::string inflow_boundary;
   };
   
   double calculate_a_dot_v(double x, double y, double vx, double vy) const;
