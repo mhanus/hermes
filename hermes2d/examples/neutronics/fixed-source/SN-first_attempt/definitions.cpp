@@ -1,12 +1,12 @@
 #include "definitions.h"
 
-CustomWeakForm::CustomWeakForm(const std::string& left_bottom_bnd_part, Mesh* mesh) : WeakForm<double>(1), mesh(mesh)
+CustomWeakForm::CustomWeakForm(const std::string& inflow_boundary, Mesh* mesh) : WeakForm<double>(1), mesh(mesh)
 {
     add_matrix_form(new CustomMatrixFormVol(0, 0));
     add_vector_form(new CustomVectorFormVol(0));
     add_matrix_form_surf(new CustomMatrixFormSurface(0, 0));
     add_matrix_form_surf(new CustomMatrixFormInterface(0, 0));
-    add_vector_form_surf(new CustomVectorFormSurface(0, left_bottom_bnd_part));
+    add_vector_form_surf(new CustomVectorFormSurface(0, inflow_boundary));
 }
 
 template<typename Real, typename Scalar>
@@ -15,25 +15,14 @@ Scalar CustomWeakForm::CustomMatrixFormVol::matrix_form(int n, double *wt, Func<
 {
   Scalar result = Scalar(0);
   for (int i = 0; i < n; i++)
-    result += -wt[i] * u->val[i] * static_cast<CustomWeakForm*>(wf)->calculate_a_dot_v(e->x[i], e->y[i], v->dx[i], v->dy[i]);
+    result += wt[i] * u->val[i] * ( -static_cast<CustomWeakForm*>(wf)->calculate_a_dot_v(e->x[i], e->y[i], v->dx[i], v->dy[i]) + b<Real,Scalar>(e->x[i],e->y[i]) * v->val[i] );
   return result;
 }
 
-double CustomWeakForm::CustomMatrixFormVol::value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v,
-                                            Geom<double> *e, ExtData<double> *ext) const
+template<typename Real, typename Scalar>
+Scalar CustomWeakForm::CustomMatrixFormVol::b(Real x, Real y) const
 {
-  return matrix_form<double, double>(n, wt, u_ext, u, v, e, ext);
-}
-
-Ord CustomWeakForm::CustomMatrixFormVol::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v,
-                                       Geom<Ord> *e, ExtData<Ord> *ext) const
-{
-  return matrix_form<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
-}
-
-MatrixFormVol<double>* CustomWeakForm::CustomMatrixFormVol::clone()
-{
-  return new CustomWeakForm::CustomMatrixFormVol(*this);
+  return Real(1);
 }
 
 template<typename Real, typename Scalar>
@@ -46,27 +35,14 @@ Scalar CustomWeakForm::CustomVectorFormVol::vector_form(int n, double *wt, Func<
   return result;
 }
 
-double CustomWeakForm::CustomVectorFormVol::value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                                            Geom<double> *e, ExtData<double> *ext) const
+double CustomWeakForm::CustomVectorFormVol::F(double x, double y) const
 {
-  return vector_form<double, double>(n, wt, u_ext, v, e, ext);
+  return 1 + (3*M_PI*(1 + x)*(1 + y)*std::cos((M_PI*(1 + x)*std::pow(1 + y,2))/8.))/20. + (M_PI*std::pow(1 + y,2)*std::cos((M_PI*(1 + x)*std::pow(1 + y,2))/8.))/10. + std::sin((M_PI*(1 + x)*std::pow(1 + y,2))/8.);
 }
 
-Ord CustomWeakForm::CustomVectorFormVol::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-                                       Geom<Ord> *e, ExtData<Ord> *ext) const
+Ord CustomWeakForm::CustomVectorFormVol::F(Ord x, Ord y) const
 {
-  return vector_form<Ord, Ord>(n, wt, u_ext, v, e, ext);
-}
-
-VectorFormVol<double>* CustomWeakForm::CustomVectorFormVol::clone()
-{
-  return new CustomWeakForm::CustomVectorFormVol(*this);
-}
-
-template<typename Real>
-Real CustomWeakForm::CustomVectorFormVol::F(Real x, Real y) const
-{
-  return Real(0);
+  return Ord(0);
 }
 
 template<typename Real, typename Scalar>
@@ -83,23 +59,6 @@ Scalar CustomWeakForm::CustomMatrixFormSurface::matrix_form(int n, double *wt, F
   return result;
 }
 
-double CustomWeakForm::CustomMatrixFormSurface::value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v,
-                                                Geom<double> *e, ExtData<double> *ext) const
-{
-  return matrix_form<double, double>(n, wt, u_ext, u, v, e, ext);
-}
-
-Ord CustomWeakForm::CustomMatrixFormSurface::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v,
-                                           Geom<Ord> *e, ExtData<Ord> *ext) const
-{
-  return matrix_form<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
-}
-
-MatrixFormSurf<double>* CustomWeakForm::CustomMatrixFormSurface::clone()
-{
-  return new CustomWeakForm::CustomMatrixFormSurface(*this);
-}
-
 template<typename Real, typename Scalar>
 Scalar CustomWeakForm::CustomMatrixFormInterface::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u, Func<Real> *v,
                                                         Geom<Real> *e, ExtData<Scalar> *ext) const
@@ -112,23 +71,6 @@ Scalar CustomWeakForm::CustomMatrixFormInterface::matrix_form(int n, double *wt,
     result += wt[i] * static_cast<CustomWeakForm*>(wf)->upwind_flux(u->get_val_central(i), u->get_val_neighbor(i), a_dot_n) * jump_v;
   }
   return result;
-}
-
-double CustomWeakForm::CustomMatrixFormInterface::value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v,
-                                                  Geom<double> *e, ExtData<double> *ext) const
-{
-  return matrix_form<double, double>(n, wt, u_ext, u, v, e, ext);
-}
-
-Ord CustomWeakForm::CustomMatrixFormInterface::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v,
-                                             Geom<Ord> *e, ExtData<Ord> *ext) const
-{
-  return matrix_form<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
-}
-
-MatrixFormSurf<double>* CustomWeakForm::CustomMatrixFormInterface::clone()
-{
-  return new CustomWeakForm::CustomMatrixFormInterface(*this);
 }
 
 double CustomWeakForm::CustomVectorFormSurface::value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
@@ -152,32 +94,22 @@ Ord CustomWeakForm::CustomVectorFormSurface::ord(int n, double *wt, Func<Ord> *u
   return result;
 }
 
-VectorFormSurf<double>* CustomWeakForm::CustomVectorFormSurface::clone()
-{
-  return new CustomWeakForm::CustomVectorFormSurface(*this);
-}
-
-template<typename Real>
-Real CustomWeakForm::CustomVectorFormSurface::F(Real x, Real y) const
-{
-  return 0;
-}
-
 template<typename Real, typename Scalar>
-Scalar CustomWeakForm::CustomVectorFormSurface::g(std::string ess_bdy_marker, Real x, Real y) const
+Scalar CustomWeakForm::CustomVectorFormSurface::g(const std::string& bdy_marker, Real x, Real y) const
 {
-  if(ess_bdy_marker == left_bottom_bnd_part) return 1; else return 0;
+  if(bdy_marker == inflow_boundary) return 1; else return 0;
 }
 
 double CustomWeakForm::calculate_a_dot_v(double x, double y, double vx, double vy) const
 {
-  double norm = std::max<double>(1e-12, std::sqrt(sqr(x) + sqr(y)));
-  return -y/norm*vx + x/norm*vy;
+  //double norm = std::max<double>(1e-12, std::sqrt(sqr(x) + sqr(y)));
+  //return -y/norm*vx + x/norm*vy;
+  return 0.8*vx + 0.6*vy;
 }
 
 Ord CustomWeakForm::calculate_a_dot_v(Ord x, Ord y, Ord vx, Ord vy) const
 {
-  return Ord(10);
+  return Ord(1);
 }
 
 double CustomWeakForm::upwind_flux(double u_cent, double u_neib, double a_dot_n) const
