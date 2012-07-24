@@ -20,7 +20,7 @@ const bool HERMES_VISUALIZATION = true;
 // Set the following flag to "true" to enable VTK output.
 const bool VTK_VISUALIZATION = false;
 // Number of initial uniform mesh refinements.
-const int INIT_REF = 2;
+const int INIT_REF = 6;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
 const int P_INIT = 0;
 
@@ -38,7 +38,7 @@ int main(int argc, char* args[])
   // Load the mesh.
   Mesh mesh;
   MeshReaderH2D mloader;
-  mloader.load("square.mesh", &mesh);
+  mloader.load("square2.mesh", &mesh);
 
   // Perform initial mesh refinement.
   for (int i=0; i<INIT_REF; i++) mesh.refine_all_elements();
@@ -56,13 +56,14 @@ int main(int argc, char* args[])
   Solution<double> sln;
 
   // Initialize the weak formulation.
-  CustomWeakForm wf("Bdy_bottom_left", &mesh);
+  CustomWeakForm wf("Bdy_in", &mesh);
 
   ScalarView view1("Solution", new WinGeom(900, 0, 450, 350));
   view1.fix_scale_width(60);
  
   // Initialize the FE problem.
   DiscreteProblem<double> dp(&wf, &space);
+  dp.set_fvm();
 
   // Set up the solver, matrix, and rhs according to the solver selection.
   SparseMatrix<double>* matrix = create_matrix<double>(matrix_solver_type);
@@ -71,15 +72,24 @@ int main(int argc, char* args[])
 
   info("Assembling (ndof: %d).", ndof);
   cpu_time.tick();
+  
     dp.assemble(matrix, rhs);
+
   cpu_time.tick();
   info("Time taken: %lf s", cpu_time.last());
   
-  // Solve the linear system. If successful, obtain the solution.
-  if(solver->solve())
-    Solution<double>::vector_to_solution(solver->get_sln_vector(), &space, &sln);
-  else
-    throw Hermes::Exceptions::Exception("Matrix solver failed.\n");
+  
+  info("Solving.");
+  cpu_time.tick();
+
+    // Solve the linear system. If successful, obtain the solution.
+    if(solver->solve())
+      Solution<double>::vector_to_solution(solver->get_sln_vector(), &space, &sln);
+    else
+      throw Hermes::Exceptions::Exception("Matrix solver failed.\n");
+  
+  cpu_time.tick();
+  info("Time taken: %lf s", cpu_time.last());
 
   // View the coarse mesh solution.
   view1.show(&sln);
@@ -88,6 +98,9 @@ int main(int argc, char* args[])
   delete solver;
   delete matrix;
   delete rhs;
+  
+  cpu_time.tick();
+  info("Total running time: %g s", cpu_time.accumulated());
 
   // Wait for keyboard or mouse input.
   Views::View::wait();
