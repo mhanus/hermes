@@ -86,7 +86,7 @@ namespace Hermes
       RungeKutta = false;
       RK_original_spaces_count = 0;
 
-      ndof = Space<Scalar>::get_num_dofs(spaces);
+      this->ndof = Space<Scalar>::get_num_dofs(spaces);
 
       // Sanity checks.
       if(wf == NULL)
@@ -152,6 +152,23 @@ namespace Hermes
     }
 
     template<typename Scalar>
+    void DiscreteProblem<Scalar>::setTime(double time)
+    {
+      Hermes::vector<Space<Scalar>*> spaces;
+      for(unsigned int i = 0; i < this->get_spaces().size(); i++)
+        spaces.push_back(const_cast<Space<Scalar>*>(this->get_space(i)));
+
+      Space<Scalar>::update_essential_bc_values(spaces, time);
+      const_cast<WeakForm<Scalar>*>(this->wf)->set_current_time(time);
+    }
+      
+    template<typename Scalar>
+    void DiscreteProblem<Scalar>::setTimeStep(double timeStep)
+    {
+      const_cast<WeakForm<Scalar>*>(this->wf)->set_current_time_step(timeStep);
+    }
+
+    template<typename Scalar>
     DiscreteProblem<Scalar>::~DiscreteProblem()
     {
       if(wf != NULL)
@@ -161,40 +178,31 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    int DiscreteProblem<Scalar>::get_num_dofs()
+    int DiscreteProblem<Scalar>::get_num_dofs() const
     {
-      ndof = 0;
-      for (unsigned int i = 0; i < wf->get_neq(); i++)
-        ndof += spaces[i]->get_num_dofs();
-      return ndof;
+      return this->ndof;
     }
 
     template<typename Scalar>
-    const Space<Scalar>* DiscreteProblem<Scalar>::get_space(int n)
-    {
-      return this->spaces[n];
-    }
-
-    template<typename Scalar>
-    const WeakForm<Scalar>* DiscreteProblem<Scalar>::get_weak_formulation()
-    {
-      return this->wf;
-    }
-
-    template<typename Scalar>
-    Hermes::vector<const Space<Scalar>*> DiscreteProblem<Scalar>::get_spaces()
+    Hermes::vector<const Space<Scalar>*> DiscreteProblem<Scalar>::get_spaces() const
     {
       return this->spaces;
     }
 
     template<typename Scalar>
-    bool DiscreteProblem<Scalar>::is_matrix_free()
+    const WeakForm<Scalar>* DiscreteProblem<Scalar>::get_weak_formulation() const
+    {
+      return this->wf;
+    }
+
+    template<typename Scalar>
+    bool DiscreteProblem<Scalar>::is_matrix_free() const
     {
       return wf->is_matrix_free();
     }
 
     template<typename Scalar>
-    bool DiscreteProblem<Scalar>::is_up_to_date()
+    bool DiscreteProblem<Scalar>::is_up_to_date() const
     {
       // check if we can reuse the matrix structure
       bool up_to_date = true;
@@ -217,12 +225,6 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    void DiscreteProblem<Scalar>::invalidate_matrix()
-    {
-      have_matrix = false;
-    }
-
-    template<typename Scalar>
     void DiscreteProblem<Scalar>::set_fvm()
     {
       this->is_fvm = true;
@@ -240,7 +242,7 @@ namespace Hermes
         throw Hermes::Exceptions::LengthException(0, spacesToSet.size(), this->spaces.size());
 
       this->spaces = spacesToSet;
-      this->invalidate_matrix();
+      have_matrix = false;
 
       int max_size = spacesToSet[0]->get_mesh()->get_max_element_id();
       for(unsigned int i = 1; i < spacesToSet.size(); i++)
@@ -265,6 +267,8 @@ namespace Hermes
 
         this->cache_size = max_size;
       }
+
+      this->ndof = Space<Scalar>::get_num_dofs(this->spaces);
     }
     
     template<typename Scalar>
@@ -276,7 +280,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    double DiscreteProblem<Scalar>::block_scaling_coeff(MatrixForm<Scalar>* form)
+    double DiscreteProblem<Scalar>::block_scaling_coeff(MatrixForm<Scalar>* form) const
     {
       if(current_block_weights != NULL)
         return current_block_weights->get_A(form->i, form->j);
@@ -482,7 +486,7 @@ namespace Hermes
           // If we use e.g. a new NewtonSolver (providing a new Vector) for this instance of DiscreteProblem that already assembled a system,
           // we end up with everything up_to_date, but unallocated Vector.
           if(current_rhs->length() == 0)
-            current_rhs->alloc(ndof);
+            current_rhs->alloc(this->ndof);
           else
             current_rhs->zero();
         }
@@ -514,7 +518,7 @@ namespace Hermes
         // Spaces have changed: create the matrix from scratch.
         have_matrix = true;
         current_mat->free();
-        current_mat->prealloc(ndof);
+        current_mat->prealloc(this->ndof);
 
         AsmList<Scalar>* al = new AsmList<Scalar>[wf->get_neq()];
         const Mesh** meshes = new const Mesh*[wf->get_neq()];
@@ -658,7 +662,7 @@ namespace Hermes
       // WARNING: unlike Matrix<Scalar>::alloc(), Vector<Scalar>::alloc(ndof) frees the memory occupied
       // by previous vector before allocating
       if(current_rhs != NULL)
-        current_rhs->alloc(ndof);
+        current_rhs->alloc(this->ndof);
 
       // save space seq numbers and weakform seq number, so we can detect their changes
       for (unsigned int i = 0; i < wf->get_neq(); i++)
@@ -1210,17 +1214,20 @@ namespace Hermes
       bool changedInLastAdaptation = false;
       for(unsigned int i = 0; i < this->spaces.size(); i++)
       {
-        if(this->spaces[i]->edata[current_state->e[i]->id].changed_in_last_adaptation)
-        {
-          changedInLastAdaptation = true;
-          break;
-        }
+        if(current_state->e[i] != NULL)
+          if(this->spaces[i]->edata[current_state->e[i]->id].changed_in_last_adaptation)
+          {
+            changedInLastAdaptation = true;
+            break;
+          }
       }
       
       AsmList<Scalar>** current_alsSurface = new AsmList<Scalar>*[this->spaces.size()];
 
       for(unsigned int i = 0; i < this->spaces.size(); i++)
       {
+        if(current_state->e[i] == NULL)
+          continue;
         spaces[i]->get_element_assembly_list(current_state->e[i], current_als[i], spaces_first_dofs[i]);
 
         // Check of potential new constraints.
@@ -1251,9 +1258,12 @@ namespace Hermes
 
       if(changedInLastAdaptation || this->doNotUseCache)
       {
-#pragma omp critical (cache_for_subidx_preparation)
+        for(unsigned int i = 0; i < this->spaces.size(); i++)
         {
-          for(unsigned int i = 0; i < this->spaces.size(); i++)
+          if(current_state->e[i] == NULL)
+            continue;
+            
+#pragma omp critical (cache_for_subidx_preparation)
           {
             if(this->cache_records_sub_idx[i][current_state->e[i]->id] == NULL)
             {
@@ -1274,10 +1284,13 @@ namespace Hermes
         // Set active element to reference mappings.
         // Done because we need all the refmaps to be set for the order calculation
         for(unsigned int i = 0; i < this->spaces.size(); i++)
-          current_refmaps[i]->set_active_element(current_state->e[i]);
+          if(current_state->e[i] != NULL)
+            current_refmaps[i]->set_active_element(current_state->e[i]);
 
         for(unsigned int i = 0; i < this->spaces.size(); i++)
         {
+          if(current_state->e[i] == NULL)
+            continue;
           if(!this->cache_element_stored[i][current_state->e[i]->id])
 #pragma omp critical (cache_for_element_preparation)
           {
@@ -1343,7 +1356,9 @@ namespace Hermes
             }
           }
 
-          CacheRecordPerSubIdx* newRecord = (*this->cache_records_sub_idx[i][current_state->e[i]->id]->find(current_state->sub_idx[i])).second;
+          CacheRecordPerSubIdx* newRecord;
+#pragma omp critical (cache_for_subidx_preparation)
+          newRecord = (*this->cache_records_sub_idx[i][current_state->e[i]->id]->find(current_state->sub_idx[i])).second;
                 
           // Set active element to all test functions.
           current_spss[i]->set_active_element(current_state->e[i]);
@@ -1402,9 +1417,12 @@ namespace Hermes
         {
           if(!form_to_be_assembled(current_mfvol[current_mfvol_i], current_state))
             continue;
-
-          CacheRecordPerSubIdx* CacheRecordPerSubIdxI = this->cache_records_sub_idx[current_mfvol[current_mfvol_i]->i][current_state->e[current_mfvol[current_mfvol_i]->i]->id]->find(current_state->sub_idx[current_mfvol[current_mfvol_i]->i])->second;
-          CacheRecordPerSubIdx* CacheRecordPerSubIdxJ = this->cache_records_sub_idx[current_mfvol[current_mfvol_i]->j][current_state->e[current_mfvol[current_mfvol_i]->j]->id]->find(current_state->sub_idx[current_mfvol[current_mfvol_i]->j])->second;
+          CacheRecordPerSubIdx* CacheRecordPerSubIdxI;
+          CacheRecordPerSubIdx* CacheRecordPerSubIdxJ;
+#pragma omp critical (cache_for_subidx_preparation)
+          CacheRecordPerSubIdxI = this->cache_records_sub_idx[current_mfvol[current_mfvol_i]->i][current_state->e[current_mfvol[current_mfvol_i]->i]->id]->find(current_state->sub_idx[current_mfvol[current_mfvol_i]->i])->second;
+#pragma omp critical (cache_for_subidx_preparation)
+          CacheRecordPerSubIdxJ = this->cache_records_sub_idx[current_mfvol[current_mfvol_i]->j][current_state->e[current_mfvol[current_mfvol_i]->j]->id]->find(current_state->sub_idx[current_mfvol[current_mfvol_i]->j])->second;
 
           assemble_matrix_form(current_mfvol[current_mfvol_i], 
             this->cache_records_element[current_mfvol[current_mfvol_i]->i][current_state->e[current_mfvol[current_mfvol_i]->i]->id]->order, 
@@ -1426,7 +1444,9 @@ namespace Hermes
           if(!form_to_be_assembled(current_vfvol[current_vfvol_i], current_state))
             continue;
 
-          CacheRecordPerSubIdx* CacheRecordPerSubIdxI = this->cache_records_sub_idx[current_vfvol[current_vfvol_i]->i][current_state->e[current_vfvol[current_vfvol_i]->i]->id]->find(current_state->sub_idx[current_vfvol[current_vfvol_i]->i])->second;
+          CacheRecordPerSubIdx* CacheRecordPerSubIdxI;
+#pragma omp critical (cache_for_subidx_preparation)
+          CacheRecordPerSubIdxI = this->cache_records_sub_idx[current_vfvol[current_vfvol_i]->i][current_state->e[current_vfvol[current_vfvol_i]->i]->id]->find(current_state->sub_idx[current_vfvol[current_vfvol_i]->i])->second;
 
           assemble_vector_form(current_vfvol[current_vfvol_i], 
             this->cache_records_element[current_vfvol[current_vfvol_i]->i][current_state->e[current_vfvol[current_vfvol_i]->i]->id]->order, 
@@ -1452,8 +1472,12 @@ namespace Hermes
             if(!form_to_be_assembled(current_mfsurf[current_mfsurf_i], current_state))
               continue;
 
-            CacheRecordPerSubIdx* CacheRecordPerSubIdxI = this->cache_records_sub_idx[current_mfsurf[current_mfsurf_i]->i][current_state->e[current_mfsurf[current_mfsurf_i]->i]->id]->find(current_state->sub_idx[current_mfsurf[current_mfsurf_i]->i])->second;
-            CacheRecordPerSubIdx* CacheRecordPerSubIdxJ = this->cache_records_sub_idx[current_mfsurf[current_mfsurf_i]->j][current_state->e[current_mfsurf[current_mfsurf_i]->j]->id]->find(current_state->sub_idx[current_mfsurf[current_mfsurf_i]->j])->second;
+            CacheRecordPerSubIdx* CacheRecordPerSubIdxI;
+            CacheRecordPerSubIdx* CacheRecordPerSubIdxJ;
+#pragma omp critical (cache_for_subidx_preparation)
+            CacheRecordPerSubIdxI = this->cache_records_sub_idx[current_mfsurf[current_mfsurf_i]->i][current_state->e[current_mfsurf[current_mfsurf_i]->i]->id]->find(current_state->sub_idx[current_mfsurf[current_mfsurf_i]->i])->second;
+#pragma omp critical (cache_for_subidx_preparation)
+            CacheRecordPerSubIdxJ = this->cache_records_sub_idx[current_mfsurf[current_mfsurf_i]->j][current_state->e[current_mfsurf[current_mfsurf_i]->j]->id]->find(current_state->sub_idx[current_mfsurf[current_mfsurf_i]->j])->second;
 
             assemble_matrix_form(current_mfsurf[current_mfsurf_i], 
               CacheRecordPerSubIdxI->orderSurface[current_state->isurf], 
@@ -1476,7 +1500,9 @@ namespace Hermes
             if(!form_to_be_assembled(current_vfsurf[current_vfsurf_i], current_state))
               continue;
 
-            CacheRecordPerSubIdx* CacheRecordPerSubIdxI = this->cache_records_sub_idx[current_vfsurf[current_vfsurf_i]->i][current_state->e[current_vfsurf[current_vfsurf_i]->i]->id]->find(current_state->sub_idx[current_vfsurf[current_vfsurf_i]->i])->second;
+            CacheRecordPerSubIdx* CacheRecordPerSubIdxI;
+#pragma omp critical (cache_for_subidx_preparation)
+            CacheRecordPerSubIdxI = this->cache_records_sub_idx[current_vfsurf[current_vfsurf_i]->i][current_state->e[current_vfsurf[current_vfsurf_i]->i]->id]->find(current_state->sub_idx[current_vfsurf[current_vfsurf_i]->i])->second;
 
             assemble_vector_form(current_vfsurf[current_vfsurf_i], 
               CacheRecordPerSubIdxI->orderSurface[current_state->isurf], 
@@ -1492,7 +1518,8 @@ namespace Hermes
       }
 
       for(unsigned int i = 0; i < this->spaces.size(); i++)
-        delete [] current_alsSurface[i];
+        if(current_state->e[i] != NULL)
+          delete [] current_alsSurface[i];
       delete [] current_alsSurface;
     }
 
@@ -1638,7 +1665,7 @@ namespace Hermes
       }
 
       // Insert the local stiffness matrix into the global one.
-#pragma omp critical (mat)
+
       current_mat->add(current_als[form->i]->cnt, current_als[form->j]->cnt, local_stiffness_matrix, current_als[form->i]->dof, current_als[form->j]->dof);
 
       // Insert also the off-diagonal (anti-)symmetric block, if required.
@@ -1647,7 +1674,7 @@ namespace Hermes
         if(form->sym < 0)
           chsgn(local_stiffness_matrix, current_als[form->i]->cnt, current_als[form->j]->cnt);
         transpose(local_stiffness_matrix, current_als[form->i]->cnt, current_als[form->j]->cnt);
-#pragma omp critical (mat)
+
         current_mat->add(current_als[form->j]->cnt, current_als[form->i]->cnt, local_stiffness_matrix, current_als[form->j]->dof, current_als[form->i]->dof);
       }
 
@@ -1738,7 +1765,7 @@ namespace Hermes
       }
 
       // Insert the local stiffness matrix into the global one.
-#pragma omp critical (mat)
+
       current_mat->add(current_als_i->cnt, current_als_j->cnt, local_stiffness_matrix, current_als_i->dof, current_als_j->dof);
 
       // Insert also the off-diagonal (anti-)symmetric block, if required.
@@ -1747,7 +1774,7 @@ namespace Hermes
         if(form->sym < 0)
           chsgn(local_stiffness_matrix, current_als_i->cnt, current_als_j->cnt);
         transpose(local_stiffness_matrix, current_als_i->cnt, current_als_j->cnt);
-#pragma omp critical (mat)
+
         current_mat->add(current_als_j->cnt, current_als_i->cnt, local_stiffness_matrix, current_als_j->dof, current_als_i->dof);
       }
 
@@ -1841,7 +1868,7 @@ namespace Hermes
           val = 0.5 * form->value(n_quadrature_points, jacobian_x_weights, u_ext, v, geometry, &ext) * form->scaling_factor * current_als[form->i]->coef[i];
         else
           val = form->value(n_quadrature_points, jacobian_x_weights, u_ext, v, geometry, &ext) * form->scaling_factor * current_als[form->i]->coef[i];
-#pragma omp critical (rhs)
+
         current_rhs->add(current_als[form->i]->dof[i], val);
       }
 
@@ -1885,7 +1912,7 @@ namespace Hermes
           val = 0.5 * form->value(n_quadrature_points, jacobian_x_weights, u_ext, v, geometry, &ext) * form->scaling_factor * current_als_i->coef[i];
         else
           val = form->value(n_quadrature_points, jacobian_x_weights, u_ext, v, geometry, &ext) * form->scaling_factor * current_als_i->coef[i];
-#pragma omp critical (rhs)
+
         current_rhs->add(current_als_i->dof[i], val);
       }
 
@@ -2251,8 +2278,8 @@ namespace Hermes
         {
           NeighborSearch<Scalar>* ns = neighbor_searches.get(i);
           ns->active_segment = neighbor_i;
-          ns->neighb_el = neighbor_searches.get(i)->neighbors[neighbor_i];
-          ns->neighbor_edge = neighbor_searches.get(i)->neighbor_edges[neighbor_i];
+          ns->neighb_el = ns->neighbors[neighbor_i];
+          ns->neighbor_edge = ns->neighbor_edges[neighbor_i];
         }
       }
 
@@ -2424,7 +2451,7 @@ namespace Hermes
             }
           }
 
-          #pragma omp critical (mat)
+
           current_mat->add(ext_asmlist_v->cnt, ext_asmlist_u->cnt, local_stiffness_matrix, ext_asmlist_v->dof, ext_asmlist_u->dof);
 
           delete [] local_stiffness_matrix;
@@ -2511,7 +2538,7 @@ namespace Hermes
 
             Func<double>* v = init_fn(current_spss[m], current_refmaps[m], nbs_v->get_quad_eo());
 
-#pragma omp critical (rhs)
+
             current_rhs->add(current_als[m]->dof[dof_i], 0.5 * vfs->value(n_quadrature_points, jacobian_x_weights, prev, v, e, ext) * vfs->scaling_factor * current_als[m]->coef[dof_i]);
 
             v->free_fn();

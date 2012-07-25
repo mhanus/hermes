@@ -1,6 +1,6 @@
 #define HERMES_REPORT_ALL
 #define HERMES_REPORT_FILE "application.log"
-#include "definitions.h"
+#include "../definitions.h"
 
 //  This example solves a linear advection equation using Dicontinuous Galerkin (DG) method.
 //  It is intended to show how evalutation of surface matrix forms that take basis functions defined
@@ -15,7 +15,7 @@
 //  The following parameters can be changed:
 
 // Number of initial uniform mesh refinements.
-const int INIT_REF = 2;
+const int INIT_REF = 1;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
 const int P_INIT = 0;
 // This is a quantitative parameter of the adapt(...) function and
@@ -42,7 +42,7 @@ const CandList CAND_LIST = H2D_HP_ANISO;
 // their notoriously bad performance.
 const int MESH_REGULARITY = -1;
 // Stopping criterion for adaptivity.
-const double ERR_STOP = 3.0;
+const double ERR_STOP = 5.0;
 // This parameter influences the selection of
 // candidates in hp-adaptivity. Default value is 1.0.
 const double CONV_EXP = 1.0;
@@ -62,10 +62,11 @@ int main(int argc, char* args[])
   // Load the mesh.
   Mesh mesh;
   MeshReaderH2D mloader;
-  mloader.load("square.mesh", &mesh);
+  mloader.load("../square.mesh", &mesh);
 
   // Perform initial mesh refinement.
-  for (int i=0; i<INIT_REF; i++) mesh.refine_all_elements();
+  for (int i=0; i<INIT_REF; i++) 
+    mesh.refine_all_elements();
 
   // Create an L2 space.
   L2Space<double> space(&mesh, P_INIT);
@@ -76,26 +77,17 @@ int main(int argc, char* args[])
   // Disable weighting of refinement candidates.
   selector.set_error_weights(1, 1, 1);
 
-  // DOF and CPU convergence graphs.
-  SimpleGraph graph_dof_est, graph_cpu_est;
-
-  // Display the mesh.
-  OrderView oview("Coarse mesh", new WinGeom(0, 0, 440, 350));
-  oview.show(&space);
-  BaseView<double> bview("Distribution of polynomial orders", new WinGeom(450, 0, 440, 350));
-  bview.show(&space);
-
   Solution<double> sln;
   Solution<double> ref_sln;
 
   // Initialize the weak formulation.
   CustomWeakForm wf("Bdy_bottom_left", &mesh);
 
-  ScalarView view1("Solution", new WinGeom(900, 0, 450, 350));
-  view1.fix_scale_width(60);
+  // Initialize the FE problem.
+  DiscreteProblemLinear<double> dp(&wf, &space);
 
   // Initialize linear solver.
-  Hermes::Hermes2D::LinearSolver<double> linear_solver(&wf, &space);
+  Hermes::Hermes2D::LinearSolver<double> linear_solver(&dp);
 
   int as = 1; bool done = false;
   do
@@ -104,7 +96,7 @@ int main(int argc, char* args[])
     // and setup reference space.
     Space<double>* ref_space = Space<double>::construct_refined_space(&space);
 
-    linear_solver.set_space(ref_space);
+    dp.set_space(ref_space);
 
     // Solve the linear system. If successful, obtain the solution.
     try
@@ -120,18 +112,9 @@ int main(int argc, char* args[])
     OGProjection<double> ogProjection;
     ogProjection.project_global(&space, &ref_sln, &sln, HERMES_L2_NORM);
 
-    // View the coarse mesh solution.
-    view1.show(&sln);
-    oview.show(&space);
-    bview.show(&space);
-
     // Calculate element errors and total error estimate.
     Adapt<double>* adaptivity = new Adapt<double>(&space);
     double err_est_rel = adaptivity->calc_err_est(&sln, &ref_sln) * 100;
-
-    // Add entry to DOF and CPU convergence graphs.
-    graph_dof_est.add_values(Space<double>::get_num_dofs(&space), err_est_rel);
-    graph_dof_est.save("conv_dof_est.dat");
 
     // If err_est_rel too large, adapt the mesh.
     if(err_est_rel < ERR_STOP) done = true;
@@ -156,7 +139,14 @@ int main(int argc, char* args[])
   }
   while (done == false);
 
-  // Wait for keyboard or mouse input.
-  View::wait();
-  return 0;
+  if(done)
+  {
+    printf("Success!\n");
+    return 0;
+  }
+  else
+  {
+    printf("Failure!\n");
+    return -1;
+  }
 }

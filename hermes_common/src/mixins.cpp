@@ -58,9 +58,6 @@ namespace Hermes
     #ifdef WIN32
       HANDLE h_console = GetStdHandle(STD_OUTPUT_HANDLE);
 
-      //read current console settings
-      CONSOLE_SCREEN_BUFFER_INFO console_info;
-
       //generate console settings
       WORD console_attr_red = FOREGROUND_RED, console_attr_green = FOREGROUND_GREEN, console_attr_blue = FOREGROUND_BLUE;
 
@@ -114,9 +111,6 @@ namespace Hermes
       //Windows platform
     #ifdef WIN32
       HANDLE h_console = GetStdHandle(STD_OUTPUT_HANDLE);
-
-      //read current console settings
-      CONSOLE_SCREEN_BUFFER_INFO console_info;
 
       //generate console settings
       WORD console_attr_red = FOREGROUND_RED, console_attr_green = FOREGROUND_GREEN, console_attr_blue = FOREGROUND_BLUE;
@@ -530,6 +524,29 @@ namespace Hermes
 
         return str.str();
       }
+    }
+
+    IntegrableWithGlobalOrder::IntegrableWithGlobalOrder() : globalIntegrationOrderSet(false), globalIntegrationOrder(0)
+    {}
+
+    void IntegrableWithGlobalOrder::setGlobalIntegrationOrder(unsigned int order)
+    {
+      this->globalIntegrationOrder = order;
+      this->globalIntegrationOrderSet = true;
+    }
+
+    SettableComputationTime::SettableComputationTime() : time(0.0), timeStep(0.0)
+    {
+    }
+
+    void SettableComputationTime::setTime(double time)
+    {
+      this->time = time;
+    }
+
+    void SettableComputationTime::setTimeStep(double timeStep)
+    {
+      this->timeStep = timeStep;
     }
   }
 }
