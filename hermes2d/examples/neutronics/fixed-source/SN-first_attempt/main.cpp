@@ -33,8 +33,12 @@ const char* preconditioner = "jacobi";
 
 int main(int argc, char* args[])
 {
+    // Set the number of threads used in Hermes.
+  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 1);
+  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+  
   // Time measurement.
-  TimePeriod cpu_time;
+  TimeMeasurable cpu_time;
   cpu_time.tick();
   
   Hermes::vector<Mesh *> meshes;
@@ -70,49 +74,37 @@ int main(int argc, char* args[])
   bview.show(&space);
 */
   Hermes::vector<Solution<double>* > slns;
+  for (int i = 0; i < N; i++)
+    slns.push_back(new Solution<double>());
 
   // Initialize the weak formulation.
   CustomWeakForm wf("Bdy_in", meshes[0], N);
  
   // Initialize the FE problem.
-  DiscreteProblem<double> dp(&wf, spaces);
+  DiscreteProblemLinear<double> dp(&wf, spaces);
   dp.set_fvm();
-
-  // Set up the solver, matrix, and rhs according to the solver selection.
-  SparseMatrix<double>* matrix = create_matrix<double>(matrix_solver_type);
-  Vector<double>* rhs = create_vector<double>(matrix_solver_type);
-  Solvers::LinearSolver<double>* solver = Solvers::create_linear_solver<double>(matrix_solver_type, matrix, rhs);
-
-  info("Assembling (ndof: %d).", ndof);
-  cpu_time.tick();
+  LinearSolver<double> solver(&dp);
   
-    dp.assemble(matrix, rhs);
-
-  cpu_time.tick();
-  info("Time taken: %lf s", cpu_time.last());
-  
-  
-  info("Solving.");
+  Loggable::Static::info("Solving.");
   cpu_time.tick();
 
     // Solve the linear system. If successful, obtain the solution.
-    if(solver->solve())
-      Solution<double>::vector_to_solutions(solver->get_sln_vector(), spaces, slns);
-    else
-      throw Hermes::Exceptions::Exception("Matrix solver failed.\n");
+    try
+    {
+      solver.solve();
+      Solution<double>::vector_to_solutions(solver.get_sln_vector(), spaces, slns);
+    }
+    catch(std::exception& e)
+    {
+      std::cout << e.what();
+    }
   
   cpu_time.tick();
-  info("Time taken: %lf s", cpu_time.last());
-
- 
-  // Clean up.
-  delete solver;
-  delete matrix;
-  delete rhs;
-  
+  Loggable::Static::info("Time taken: %lf s", cpu_time.last());
+/*  
   cpu_time.tick();
   info("Total running time: %g s", cpu_time.accumulated());
-
+*/
   // Wait for keyboard or mouse input.
   // View the coarse mesh solution.
   for (int n = 0; n < N; n++)
