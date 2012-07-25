@@ -86,6 +86,10 @@ double TOL_PIT_RM = 5e-6;   // Tolerance for eigenvalue convergence on the fine 
 
 int main(int argc, char* argv[])
 {
+  // Set the number of threads used in Hermes.
+  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+
   // Time measurement.
   TimeMeasurable cpu_time;
   cpu_time.tick();
@@ -215,7 +219,7 @@ int main(int argc, char* argv[])
     Loggable::Static::info("---- Adaptivity step %d:", as);
     
     // Construct globally refined meshes and setup reference spaces on them.
-     ConstantableSpacesVector ref_spaces(Space<double>::construct_refined_spaces(spaces.get()));
+    ConstantableSpacesVector ref_spaces(Space<double>::construct_refined_spaces(spaces.get()));
 
 #ifdef WITH_PETSC    
     // PETSc assembling is currently slow for larger matrices, so we switch to 
@@ -233,9 +237,10 @@ int main(int argc, char* argv[])
       fine_solutions[g]->copy(power_iterates[g]);
 
     Loggable::Static::info("Projecting fine mesh solutions on coarse meshes.");
-    OGProjection<double>::project_global(spaces.get_const(), 
-                                         projection_jacobian, projection_residual,
-                                         coarse_solutions);
+    OGProjection<double> ogProjection;
+    ogProjection.project_global(spaces.get_const(), 
+                                projection_jacobian, projection_residual,
+                                coarse_solutions);
 
     // Time measurement.
     cpu_time.tick();
@@ -245,7 +250,7 @@ int main(int argc, char* argv[])
     vis.show_orders(spaces.get());
 
     // Skip visualization time.
-    cpu_time.tick(Hermes::HERMES_SKIP);
+    cpu_time.tick(TimeMeasurable::HERMES_SKIP);
 
     // Report the number of negative eigenfunction values.
     Loggable::Static::info("Num. of negative values: %d, %d, %d, %d",
@@ -297,7 +302,7 @@ int main(int argc, char* argv[])
     for (unsigned int g = 0; g < matprop.get_G(); g++)
       graph_dof_evol.add_values(g, as, spaces.get()[g]->get_num_dofs());
 
-    cpu_time.tick(Hermes::HERMES_SKIP);
+    cpu_time.tick(TimeMeasurable::HERMES_SKIP);
 
     // If err_est too large, adapt the mesh (L2 norm chosen since (weighted integrals of) solution values
     // are more important for further analyses than the derivatives. 
