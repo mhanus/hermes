@@ -125,7 +125,7 @@ Scalar ErrorForm<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[],
     case HERMES_H1_NORM:
       return ErrorForm<Scalar>::h1_error_form_axisym<double, Scalar>(n, wt, u_ext, u, v, e, ext);
     default:
-      error_function("Only the H1 and L2 norms are currently implemented.");
+      ErrorHandling::error_function("Only the H1 and L2 norms are currently implemented.");
       return 0.0;
   }
 }
@@ -142,7 +142,7 @@ Ord ErrorForm<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[],
     case HERMES_H1_NORM:
       return ErrorForm<Scalar>::h1_error_form_axisym<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
     default:
-      error_function("Only the H1 and L2 norms are currently implemented.");
+      ErrorHandling::error_function("Only the H1 and L2 norms are currently implemented.");
       return Ord();
   }
 }

@@ -61,6 +61,10 @@ double k_eff = 1.0;
 
 int main(int argc, char* argv[])
 {  
+  // Set the number of threads used in Hermes.
+  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+
   // Load the mesh.
   Mesh mesh;
   MeshReaderH2D mesh_reader;
@@ -154,7 +158,7 @@ int main(int argc, char* argv[])
     catch(Hermes::Exceptions::Exception e)
     {
       e.printMsg();
-      error_function("Newton's iteration failed.");
+      ErrorHandling::error_function("Newton's iteration failed.");
     }
     
     // Convert coefficients vector into a set of Solution pointers.
@@ -169,8 +173,8 @@ int main(int argc, char* argv[])
     view3.show(&sln3);    
     view4.show(&sln4);
     
-    solver_time.tick(Hermes::HERMES_SKIP);
-    cpu_time.tick(Hermes::HERMES_SKIP);
+    solver_time.tick(TimeMeasurable::HERMES_SKIP);
+    cpu_time.tick(TimeMeasurable::HERMES_SKIP);
     
     // Compute eigenvalue.    
     SupportClasses::SourceFilter source(solutions, matprop, fission_regions, HERMES_AXISYM_Y);
@@ -201,7 +205,7 @@ int main(int argc, char* argv[])
   
   // Time measurement.
   cpu_time.tick();
-  solver_time.tick(Hermes::HERMES_SKIP);
+  solver_time.tick(TimeMeasurable::HERMES_SKIP);
   
   // Print timing information.
   Loggable::Static::info("Average solver time for one power iteration: %g s", solver_time.accumulated() / it);
@@ -213,7 +217,7 @@ int main(int argc, char* argv[])
   view4.show(&sln4);
   
   // Skip visualization time.
-  cpu_time.tick(Hermes::HERMES_SKIP);
+  cpu_time.tick(TimeMeasurable::HERMES_SKIP);
 
   // Print timing information.
   Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
