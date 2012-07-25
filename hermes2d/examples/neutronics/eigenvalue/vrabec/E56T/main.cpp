@@ -175,7 +175,8 @@ int main(int argc, char* argv[])
       Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, *fine_spaces, matrix_solver, TOL_PIT_FM);
             
       report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces);
-      OGProjection<double>::project_global(spaces, power_iterates, coarse_solutions);
+      OGProjection<double> ogProjection;
+    ogProjection.project_global(spaces, power_iterates, coarse_solutions);
       
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION && INTERMEDIATE_VISUALIZATION)
@@ -184,7 +185,7 @@ int main(int argc, char* argv[])
         Loggable::Static::info("Visualizing.");
         views.show_solutions(coarse_solutions);
         views.show_orders(spaces);
-        cpu_time.tick(Hermes::HERMES_SKIP);
+        cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       }
       
       Adapt<double> adaptivity(spaces);
@@ -215,7 +216,7 @@ int main(int argc, char* argv[])
       graph_cpu.add_values(0, cta, h1_err_est);
       graph_cpu.add_values(1, cta, keff_err);
             
-      cpu_time.tick(Hermes::HERMES_SKIP);
+      cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       
       // If err_est too large, adapt the mesh.
       if (h1_err_est < ERR_STOP || as == MAX_ADAPT_NUM) 

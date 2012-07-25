@@ -128,6 +128,10 @@ void setup_convergence_graph(GnuplotGraph *graph, const std::set<int>& run_cases
 
 int main(int argc, char* argv[])
 { 
+  // Set the number of threads used in Hermes.
+  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+
   double err_stop;        // Stopping criterion for adaptivity (rel. error tolerance between the
                           // fine mesh and coarse mesh solution in percent).
   int ndof_stop;          // Adaptivity process stops when the number of degrees of freedom grows over
@@ -280,7 +284,6 @@ int main(int argc, char* argv[])
     // Perform Newton's iteration.
     NewtonSolver<double> newton(&dp);
     newton.set_verbose_output(true);
-    newton.attach_timer(&cpu_time);
     
     try
     {
@@ -289,7 +292,7 @@ int main(int argc, char* argv[])
     catch(Hermes::Exceptions::Exception e)
     {
       e.printMsg();
-      error_function("Newton's iteration failed.");
+      ErrorHandling::error_function("Newton's iteration failed.");
     }
     
     // Translate the resulting coefficient vector into instances of Solution.
@@ -393,7 +396,7 @@ int main(int argc, char* argv[])
       }
     };
     
-    cpu_time.tick(Hermes::HERMES_SKIP);
+    cpu_time.tick(TimeMeasurable::HERMES_SKIP);
     
     // Adaptivity loop:
     int as = 1; bool done = false;
@@ -419,7 +422,7 @@ int main(int argc, char* argv[])
       catch(Hermes::Exceptions::Exception e)
       {
         e.printMsg();
-        error_function("Newton's iteration failed.");
+        ErrorHandling::error_function("Newton's iteration failed.");
       }
       
       // Translate the resulting coefficient vector into instances of Solution.
@@ -437,7 +440,7 @@ int main(int argc, char* argv[])
           views.show_solutions(solutions);
         if (SHOW_INTERMEDIATE_ORDERS)
           views.show_orders(spaces.get());
-        cpu_time.tick(Hermes::HERMES_SKIP);
+        cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       }
       
       // Calculate element errors.
@@ -520,7 +523,7 @@ int main(int argc, char* argv[])
         else
           Loggable::Static::info("  --- total H1 relative error (w.r.t. reference solution): %g", err_scalar_flux);
         
-        cpu_time.tick(Hermes::HERMES_SKIP);
+        cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       }
       
       Loggable::Static::info("Calculating element error estimates for adaptivity and total error for each pseudo-flux approximation.");
@@ -549,7 +552,7 @@ int main(int argc, char* argv[])
         graph_cpu_est.add_values(run_number, cpu_time.accumulated(), err_solutions);
       }
       
-      cpu_time.tick(Hermes::HERMES_SKIP);
+      cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       
       // If err_est too large, adapt the mesh.
       if (err_solutions < err_stop || as == max_adapt_num || ndof >= ndof_stop) 

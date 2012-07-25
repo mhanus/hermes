@@ -183,6 +183,10 @@ const std::vector<rank1> ref_solutions = StdMultiArray<rank1>(
   
 int main(int argc, char* argv[])
 {
+  // Set the number of threads used in Hermes.
+  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+  
   // Time measurement.
   TimeMeasurable cpu_time;
   double total_cpu_time;
@@ -346,7 +350,7 @@ int main(int argc, char* argv[])
       catch(Hermes::Exceptions::Exception e)
       {
         e.printMsg();
-        error_function("Newton's iteration failed.");
+        ErrorHandling::error_function("Newton's iteration failed.");
       }
       
       // Translate the resulting coefficient vector into instances of Solution.
@@ -357,7 +361,8 @@ int main(int argc, char* argv[])
       
       // Project the fine mesh solution onto the coarse mesh.
       report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces.get());
-      OGProjection<double>::project_global(spaces.get_const(), solutions, coarse_solutions);
+      OGProjection<double> ogProjection;
+      ogProjection.project_global(spaces.get_const(), solutions, coarse_solutions);
 
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION)
@@ -368,7 +373,7 @@ int main(int argc, char* argv[])
           views.show_solutions(coarse_solutions);
         if (SHOW_INTERMEDIATE_ORDERS)
           views.show_orders(spaces.get());
-        cpu_time.tick(Hermes::HERMES_SKIP);
+        cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       }   
 
       cpu_time.tick();
@@ -397,7 +402,7 @@ int main(int argc, char* argv[])
       delete scalar_fluxes;
   #endif
 
-      cpu_time.tick(Hermes::HERMES_SKIP);
+      cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       
       // Calculate error estimate for each solution component and the total error estimate.
       Loggable::Static::info("  --- Calculating total relative error of the solution approximation.");
@@ -427,7 +432,7 @@ int main(int argc, char* argv[])
       graph_cpu.add_values(0, cpu_time.accumulated(), solution_err_est_rel);
       graph_dof.add_values(1, ndof_fine, pointwise_flux_rel_err_ref);
       graph_cpu.add_values(1, cpu_time.accumulated(), pointwise_flux_rel_err_ref);
-      cpu_time.tick(Hermes::HERMES_SKIP);
+      cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       
       // If err_est is too large, adapt the mesh.
       if (solution_err_est_rel < ERR_STOP || as == MAX_ADAPT_NUM || ndof_fine >= NDOF_STOP) 
@@ -509,7 +514,7 @@ int main(int argc, char* argv[])
     catch(Hermes::Exceptions::Exception e)
     {
       e.printMsg();
-      error_function("Newton's iteration failed.");
+      ErrorHandling::error_function("Newton's iteration failed.");
     }
     
     // Translate the resulting coefficient vector into instances of Solution.

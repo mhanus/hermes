@@ -63,6 +63,10 @@ double TOL_PIT_FM = 1e-8;   // Tolerance for eigenvalue convergence on the fine 
 
 int main(int argc, char* argv[])
 {  
+  // Set the number of threads used in Hermes.
+  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+
   // Time measurement.
   TimeMeasurable cpu_time;
   cpu_time.tick();
@@ -195,7 +199,8 @@ int main(int argc, char* argv[])
       Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, fine_spaces.get_const(), matrix_solver, TOL_PIT_FM);
             
       report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces.get());
-      OGProjection<double>::project_global(spaces.get_const(), power_iterates, coarse_solutions);
+      OGProjection<double> ogProjection;
+      ogProjection.project_global(spaces.get_const(), power_iterates, coarse_solutions);
       
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION && INTERMEDIATE_VISUALIZATION)
@@ -204,7 +209,7 @@ int main(int argc, char* argv[])
         Loggable::Static::info("Visualizing.");
         views.show_solutions(coarse_solutions);
         views.show_orders(spaces.get());
-        cpu_time.tick(Hermes::HERMES_SKIP);
+        cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       }
       
       Adapt<double> adaptivity(spaces.get());
@@ -235,7 +240,7 @@ int main(int argc, char* argv[])
       graph_cpu.add_values(0, cta, h1_err_est);
       graph_cpu.add_values(1, cta, keff_err);
             
-      cpu_time.tick(Hermes::HERMES_SKIP);
+      cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       
       // If err_est too large, adapt the mesh.
       if (h1_err_est < ERR_STOP || as == MAX_ADAPT_NUM) 
