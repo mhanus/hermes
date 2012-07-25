@@ -13,6 +13,7 @@
 #include "hermes2d.h"
 
 using namespace Hermes::Hermes2D;
+using namespace Hermes::Mixins;
 using namespace WeakFormsH1;
 
 // Weak forms.
@@ -80,6 +81,10 @@ double SIGMA_A_5 = SIGMA_T_5 - SIGMA_S_5;
 
 int main(int argc, char* argv[])
 {
+  // Set the number of threads used in Hermes.
+  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+
   // Load the mesh.
   Mesh mesh;
   MeshReaderH2D mesh_reader;
@@ -150,7 +155,7 @@ int main(int argc, char* argv[])
     catch(Hermes::Exceptions::Exception e)
     {
       e.printMsg();
-      error_function("Newton's iteration failed.");
+      Neutronics::ErrorHandling::error_function("Newton's iteration failed.");
     }
       
     // Translate the resulting coefficient vector into instances of Solution.
@@ -159,7 +164,8 @@ int main(int argc, char* argv[])
     // Project the fine mesh solution onto the coarse mesh.
     Solution<double> sln;
     Loggable::Static::info("Projecting reference solution on coarse mesh.");
-    OGProjection<double>::project_global(&space, &ref_sln, &sln); 
+    OGProjection<double> ogProjection;
+    ogProjection.project_global(&space, &ref_sln, &sln); 
 
     // Time measurement.
     cpu_time.tick();
@@ -169,7 +175,7 @@ int main(int argc, char* argv[])
     oview.show(&space);
 
     // Skip visualization time.
-    cpu_time.tick(Hermes::HERMES_SKIP);
+    cpu_time.tick(TimeMeasurable::HERMES_SKIP);
 
     // Calculate element errors and total error estimate.
     Loggable::Static::info("Calculating error estimate."); 
@@ -190,7 +196,7 @@ int main(int argc, char* argv[])
     graph_cpu.save("conv_cpu_est.dat");
     
     // Skip graphing time.
-    cpu_time.tick(Hermes::HERMES_SKIP);
+    cpu_time.tick(TimeMeasurable::HERMES_SKIP);
 
     // If err_est too large, adapt the mesh.
     if (err_est_rel < ERR_STOP) done = true;

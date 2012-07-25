@@ -81,6 +81,10 @@ const std::string ZERO_FLUX_BOUNDARY = "2";
 
 int main(int argc, char* argv[])
 {
+  // Set the number of threads used in Hermes.
+  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+  
   // Load the mesh.
   Mesh mesh;
   MeshReaderExodusII mloader;
@@ -162,7 +166,8 @@ int main(int argc, char* argv[])
     // Project the fine mesh solution onto the coarse mesh.
     Solution<double> sln;
     Loggable::Static::info("Projecting reference solution on coarse mesh.");
-    OGProjection<double>::project_global(&space, &ref_sln, &sln); 
+    OGProjection<double> ogProjection;
+    ogProjection.project_global(&space, &ref_sln, &sln); 
 
     // Time measurement.
     cpu_time.tick();
