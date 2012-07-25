@@ -173,6 +173,10 @@ const double areas_dragon[2] = {
 
 int main(int argc, char* argv[])
 {
+  // Set the number of threads used in Hermes.
+  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+
   // Time measurement.
   TimeMeasurable cpu_time;
   double total_cpu_time;
@@ -322,6 +326,10 @@ int main(int argc, char* argv[])
     for (unsigned int i = 0; i < N_EQUATIONS; i++)
       selectors.push_back(&selector);
     
+    // Perform Newton's iteration on reference mesh.
+    NewtonSolver<double> newton(&wf, spaces.get_const());
+    newton.set_verbose_output(false);
+    
     // Adaptivity loop.
     int as = 1; bool done = false;
     do 
@@ -331,34 +339,26 @@ int main(int argc, char* argv[])
       // Initialize the fine mesh problem.
       ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get()));
       int ndof_fine = Space<double>::get_num_dofs(fine_spaces.get());
-    
+      newton.set_spaces(fine_spaces.get_const()); 
       report_num_dof("Solving on fine meshes, #DOF: ", fine_spaces.get());
-    
-      DiscreteProblem<double> dp(&wf, fine_spaces.get_const());
-    
-      // Perform Newton's iteration on reference mesh.
-      NewtonSolver<double> *newton = new NewtonSolver<double>(&dp);
-      newton->set_verbose_output(false);
     
       try
       {
-        newton->solve();
+        newton.solve();
       }
       catch(Hermes::Exceptions::Exception e)
       {
         e.printMsg();
-        error_function("Newton's iteration failed.");
+        ErrorHandling::error_function("Newton's iteration failed.");
       }
       
       // Translate the resulting coefficient vector into instances of Solution.
-      Solution<double>::vector_to_solutions(newton->get_sln_vector(), fine_spaces.get_const(), solutions);
-      
-      // Clean up.
-      delete newton;
+      Solution<double>::vector_to_solutions(newton.get_sln_vector(), fine_spaces.get_const(), solutions);
       
       // Project the fine mesh solution onto the coarse mesh.
       report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces.get());
-      OGProjection<double>::project_global(spaces.get_const(), solutions, coarse_solutions);
+      OGProjection<double> ogProjection;
+      ogProjection.project_global(spaces.get_const(), solutions, coarse_solutions);
 
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION)
@@ -369,7 +369,7 @@ int main(int argc, char* argv[])
           views.show_solutions(coarse_solutions);
         if (SHOW_INTERMEDIATE_ORDERS)
           views.show_orders(spaces.get());
-        cpu_time.tick(Hermes::HERMES_SKIP);
+        cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       }   
 
       cpu_time.tick();
@@ -419,7 +419,7 @@ int main(int argc, char* argv[])
       delete fine_scalar_fluxes;
   #endif
 
-      cpu_time.tick(Hermes::HERMES_SKIP);
+      cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       
       // Calculate error estimate for each solution component and the total error estimate.
       Loggable::Static::info("  --- Calculating total relative error of the solution approximation.");
@@ -452,7 +452,7 @@ int main(int argc, char* argv[])
       graph_cpu.add_values(1, cpu_time.accumulated(), avg_flux_err_dragon_rel);
       graph_dof.add_values(2, ndof_fine, avg_flux_err_est_rel);
       graph_cpu.add_values(2, cpu_time.accumulated(), avg_flux_err_est_rel);
-      cpu_time.tick(Hermes::HERMES_SKIP);
+      cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       
       // If err_est is too large, adapt the mesh.
       if (solution_err_est_rel < ERR_STOP || as == MAX_ADAPT_NUM || ndof_fine >= NDOF_STOP) 
@@ -532,7 +532,7 @@ int main(int argc, char* argv[])
     catch(Hermes::Exceptions::Exception e)
     {
       e.printMsg();
-      error_function("Newton's iteration failed.");
+      ErrorHandling::error_function("Newton's iteration failed.");
     }
   
     // Translate the resulting coefficient vector into instances of Solution.
