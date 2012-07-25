@@ -9,13 +9,15 @@ using namespace Hermes::Hermes2D::Views;
 class CustomWeakForm : public WeakForm<double>
 {
 public:
-  CustomWeakForm(const std::string& inflow_boundary, Mesh* mesh);
+  CustomWeakForm(const std::string& inflow_boundary, Mesh* mesh, int N);
 
 private:
   class CustomMatrixFormVol : public MatrixFormVol<double>
   {
+    int direction;
+    
   public:
-    CustomMatrixFormVol(int i, int j) : MatrixFormVol<double>(i, j)
+    CustomMatrixFormVol(int i, int j) : MatrixFormVol<double>(i, j), direction(i)
     {};
 
     template<typename Real, typename Scalar>
@@ -70,8 +72,10 @@ private:
 
   class CustomMatrixFormSurface : public MatrixFormSurf<double>
   {
+    int direction;
+    
   public:
-    CustomMatrixFormSurface(int i, int j) : MatrixFormSurf<double>(i, j, HERMES_ANY)
+    CustomMatrixFormSurface(int i, int j) : MatrixFormSurf<double>(i, j, HERMES_ANY), direction(i)
     {};
 
     template<typename Real, typename Scalar>
@@ -95,8 +99,10 @@ private:
 
   class CustomMatrixFormInterface : public MatrixFormSurf<double>
   {
+    int direction;
+    
   public:
-    CustomMatrixFormInterface(int i, int j) : MatrixFormSurf<double>(i, j, H2D_DG_INNER_EDGE) 
+    CustomMatrixFormInterface(int i, int j) : MatrixFormSurf<double>(i, j, H2D_DG_INNER_EDGE), direction(i)
     {};
 
     template<typename Real, typename Scalar>
@@ -120,9 +126,12 @@ private:
 
   class CustomVectorFormSurface : public VectorFormSurf<double>
   {
+    std::string inflow_boundary;
+    int direction;
+    
   public:
     CustomVectorFormSurface(int i, const std::string& inflow_boundary) : VectorFormSurf<double>(i, HERMES_ANY),
-      inflow_boundary(inflow_boundary) 
+      inflow_boundary(inflow_boundary), direction(i) 
     {};
 
     virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
@@ -136,18 +145,17 @@ private:
 
     template<typename Real, typename Scalar>
     Scalar g(const std::string& bdy_marker, Real x, Real y) const;
-    
-    // Member.
-    std::string inflow_boundary;
   };
   
-  double calculate_a_dot_v(double x, double y, double vx, double vy) const;
+  double calculate_a_dot_v(int n, double x, double y, double vx, double vy) const;
 
-  Ord calculate_a_dot_v(Ord x, Ord y, Ord vx, Ord vy) const;
+  Ord calculate_a_dot_v(int n, Ord x, Ord y, Ord vx, Ord vy) const;
 
   double upwind_flux(double u_cent, double u_neib, double a_dot_n) const;
 
   Ord upwind_flux(Ord u_cent, Ord u_neib, Ord a_dot_n) const;
 
   Mesh* mesh;
+  
+  int N;
 };
