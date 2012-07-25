@@ -1,12 +1,15 @@
 #include "definitions.h"
 
-CustomWeakForm::CustomWeakForm(const std::string& inflow_boundary, Mesh* mesh) : WeakForm<double>(1), mesh(mesh)
+CustomWeakForm::CustomWeakForm(const std::string& inflow_boundary, Mesh* mesh, int N) : WeakForm<double>(N), mesh(mesh), N(N)
 {
-    add_matrix_form(new CustomMatrixFormVol(0, 0));
-    add_vector_form(new CustomVectorFormVol(0));
-    add_matrix_form_surf(new CustomMatrixFormSurface(0, 0));
-    add_matrix_form_surf(new CustomMatrixFormInterface(0, 0));
-    add_vector_form_surf(new CustomVectorFormSurface(0, inflow_boundary));
+  for (int n = 0; n < N; n++)
+  {
+    add_matrix_form(new CustomMatrixFormVol(n, n));
+    add_vector_form(new CustomVectorFormVol(n));
+    add_matrix_form_surf(new CustomMatrixFormSurface(n, n));
+    add_matrix_form_surf(new CustomMatrixFormInterface(n, n));
+    add_vector_form_surf(new CustomVectorFormSurface(n, inflow_boundary));
+  }
 }
 
 template<typename Real, typename Scalar>
@@ -15,7 +18,7 @@ Scalar CustomWeakForm::CustomMatrixFormVol::matrix_form(int n, double *wt, Func<
 {
   Scalar result = Scalar(0);
   for (int i = 0; i < n; i++)
-    result += wt[i] * u->val[i] * ( -static_cast<CustomWeakForm*>(wf)->calculate_a_dot_v(e->x[i], e->y[i], v->dx[i], v->dy[i]) + b<Real,Scalar>(e->x[i],e->y[i]) * v->val[i] );
+    result += wt[i] * u->val[i] * ( -static_cast<CustomWeakForm*>(wf)->calculate_a_dot_v(direction, e->x[i], e->y[i], v->dx[i], v->dy[i]) + b<Real,Scalar>(e->x[i],e->y[i]) * v->val[i] );
   return result;
 }
 
@@ -53,7 +56,7 @@ Scalar CustomWeakForm::CustomMatrixFormSurface::matrix_form(int n, double *wt, F
   for (int i = 0; i < n; i++)
   {
     Real x = e->x[i], y = e->y[i];
-    Real a_dot_n = Real(static_cast<CustomWeakForm*>(wf)->calculate_a_dot_v(x, y, e->nx[i], e->ny[i]));
+    Real a_dot_n = Real(static_cast<CustomWeakForm*>(wf)->calculate_a_dot_v(direction, x, y, e->nx[i], e->ny[i]));
     result += wt[i] * static_cast<CustomWeakForm*>(wf)->upwind_flux(u->val[i], Scalar(0), a_dot_n) * v->val[i];
   }
   return result;
@@ -66,7 +69,7 @@ Scalar CustomWeakForm::CustomMatrixFormInterface::matrix_form(int n, double *wt,
   Scalar result = Scalar(0);
 
   for (int i = 0; i < n; i++) {
-    Real a_dot_n = static_cast<CustomWeakForm*>(wf)->calculate_a_dot_v(e->x[i], e->y[i], e->nx[i], e->ny[i]);
+    Real a_dot_n = static_cast<CustomWeakForm*>(wf)->calculate_a_dot_v(direction, e->x[i], e->y[i], e->nx[i], e->ny[i]);
     Real jump_v = v->get_val_central(i) - v->get_val_neighbor(i);
     result += wt[i] * static_cast<CustomWeakForm*>(wf)->upwind_flux(u->get_val_central(i), u->get_val_neighbor(i), a_dot_n) * jump_v;
   }
@@ -79,7 +82,7 @@ double CustomWeakForm::CustomVectorFormSurface::value(int n, double *wt, Func<do
   double result = 0;
   for (int i = 0; i < n; i++) {
     double x = e->x[i], y = e->y[i];
-    double a_dot_n = static_cast<CustomWeakForm*>(wf)->calculate_a_dot_v(x, y, e->nx[i], e->ny[i]);
+    double a_dot_n = static_cast<CustomWeakForm*>(wf)->calculate_a_dot_v(direction, x, y, e->nx[i], e->ny[i]);
     // Function values for Dirichlet boundary conditions.
     result += -wt[i] * static_cast<CustomWeakForm*>(wf)->upwind_flux(0, g<double,double>(static_cast<CustomWeakForm*>(wf)->mesh->get_boundary_markers_conversion().get_user_marker(e->edge_marker).marker, x, y), a_dot_n) * v->val[i];
   }
@@ -100,14 +103,14 @@ Scalar CustomWeakForm::CustomVectorFormSurface::g(const std::string& bdy_marker,
   if(bdy_marker == inflow_boundary) return 1; else return 0;
 }
 
-double CustomWeakForm::calculate_a_dot_v(double x, double y, double vx, double vy) const
+double CustomWeakForm::calculate_a_dot_v(int n, double x, double y, double vx, double vy) const
 {
   //double norm = std::max<double>(1e-12, std::sqrt(sqr(x) + sqr(y)));
   //return -y/norm*vx + x/norm*vy;
-  return 0.8*vx + 0.6*vy;
+  return std::cos((n+1)*M_PI/(2.1*N))*vx + std::sin((n+1)*M_PI/(2.1*N))*vy;
 }
 
-Ord CustomWeakForm::calculate_a_dot_v(Ord x, Ord y, Ord vx, Ord vy) const
+Ord CustomWeakForm::calculate_a_dot_v(int n, Ord x, Ord y, Ord vx, Ord vy) const
 {
   return Ord(1);
 }

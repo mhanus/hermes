@@ -20,9 +20,11 @@ const bool HERMES_VISUALIZATION = true;
 // Set the following flag to "true" to enable VTK output.
 const bool VTK_VISUALIZATION = false;
 // Number of initial uniform mesh refinements.
-const int INIT_REF = 6;
+const int INIT_REF_NUM = 4;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
 const int P_INIT = 0;
+
+const int N = 12;
 
 MatrixSolverType matrix_solver_type = SOLVER_UMFPACK;
 // Only for matrix_solver_type == SOLVER_AZTECOO :
@@ -35,34 +37,45 @@ int main(int argc, char* args[])
   TimePeriod cpu_time;
   cpu_time.tick();
   
-  // Load the mesh.
-  Mesh mesh;
+  Hermes::vector<Mesh *> meshes;
+  for (int i = 0; i < N; i++)
+    meshes.push_back(new Mesh());
+  
   MeshReaderH2D mloader;
-  mloader.load("square2.mesh", &mesh);
+  mloader.load("square2.mesh", meshes[0]);
+  
+  for (int i = 1; i < N; i++) 
+  {
+    // Obtain meshes for the subsequent components by cloning the mesh loaded for the 1st one.
+    meshes[i]->copy(meshes[0]);
+        
+    // Initial uniform refinements.
+    for (int j = 0; j < INIT_REF_NUM; j++) 
+      meshes[i]->refine_all_elements();
+  }
+  for (int j = 0; j < INIT_REF_NUM; j++) 
+    meshes[0]->refine_all_elements();
 
-  // Perform initial mesh refinement.
-  for (int i=0; i<INIT_REF; i++) mesh.refine_all_elements();
-
-  // Create an L2 space.
-  L2Space<double> space(&mesh, P_INIT);
-  int ndof = space.get_num_dofs();
+  Hermes::vector<const Space<double> *> spaces;
+  
+  for (int n = 0; n < N; n++)
+    spaces.push_back(new L2Space<double>(meshes[n], P_INIT));
+  
+  int ndof =  Space<double>::get_num_dofs(spaces);
 
   // Display the mesh.
-  OrderView oview("Coarse mesh", new WinGeom(0, 0, 440, 350));
-  oview.show(&space);
+/*  OrderView oview("Coarse mesh", new WinGeom(0, 0, 440, 350));
+  oview.show(&spaces);
   BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
   bview.show(&space);
-
-  Solution<double> sln;
+*/
+  Hermes::vector<Solution<double>* > slns;
 
   // Initialize the weak formulation.
-  CustomWeakForm wf("Bdy_in", &mesh);
-
-  ScalarView view1("Solution", new WinGeom(900, 0, 450, 350));
-  view1.fix_scale_width(60);
+  CustomWeakForm wf("Bdy_in", meshes[0], N);
  
   // Initialize the FE problem.
-  DiscreteProblem<double> dp(&wf, &space);
+  DiscreteProblem<double> dp(&wf, spaces);
   dp.set_fvm();
 
   // Set up the solver, matrix, and rhs according to the solver selection.
@@ -84,16 +97,14 @@ int main(int argc, char* args[])
 
     // Solve the linear system. If successful, obtain the solution.
     if(solver->solve())
-      Solution<double>::vector_to_solution(solver->get_sln_vector(), &space, &sln);
+      Solution<double>::vector_to_solutions(solver->get_sln_vector(), spaces, slns);
     else
       throw Hermes::Exceptions::Exception("Matrix solver failed.\n");
   
   cpu_time.tick();
   info("Time taken: %lf s", cpu_time.last());
 
-  // View the coarse mesh solution.
-  view1.show(&sln);
-
+ 
   // Clean up.
   delete solver;
   delete matrix;
@@ -103,6 +114,13 @@ int main(int argc, char* args[])
   info("Total running time: %g s", cpu_time.accumulated());
 
   // Wait for keyboard or mouse input.
-  Views::View::wait();
+  // View the coarse mesh solution.
+  for (int n = 0; n < N; n++)
+  {
+    ScalarView view1("Solution", new WinGeom(900, 0, 450, 350));
+    view1.fix_scale_width(60);
+    view1.show(slns[n]);
+    Views::View::wait();
+  }
   return 0;
 }
