@@ -16,15 +16,15 @@
 
 
 // Set the following flag to "false" to suppress Hermes OpenGL visualization.
-const bool HERMES_VISUALIZATION = true;
+const bool HERMES_VISUALIZATION = false;
 // Set the following flag to "true" to enable VTK output.
-const bool VTK_VISUALIZATION = false;
+const bool VTK_VISUALIZATION = true;
 // Number of initial uniform mesh refinements.
-const int INIT_REF_NUM = 4;
+const int INIT_REF_NUM = 6;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
 const int P_INIT = 0;
 
-const int N = 12;
+const int N = 24;
 
 MatrixSolverType matrix_solver_type = SOLVER_UMFPACK;
 // Only for matrix_solver_type == SOLVER_AZTECOO :
@@ -33,9 +33,9 @@ const char* preconditioner = "jacobi";
 
 int main(int argc, char* args[])
 {
-    // Set the number of threads used in Hermes.
+  // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 1);
-  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 2);
   
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -68,11 +68,11 @@ int main(int argc, char* args[])
   int ndof =  Space<double>::get_num_dofs(spaces);
 
   // Display the mesh.
-/*  OrderView oview("Coarse mesh", new WinGeom(0, 0, 440, 350));
-  oview.show(&spaces);
+  /*OrderView oview("Coarse mesh", new WinGeom(0, 0, 440, 350));
+  oview.show(spaces[0]);
   BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
-  bview.show(&space);
-*/
+  bview.show(spaces[0]);*/
+
   Hermes::vector<Solution<double>* > slns;
   for (int i = 0; i < N; i++)
     slns.push_back(new Solution<double>());
@@ -85,7 +85,7 @@ int main(int argc, char* args[])
   dp.set_fvm();
   LinearSolver<double> solver(&dp);
   
-  Loggable::Static::info("Solving.");
+  Loggable::Static::info("Solving. NDOF = %d", ndof);
   cpu_time.tick();
 
     // Solve the linear system. If successful, obtain the solution.
@@ -101,18 +101,30 @@ int main(int argc, char* args[])
   
   cpu_time.tick();
   Loggable::Static::info("Time taken: %lf s", cpu_time.last());
-/*  
-  cpu_time.tick();
-  info("Total running time: %g s", cpu_time.accumulated());
-*/
+  
+  //cpu_time.tick();
+  //info("Total running time: %g s", cpu_time.accumulated());
+
   // Wait for keyboard or mouse input.
   // View the coarse mesh solution.
   for (int n = 0; n < N; n++)
   {
-    ScalarView view1("Solution", new WinGeom(900, 0, 450, 350));
-    view1.fix_scale_width(60);
-    view1.show(slns[n]);
-    Views::View::wait();
+    if(HERMES_VISUALIZATION)
+    {
+      ScalarView view("Solution", new WinGeom(900, 0, 450, 350));
+      view.fix_scale_width(60);
+      view.show(slns[n]);
+      Views::View::wait();
+    }
+    
+    // VTK output.
+    if(VTK_VISUALIZATION)
+    {
+      // Output solution in VTK format.
+      Linearizer lin;
+      bool mode_3D = false;
+      lin.save_solution_vtk(slns[n], (std::string("sln_") + itos(n) + std::string(".vtk")).c_str(), "Solution", mode_3D);
+    }
   }
   return 0;
 }

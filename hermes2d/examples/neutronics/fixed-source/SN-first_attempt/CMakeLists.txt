@@ -1,6 +1,6 @@
 project(SN-first_attempt)
 
-add_executable(${PROJECT_NAME} main.cpp definitions.cpp)
+add_executable(${PROJECT_NAME} main.cpp definitions.cpp ../../utils.cpp)
 
 set (FLAGS "${FLAGS} -g")
 set_property(TARGET ${PROJECT_NAME} PROPERTY COMPILE_FLAGS ${FLAGS})
