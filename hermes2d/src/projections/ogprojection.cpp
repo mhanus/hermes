@@ -145,7 +145,8 @@ namespace Hermes
         ProjNormType proj_norm, double newton_tol, int newton_max_iter)
     {
       // Sanity checks.
-      if(target_vec == NULL) throw Exceptions::NullException(3);
+      if(target_vec == NULL) 
+        throw Exceptions::NullException(3);
 
       // If projection norm is not provided, set it
       // to match the type of the space.
@@ -175,6 +176,8 @@ namespace Hermes
       project_internal(space, proj_wf, target_vec, newton_tol, newton_max_iter);
 
       // Clean up.
+      delete proj_wf->get_mfvol()[0];
+      delete proj_wf->get_vfvol()[0];
       delete proj_wf;
     }
 
@@ -218,9 +221,12 @@ namespace Hermes
       int n = spaces.size();
 
       // Sanity checks.
-      if(n != source_meshfns.size()) throw Exceptions::LengthException(1, 2, n, source_meshfns.size());
-      if(target_vec == NULL) throw Exceptions::NullException(3);
-      if(!proj_norms.empty() && n != proj_norms.size()) throw Exceptions::LengthException(1, 5, n, proj_norms.size());
+      if(n != source_meshfns.size()) 
+        throw Exceptions::LengthException(1, 2, n, source_meshfns.size());
+      if(target_vec == NULL) 
+        throw Exceptions::NullException(3);
+      if(!proj_norms.empty() && n != proj_norms.size()) 
+        throw Exceptions::LengthException(1, 5, n, proj_norms.size());
 
       int start_index = 0;
       for (int i = 0; i < n; i++)
@@ -242,9 +248,12 @@ namespace Hermes
       int n = spaces.size();
 
       // Sanity checks.
-      if(n != source_slns.size()) throw Exceptions::LengthException(1, 2, n, source_slns.size());
-      if(target_vec == NULL) throw Exceptions::NullException(3);
-      if(!proj_norms.empty() && n != proj_norms.size()) throw Exceptions::LengthException(1, 5, n, proj_norms.size());
+      if(n != source_slns.size()) 
+        throw Exceptions::LengthException(1, 2, n, source_slns.size());
+      if(target_vec == NULL) 
+        throw Exceptions::NullException(3);
+      if(!proj_norms.empty() && n != proj_norms.size()) 
+        throw Exceptions::LengthException(1, 5, n, proj_norms.size());
 
       int start_index = 0;
       for (int i = 0; i < n; i++)
@@ -265,9 +274,12 @@ namespace Hermes
       int n = spaces.size();
 
       // Sanity checks.
-      if(n != source_slns.size()) throw Exceptions::LengthException(1, 2, n, source_slns.size());
-      if(n != target_slns.size()) throw Exceptions::LengthException(1, 2, n, target_slns.size());
-      if(!proj_norms.empty() && n != proj_norms.size()) throw Exceptions::LengthException(1, 5, n, proj_norms.size());
+      if(n != source_slns.size()) 
+        throw Exceptions::LengthException(1, 2, n, source_slns.size());
+      if(n != target_slns.size()) 
+        throw Exceptions::LengthException(1, 2, n, target_slns.size());
+      if(!proj_norms.empty() && n != proj_norms.size()) 
+        throw Exceptions::LengthException(1, 5, n, proj_norms.size());
 
       int start_index = 0;
       for (int i = 0; i < n; i++)
