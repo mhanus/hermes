@@ -33,7 +33,7 @@ namespace Hermes
     /// @ingroup userSolvingAPI
     /// Class for Newton's method.
     template<typename Scalar>
-    class HERMES_API NewtonSolver : public NonlinearSolver<Scalar>, public Hermes::Hermes2D::Mixins::SettableSpaces<Scalar>
+    class HERMES_API NewtonSolver : public NonlinearSolver<Scalar>, public Hermes::Hermes2D::Mixins::SettableSpaces<Scalar>, public Hermes::Mixins::OutputAttachable
     {
     public:
       NewtonSolver(DiscreteProblem<Scalar>* dp);
@@ -60,7 +60,7 @@ namespace Hermes
       void set_max_allowed_residual_norm(double max_allowed_residual_norm_to_set);
 
       /// Sets minimum damping coefficient.
-      void set_min_allowed_damping_coeff(double min_allowed_damping_coeff);
+      void set_min_allowed_damping_coeff(double min_allowed_damping_coeff_to_set);
 
       /// Call NonlinearSolver::set_iterative_method() and set the method to the linear solver (if applicable).
       virtual void set_iterative_method(const char* iterative_method_name);
@@ -105,9 +105,8 @@ namespace Hermes
       /// Maximum allowed residual norm. If this number is exceeded, the methods solve() return 'false'.
       /// By default set to 1E6.
       /// Possible to change via method set_max_allowed_residual_norm().
-      static double max_allowed_residual_norm;
-
-      static double min_allowed_damping_coeff;
+      double max_allowed_residual_norm;
+      double min_allowed_damping_coeff;
 
       double currentDampingCofficient;
 

@@ -102,7 +102,8 @@ namespace Hermes
       virtual void setTime(double time);
       virtual void setTimeStep(double timeStep);
 
-    protected:
+      void delete_cache();
+
       /// Assembling.
       /// General assembling procedure for nonlinear problems. coeff_vec is the
       /// previous Newton vector. If force_diagonal_block == true, then (zero) matrix
@@ -131,6 +132,7 @@ namespace Hermes
       void assemble(Vector<Scalar>* rhs = NULL, bool force_diagonal_blocks = false,
         Table* block_weights = NULL);
 
+    protected:
       void init_assembling(Scalar* coeff_vec, PrecalcShapeset*** pss , PrecalcShapeset*** spss, RefMap*** refmaps, Solution<Scalar>*** u_ext, AsmList<Scalar>*** als, Hermes::vector<MeshFunction<Scalar>*>& ext_functions, MeshFunction<Scalar>*** ext,
           Hermes::vector<MatrixFormVol<Scalar>*>* mfvol, Hermes::vector<MatrixFormSurf<Scalar>*>* mfsurf, Hermes::vector<VectorFormVol<Scalar>*>* vfvol, Hermes::vector<VectorFormSurf<Scalar>*>* vfsurf);
 
@@ -268,16 +270,17 @@ namespace Hermes
       class CacheRecordPerElement
       {
       public:
-        void clear(Traverse::State* current_state);
-        int asmlistCnt;
+        void clear();
         int* asmlistIdx;
-        int order;
+        int asmlistCnt;
       };
 
       class CacheRecordPerSubIdx
       {
       public:
-        void clear(CacheRecordPerElement* elementCacheInfo, Traverse::State* current_state);
+        int order;
+        void clear(int nvert);
+        int asmlistCnt;
         Func<double>** fns;
         Func<double>*** fnsSurface;
         Geom<double>* geometry;
