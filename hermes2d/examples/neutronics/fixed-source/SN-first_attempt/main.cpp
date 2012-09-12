@@ -16,9 +16,9 @@
 
 
 // Set the following flag to "false" to suppress Hermes OpenGL visualization.
-const bool HERMES_VISUALIZATION = false;
+const bool HERMES_VISUALIZATION = true;
 // Set the following flag to "true" to enable VTK output.
-const bool VTK_VISUALIZATION = true;
+const bool VTK_VISUALIZATION = false;
 // Number of initial uniform mesh refinements.
 const int INIT_REF_NUM = 6;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
@@ -68,10 +68,10 @@ int main(int argc, char* args[])
   int ndof =  Space<double>::get_num_dofs(spaces);
 
   // Display the mesh.
-  /*OrderView oview("Coarse mesh", new WinGeom(0, 0, 440, 350));
+  OrderView oview("Coarse mesh", new WinGeom(0, 0, 440, 350));
   oview.show(spaces[0]);
   BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
-  bview.show(spaces[0]);*/
+  bview.show(spaces[0]);
 
   Hermes::vector<Solution<double>* > slns;
   for (int i = 0; i < N; i++)
@@ -102,9 +102,6 @@ int main(int argc, char* args[])
   cpu_time.tick();
   Loggable::Static::info("Time taken: %lf s", cpu_time.last());
   
-  //cpu_time.tick();
-  //info("Total running time: %g s", cpu_time.accumulated());
-
   // Wait for keyboard or mouse input.
   // View the coarse mesh solution.
   for (int n = 0; n < N; n++)
