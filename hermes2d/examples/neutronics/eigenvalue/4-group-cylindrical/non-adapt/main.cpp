@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
     
     Loggable::Static::info("------------ Power iteration %d:", it);
     
-    Loggable::Static::info("Newton's method (matrix problem solved by %s).", Hermes::MatrixSolverNames[matrix_solver].c_str());
+    Loggable::Static::info("Newton's method.");
     
     // The matrix doesn't change within the power iteration loop, so we don't have to reassemble the Jacobian again.
     try
