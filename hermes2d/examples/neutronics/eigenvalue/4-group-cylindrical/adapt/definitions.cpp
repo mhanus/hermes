@@ -10,7 +10,7 @@ int get_num_of_neg(MeshFunction<double> *sln)
   Quad2D* quad = &g_quad_2d_std;
   sln->set_quad_2d(quad);
   Element* e;
-  Mesh* mesh = sln->get_mesh();
+  const Mesh* mesh = sln->get_mesh();
   
   int n = 0;
   
@@ -23,7 +23,7 @@ int get_num_of_neg(MeshFunction<double> *sln)
     limit_order(o, e->get_mode());
     sln->set_quad_order(o, H2D_FN_VAL);
     double *uval = sln->get_fn_values();
-    int np = quad->get_num_points(o);
+    int np = quad->get_num_points(o, e->get_mode());
     
     for (int i = 0; i < np; i++)
       if (uval[i] < -1e-12)
