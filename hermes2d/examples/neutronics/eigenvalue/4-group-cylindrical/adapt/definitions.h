@@ -23,6 +23,10 @@ public:
   {
     return h1_axisym_projection_biform<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
   }
+  
+  virtual MatrixFormVol<Scalar>* clone() {
+    return new H1AxisymProjectionJacobian<Scalar>(*this);
+  }
 
 private:
   
@@ -58,18 +62,21 @@ public:
   {
     return h1_axisym_projection_liform<Ord, Ord>(n, wt, u_ext, v, e, ext);
   }
+  
+  virtual VectorFormVol<Scalar>* clone() {
+    return new H1AxisymProjectionResidual<Scalar>(*this);
+  }
 
 private:
   template<typename TestFunctionDomain, typename SolFunctionDomain>
   SolFunctionDomain h1_axisym_projection_liform(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *v,
                                                 Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext) const
   {
-    _F_
     SolFunctionDomain result(0);
     for (int i = 0; i < n; i++)
-      result += wt[i] * e->x[i] * ( (u_ext[this->i]->val[i] - ext->fn[0]->val[i]) * v->val[i] 
-                                  + (u_ext[this->i]->dx[i]  - ext->fn[0]->dx[i])  * v->dx[i] 
-                                  + (u_ext[this->i]->dy[i]  - ext->fn[0]->dy[i])  * v->dy[i]  );
+      result += wt[i] * e->x[i] * ( ext->fn[0]->val[i]  * v->val[i] 
+                                    + ext->fn[0]->dx[i] * v->dx[i] 
+                                    + ext->fn[0]->dy[i] * v->dy[i] );
     return result;
   }
 };
@@ -125,7 +132,7 @@ Scalar ErrorForm<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[],
     case HERMES_H1_NORM:
       return ErrorForm<Scalar>::h1_error_form_axisym<double, Scalar>(n, wt, u_ext, u, v, e, ext);
     default:
-      ErrorHandling::error_function("Only the H1 and L2 norms are currently implemented.");
+      Neutronics::ErrorHandling::error_function("Only the H1 and L2 norms are currently implemented.");
       return 0.0;
   }
 }
@@ -142,7 +149,7 @@ Ord ErrorForm<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[],
     case HERMES_H1_NORM:
       return ErrorForm<Scalar>::h1_error_form_axisym<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
     default:
-      ErrorHandling::error_function("Only the H1 and L2 norms are currently implemented.");
+      Neutronics::ErrorHandling::error_function("Only the H1 and L2 norms are currently implemented.");
       return Ord();
   }
 }
