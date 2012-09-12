@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
   
   // Convert the mesh so that it has one type of elements (optional). 
   //meshes[0]->convert_quads_to_triangles();
-  //meshes[0]->convert_triangles_to_quads();
+  //meshes[0]->convert_triangles_to_quads(); OBSOLETE
   
   for (unsigned int i = 1; i < N_EQUATIONS; i++) 
   {
