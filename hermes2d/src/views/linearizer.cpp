@@ -110,7 +110,7 @@ namespace Hermes
         user_xdisp = false;
         ydisp = NULL;
         user_ydisp = false;
-        trisContours = NULL;
+        tris_contours = NULL;
       }
 
       void Linearizer::process_triangle(MeshFunction<double>** fns, int iv0, int iv1, int iv2, int level,
@@ -179,7 +179,7 @@ namespace Hermes
           if(eps >= 1.0)
           {
             // if eps > 1, the user wants a fixed number of refinements (no adaptivity)
-            split = ((level + 5) < eps);
+            split = (level + 5 < eps);
           }
           else
           {
@@ -650,9 +650,9 @@ namespace Hermes
 
         // Initialization of computation stuff.
         //    sizes.
-        this->vertex_size = std::max(100 * this->sln->get_mesh()->get_num_elements(), 50000);
-        this->triangle_size = std::max(150 * this->sln->get_mesh()->get_num_elements(), 75000);
-        this->edges_size = std::max(100 * this->sln->get_mesh()->get_num_elements(), 50000);
+        this->vertex_size = std::max(100 * this->sln->get_mesh()->get_num_elements(), std::max(this->vertex_size, 50000));
+        this->triangle_size = std::max(150 * this->sln->get_mesh()->get_num_elements(), std::max(this->triangle_size, 75000));
+        this->edges_size = std::max(100 * this->sln->get_mesh()->get_num_elements(), std::max(this->edges_size, 50000));
         //    counts.
         this->vertex_count = 0;
         this->triangle_count = 0;
@@ -662,6 +662,7 @@ namespace Hermes
         this->tris = (int3*) realloc(this->tris, sizeof(int3) * this->triangle_size);
         this->edges = (int3*) realloc(this->edges, sizeof(int3) * this->edges_size);
         this->info = (int4*) malloc(sizeof(int4) * this->vertex_size);
+        this->empty = false;
         //    initialize the hash table
         this->hash_table = (int*) malloc(sizeof(int) * this->vertex_size);
         memset(this->hash_table, 0xff, sizeof(int) * this->vertex_size);
@@ -684,8 +685,8 @@ namespace Hermes
           meshes.push_back(ydisp->get_mesh());
 
         // Parallelization
-        MeshFunction<double>*** fns = new MeshFunction<double>**[Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads)];
-        for(unsigned int i = 0; i < Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads); i++)
+        MeshFunction<double>*** fns = new MeshFunction<double>**[Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads)];
+        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
         {
           fns[i] = new MeshFunction<double>*[3];
           fns[i][0] = sln->clone();
@@ -705,8 +706,8 @@ namespace Hermes
           }
         }
 
-        Transformable*** trfs = new Transformable**[Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads)];
-        for(unsigned int i = 0; i < Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads); i++)
+        Transformable*** trfs = new Transformable**[Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads)];
+        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
         {
           trfs[i] = new Transformable*[3];
           trfs[i][0] = fns[i][0];
@@ -721,9 +722,9 @@ namespace Hermes
 
         trav_masterMax.begin(meshes.size(), &(meshes.front()));
 
-        Traverse* trav = new Traverse[Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads)];
+        Traverse* trav = new Traverse[Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads)];
 
-        for(unsigned int i = 0; i < Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads); i++)
+        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
         {
           trav[i].begin(meshes.size(), &(meshes.front()), trfs[i]);
           trav[i].stack = trav_masterMax.stack;
@@ -732,7 +733,7 @@ namespace Hermes
         int state_i;
 
 #define CHUNKSIZE 1
-        int num_threads_used = Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads);
+        int num_threads_used = Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads);
 #pragma omp parallel shared(trav_masterMax) private(state_i) num_threads(num_threads_used)
         {
 #pragma omp for schedule(dynamic, CHUNKSIZE)
@@ -774,7 +775,7 @@ namespace Hermes
         }
         
         trav_masterMax.finish();
-        for(unsigned int i = 0; i < Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads); i++)
+        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
           trav[i].finish();
         delete [] trav;
 
@@ -783,9 +784,9 @@ namespace Hermes
 
         trav_master.begin(meshes.size(), &(meshes.front()));
 
-        trav = new Traverse[Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads)];
+        trav = new Traverse[Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads)];
 
-        for(unsigned int i = 0; i < Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads); i++)
+        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
         {
           trav[i].begin(meshes.size(), &(meshes.front()), trfs[i]);
           trav[i].stack = trav_master.stack;
@@ -793,7 +794,7 @@ namespace Hermes
 
         trav_master.begin(meshes.size(), &(meshes.front()));
 
-        for(unsigned int i = 0; i < Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads); i++)
+        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
           trav[i].begin(meshes.size(), &(meshes.front()), trfs[i]);
 
 
@@ -866,7 +867,7 @@ namespace Hermes
         }
 
         trav_master.finish();
-        for(unsigned int i = 0; i < Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads); i++)
+        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
         {
           trav[i].finish();
           for(unsigned int j = 0; j < (1 + (xdisp != NULL? 1 : 0) + (ydisp != NULL ? 1 : 0)); j++)
@@ -879,11 +880,11 @@ namespace Hermes
         delete [] trav;
 
         // for contours, without regularization.
-        if(this->trisContours != NULL)
-          delete [] this->trisContours;
-        this->trisContours = new int3[this->triangle_count];
-        memcpy(this->trisContours, this->tris, this->triangle_count * sizeof(int3));
-        triangleContours_count = this->triangle_count;
+        if(this->tris_contours != NULL)
+          delete [] this->tris_contours;
+        this->tris_contours = new int3[this->triangle_count];
+        memcpy(this->tris_contours, this->tris, this->triangle_count * sizeof(int3));
+        triangle_contours_count = this->triangle_count;
 
         if(this->caughtException != NULL)
         {
@@ -998,8 +999,10 @@ namespace Hermes
           ::free(verts);
           verts = NULL;
         }
-        if(trisContours != NULL)
-          delete [] this->trisContours;
+        if(tris_contours != NULL)
+          delete [] this->tris_contours;
+
+        LinearizerBase::free();
       }
 
       Linearizer::~Linearizer()
@@ -1079,12 +1082,12 @@ namespace Hermes
 
       int Linearizer::get_num_contour_triangles()
       {
-        return this->triangleContours_count;
+        return this->triangle_contours_count;
       }
 
       int3* Linearizer::get_contour_triangles()
       {
-        return this->trisContours;
+        return this->tris_contours;
       }
     }
   }
