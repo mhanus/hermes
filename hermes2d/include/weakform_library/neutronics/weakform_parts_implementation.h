@@ -315,7 +315,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         Real local_res(0);
         for (int gfrom = 0; gfrom < ext->get_nf(); gfrom++)
-          local_res += nu[gfrom] * Sigma_f[gfrom] * ext->fn[gfrom]->val[i]; // double flux in group 'gfrom'
+          local_res += nu[gfrom] * Sigma_f[gfrom] * ext->fn[gfrom]->val[i]; // scalar flux in group 'gfrom'
                 
         local_res = local_res * wt[i] * v->val[i];
         
