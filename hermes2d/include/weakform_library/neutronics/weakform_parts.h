@@ -577,7 +577,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         unsigned int G;
         MomentGroupFlattener mg;
         
-        GenericForm(double G, GeomType geom_type = HERMES_PLANAR)
+        GenericForm(unsigned int G, GeomType geom_type = HERMES_PLANAR)
           : geom_type(geom_type), G(G), mg(G)
         {};
     };
