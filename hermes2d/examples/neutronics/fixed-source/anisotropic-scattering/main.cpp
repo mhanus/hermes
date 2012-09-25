@@ -23,11 +23,11 @@ const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
   const int INIT_REF_NUM[N_EQUATIONS] = {
   /* g1 g2 */
   /*-------*/
-    6,  6,     // SP1
-    6,  6,     // SP3
-    6,  6,     // SP5
-    6,  6,     // SP7
-    6,  6      // SP9
+    1,  1,     // SP1
+    1,  1,     // SP3
+    1,  1,     // SP5
+    1,  1,     // SP7
+    1,  1      // SP9
   };
   const int P_INIT[N_EQUATIONS] = {
   /* g1 g2 */
@@ -53,7 +53,7 @@ const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
 
 const double THRESHOLD = 0.6;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
-const int STRATEGY = -1;                  // Adaptive strategy:
+const int STRATEGY = 0;                  // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
                                          //   error is processed. If more elements have similar errors, refine
                                          //   all to keep the mesh symmetric. Absolute element errors should be
@@ -75,7 +75,7 @@ const int MESH_REGULARITY = -1;          // Maximum allowed level of hanging nod
                                          // their notoriously bad performance.
 const double CONV_EXP = 1.0;             // Default value is 1.0. This parameter influences the selection of
                                          // candidates in hp-adaptivity. See get_optimal_refinement() for details.
-const double ERR_STOP = 1.0;             // Stopping criterion for adaptivity (rel. error tolerance between the
+const double ERR_STOP = 2.0;             // Stopping criterion for adaptivity (rel. error tolerance between the
                                          // fine mesh and coarse mesh solution in percent). Setting a very small value
                                          // effectively disables this convergence test in favor of the following ones.
 const int NDOF_STOP = 60000;             // Adaptivity process stops when the number of degrees of freedom grows over
@@ -331,8 +331,7 @@ int main(int argc, char* argv[])
       
       // Initialize the fine mesh problem.
       int order_increase = 1;          // FIXME: This should be increase in the x-direction only.
-      int refinement_type = 0;
-      ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get(), order_increase, refinement_type));
+      ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get(), order_increase));
       int ndof_fine = Space<double>::get_num_dofs(fine_spaces.get());
           
       report_num_dof("Solving on fine meshes, #DOF: ", fine_spaces.get());
@@ -435,7 +434,7 @@ int main(int argc, char* argv[])
       cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       
       // If err_est is too large, adapt the mesh.
-      if (solution_err_est_rel < ERR_STOP || as == MAX_ADAPT_NUM || ndof_fine >= NDOF_STOP) 
+      if (pointwise_flux_rel_err_ref < ERR_STOP || as == MAX_ADAPT_NUM || ndof_fine >= NDOF_STOP) 
         done = true;
       else 
       {
