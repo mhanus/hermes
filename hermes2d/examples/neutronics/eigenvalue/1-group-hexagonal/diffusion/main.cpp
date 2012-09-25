@@ -184,7 +184,7 @@ int main(int argc, char* argv[])
       selectors.push_back(&selector);
     
     // Adaptivity loop:
-    int as = 1; bool done = false;
+    int as = 1; bool done = false; std::vector<Mesh*> old_meshes(power_iterates.size());
     do 
     {
       Loggable::Static::info("---- Adaptivity step %d:", as);
@@ -197,7 +197,14 @@ int main(int argc, char* argv[])
       // Solve the fine mesh problem.
       report_num_dof("Fine mesh power iteration, NDOF: ", fine_spaces.get());
       Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, fine_spaces.get_const(), matrix_solver, TOL_PIT_FM);
-            
+      
+      // Delete meshes dynamically created in 'construct_refined_spaces' in previous adaptativity iteration
+      // (they are still needed in current 'keff_eigenvalue_iteration', but pointers to them get replaced 
+      // in this function by pointers to 'fine_spaces', so we have to keep track of them via 'old_meshes').
+      if (as > 1)
+        for(unsigned int i = 0; i < power_iterates.size(); i++)
+          delete old_meshes[i];
+        
       report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces.get());
       OGProjection<double> ogProjection;
       ogProjection.project_global(spaces.get_const(), power_iterates, coarse_solutions);
@@ -255,9 +262,8 @@ int main(int argc, char* argv[])
       
       if (!done)
       {
-        for(unsigned int i = 0; i < N_EQUATIONS; i++)
-          delete fine_spaces.get()[i]->get_mesh();
-        delete &fine_spaces.get();
+        for(unsigned int i = 0; i < power_iterates.size(); i++)
+          old_meshes[i] = const_cast<Mesh*>(power_iterates[i]->get_mesh());
         
         // Increase counter.
         as++;
