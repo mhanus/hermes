@@ -10,7 +10,7 @@ template <typename Scalar>
 class H1AxisymProjectionJacobian : public MatrixFormVol<Scalar>
 {
 public:
-  H1AxisymProjectionJacobian() : MatrixFormVol<Scalar>(0, 0, Hermes::HERMES_ANY, HERMES_SYM) {};
+  H1AxisymProjectionJacobian() : MatrixFormVol<Scalar>(0, 0) { this->setSymFlag(HERMES_SYM); };
 
   Scalar value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *u, Func<double> *v,
                Geom<double> *e, ExtData<Scalar> *ext) const
