@@ -87,8 +87,8 @@ double TOL_PIT_RM = 5e-6;   // Tolerance for eigenvalue convergence on the fine 
 int main(int argc, char* argv[])
 {
   // Set the number of threads used in Hermes.
-  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 0);
-  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+  Hermes::HermesCommonApi.set_param_value(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.set_param_value(Hermes::Hermes2D::numThreads, 1);
 
   // Time measurement.
   TimeMeasurable cpu_time;
