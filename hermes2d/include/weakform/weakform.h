@@ -208,9 +208,13 @@ namespace Hermes
       /// the other one (for the whole WeakForm) is faster.
       void set_ext(MeshFunction<Scalar>* ext);
       void set_ext(Hermes::vector<MeshFunction<Scalar>*> ext);
+
       Hermes::vector<MeshFunction<Scalar>*> get_ext() const;
 
       virtual void set_elemwise_parameter(ElemwiseParameter<Scalar>* elemwise_parameter);
+
+      /// scaling factor
+      void setScalingFactor(double scalingFactor);
       
     protected:
       /// Set pointer to a WeakForm.
@@ -249,8 +253,9 @@ namespace Hermes
 
       WeakForm<Scalar>* wf;
       double stage_time;
-      void setScalingFactor(double scalingFactor);
+
       void set_uExtOffset(int u_ext_offset);
+
       friend class WeakForm<Scalar>;
       friend class RungeKutta<Scalar>;
       friend class DiscreteProblem<Scalar>;
