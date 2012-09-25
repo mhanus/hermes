@@ -129,8 +129,8 @@ void setup_convergence_graph(GnuplotGraph *graph, const std::set<int>& run_cases
 int main(int argc, char* argv[])
 { 
   // Set the number of threads used in Hermes.
-  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 0);
-  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+  Hermes::HermesCommonApi.set_param_value(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.set_param_value(Hermes::Hermes2D::numThreads, 1);
 
   double err_stop;        // Stopping criterion for adaptivity (rel. error tolerance between the
                           // fine mesh and coarse mesh solution in percent).
@@ -291,7 +291,7 @@ int main(int argc, char* argv[])
     }
     catch(Hermes::Exceptions::Exception e)
     {
-      e.printMsg();
+      e.print_msg();
       ErrorHandling::error_function("Newton's iteration failed.");
     }
     
@@ -421,7 +421,7 @@ int main(int argc, char* argv[])
       }
       catch(Hermes::Exceptions::Exception e)
       {
-        e.printMsg();
+        e.print_msg();
         ErrorHandling::error_function("Newton's iteration failed.");
       }
       
@@ -629,7 +629,7 @@ int main(int argc, char* argv[])
     {
         meshes[i]->copy(basic_meshes[i]);
         
-        H1Space<double>* sp = static_cast< H1Space<double>* >(spaces.get_const()[i]->dup(meshes[i]));
+        H1Space<double>* sp = static_cast< H1Space<double>* >(spaces.get_const()[i]->duplicate(meshes[i]));
         delete spaces.get()[i];
         spaces.get()[i] = sp;
     }
