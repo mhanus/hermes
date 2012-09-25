@@ -135,8 +135,8 @@ void setup_convergence_graph(GnuplotGraph *graph, const std::set<int>& run_cases
 int main(int argc, char* argv[])
 {  
   // Set the number of threads used in Hermes.
-  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 0);
-  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+  Hermes::HermesCommonApi.set_param_value(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.set_param_value(Hermes::Hermes2D::numThreads, 1);
 
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -280,7 +280,7 @@ int main(int argc, char* argv[])
         }
         catch(Hermes::Exceptions::Exception e)
         {
-          e.printMsg();
+          e.print_msg();
           ErrorHandling::error_function("Newton's iteration failed.");
         }
         
@@ -527,7 +527,7 @@ int main(int argc, char* argv[])
         meshes[i]->copy(basic_meshes[i]); 
         
         delete spaces.get()[i]; // Destroy the space created by construct_refined_spaces.
-        spaces_[i] = basic_spaces[i]->dup(meshes[i]); // Create a new space over the fresh copy of basic_mesh, duplicating the basic_space.
+        spaces_[i] = basic_spaces[i]->duplicate(meshes[i]); // Create a new space over the fresh copy of basic_mesh, duplicating the basic_space.
       }
       delete &spaces.get(); // Destroy the Hermes::vector<H1Space<double>* > created by construct_refined_spaces.
       spaces.set(&spaces_); // Set a new ConstantableSpacesVector to point to the newly created spaces.
@@ -557,7 +557,7 @@ int main(int argc, char* argv[])
     }
     catch(Hermes::Exceptions::Exception e)
     {
-      e.printMsg();
+      e.print_msg();
       ErrorHandling::error_function("Newton's iteration failed.");
     }
   

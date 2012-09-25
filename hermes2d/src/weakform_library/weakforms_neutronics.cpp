@@ -50,7 +50,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
       catch(Hermes::Exceptions::Exception e)
       {
-        e.printMsg();
+        e.print_msg();
         ErrorHandling::error_function("Newton's iteration failed.");
       }
       
