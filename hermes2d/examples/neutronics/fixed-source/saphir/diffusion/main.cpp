@@ -82,8 +82,8 @@ double SIGMA_A_5 = SIGMA_T_5 - SIGMA_S_5;
 int main(int argc, char* argv[])
 {
   // Set the number of threads used in Hermes.
-  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 0);
-  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+  Hermes::HermesCommonApi.set_param_value(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.set_param_value(Hermes::Hermes2D::numThreads, 1);
 
   // Load the mesh.
   Mesh mesh;
@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
     }
     catch(Hermes::Exceptions::Exception e)
     {
-      e.printMsg();
+      e.print_msg();
       Neutronics::ErrorHandling::error_function("Newton's iteration failed.");
     }
       
