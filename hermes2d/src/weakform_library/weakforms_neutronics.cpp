@@ -24,6 +24,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     int ndof = Space<double>::get_num_dofs(spaces);
     
     DiscreteProblem<double> dp(wf, spaces);
+    //dp.set_do_not_use_cache();
     NewtonSolver<double> solver(&dp);
         
     // NOTE:
@@ -101,15 +102,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 
       // Update the final eigenvalue.
       wf->update_keff(k_new);
-
+      
       // Update the eigenvector approximation.
       // FIXME: It seems that Space::construct_refined_spaces prevents automatic determination of meshes_changed
       //        through their seq number.
       wf->update_fluxes(new_solutions, meshes_changed);
-      meshes_changed = true; // FIXME: This forces a reinitialization of the scalar flux filter used by the SPN weak form to
+      meshes_changed = false; // FIXME: true forces a reinitialization of the scalar flux filter used by the SPN weak form to
                              // evaluate the right hand side. If meshes are not changed, the unimesh created in that
-                             // filter for the first time should not change either and this should be not neccessary. Currently,
-                             // however, it doesn't work correctly.
+                             // filter for the first time should not change either and this should be not neccessary.
   
       it++;
     }
