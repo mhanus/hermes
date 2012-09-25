@@ -213,11 +213,11 @@ int main(int argc, char* argv[])
   Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, spaces.get_const(), matrix_solver, TOL_PIT_CM);
   
   // Adaptivity loop:
-  int as = 1; bool done = false;
+  int as = 1; bool done = false; std::vector<Mesh*> old_meshes(power_iterates.size());
   do 
   {
     Loggable::Static::info("---- Adaptivity step %d:", as);
-    
+        
     // Construct globally refined meshes and setup reference spaces on them.
     ConstantableSpacesVector ref_spaces(Space<double>::construct_refined_spaces(spaces.get()));
 
@@ -231,6 +231,13 @@ int main(int argc, char* argv[])
     // Solve the fine mesh problem.
     report_num_dof("Fine mesh power iteration, ", ref_spaces.get());
     Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, ref_spaces.get_const(), matrix_solver, TOL_PIT_RM);
+    
+    // Delete meshes dynamically created in 'construct_refined_spaces' in previous adaptativity iteration
+    // (they are still needed in current 'keff_eigenvalue_iteration', but pointers to them get replaced 
+    // in this function by pointers to 'ref_spaces', so we have to keep track of them via 'old_meshes').
+    if (as > 1)
+      for(unsigned int i = 0; i < power_iterates.size(); i++)
+        delete old_meshes[i];
     
     // Store the results.
     for (unsigned int g = 0; g < matprop.get_G(); g++) 
@@ -318,8 +325,9 @@ int main(int argc, char* argv[])
 
     if (!done)
     {
-      for(unsigned int g = 0; g < matprop.get_G(); g++)
-        delete ref_spaces.get()[g]->get_mesh();
+      for(unsigned int i = 0; i < power_iterates.size(); i++)
+        old_meshes[i] = const_cast<Mesh*>(power_iterates[i]->get_mesh());
+      
       delete &ref_spaces.get();
       
       // Increase counter.
