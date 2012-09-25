@@ -510,7 +510,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         for (unsigned int gto = 0; gto < G; gto++)
         {
           VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(mg.pos(m,gto), src_area, minus_isotropic_source, geom_type);
-          src->scaling_factor = Coeffs::even_moment(0, m);
+          src->setScalingFactor(Coeffs::even_moment(0, m));
           source_terms.push_back(src);
           add_vector_form(src);
         }
@@ -530,7 +530,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         for (unsigned int gto = 0; gto < G; gto++)
         {
           VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(mg.pos(m,gto), src_areas, minus_isotropic_source, geom_type);
-          src->scaling_factor = Coeffs::even_moment(0, m);
+          src->setScalingFactor(Coeffs::even_moment(0, m));
           source_terms.push_back(src);
           add_vector_form(src);
         }
@@ -553,7 +553,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         for (unsigned int gto = 0; gto < G; gto++)
         {
           VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(mg.pos(m,gto), src_area, minus_isotropic_sources[gto], geom_type);
-          src->scaling_factor = Coeffs::even_moment(0, m);
+          src->setScalingFactor(Coeffs::even_moment(0, m));
           source_terms.push_back(src);
           add_vector_form(src);
         }
@@ -576,7 +576,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         for (unsigned int gto = 0; gto < G; gto++)
         {
           VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(mg.pos(m,gto), src_areas, minus_isotropic_sources[gto], geom_type);
-          src->scaling_factor = Coeffs::even_moment(0, m);
+          src->setScalingFactor(Coeffs::even_moment(0, m));
           source_terms.push_back(src);
           add_vector_form(src);
         }
