@@ -42,10 +42,12 @@ public:
   
   InterfaceEstimatorSPN(unsigned int m, unsigned int gto, const MomentGroupFlattener& mg,
                         const SPN::MaterialProperties::MaterialPropertyMaps& matprop, bool multiply_by_scalar_flux_factor) 
-    : KellyTypeAdapt<double>::ErrorEstimatorForm(mg.pos(m,gto), Hermes::H2D_DG_INNER_EDGE),
+    : KellyTypeAdapt<double>::ErrorEstimatorForm(mg.pos(m,gto)),
       mrow(m), gto(gto), mg(mg), matprop(matprop), 
       scalar_flux_factor(multiply_by_scalar_flux_factor ? Coeffs::even_moment(0, m) : 1.0)
-  { };
+  { 
+    this->setAsInterface();
+  };
 
   /// Evaluate value of the error norm.
   virtual double value(int n, double *wt, Func<double> *u_ext[],
@@ -265,9 +267,11 @@ class InterfaceEstimatorDiffusion : public KellyTypeAdapt<double>::ErrorEstimato
 public:
   
   InterfaceEstimatorDiffusion(unsigned int gto, const Diffusion::MaterialProperties::MaterialPropertyMaps& matprop) 
-    : KellyTypeAdapt<double>::ErrorEstimatorForm(gto, Hermes::H2D_DG_INNER_EDGE),
+    : KellyTypeAdapt<double>::ErrorEstimatorForm(gto),
       gto(gto), matprop(matprop)
-  { };
+  { 
+    this->setAsInterface();
+  };
 
   /// Evaluate value of the error norm.
   virtual double value(int n, double *wt, Func<double> *u_ext[],
