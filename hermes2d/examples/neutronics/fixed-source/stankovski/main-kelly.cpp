@@ -301,9 +301,9 @@ int main(int argc, char* argv[])
     cpu_time.tick();
 
     Loggable::Static::info("\t --- time taken: %g s", cpu_time.accumulated());
-    Loggable::Static::info("\t -------- setup: %g s", newton.get_setup_time());
-    Loggable::Static::info("\t -------- assem: %g s", newton.get_assemble_time());
-    Loggable::Static::info("\t -------- solve: %g s", newton.get_solve_time());
+    //Loggable::Static::info("\t -------- setup: %g s", newton.get_setup_time());
+    //Loggable::Static::info("\t -------- assem: %g s", newton.get_assemble_time());
+    //Loggable::Static::info("\t -------- solve: %g s", newton.get_solve_time());
 
     cpu_time.reset();
   }
