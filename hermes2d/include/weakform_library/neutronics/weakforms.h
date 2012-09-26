@@ -107,7 +107,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           {
             Hermes::vector<std::string> regs = matprop->get_regions(*it);
             fission_regions.insert(insert_it, regs.begin(), regs.end());
-            insert_it += regs.size();
+            insert_it = fission_regions.begin();
           }
         };
         
