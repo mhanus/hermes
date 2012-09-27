@@ -10,15 +10,18 @@ const unsigned int N_GROUPS = 2;
 const unsigned int N_EQUATIONS = N_GROUPS;
 
 const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
-  0, 0
+  2, 2
 };
 const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
   1, 1
 }; 
+const int SELECTIVE_REF_NUM[N_EQUATIONS] = {
+  1, 2
+};
         
 const double THRESHOLD = 0.6;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
-const int STRATEGY = 0;                 // Adaptive strategy:
+const int STRATEGY = -1;                  // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
                                          //   error is processed. If more elements have similar errors, refine
                                          //   all to keep the mesh symmetric.
@@ -27,7 +30,7 @@ const int STRATEGY = 0;                 // Adaptive strategy:
                                          // STRATEGY = 2 ... refine all elements whose error is larger
                                          //   than THRESHOLD.
                                          // More adaptive strategies can be created in adapt_ortho_h1.cpp.
-const CandList CAND_LIST = H2D_H_ISO; // Predefined list of element refinement candidates. Possible values are
+const CandList CAND_LIST = H2D_HP_ANISO;  // Predefined list of element refinement candidates. Possible values are
                                          // H2D_P_ISO, H2D_P_ANISO, H2D_H_ISO, H2D_H_ANISO, H2D_HP_ISO,
                                          // H2D_HP_ANISO_H, H2D_HP_ANISO_P, H2D_HP_ANISO.
                                          // See User Documentation for details.
@@ -59,6 +62,26 @@ double k_eff = 1.0;         // Initial eigenvalue approximation.
 double TOL_PIT_CM = 1e-5;   // Tolerance for eigenvalue convergence on the coarse mesh.
 double TOL_PIT_FM = 1e-5;   // Tolerance for eigenvalue convergence on the fine mesh.
 
+int ref_fn(Element* e)
+{
+  if ( e->marker == 1 || 
+       e->marker == 7 || 
+      e->marker == 11 ||
+      e->marker == 20 ||
+      e->marker == 21 ||
+      e->marker == 28 ||
+      e->marker == 29 ||
+      e->marker == 34 || 
+      e->marker == 35 ||
+      e->marker == 39 ||
+      e->marker == 40 ||
+      e->marker == 42 ||
+      e->marker == 43 ||
+      e->marker == 44 )
+    return 0;
+  return -1;
+}
+
 int main(int argc, char* argv[])
 {  
   // Set the number of threads used in Hermes.
@@ -89,9 +112,14 @@ int main(int argc, char* argv[])
     // Initial uniform refinements.
     for (int j = 0; j < INIT_REF_NUM[i]; j++) 
       meshes[i]->refine_all_elements();
+    
+    meshes[i]->refine_by_criterion(ref_fn, SELECTIVE_REF_NUM[i]);
   }
   for (int j = 0; j < INIT_REF_NUM[0]; j++) 
+  {
     meshes[0]->refine_all_elements();
+    meshes[0]->refine_by_criterion(ref_fn, SELECTIVE_REF_NUM[0]);
+  }
   
   SupportClasses::Visualization views(N_GROUPS, DISPLAY_MESHES);
   if (DISPLAY_MESHES && HERMES_VISUALIZATION)
@@ -171,7 +199,7 @@ int main(int argc, char* argv[])
       // Initialize the fine mesh problem.
       Loggable::Static::info("Solving on fine meshes.");
       
-      ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get(),0));
+      ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get(),1));
             
       // Solve the fine mesh problem.
       report_num_dof("Fine mesh power iteration, NDOF: ", fine_spaces.get());
