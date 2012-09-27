@@ -262,7 +262,7 @@ namespace Hermes
     {
       this->check();
 
-      this->tick();
+      this->tick_reset();
 
       // Obtain the number of degrees of freedom.
       int ndof = this->dp->get_num_dofs();
@@ -300,7 +300,10 @@ namespace Hermes
         this->on_step_begin();
 
         // Assemble just the residual vector.
+        this->tick();
         this->dp->assemble(coeff_vec, residual);
+        double assemble_time = this->last();
+        
         if(this->output_rhsOn && (this->output_rhsIterations == -1 || this->output_rhsIterations >= it))
         {
           char* fileName = new char[this->RhsFilename.length() + 5];
@@ -397,7 +400,7 @@ namespace Hermes
         if(residual_norm > max_allowed_residual_norm)
         {
           this->tick();
-          this->info("\tNewton: solution duration: %f s.\n", this->last());
+          this->info("Newton: solution duration: %f s.\n", this->accumulated());
           this->on_finish();
           
           if(delete_coeff_vec)
@@ -431,13 +434,19 @@ namespace Hermes
           this->on_finish();
 
           this->tick();
-          this->info("\tNewton: solution duration: %f s.\n", this->last());
+          this->info("Newton: assemble at it. %d duration: %f s.", it, assemble_time);
+          this->info("Newton: solution duration: %f s.\n", this->accumulated());
 
           return;
         }
 
         // Assemble just the jacobian.
+        this->tick();
         this->dp->assemble(coeff_vec, jacobian);
+        assemble_time += this->last();
+        
+        this->info("Newton: assemble at it. %d duration: %f s.", it, assemble_time);
+        
         if(this->output_matrixOn && (this->output_matrixIterations == -1 || this->output_matrixIterations >= it))
         {
           char* fileName = new char[this->matrixFilename.length() + 5];
@@ -459,8 +468,10 @@ namespace Hermes
         residual->change_sign();
 
         // Solve the linear system.
+        this->tick();
         if(!linear_solver->solve())
           throw Exceptions::LinearMatrixSolverException();
+        this->info("Newton: solve at it. %d duration: %f s.", it, this->last());
 
         // Add \deltaY^{n + 1} to Y^n.
         // The good case.
@@ -494,7 +505,7 @@ namespace Hermes
           coeff_vec_back = NULL;
 
           this->tick();
-          this->info("\tNewton: solution duration: %f s.\n", this->last());
+          this->info("Newton: solution duration: %f s.\n", this->accumulated());
 
           this->on_finish();
           throw Exceptions::ValueException("iterations", it, newton_max_iter);
@@ -525,7 +536,7 @@ namespace Hermes
     {
       this->check();
 
-      this->tick();
+      this->tick_reset();
 
       // Obtain the number of degrees of freedom.
       int ndof = this->dp->get_num_dofs();
@@ -557,7 +568,10 @@ namespace Hermes
         this->on_step_begin();
 
         // Assemble the residual vector.
+        this->tick();
         this->dp->assemble(coeff_vec, residual);
+        double assemble_time = this->last();
+        
         if(this->output_rhsOn && (this->output_rhsIterations == -1 || this->output_rhsIterations >= it))
         {
           char* fileName = new char[this->RhsFilename.length() + 5];
@@ -653,7 +667,7 @@ namespace Hermes
         if(residual_norm > max_allowed_residual_norm)
         {
           this->tick();
-          this->info("\tNewton: solution duration: %f s.", this->last());
+          this->info("Newton: solution duration: %f s.\n", this->accumulated());
 
           if(delete_coeff_vec)
           {
@@ -686,7 +700,8 @@ namespace Hermes
           delete [] coeff_vec_back;
 
           this->tick();
-          this->info("\tNewton: solution duration: %f s.", this->last());
+          this->info("Newton: assemble at it. %d duration: %f s.", it, assemble_time);
+          this->info("Newton: solution duration: %f s.\n", this->accumulated());
 
           this->on_finish();
           return;
@@ -709,8 +724,10 @@ namespace Hermes
           // Create new matrix solver with correct matrix.
           linear_solver = create_linear_solver<Scalar>(kept_jacobian, residual);
 
+          this->tick();
           this->dp->assemble(coeff_vec, kept_jacobian);
-
+          assemble_time += this->last();
+          
           if(this->output_matrixOn && (this->output_matrixIterations == -1 || this->output_matrixIterations >= it))
           {
             char* fileName = new char[this->matrixFilename.length() + 5];
@@ -726,6 +743,8 @@ namespace Hermes
 
           linear_solver->set_factorization_scheme(HERMES_REUSE_FACTORIZATION_COMPLETELY);
         }
+        
+        this->info("Newton: assemble at it. %d duration: %f s.", it, assemble_time);
 
         this->on_step_end();
 
@@ -734,10 +753,12 @@ namespace Hermes
         residual->change_sign();
 
         // Solve the linear system.
+        this->tick();
         if(!linear_solver->solve()) 
         {
           throw Exceptions::LinearMatrixSolverException();
         }
+        this->info("Newton: solve at it. %d duration: %f s.", it, this->last());
 
          // Add \deltaY^{n + 1} to Y^n.
         // The good case.
@@ -770,7 +791,7 @@ namespace Hermes
           delete [] coeff_vec_back;
 
           this->tick();
-          this->info("\tNewton: solution duration: %f s.\n", this->last());
+          this->info("Newton: solution duration: %f s.\n", this->accumulated());
 
           this->on_finish();
           throw Exceptions::ValueException("iterations", it, newton_max_iter);
