@@ -1,11 +1,12 @@
 #include "weakforms_neutronics.h"
 #include "newton_solver.h"
+#include <examples/neutronics/utils.h>
 
 namespace Hermes { namespace Hermes2D { namespace Neutronics
 {
   int keff_eigenvalue_iteration(const Hermes::vector<Solution<double> *>& solutions, 
                                 Common::WeakForms::KeffEigenvalueProblem* wf, const Hermes::vector<const Space<double> *>& spaces,
-                                MatrixSolverType matrix_solver, double tol_keff, double tol_flux)
+                                MatrixSolverType matrix_solver, double tol_keff, double tol_flux, bool output_matrix_and_rhs)
   {
     // Sanity checks.
     if (spaces.size() != solutions.size()) 
@@ -26,6 +27,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     DiscreteProblem<double> dp(wf, spaces);
     //dp.set_do_not_use_cache();
     NewtonSolver<double> solver(&dp);
+
+    if (output_matrix_and_rhs)
+    {
+      solver.output_matrix(1);
+      solver.output_rhs(1);
+    }
         
     // NOTE:
     //  According to the 'physical' definitions of keff as a fraction of neutron sources and sinks, keff should be 
@@ -47,6 +54,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       // The matrix doesn't change within the power iteration loop, so we don't have to reassemble the Jacobian again.
       try
       {
+        if (output_matrix_and_rhs)
+        {
+          std::stringstream ss; ss << it;
+          solver.set_rhs_filename(std::string("rhs_") + ss.str() + std::string("_"));
+          solver.set_rhs_varname(std::string("b_") + ss.str() + std::string("_"));
+        }
         solver.solve_keep_jacobian();
       }
       catch(Hermes::Exceptions::Exception e)
