@@ -331,7 +331,7 @@ namespace Hermes
     void NewtonSolver<Scalar>::init_solving(Scalar*& coeff_vec)
     {
       this->check();
-      this->tick();
+      this->tick_reset();
 
       // Number of DOFs.
       this->ndof = Space<Scalar>::assign_dofs(this->get_spaces());
@@ -383,7 +383,7 @@ namespace Hermes
     {
       memcpy(this->sln_vector, coeff_vec, ndof * sizeof(Scalar));
       this->tick();
-      this->info("\tNewton: solution duration: %f s.\n", this->last());
+      this->info("\tNewton: solution duration: %f s.\n", this->accumulated());
       this->on_finish();
       this->deinit_solving(coeff_vec);
     }
@@ -562,6 +562,8 @@ namespace Hermes
       else
         this->get_parameter_value(p_iteration)++;
 
+      double assemble_time = 0;
+
       // Main Newton loop 
       while (true)
       {
@@ -573,11 +575,16 @@ namespace Hermes
         do
         {
           // Assemble just the residual.
+          this->tick();
           this->assemble_residual(coeff_vec);
+          assemble_time += this->last();
 
           // Test convergence - if in this loop we found a solution.
           if(this->handle_convergence_state_return_finished(this->get_convergence_state(), coeff_vec))
+          {
+            this->info("Newton: assemble at it. %d duration: %f s.", it, assemble_time);
             return;
+          }
 
           // Inspect the damping coefficient.
           try
@@ -628,7 +635,10 @@ namespace Hermes
           this->matrix_solver->set_factorization_scheme(HERMES_REUSE_FACTORIZATION_COMPLETELY);
           this->solve_linear_system(coeff_vec);
           // Assemble next residual for both reusage and convergence test.
+          this->tick();		  
           this->assemble_residual(coeff_vec);
+          assemble_time += this->last();
+
           // Test whether it was okay to reuse the jacobian.
           if(!this->jacobian_reused_okay(successful_steps_jacobian))
           {
@@ -652,13 +662,18 @@ namespace Hermes
 
           // Test convergence - if in this loop we found a solution.
           if(this->handle_convergence_state_return_finished(this->get_convergence_state(), coeff_vec))
+          {
+            this->info("Newton: assemble at it. %d duration: %f s.", it, assemble_time);
             return;
+          }
         }
 #pragma endregion
 
         // Reassemble the jacobian once not reusable anymore.
         this->info("\tNewton: re-calculating Jacobian.");
+        this->tick();
         this->dp->assemble(coeff_vec, this->jacobian);
+        assemble_time += this->last();
         if(this->report_cache_hits_and_misses)
           this->add_cache_hits_and_misses(this->dp);
 
