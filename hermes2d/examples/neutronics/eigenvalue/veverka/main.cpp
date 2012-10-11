@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
     
   // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
   report_num_dof("Coarse mesh power iteration, NDOF: ", spaces.get());
-  Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, spaces.get_const(), matrix_solver, TOL_PIT_CM);
+  Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, spaces.get_const(), matrix_solver, TOL_PIT_CM, 0, true);
   
   if (STRATEGY >= 0)
   {
