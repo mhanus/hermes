@@ -457,6 +457,18 @@ namespace Hermes
 
           if(!matvar)
             throw Exceptions::IOException(Exceptions::IOException::Write, filename);
+#else
+          int ssize = sizeof(double);
+          int njc = this->size+1;
+     
+          hermes_fwrite(&this->size, sizeof(int), 1, file);
+          hermes_fwrite(&nnz, sizeof(int), 1, file);
+          hermes_fwrite(&njc, sizeof(int), 1, file); 
+          hermes_fwrite(&nnz, sizeof(int), 1, file);
+          hermes_fwrite(&nnz, sizeof(int), 1, file);
+          hermes_fwrite(Ap, sizeof(int), this->size + 1, file);
+          hermes_fwrite(Ai, sizeof(int), nnz, file);
+          hermes_fwrite(Ax, sizeof(double), nnz, file);	
 #endif
         }
         break;
