@@ -1,6 +1,7 @@
 #define HERMES_REPORT_ALL
 #include "problem_data.h"
 #include "definitions.h"
+#include "../../../utils.h"
 
 using namespace RefinementSelectors;
 
@@ -9,7 +10,7 @@ const unsigned int N_GROUPS = 2;  // Monoenergetic (single group) problem.
 const unsigned int N_EQUATIONS = N_GROUPS;
 
 const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
-  0,0
+  5,5
 };
 const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
   1,1
@@ -17,7 +18,7 @@ const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the in
         
 const double THRESHOLD = 0.3;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
-const int STRATEGY = 1;                 // Adaptive strategy:
+const int STRATEGY = -1;                 // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
                                          //   error is processed. If more elements have similar errors, refine
                                          //   all to keep the mesh symmetric.
@@ -60,6 +61,10 @@ double TOL_PIT_FM = 1e-6;   // Tolerance for eigenvalue convergence on the fine 
 
 int main(int argc, char* argv[])
 {  
+    // Set the number of threads used in Hermes.
+  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+  
   // Time measurement.
   TimeMeasurable cpu_time;
   cpu_time.tick();
@@ -115,16 +120,17 @@ int main(int argc, char* argv[])
     power_iterates.push_back(new ConstantSolution<double>(meshes[i], 1.0));   
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<Space<double> *> spaces;
+  Hermes::vector<Space<double> *> spaces_;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
-    spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
+    spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
+  ConstantableSpacesVector spaces(&spaces_);
     
   // Initialize the weak formulation (all boundaries homogeneous Neumann).
   WeakForms::KeffEigenvalueProblem wf(*matprop, power_iterates, fission_regions, 1.0);
     
   // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
-  report_num_dof("Coarse mesh power iteration, NDOF: ", spaces);
-  Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, spaces, matrix_solver, TOL_PIT_CM);
+  report_num_dof("Coarse mesh power iteration, NDOF: ", spaces.get());
+  Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, spaces.get_const(), matrix_solver, TOL_PIT_CM);
   
   if (STRATEGY >= 0)
   {
@@ -160,7 +166,6 @@ int main(int argc, char* argv[])
     
     // Adaptivity loop:
     int as = 1; bool done = false;
-    Hermes::vector<Space<double> *>* fine_spaces;
     do 
     {
       Loggable::Static::info("---- Adaptivity step %d:", as);
@@ -168,15 +173,15 @@ int main(int argc, char* argv[])
       // Initialize the fine mesh problem.
       Loggable::Static::info("Solving on fine meshes.");
       
-      fine_spaces = Space<double>::construct_refined_spaces(spaces);
+      ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get()));
             
       // Solve the fine mesh problem.
-      report_num_dof("Fine mesh power iteration, NDOF: ", *fine_spaces);
-      Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, *fine_spaces, matrix_solver, TOL_PIT_FM);
+      report_num_dof("Fine mesh power iteration, NDOF: ", fine_spaces.get());
+      Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, fine_spaces.get_const(), matrix_solver, TOL_PIT_FM);
             
-      report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces);
+      report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces.get());
       OGProjection<double> ogProjection;
-    ogProjection.project_global(spaces, power_iterates, coarse_solutions);
+      ogProjection.project_global(spaces.get_const(), power_iterates, coarse_solutions);
       
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION && INTERMEDIATE_VISUALIZATION)
@@ -184,11 +189,11 @@ int main(int argc, char* argv[])
         cpu_time.tick();
         Loggable::Static::info("Visualizing.");
         views.show_solutions(coarse_solutions);
-        views.show_orders(spaces);
+        views.show_orders(spaces.get());
         cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       }
       
-      Adapt<double> adaptivity(spaces);
+      Adapt<double> adaptivity(spaces.get());
       
       Loggable::Static::info("Calculating errors.");
       Hermes::vector<double> h1_moment_errors;
@@ -208,7 +213,7 @@ int main(int argc, char* argv[])
       Loggable::Static::info("k_inf err: %g milli-percent", keff_err);
       
       // Add entry to DOF convergence graph.
-      int ndof_coarse = Space<double>::get_num_dofs(spaces);
+      int ndof_coarse = Space<double>::get_num_dofs(spaces.get());
       graph_dof.add_values(0, ndof_coarse, h1_err_est);
       graph_dof.add_values(1, ndof_coarse, keff_err);
       
@@ -225,15 +230,15 @@ int main(int argc, char* argv[])
       {
         Loggable::Static::info("Adapting the coarse meshes.");
         done = adaptivity.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);        
-        if (Space<double>::get_num_dofs(spaces) >= NDOF_STOP) 
+        if (Space<double>::get_num_dofs(spaces.get()) >= NDOF_STOP) 
           done = true;
       }
       
       if (!done)
       {
         for(unsigned int i = 0; i < N_EQUATIONS; i++)
-          delete (*fine_spaces)[i]->get_mesh();
-        delete fine_spaces;
+          delete fine_spaces.get()[i]->get_mesh();
+        delete &fine_spaces.get();
         
         // Increase counter.
         as++;
@@ -246,12 +251,12 @@ int main(int argc, char* argv[])
     if (HERMES_VISUALIZATION)
     {
       views.show_solutions(power_iterates);
-      views.show_orders(spaces);
+      views.show_orders(spaces.get());
     }
     if (VTK_VISUALIZATION)
     {
       views.save_solutions_vtk("flux", "flux", power_iterates);
-      views.save_orders_vtk("space", spaces);
+      views.save_orders_vtk("space", spaces.get());
     }
     
     // Millipercent eigenvalue error w.r.t. the reference value (see physical_parameters.h). 
