@@ -116,11 +116,9 @@ int main(int argc, char* argv[])
     meshes[i]->refine_by_criterion(ref_fn, SELECTIVE_REF_NUM[i]);
   }
   for (int j = 0; j < INIT_REF_NUM[0]; j++) 
-  {
     meshes[0]->refine_all_elements();
-    meshes[0]->refine_by_criterion(ref_fn, SELECTIVE_REF_NUM[0]);
-  }
-  
+  meshes[0]->refine_by_criterion(ref_fn, SELECTIVE_REF_NUM[0]);
+    
   SupportClasses::Visualization views(N_GROUPS, DISPLAY_MESHES);
   if (DISPLAY_MESHES && HERMES_VISUALIZATION)
     views.inspect_meshes(meshes);
