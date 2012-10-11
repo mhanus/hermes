@@ -6,7 +6,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 {
   int keff_eigenvalue_iteration(const Hermes::vector<Solution<double> *>& solutions, 
                                 Common::WeakForms::KeffEigenvalueProblem* wf, const Hermes::vector<const Space<double> *>& spaces,
-                                MatrixSolverType matrix_solver, double tol_keff, double tol_flux, bool output_matrix_and_rhs)
+                                MatrixSolverType matrix_solver, double tol_keff, double tol_flux, bool output_matrix_and_rhs, EMatrixDumpFormat output_fmt)
   {
     // Sanity checks.
     if (spaces.size() != solutions.size()) 
@@ -32,6 +32,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {
       solver.output_matrix(1);
       solver.output_rhs(1);
+      solver.set_matrix_E_matrix_dump_format(output_fmt);
+      solver.set_rhs_E_matrix_dump_format(output_fmt);
     }
         
     // NOTE:
