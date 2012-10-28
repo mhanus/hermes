@@ -130,10 +130,10 @@ namespace Hermes
       cache_records_sub_idx = new std::map<uint64_t, CacheRecordPerSubIdx*>**[spaces.size()];
       cache_records_element = new CacheRecordPerElement**[spaces.size()];
 
-      this->cache_size = 2 * spaces[0]->get_mesh()->get_max_element_id();
+      this->cache_size = spaces[0]->get_mesh()->get_max_element_id() + 1;
       for(unsigned int i = 1; i < spaces.size(); i++)
       {
-        int cache_size_i = 2 * spaces[i]->get_mesh()->get_max_element_id();
+        int cache_size_i = spaces[i]->get_mesh()->get_max_element_id() + 1;
         if(cache_size_i > cache_size)
           this->cache_size = cache_size_i;
       }
@@ -317,7 +317,7 @@ namespace Hermes
           max_size = max_size_i;
       }
 
-      if(max_size * 1.5 > this->cache_size)
+      if(max_size * 1.5 > this->cache_size + 1)
       {
         max_size = 1.5 * max_size;
 
