@@ -36,20 +36,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
           
           virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-                              Func<double> *v, Geom<double> *e, ExtData<double> *ext) const {
+                              Func<double> *v, Geom<double> *e, Func<double> **ext) const {
             return matrix_form<double>(n, wt, u_ext, u, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-                          Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const {
+                          Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const {
             return matrix_form<Ord>(n, wt, u_ext, u, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual MatrixFormSurf<double>* clone() {
+          virtual MatrixFormSurf<double>* clone() const {
             return new Jacobian(*this);
           }
                         
@@ -84,20 +84,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real vector_form(int n, double *wt, Func<Real> *u_ext[],
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
           
           virtual double value(int n, double *wt, Func<double> *u_ext[],
-                              Func<double> *v, Geom<double> *e, ExtData<double> *ext) const {
+                              Func<double> *v, Geom<double> *e, Func<double> **ext) const {
             return vector_form<double>(n, wt, u_ext, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[],
-                          Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const {
+                          Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const {
             return vector_form<Ord>(n, wt, u_ext, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual VectorFormSurf<double>* clone() {
+          virtual VectorFormSurf<double>* clone() const {
             return new Residual(*this);
           }
                         
@@ -142,20 +142,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const;
+                              Func<Real> *v, Geom<Real> *e, Func<Real> **ext  ) const;
 
           virtual double value( int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-                                Func<double> *v, Geom<double> *e, ExtData<double> *ext  ) const { 
+                                Func<double> *v, Geom<double> *e, Func<double> **ext  ) const { 
             return  matrix_form<double> (n, wt, u_ext, u, v, e, ext);
           }
           
           virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-                          Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext  ) const { 
+                          Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext  ) const { 
             return  matrix_form<Ord> (n, wt, u_ext, u, v, e, ext);
           }
 
           // This is to make the form usable in rk_time_step().
-          virtual MatrixFormVol<double>* clone() {
+          virtual MatrixFormVol<double>* clone() const {
             return new Jacobian(*this);
           }
 
@@ -195,20 +195,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real vector_form(int n, double *wt, Func<Real> *u_ext[],
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
           
           virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                                Geom<double> *e, ExtData<double> *ext) const  {
+                                Geom<double> *e, Func<double> **ext) const  {
             return vector_form<double>(n, wt, u_ext, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-                          Geom<Ord> *e, ExtData<Ord> *ext) const  {
+                          Geom<Ord> *e, Func<Ord> **ext) const  {
             return vector_form<Ord>(n, wt, u_ext, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual VectorFormVol<double>* clone() {
+          virtual VectorFormVol<double>* clone() const {
             return new Residual(*this);
           }
           
@@ -258,20 +258,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const;
+                              Func<Real> *v, Geom<Real> *e, Func<Real> **ext  ) const;
           
           virtual double value( int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-                                Func<double> *v, Geom<double> *e, ExtData<double> *ext  ) const { 
+                                Func<double> *v, Geom<double> *e, Func<double> **ext  ) const { 
             return  -1.0 * matrix_form<double> (n, wt, u_ext, u, v, e, ext);
           }
           
           virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-                          Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext  ) const { 
+                          Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext  ) const { 
             return  matrix_form<Ord> (n, wt, u_ext, u, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual MatrixFormVol<double>* clone() {
+          virtual MatrixFormVol<double>* clone() const {
             return new Jacobian(*this);
           }
           
@@ -338,20 +338,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real vector_form(int n, double *wt, Func<Real> *u_ext[],
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
 
           virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                              Geom<double> *e, ExtData<double> *ext) const {
+                              Geom<double> *e, Func<double> **ext) const {
             return -1.0 * vector_form<double>(n, wt, u_ext, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-                          Geom<Ord> *e, ExtData<Ord> *ext) const  {
+                          Geom<Ord> *e, Func<Ord> **ext) const  {
             return vector_form<Ord>(n, wt, u_ext, v, e, ext);
           }
 
           // This is to make the form usable in rk_time_step().
-          virtual VectorFormVol<double>* clone() {
+          virtual VectorFormVol<double>* clone() const {
             return new OuterIterationForm(*this);
           }
           
@@ -402,20 +402,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real vector_form(int n, double *wt, Func<Real> *u_ext[],
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
           
           virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                                Geom<double> *e, ExtData<double> *ext) const {
+                                Geom<double> *e, Func<double> **ext) const {
             return -1.0 * vector_form<double>(n, wt, u_ext, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-                          Geom<Ord> *e, ExtData<Ord> *ext) const {
+                          Geom<Ord> *e, Func<Ord> **ext) const {
             return vector_form<Ord>(n, wt, u_ext, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual VectorFormVol<double>* clone() {
+          virtual VectorFormVol<double>* clone() const {
             return new Residual(*this);
           }
           
@@ -467,20 +467,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const;
+                              Func<Real> *v, Geom<Real> *e, Func<Real> **ext  ) const;
           
           virtual double value( int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-                                Func<double> *v, Geom<double> *e, ExtData<double> *ext  ) const { 
+                                Func<double> *v, Geom<double> *e, Func<double> **ext  ) const { 
             return  matrix_form<double> (n, wt, u_ext, u, v, e, ext);
           }
           
           virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-                          Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext  ) const { 
+                          Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext  ) const { 
             return  matrix_form<Ord> (n, wt, u_ext, u, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual MatrixFormVol<double>* clone() {
+          virtual MatrixFormVol<double>* clone() const {
             return new Jacobian(*this);
           }
           
@@ -526,20 +526,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real vector_form(int n, double *wt, Func<Real> *u_ext[],
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
           
           virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                                Geom<double> *e, ExtData<double> *ext) const {
+                                Geom<double> *e, Func<double> **ext) const {
             return vector_form<double>(n, wt, u_ext, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-                          Geom<Ord> *e, ExtData<Ord> *ext) const {
+                          Geom<Ord> *e, Func<Ord> **ext) const {
             return vector_form<Ord>(n, wt, u_ext, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual VectorFormVol<double>* clone() {
+          virtual VectorFormVol<double>* clone() const {
             return new Residual(*this);
           }
           
@@ -583,20 +583,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real vector_form(int n, double *wt, Func<Real> *u_ext[],
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
           
           virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                                Geom<double> *e, ExtData<double> *ext) const {
+                                Geom<double> *e, Func<double> **ext) const {
             return -1.0 * vector_form<double>(n, wt, u_ext, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-                          Geom<Ord> *e, ExtData<Ord> *ext) const {
+                          Geom<Ord> *e, Func<Ord> **ext) const {
             return vector_form<Ord>(n, wt, u_ext, v, e, ext);
           }
                           
           // This is to make the form usable in rk_time_step().
-          virtual VectorFormVol<double>* clone() {
+          virtual VectorFormVol<double>* clone() const {
             return new LinearForm(*this);
           }
         
@@ -665,20 +665,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const;
+                              Func<Real> *v, Geom<Real> *e, Func<Real> **ext ) const;
           
           virtual double value( int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-                                Func<double> *v, Geom<double> *e, ExtData<double> *ext ) const {
+                                Func<double> *v, Geom<double> *e, Func<double> **ext ) const {
             return matrix_form<double>(n, wt, u_ext, u, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-                          Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const {
+                          Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const {
             return matrix_form<Ord>(n, wt, u_ext, u, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual MatrixFormSurf<double>* clone() {
+          virtual MatrixFormSurf<double>* clone() const {
             return new Jacobian(*this);
           }
                         
@@ -720,20 +720,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real vector_form(int n, double *wt, Func<Real> *u_ext[],
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
           
           virtual double value(int n, double *wt, Func<double> *u_ext[],
-                              Func<double> *v, Geom<double> *e, ExtData<double> *ext) const {
+                              Func<double> *v, Geom<double> *e, Func<double> **ext) const {
             return vector_form<double>(n, wt, u_ext, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[],
-                          Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const {
+                          Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const {
             return vector_form<Ord>(n, wt, u_ext, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual VectorFormSurf<double>* clone() {
+          virtual VectorFormSurf<double>* clone() const {
             return new Residual(*this);
           }
                         
@@ -785,20 +785,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const;
+                              Func<Real> *v, Geom<Real> *e, Func<Real> **ext  ) const;
 
           virtual double value( int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-                                Func<double> *v, Geom<double> *e, ExtData<double> *ext  ) const { 
+                                Func<double> *v, Geom<double> *e, Func<double> **ext  ) const { 
             return  matrix_form<double> (n, wt, u_ext, u, v, e, ext);
           }
           
           virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-                          Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext  ) const { 
+                          Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext  ) const { 
             return  matrix_form<Ord> (n, wt, u_ext, u, v, e, ext);
           }
 
           // This is to make the form usable in rk_time_step().
-          virtual MatrixFormVol<double>* clone() {
+          virtual MatrixFormVol<double>* clone() const {
             return new Jacobian(*this);
           }
 
@@ -845,20 +845,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real vector_form(int n, double *wt, Func<Real> *u_ext[],
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
           
           virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                                Geom<double> *e, ExtData<double> *ext) const  {
+                                Geom<double> *e, Func<double> **ext) const  {
             return vector_form<double>(n, wt, u_ext, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-                          Geom<Ord> *e, ExtData<Ord> *ext) const  {
+                          Geom<Ord> *e, Func<Ord> **ext) const  {
             return vector_form<Ord>(n, wt, u_ext, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual VectorFormVol<double>* clone() {
+          virtual VectorFormVol<double>* clone() const {
             return new Residual(*this);
           }
           
@@ -915,20 +915,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const;
+                              Func<Real> *v, Geom<Real> *e, Func<Real> **ext  ) const;
           
           virtual double value( int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-                                Func<double> *v, Geom<double> *e, ExtData<double> *ext  ) const { 
+                                Func<double> *v, Geom<double> *e, Func<double> **ext  ) const { 
             return  matrix_form<double> (n, wt, u_ext, u, v, e, ext);
           }
           
           virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-                          Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext  ) const { 
+                          Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext  ) const { 
             return  matrix_form<Ord> (n, wt, u_ext, u, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual MatrixFormVol<double>* clone() {
+          virtual MatrixFormVol<double>* clone() const {
             return new Jacobian(*this);
           }
           
@@ -985,20 +985,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real vector_form(int n, double *wt, Func<Real> *u_ext[],
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
 
           virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                              Geom<double> *e, ExtData<double> *ext) const {
+                              Geom<double> *e, Func<double> **ext) const {
             return vector_form<double>(n, wt, u_ext, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-                          Geom<Ord> *e, ExtData<Ord> *ext) const  {
+                          Geom<Ord> *e, Func<Ord> **ext) const  {
             return vector_form<Ord>(n, wt, u_ext, v, e, ext);
           }
 
           // This is to make the form usable in rk_time_step().
-          virtual VectorFormVol<double>* clone() {
+          virtual VectorFormVol<double>* clone() const {
             return new OuterIterationForm(*this);
           }
           
@@ -1048,20 +1048,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real vector_form(int n, double *wt, Func<Real> *u_ext[],
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
           
           virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                                Geom<double> *e, ExtData<double> *ext) const {
+                                Geom<double> *e, Func<double> **ext) const {
             return vector_form<double>(n, wt, u_ext, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-                          Geom<Ord> *e, ExtData<Ord> *ext) const {
+                          Geom<Ord> *e, Func<Ord> **ext) const {
             return vector_form<Ord>(n, wt, u_ext, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual VectorFormVol<double>* clone() {
+          virtual VectorFormVol<double>* clone() const {
             return new Residual(*this);
           }
           
@@ -1117,20 +1117,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const;
+                              Func<Real> *v, Geom<Real> *e, Func<Real> **ext  ) const;
           
           virtual double value( int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-                                Func<double> *v, Geom<double> *e, ExtData<double> *ext  ) const { 
+                                Func<double> *v, Geom<double> *e, Func<double> **ext  ) const { 
             return  matrix_form<double> (n, wt, u_ext, u, v, e, ext);
           }
           
           virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-                          Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext  ) const { 
+                          Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext  ) const { 
             return  matrix_form<Ord> (n, wt, u_ext, u, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual MatrixFormVol<double>* clone() {
+          virtual MatrixFormVol<double>* clone() const {
             return new Jacobian(*this);
           }
           
@@ -1176,20 +1176,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real vector_form(int n, double *wt, Func<Real> *u_ext[],
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
           
           virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                                Geom<double> *e, ExtData<double> *ext) const {
+                                Geom<double> *e, Func<double> **ext) const {
             return vector_form<double>(n, wt, u_ext, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-                          Geom<Ord> *e, ExtData<Ord> *ext) const {
+                          Geom<Ord> *e, Func<Ord> **ext) const {
             return vector_form<Ord>(n, wt, u_ext, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual VectorFormVol<double>* clone() {
+          virtual VectorFormVol<double>* clone() const {
             return new Residual(*this);
           }
           
@@ -1243,20 +1243,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const;
+                              Func<Real> *v, Geom<Real> *e, Func<Real> **ext  ) const;
           
           virtual double value( int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-                                Func<double> *v, Geom<double> *e, ExtData<double> *ext  ) const { 
+                                Func<double> *v, Geom<double> *e, Func<double> **ext  ) const { 
             return  matrix_form<double> (n, wt, u_ext, u, v, e, ext);
           }
           
           virtual Ord ord( int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-                          Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext  ) const { 
+                          Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext  ) const { 
             return  matrix_form<Ord> (n, wt, u_ext, u, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual MatrixFormVol<double>* clone() {
+          virtual MatrixFormVol<double>* clone() const {
             return new Jacobian(*this);
           }
           
@@ -1302,20 +1302,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real vector_form(int n, double *wt, Func<Real> *u_ext[],
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
           
           virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                                Geom<double> *e, ExtData<double> *ext) const {
+                                Geom<double> *e, Func<double> **ext) const {
             return vector_form<double>(n, wt, u_ext, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-                          Geom<Ord> *e, ExtData<Ord> *ext) const {
+                          Geom<Ord> *e, Func<Ord> **ext) const {
             return vector_form<Ord>(n, wt, u_ext, v, e, ext);
           }
           
           // This is to make the form usable in rk_time_step().
-          virtual VectorFormVol<double>* clone() {
+          virtual VectorFormVol<double>* clone() const {
             return new Residual(*this);
           }
           
@@ -1366,20 +1366,20 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           template<typename Real>
           Real vector_form(int n, double *wt, Func<Real> *u_ext[],
-                            Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+                            Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
           
           virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                                Geom<double> *e, ExtData<double> *ext) const {
+                                Geom<double> *e, Func<double> **ext) const {
             return vector_form<double>(n, wt, u_ext, v, e, ext);
           }
 
           virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-                          Geom<Ord> *e, ExtData<Ord> *ext) const {
+                          Geom<Ord> *e, Func<Ord> **ext) const {
             return vector_form<Ord>(n, wt, u_ext, v, e, ext);
           }
                           
           // This is to make the form usable in rk_time_step().
-          virtual VectorFormVol<double>* clone() {
+          virtual VectorFormVol<double>* clone() const {
             return new LinearForm(*this);
           }
         
