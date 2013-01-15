@@ -105,7 +105,7 @@ namespace Hermes
 */
       for(int i = 0; i < 20; i++)
        for(int j = 0; j < 4; j++)
-          tables[i][j] = new std::map<uint64_t, LightArray<struct Function<Scalar>::Node*>*>;
+          tables[i][j] = new std::map<uint64_t, LightArray<struct Function<double>::Node*>*>;
 
       mono_coeffs = NULL;
       elem_coeffs[0] = elem_coeffs[1] = NULL;
