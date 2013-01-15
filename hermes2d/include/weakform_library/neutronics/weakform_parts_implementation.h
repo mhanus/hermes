@@ -9,7 +9,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   { 
     template<typename Real>
     Real VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                                                          Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
+                                                          Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const 
     { 
       Real result;
       
@@ -25,7 +25,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<Real> *u_ext[],
-                                                          Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
+                                                          Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const 
     { 
       Real result;
       
@@ -41,7 +41,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
      
     template<typename Real>
     Real DiffusionReaction::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                                                    Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
+                                                    Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const 
     {
       Real result;
             
@@ -68,7 +68,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real DiffusionReaction::Residual::vector_form(int n, double *wt, Func<Real> *u_ext[],
-                                                    Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
+                                                    Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const 
     { 
       Real result;
             
@@ -95,7 +95,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real FissionYield::Jacobian::matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                                                Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const 
+                                                Func<Real> *v, Geom<Real> *e, Func<Real> **ext  ) const 
     { 
       Real result(0);
       if (geom_type == HERMES_PLANAR) result = int_u_v<Real, Real>(n, wt, u, v);
@@ -110,18 +110,18 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real FissionYield::OuterIterationForm::vector_form( int n, double *wt, Func<Real> *u_ext[],
-                                                          Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
+                                                          Func<Real> *v, Geom<Real> *e, Func<Real> **ext ) const 
     {         
       
-      if ((unsigned)ext->get_nf() != nu.size() || (unsigned)ext->get_nf() != Sigma_f.size())
+      if ((unsigned)get_ext().size() != nu.size() || (unsigned)get_ext().size() != Sigma_f.size())
         ErrorHandling::error_function(Messages::E_INVALID_GROUP_INDEX);
       
       Real result(0);
       for (int i = 0; i < n; i++) 
       {
         Real local_res(0);
-        for (int gfrom = 0; gfrom < ext->get_nf(); gfrom++)
-          local_res += nu[gfrom] * Sigma_f[gfrom] * ext->fn[gfrom]->val[i];
+        for (int gfrom = 0; gfrom < get_ext().size(); gfrom++)
+          local_res += nu[gfrom] * Sigma_f[gfrom] * ext[gfrom]->val[i];
                   
         local_res = local_res * wt[i] * v->val[i];
         
@@ -138,7 +138,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real FissionYield::Residual::vector_form( int n, double *wt, Func<Real> *u_ext[],
-                                                Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
+                                                Func<Real> *v, Geom<Real> *e, Func<Real> **ext ) const 
     {       
       Real result(0);
       if (geom_type == HERMES_PLANAR) result = int_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v);
@@ -153,7 +153,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                     
     template<typename Real>
     Real Scattering::Jacobian::matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const  
+                                              Func<Real> *v, Geom<Real> *e, Func<Real> **ext  ) const  
     {
       Real result(0);
       if (geom_type == HERMES_PLANAR) result = int_u_v<Real, Real>(n, wt, u, v);
@@ -168,7 +168,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real Scattering::Residual::vector_form( int n, double *wt, Func<Real> *u_ext[],
-                                              Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
+                                              Func<Real> *v, Geom<Real> *e, Func<Real> **ext ) const 
     { 
       Real result(0);
       if (geom_type == HERMES_PLANAR) result = int_u_ext_v<Real, Real>(n, wt, u_ext[gfrom], v);
@@ -183,7 +183,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
    
     template<typename Real>
     Real ExternalSources::LinearForm::vector_form(int n, double *wt, Func<Real> *u_ext[],
-                                                    Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
+                                                    Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const 
     {       
       if (geom_type == HERMES_PLANAR) 
         return src * int_v<Real>(n, wt, v);
@@ -205,7 +205,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   {        
     template<typename Real>
     Real VacuumBoundaryCondition::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                                                          Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
+                                                          Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const 
     { 
       Real result;
       
@@ -221,7 +221,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real VacuumBoundaryCondition::Residual::vector_form(int n, double *wt, Func<Real> *u_ext[],
-                                                          Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
+                                                          Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const 
     { 
       Real result(0);
       
@@ -244,7 +244,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                         
     template<typename Real>
     Real DiagonalStreamingAndReactions::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                                                                Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const
+                                                                Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const
     {
       Real result;   
 
@@ -271,7 +271,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real DiagonalStreamingAndReactions::Residual::vector_form(int n, double *wt, Func<Real> *u_ext[],
-                                                                Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const
+                                                                Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const
     { 
       Real result;
       
@@ -292,7 +292,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real FissionYield::Jacobian::matrix_form( int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                                                Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const 
+                                                Func<Real> *v, Geom<Real> *e, Func<Real> **ext  ) const 
     {      
       Real result;
       
@@ -308,14 +308,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real FissionYield::OuterIterationForm::vector_form( int n, double *wt, Func<Real> *u_ext[],
-                                                          Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
+                                                          Func<Real> *v, Geom<Real> *e, Func<Real> **ext ) const 
     {                 
       Real result(0);
       for (int i = 0; i < n; i++) 
       {
         Real local_res(0);
-        for (int gfrom = 0; gfrom < ext->get_nf(); gfrom++)
-          local_res += nu[gfrom] * Sigma_f[gfrom] * ext->fn[gfrom]->val[i]; // scalar flux in group 'gfrom'
+        for (int gfrom = 0; gfrom < get_ext().size(); gfrom++)
+          local_res += nu[gfrom] * Sigma_f[gfrom] * ext[gfrom]->val[i]; // scalar flux in group 'gfrom'
                 
         local_res = local_res * wt[i] * v->val[i];
         
@@ -332,7 +332,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real FissionYield::Residual::vector_form( int n, double *wt, Func<Real> *u_ext[],
-                                                Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
+                                                Func<Real> *v, Geom<Real> *e, Func<Real> **ext ) const 
     {       
       Real result(0);
       for (unsigned int gfrom = 0; gfrom < G; gfrom++)
@@ -355,7 +355,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real OffDiagonalStreaming::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                                                        Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const
+                                                        Func<Real> *v, Geom<Real> *e, Func<Real> **ext  ) const
     {
       if (gfrom == gto)
         return Real(0);
@@ -374,7 +374,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real OffDiagonalStreaming::Residual::vector_form( int n, double *wt, Func<Real> *u_ext[],
-                                                        Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
+                                                        Func<Real> *v, Geom<Real> *e, Func<Real> **ext ) const 
     { 
       Real result(0);
 
@@ -398,7 +398,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real OffDiagonalReactions::Jacobian::matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u,
-                                                        Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext  ) const
+                                                        Func<Real> *v, Geom<Real> *e, Func<Real> **ext  ) const
     {
       if (mg.pos(mrow, gto) == mg.pos(mcol, gfrom))
         return Real(0);
@@ -417,7 +417,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real OffDiagonalReactions::Residual::vector_form( int n, double *wt, Func<Real> *u_ext[],
-                                                        Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext ) const 
+                                                        Func<Real> *v, Geom<Real> *e, Func<Real> **ext ) const 
     {       
       Real result(0);
       unsigned int i = mg.pos(mrow, gto);
@@ -450,7 +450,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     template<typename Real>
     Real ExternalSources::LinearForm::vector_form(int n, double *wt, Func<Real> *u_ext[],
-                                                    Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const 
+                                                    Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const 
     {       
       if (geom_type == HERMES_PLANAR) 
         return Coeffs::even_moment(0, mrow) * src * int_v<Real>(n, wt, v);
