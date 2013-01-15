@@ -280,7 +280,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             if (odd_req_mom) ErrorHandling::error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
           };
           
-          virtual MeshFunction<double>* clone();
+          virtual MeshFunction<double>* clone() const;
           
           virtual void set_active_element(Element* e);
           
@@ -310,7 +310,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             if (odd_req_mom) ErrorHandling::error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
           };
           
-          virtual MeshFunction<double>* clone();
+          virtual MeshFunction<double>* clone() const;
           
           virtual void set_active_element(Element* e);
           
@@ -346,16 +346,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             if (component >= 2) ErrorHandling::error_function("MomentFilter::OddMomentVal > %s", Messages::E_INVALID_COMPONENT);
           };
           
-          virtual MeshFunction<double>* clone();
+          virtual MeshFunction<double>* clone() const;
           
           virtual void set_active_element(Element* e);
           
         protected:
           virtual void precalculate(int order, int mask);
-          virtual double get_pt_value(double x, double y, int item = H2D_FN_VAL_0)
+          virtual Func<double>* get_pt_value(double x, double y)
           { 
             ErrorHandling::error_function("Not implemented yet"); 
-            return 0; 
+            return NULL; 
           }
                          
           const MaterialProperties::MaterialPropertyMaps *matprop;
