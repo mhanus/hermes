@@ -123,7 +123,7 @@ namespace Hermes
           template<typename T> friend class ProjBasedSelector;
           template<typename T> friend class L2ProjBasedSelector;
           template<typename T> friend class H1ProjBasedSelector;
-          friend class HcurlProjBasedSelector;
+          template<typename T> friend class HcurlProjBasedSelector;
           template<typename T> friend class Adapt;
         };
 
@@ -211,7 +211,7 @@ namespace Hermes
           /** By default, the item is set as invalid.
           *  \param value A starting value.
           *  \param state A state of the value. */
-          ValueCacheItem(const T& value = 0, const int state = H2DRS_VALCACHE_INVALID) : value(value), state(state) {}; ///< Default constructor. By default, it creates a item that contains invalid value.
+          ValueCacheItem(const T& value = 0, const int state = H2DRS_VALCACHE_INVALID) : value(value), state(state) {}; ///< Default constructor. By default, it creates an item that contains invalid value.
         private:
           T value; ///< A value stored in the item.
           int state; ///< A state of the image: ::H2DRS_VALCACHE_INVALID or ::H2DRS_VALCACHE_VALID or any other user-defined value. The first user defined state has to have number ::H2DRS_VALCACHE_USER.
@@ -259,7 +259,7 @@ namespace Hermes
         *  \param[out] herr An error of elements of H-candidates of various permutation of orders.
         *  \param[out] perr An error of elements of P-candidates of various permutation of orders.
         *  \param[out] anisoerr An error of elements of ANISO-candidates of various permutation of orders. */
-        virtual void calc_projection_errors(Element* e, const typename OptimumSelector<Scalar>::CandsInfo& info_h, const typename OptimumSelector<Scalar>::CandsInfo& info_p, const typename OptimumSelector<Scalar>::CandsInfo& info_aniso, Solution<Scalar>* rsln, CandElemProjError herr[4], CandElemProjError perr, CandElemProjError anisoerr[4]);
+        virtual void calc_projection_errors(Element* e, const typename OptimumSelector<Scalar>::CandsInfo& info_h, const typename OptimumSelector<Scalar>::CandsInfo& info_p, const typename OptimumSelector<Scalar>::CandsInfo& info_aniso, Solution<Scalar>* rsln, CandElemProjError herr[H2D_MAX_ELEMENT_SONS], CandElemProjError perr, CandElemProjError anisoerr[H2D_MAX_ELEMENT_SONS]);
 
         /// Calculate projection errors of an element of an candidate considering multiple orders.
         /** An element of a candidate may span over multiple sub-domains. All integration uses the reference domain.

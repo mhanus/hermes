@@ -75,14 +75,14 @@ namespace Hermes
         /// Error bilinear form callback function.
         virtual Scalar value(int n, double *wt, Func<Scalar> *u_ext[],
           Func<Scalar> *u, Func<Scalar> *v, Geom<double> *e,
-          ExtData<Scalar> *ext) const;
+          Func<Scalar> **ext) const;
 
         /// Error bilinear form to estimate order of a function.
         virtual Hermes::Ord ord(int n, double *wt, Func<Hermes::Ord> *u_ext[],
           Func<Hermes::Ord> *u, Func<Hermes::Ord> *v, Geom<Hermes::Ord> *e,
-          ExtData<Hermes::Ord> *ext) const;
+          Func<Ord> **ext) const;
 
-        virtual MatrixFormVol<Scalar>* clone();
+        virtual MatrixFormVol<Scalar>* clone() const;
 
       protected:
         /// Norm used.
@@ -91,27 +91,27 @@ namespace Hermes
         /// L2 error form.
         template<typename TestFunctionDomain, typename SolFunctionDomain>
         static SolFunctionDomain l2_error_form(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<SolFunctionDomain> *u,
-          Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext);
+          Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, Func<SolFunctionDomain> **ext);
 
         /// H1 error form.
         template<typename TestFunctionDomain, typename SolFunctionDomain>
         static SolFunctionDomain h1_error_form(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<SolFunctionDomain> *u,
-          Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext);
+          Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, Func<SolFunctionDomain> **ext);
 
         /// H1-seminorm error form.
         template<typename TestFunctionDomain, typename SolFunctionDomain>
         static SolFunctionDomain h1_error_semi_form(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<SolFunctionDomain> *u,
-          Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext);
+          Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, Func<SolFunctionDomain> **ext);
 
         /// H-div error form.
         template<typename TestFunctionDomain, typename SolFunctionDomain>
         static SolFunctionDomain hdiv_error_form(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<SolFunctionDomain> *u,
-          Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext);
+          Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, Func<SolFunctionDomain> **ext);
 
         /// H-curl error form.
         template<typename TestFunctionDomain, typename SolFunctionDomain>
         static SolFunctionDomain hcurl_error_form(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<SolFunctionDomain> *u,
-          Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext);
+          Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, Func<SolFunctionDomain> **ext);
       };
 
       /// Sets user defined bilinear form which is used to calculate error.
@@ -251,13 +251,11 @@ namespace Hermes
       *  \param[in] error_flags Flags which calculates the error. It can be a combination of ::HERMES_TOTAL_ERROR_REL, ::HERMES_TOTAL_ERROR_ABS, ::HERMES_ELEMENT_ERROR_REL, ::HERMES_ELEMENT_ERROR_ABS.
       *  \return The total error. Interpretation of the error is specified by the parameter error_flags. */
       virtual double calc_err_internal(Hermes::vector<Solution<Scalar>*> slns, Hermes::vector<Solution<Scalar>*> rslns,
-        Hermes::vector<double>* component_errors, bool solutions_for_adapt,
-        unsigned int error_flags);
+        Hermes::vector<double>* component_errors, bool solutions_for_adapt, unsigned int error_flags);
 
       /// One Space version.
       virtual double calc_err_internal(Solution<Scalar>* sln, Solution<Scalar>* rsln,
-        Hermes::vector<double>* component_errors, bool solutions_for_adapt,
-        unsigned int error_flags);
+        Hermes::vector<double>* component_errors, bool solutions_for_adapt, unsigned int error_flags);
 
       /// Evaluates a square of an absolute error of an active element among a given pair of components.
       /** The method uses a bilinear forms to calculate the error. This is done by supplying a differences (f1 - v1) and (f2 - v2) at integration points to the bilinear form,

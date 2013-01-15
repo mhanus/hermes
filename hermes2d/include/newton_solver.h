@@ -33,9 +33,10 @@ namespace Hermes
     /// @ingroup userSolvingAPI
     /// Class for Newton's method.
     template<typename Scalar>
-    class HERMES_API NewtonSolver : public NonlinearSolver<Scalar>, public Hermes::Hermes2D::Mixins::SettableSpaces<Scalar>, public Hermes::Mixins::OutputAttachable, public Hermes::Hermes2D::Mixins::MatrixRhsOutput<Scalar>
+    class HERMES_API NewtonSolver : public NonlinearSolver<Scalar>, public Hermes::Hermes2D::Mixins::SettableSpaces<Scalar>, public Hermes::Mixins::OutputAttachable, public Hermes::Hermes2D::Mixins::MatrixRhsOutput<Scalar>, public Hermes::Hermes2D::Mixins::StateQueryable
     {
     public:
+      NewtonSolver();
       NewtonSolver(DiscreteProblem<Scalar>* dp);
       NewtonSolver(const WeakForm<Scalar>* wf, const Space<Scalar>* space);
       NewtonSolver(const WeakForm<Scalar>* wf, Hermes::vector<const Space<Scalar>*> spaces);
@@ -43,18 +44,33 @@ namespace Hermes
 
       ~NewtonSolver();
 
-      /// Solve with user-defined tolerances.
-      /// \param[in] residual_as_function Translate the residual vector into a residual function (or multiple functions)
-      ///                                 in the corresponding finite element space(s) and measure their norm(s) there.
-      ///                                 This is more meaningful than just measuring the l2-norm of the residual vector,
-      ///                                 since in the FE space not all components in the residual vector have the same weight.
-      ///                                 On the other hand, this is slower as it requires global norm calculation, and thus
-      ///                                 numerical integration over the entire domain. Therefore this option is off by default.
+      /// State querying helpers.
+      virtual bool isOkay() const;
+      inline std::string getClassName() const { return "NewtonSolver"; }
+
+      /// Solve.
+      /// \param[in] coeff_vec Ceofficient vector to start from.
       void solve(Scalar* coeff_vec = NULL);
 
+      /// Solve.
+      /// \param[in] initial_guess Solution to start from (which is projected to obtain the initial coefficient vector.
+      void solve(Solution<Scalar>* initial_guess);
+
+      /// Solve.
+      /// \param[in] initial_guess Solutions to start from (which is projected to obtain the initial coefficient vector.
+      void solve(Hermes::vector<Solution<Scalar>*> initial_guess);
+
+      /// Solve which keeps jacobian.
       /// A solve() method where the jacobian is reused.
-      /// Version with user-defined tolerances.
       void solve_keep_jacobian(Scalar* coeff_vec = NULL);
+      
+      /// Solve which keeps jacobian.
+      /// \param[in] initial_guess Solution to start from (which is projected to obtain the initial coefficient vector.
+      void solve_keep_jacobian(Solution<Scalar>* initial_guess);
+      
+      /// Solve which keeps jacobian.
+      /// \param[in] initial_guess Solutions to start from (which is projected to obtain the initial coefficient vector.
+      void solve_keep_jacobian(Hermes::vector<Solution<Scalar>*> initial_guess);
 
       /// Sets the maximum allowed norm of the residual during the calculation.
       /// Default: 1E9
@@ -71,6 +87,12 @@ namespace Hermes
       virtual void set_preconditioner(const char* preconditioner_name);
 
       /// Interpret the residual as a function.
+      /// Translate the residual vector into a residual function (or multiple functions)
+      /// in the corresponding finite element space(s) and measure their norm(s) there.
+      /// This is more meaningful than just measuring the l2-norm of the residual vector,
+      /// since in the FE space not all components in the residual vector have the same weight.
+      /// On the other hand, this is slower as it requires global norm calculation, and thus
+      /// numerical integration over the entire domain. Therefore this option is off by default.
       void set_residual_as_function();
 
       /// Set the residual norm tolerance for ending the Newton's loop.
@@ -124,6 +146,9 @@ namespace Hermes
       /// Default: 1
       /// \param[in] steps Number of steps.
       void set_necessary_successful_steps_to_increase(unsigned int steps);
+
+      /// Set the weak forms.
+      void set_weak_formulation(const WeakForm<Scalar>* wf);
 
     protected:
       /// This instance owns its DP.

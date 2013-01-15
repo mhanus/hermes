@@ -17,12 +17,20 @@
 // along with Hermes2D; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "newton_solver.h"
+#include "projections/ogprojection.h"
 #include "hermes_common.h"
 
 namespace Hermes
 {
   namespace Hermes2D
   {
+    template<typename Scalar>
+    NewtonSolver<Scalar>::NewtonSolver() : NonlinearSolver<Scalar>(new DiscreteProblem<Scalar>()), own_dp(true), kept_jacobian(NULL)
+    {
+      init_attributes();
+      init_linear_solver();
+    }
+
     template<typename Scalar>
     NewtonSolver<Scalar>::NewtonSolver(DiscreteProblem<Scalar>* dp) : NonlinearSolver<Scalar>(dp), own_dp(false), kept_jacobian(NULL)
     {
@@ -45,6 +53,16 @@ namespace Hermes
     }
 
     template<typename Scalar>
+    bool NewtonSolver<Scalar>::isOkay() const
+    {
+      if(static_cast<DiscreteProblem<Scalar>*>(this->dp)->get_weak_formulation() == NULL)
+        return false;
+      if(static_cast<DiscreteProblem<Scalar>*>(this->dp)->get_spaces().size() == 0)
+        return false;
+      return true;
+    }
+
+    template<typename Scalar>
     void NewtonSolver<Scalar>::init_attributes()
     {
       this->newton_tol = 1e-8;
@@ -64,6 +82,12 @@ namespace Hermes
     void NewtonSolver<Scalar>::set_newton_tol(double newton_tol)
     {
       this->newton_tol = newton_tol;
+    }
+
+    template<typename Scalar>
+    void NewtonSolver<Scalar>::set_weak_formulation(const WeakForm<Scalar>* wf)
+    {
+      (static_cast<DiscreteProblem<Scalar>*>(this->dp))->set_weak_formulation(wf);
     }
 
     template<typename Scalar>
@@ -216,8 +240,28 @@ namespace Hermes
     }
 
     template<typename Scalar>
+    void NewtonSolver<Scalar>::solve(Solution<Scalar>* initial_guess)
+    {
+      Hermes::vector<Solution<Scalar>*> vectorToPass;
+      vectorToPass.push_back(initial_guess);
+      this->solve(vectorToPass);
+    }
+
+    template<typename Scalar>
+    void NewtonSolver<Scalar>::solve(Hermes::vector<Solution<Scalar>*> initial_guess)
+    {
+      int ndof = this->dp->get_num_dofs();
+      Scalar* coeff_vec = new Scalar[ndof];
+      OGProjection<Scalar> ogProjection;
+      ogProjection.project_global(static_cast<DiscreteProblem<Scalar>*>(this->dp)->get_spaces(), initial_guess, coeff_vec);
+      this->solve(coeff_vec);
+    }
+
+    template<typename Scalar>
     void NewtonSolver<Scalar>::solve(Scalar* coeff_vec)
     {
+      this->check();
+
       this->tick();
 
       // Obtain the number of degrees of freedom.
@@ -265,8 +309,9 @@ namespace Hermes
           else
             sprintf(fileName, "%s%i", this->RhsFilename.c_str(), it);
           FILE* rhs_file = fopen(fileName, "w+");
-          residual->dump(rhs_file, this->RhsVarname.c_str(), this->RhsFormat);
+          residual->dump(rhs_file, this->RhsVarname.c_str(), this->RhsFormat, this->rhs_number_format);
           fclose(rhs_file);
+          delete [] fileName;
         }
         
         Element* e;
@@ -309,10 +354,10 @@ namespace Hermes
 
         // Info for the user.
         if(it == 1)
-          this->info("Newton: initial residual norm: %g", residual_norm);
+          this->info("\tNewton: initial residual norm: %g", residual_norm);
         else
         {
-          this->info("Newton: iteration %d, residual norm: %g", it - 1, residual_norm);
+          this->info("\tNewton: iteration %d, residual norm: %g", it - 1, residual_norm);
           if(!this->manual_damping && !((residual_norm > max_allowed_residual_norm) || (residual_norm < newton_tol && it > 1)))
           {
             if(residual_norm < last_residual_norm * this->sufficient_improvement_factor)
@@ -320,15 +365,15 @@ namespace Hermes
               if(++successfulSteps >= this->necessary_successful_steps_to_increase)
                 this->currentDampingCofficient = std::min(this->initial_auto_damping_ratio, 2 * this->currentDampingCofficient);
               if(residual_norm < last_residual_norm)
-                this->info(" Newton: step successful, calculation continues with damping coefficient: %g.", this->currentDampingCofficient);
+                this->info("\t Newton: step successful, calculation continues with damping coefficient: %g.", this->currentDampingCofficient);
             }
             else
             {
               successfulSteps = 0;
               if(this->currentDampingCofficient < this->min_allowed_damping_coeff)
               {
-                this->warn(" Newton: results NOT improved, current damping coefficient is at the minimum possible level: %g.", min_allowed_damping_coeff);
-                this->info("  If you want to decrease the minimum level, use the method set_min_allowed_damping_coeff()");
+                this->warn("\t Newton: results NOT improved, current damping coefficient is at the minimum possible level: %g.", min_allowed_damping_coeff);
+                this->info("\t  If you want to decrease the minimum level, use the method set_min_allowed_damping_coeff()");
                 throw Exceptions::Exception("Newton NOT converged because of damping coefficient could not be decreased anymore to possibly handle non-converging process.");
               }
               else
@@ -344,7 +389,7 @@ namespace Hermes
         if(residual_norm > max_allowed_residual_norm)
         {
           this->tick();
-          this->info("Newton: solution duration: %f s.\n", this->last());
+          this->info("\tNewton: solution duration: %f s.\n", this->last());
           this->on_finish();
           throw Exceptions::ValueException("residual norm", residual_norm, max_allowed_residual_norm);
         }
@@ -363,10 +408,14 @@ namespace Hermes
             delete [] coeff_vec;
             coeff_vec = NULL;
           }
+
+          delete [] coeff_vec_back;
+          coeff_vec_back = NULL;
+
           this->on_finish();
 
           this->tick();
-          this->info("Newton: solution duration: %f s.\n", this->last());
+          this->info("\tNewton: solution duration: %f s.\n", this->last());
 
           return;
         }
@@ -382,8 +431,9 @@ namespace Hermes
             sprintf(fileName, "%s%i", this->matrixFilename.c_str(), it);
           FILE* matrix_file = fopen(fileName, "w+");
 
-          jacobian->dump(matrix_file, this->matrixVarname.c_str(), this->matrixFormat);
+          jacobian->dump(matrix_file, this->matrixVarname.c_str(), this->matrixFormat, this->matrix_number_format);
           fclose(matrix_file);
+          delete [] fileName;
         }
 
         this->on_step_end();
@@ -424,8 +474,11 @@ namespace Hermes
             coeff_vec = NULL;
           }
 
+          delete [] coeff_vec_back;
+          coeff_vec_back = NULL;
+
           this->tick();
-          this->info("Newton: solution duration: %f s.\n", this->last());
+          this->info("\tNewton: solution duration: %f s.\n", this->last());
 
           this->on_finish();
           throw Exceptions::ValueException("iterations", it, newton_max_iter);
@@ -434,8 +487,28 @@ namespace Hermes
     }
 
     template<typename Scalar>
+    void NewtonSolver<Scalar>::solve_keep_jacobian(Solution<Scalar>* initial_guess)
+    {
+      Hermes::vector<Solution<Scalar>*> vectorToPass;
+      vectorToPass.push_back(initial_guess);
+      this->solve_keep_jacobian(vectorToPass);
+    }
+
+    template<typename Scalar>
+    void NewtonSolver<Scalar>::solve_keep_jacobian(Hermes::vector<Solution<Scalar>*> initial_guess)
+    {
+      int ndof = this->dp->get_num_dofs();
+      Scalar* coeff_vec = new Scalar[ndof];
+      OGProjection<Scalar> ogProjection;
+      ogProjection.project_global(static_cast<DiscreteProblem<Scalar>*>(this->dp)->get_spaces(), initial_guess, coeff_vec);
+      this->solve_keep_jacobian(coeff_vec);
+    }
+
+    template<typename Scalar>
     void NewtonSolver<Scalar>::solve_keep_jacobian(Scalar* coeff_vec)
     {
+      this->check();
+
       this->tick();
 
       // Obtain the number of degrees of freedom.
@@ -477,7 +550,7 @@ namespace Hermes
           else
             sprintf(fileName, "%s%i", this->RhsFilename.c_str(), it);
           FILE* rhs_file = fopen(fileName, "w+");
-          residual->dump(rhs_file, this->RhsVarname.c_str(), this->RhsFormat);
+          residual->dump(rhs_file, this->RhsVarname.c_str(), this->RhsFormat, this->rhs_number_format);
           fclose(rhs_file);
         }
 
@@ -520,10 +593,10 @@ namespace Hermes
 
         // Info for the user.
         if(it == 1)
-          this->info("Newton: initial residual norm: %g", residual_norm);
+          this->info("\tNewton: initial residual norm: %g", residual_norm);
         else
         {
-          this->info("Newton: iteration %d, residual norm: %g", it - 1, residual_norm);
+          this->info("\tNewton: iteration %d, residual norm: %g", it - 1, residual_norm);
           if(!this->manual_damping && !((residual_norm > max_allowed_residual_norm) || (residual_norm < newton_tol && it > 1)))
           {
             if(residual_norm < last_residual_norm * this->sufficient_improvement_factor)
@@ -531,21 +604,21 @@ namespace Hermes
               if(++successfulSteps >= this->necessary_successful_steps_to_increase)
                 this->currentDampingCofficient = std::min(this->initial_auto_damping_ratio, 2 * this->currentDampingCofficient);
               if(residual_norm < last_residual_norm)
-                this->info(" Newton: step successful, calculation continues with damping coefficient: %g.", this->currentDampingCofficient);
+                this->info("\t Newton: step successful, calculation continues with damping coefficient: %g.", this->currentDampingCofficient);
             }
             else
             {
               successfulSteps = 0;
               if(this->currentDampingCofficient < this->min_allowed_damping_coeff)
               {
-                this->warn(" Newton: results NOT improved, current damping coefficient is at the minimum possible level: %g.", min_allowed_damping_coeff);
-                this->info("  If you want to decrease the minimum level, use the method set_min_allowed_damping_coeff()");
+                this->warn("\t Newton: results NOT improved, current damping coefficient is at the minimum possible level: %g.", min_allowed_damping_coeff);
+                this->info("\t  If you want to decrease the minimum level, use the method set_min_allowed_damping_coeff()");
                 throw Exceptions::Exception("Newton NOT converged because of damping coefficient could not be decreased anymore to possibly handle non-converging process.");
               }
               else
               {
                 this->currentDampingCofficient = (1 / this->auto_damping_ratio) * this->currentDampingCofficient;
-                this->warn(" Newton: results NOT improved, step restarted with damping coefficient: %g.", this->currentDampingCofficient);
+                this->warn("\t Newton: results NOT improved, step restarted with damping coefficient: %g.", this->currentDampingCofficient);
               }
             }
           }
@@ -555,7 +628,7 @@ namespace Hermes
         if(residual_norm > max_allowed_residual_norm)
         {
           this->tick();
-          this->info("Newton: solution duration: %f s.", this->last());
+          this->info("\tNewton: solution duration: %f s.", this->last());
 
           this->on_finish();
 
@@ -578,7 +651,7 @@ namespace Hermes
           }
 
           this->tick();
-          this->info("Newton: solution duration: %f s.", this->last());
+          this->info("\tNewton: solution duration: %f s.", this->last());
 
           this->on_finish();
           return;
@@ -586,7 +659,11 @@ namespace Hermes
 
         // Assemble and keep the jacobian if this has not been done before.
         // Also declare that LU-factorization in case of a direct solver will be done only once and reused afterwards.
-        if(kept_jacobian == NULL) {
+        if(kept_jacobian == NULL || !(static_cast<DiscreteProblem<Scalar>*>(this->dp))->have_matrix) 
+        {
+          if(kept_jacobian != NULL)
+            delete kept_jacobian;
+
           kept_jacobian = create_matrix<Scalar>();
 
           // Give the matrix solver the correct Jacobian. NOTE: It would be cleaner if the whole decision whether to keep
@@ -608,7 +685,7 @@ namespace Hermes
               sprintf(fileName, "%s%i", this->matrixFilename.c_str(), it);
             FILE* matrix_file = fopen(fileName, "w+");
 
-            kept_jacobian->dump(matrix_file, this->matrixVarname.c_str(), this->matrixFormat);
+            kept_jacobian->dump(matrix_file, this->matrixVarname.c_str(), this->matrixFormat, this->matrix_number_format);
             fclose(matrix_file);
           }
 
@@ -656,7 +733,7 @@ namespace Hermes
           }
 
           this->tick();
-          this->info("Newton: solution duration: %f s.\n", this->last());
+          this->info("\tNewton: solution duration: %f s.\n", this->last());
 
           this->on_finish();
           throw Exceptions::ValueException("iterations", it, newton_max_iter);

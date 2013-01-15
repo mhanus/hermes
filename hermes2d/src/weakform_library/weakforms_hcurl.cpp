@@ -59,7 +59,7 @@ namespace Hermes
 
       template<typename Scalar>
       Scalar DefaultMatrixFormVol<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *u,
-        Func<double> *v, Geom<double> *e, ExtData<Scalar> *ext) const
+        Func<double> *v, Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR)
@@ -73,7 +73,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultMatrixFormVol<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR)
@@ -86,7 +86,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      MatrixFormVol<Scalar>* DefaultMatrixFormVol<Scalar>::clone()
+      MatrixFormVol<Scalar>* DefaultMatrixFormVol<Scalar>::clone() const
       {
         return new DefaultMatrixFormVol<Scalar>(*this);
       }
@@ -131,7 +131,7 @@ namespace Hermes
 
       template<typename Scalar>
       Scalar DefaultJacobianCurlCurl<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *u,
-        Func<double> *v, Geom<double> *e, ExtData<Scalar> *ext) const
+        Func<double> *v, Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR)
@@ -145,7 +145,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultJacobianCurlCurl<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR)
@@ -158,7 +158,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      MatrixFormVol<Scalar>* DefaultJacobianCurlCurl<Scalar>::clone()
+      MatrixFormVol<Scalar>* DefaultJacobianCurlCurl<Scalar>::clone() const
       {
         return new DefaultJacobianCurlCurl(*this);
       }
@@ -205,7 +205,7 @@ namespace Hermes
 
       template<typename Scalar>
       Scalar DefaultVectorFormVol<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar int_v0 = 0, int_v1 = 0;
         for (int i = 0; i < n; i++) int_v0 += wt[i] * v->val0[i];
@@ -215,7 +215,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultVectorFormVol<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord int_v0 = Ord(0), int_v1 = Ord(0);
         for (int i = 0; i < n; i++) int_v0 += wt[i] * v->val0[i];
@@ -224,7 +224,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      VectorFormVol<Scalar>* DefaultVectorFormVol<Scalar>::clone()
+      VectorFormVol<Scalar>* DefaultVectorFormVol<Scalar>::clone() const
       {
         return new DefaultVectorFormVol<Scalar>(*this);
       }
@@ -265,7 +265,7 @@ namespace Hermes
 
       template<typename Scalar>
       Scalar DefaultResidualVol<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR)
@@ -283,7 +283,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultResidualVol<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR)
@@ -299,7 +299,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      VectorFormVol<Scalar>* DefaultResidualVol<Scalar>::clone()
+      VectorFormVol<Scalar>* DefaultResidualVol<Scalar>::clone() const
       {
         return new DefaultResidualVol(*this);
       }
@@ -340,7 +340,7 @@ namespace Hermes
 
       template<typename Scalar>
       Scalar DefaultResidualCurlCurl<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Func<Scalar>* u_prev = u_ext[idx_i];
         Scalar result = 0;
@@ -362,7 +362,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultResidualCurlCurl<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Func<Ord>* u_prev = u_ext[idx_i];
         Ord result = Ord(0);
@@ -383,7 +383,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      VectorFormVol<Scalar>* DefaultResidualCurlCurl<Scalar>::clone()
+      VectorFormVol<Scalar>* DefaultResidualCurlCurl<Scalar>::clone() const
       {
         return new DefaultResidualCurlCurl(*this);
       }
@@ -420,7 +420,7 @@ namespace Hermes
 
       template<typename Scalar>
       Scalar DefaultMatrixFormSurf<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *u, Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR)
@@ -434,7 +434,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultMatrixFormSurf<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-        Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
+        Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR)
@@ -448,7 +448,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      MatrixFormSurf<Scalar>* DefaultMatrixFormSurf<Scalar>::clone()
+      MatrixFormSurf<Scalar>* DefaultMatrixFormSurf<Scalar>::clone() const
       {
         return new DefaultMatrixFormSurf<Scalar>(*this);
       }
@@ -484,7 +484,7 @@ namespace Hermes
 
       template<typename Scalar>
       Scalar DefaultResidualSurf<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR)
@@ -501,7 +501,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultResidualSurf<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[],
-        Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
+        Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR)
@@ -516,7 +516,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      VectorFormSurf<Scalar>* DefaultResidualSurf<Scalar>::clone()
+      VectorFormSurf<Scalar>* DefaultResidualSurf<Scalar>::clone() const
       {
         return new DefaultResidualSurf(*this);
       }
@@ -553,7 +553,7 @@ namespace Hermes
 
       template<typename Scalar>
       Scalar DefaultVectorFormSurf<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR)
@@ -570,7 +570,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultVectorFormSurf<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR)
@@ -586,7 +586,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      VectorFormSurf<Scalar>* DefaultVectorFormSurf<Scalar>::clone()
+      VectorFormSurf<Scalar>* DefaultVectorFormSurf<Scalar>::clone() const
       {
         return new DefaultVectorFormSurf<Scalar>(*this);
       }

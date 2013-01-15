@@ -24,11 +24,9 @@ namespace Hermes
   namespace Hermes2D
   {
     template<typename Scalar>
-    double** HdivSpace<Scalar>::hdiv_proj_mat = NULL;
-    template<typename Scalar>
-    double*  HdivSpace<Scalar>::hdiv_chol_p   = NULL;
-    template<typename Scalar>
-    int      HdivSpace<Scalar>::hdiv_proj_ref = 0;
+    HdivSpace<Scalar>::HdivSpace() : Space<Scalar>()
+    {
+    }
 
     template<typename Scalar>
     void HdivSpace<Scalar>::init(Shapeset* shapeset, int p_init)
@@ -40,13 +38,7 @@ namespace Hermes
       }
       if(this->shapeset->get_num_components() < 2) throw Hermes::Exceptions::Exception("HdivSpace requires a vector shapeset.");
 
-      if(!hdiv_proj_ref++)
-      {
-        this->precalculate_projection_matrix(0, hdiv_proj_mat, hdiv_chol_p);
-      }
-
-      this->proj_mat = hdiv_proj_mat;
-      this->chol_p   = hdiv_chol_p;
+      this->precalculate_projection_matrix(0, this->proj_mat, this->chol_p);
 
       // set uniform poly order in elements
       if(p_init < 0) throw Hermes::Exceptions::Exception("P_INIT must be >= 0 in an Hdiv space.");
@@ -57,15 +49,15 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    HdivSpace<Scalar>::HdivSpace(Mesh* mesh, EssentialBCs<Scalar>* essential_bcs, int p_init, Shapeset* shapeset)
-      : Space<Scalar>(mesh, shapeset, essential_bcs, p_init)
+    HdivSpace<Scalar>::HdivSpace(const Mesh* mesh, EssentialBCs<Scalar>* essential_bcs, int p_init, Shapeset* shapeset)
+      : Space<Scalar>(mesh, shapeset, essential_bcs)
     {
       init(shapeset, p_init);
     }
 
     template<typename Scalar>
-    HdivSpace<Scalar>::HdivSpace(Mesh* mesh, int p_init, Shapeset* shapeset)
-      : Space<Scalar>(mesh, shapeset, NULL, p_init)
+    HdivSpace<Scalar>::HdivSpace(const Mesh* mesh, int p_init, Shapeset* shapeset)
+      : Space<Scalar>(mesh, shapeset, NULL)
     {
       init(shapeset, p_init);
     }
@@ -73,78 +65,16 @@ namespace Hermes
     template<typename Scalar>
     HdivSpace<Scalar>::~HdivSpace()
     {
-      if(!--hdiv_proj_ref)
-      {
-        delete [] hdiv_proj_mat;
-        delete [] hdiv_chol_p;
-      }
       if(this->own_shapeset)
         delete this->shapeset;
     }
 
     template<typename Scalar>
-    Space<Scalar>* HdivSpace<Scalar>::duplicate(Mesh* mesh, int order_increase, typename Space<Scalar>::reference_space_p_callback_function p_callback) const
+    void HdivSpace<Scalar>::copy(const Space<Scalar>* space, Mesh* new_mesh)
     {
-      // FIXME
-      // HdivSpace<Scalar>* space = new HdivSpace(mesh, essential_bcs, 0, this->shapeset);
-      // space->copy_callbacks(this);
-      // space->copy_orders(this, order_increase, p_callback);
-      // return space;
-      return NULL;
-    }
+      Space<Scalar>::copy(space, new_mesh);
 
-    template<typename Scalar>
-    void HdivSpace<Scalar>::load(const char *filename, Mesh* mesh, EssentialBCs<Scalar>* essential_bcs, Shapeset* shapeset)
-    {
-      this->mesh = mesh;
-
-      if(shapeset == NULL)
-      {
-        this->shapeset = new HdivShapeset;
-        this->own_shapeset = true;
-      }
-      else
-        this->shapeset = shapeset;
-
-      if(this->shapeset->get_num_components() < 2)
-        throw Hermes::Exceptions::Exception("HdivSpace requires a vector shapeset.");
-
-      if(!hdiv_proj_ref++)
-      {
-        this->precalculate_projection_matrix(0, hdiv_proj_mat, hdiv_chol_p);
-      }
-
-      this->proj_mat = hdiv_proj_mat;
-      this->chol_p   = hdiv_chol_p;
-
-      Space<Scalar>::load(filename, essential_bcs);
-    }
-
-    template<typename Scalar>
-    void HdivSpace<Scalar>::load(const char *filename, Mesh* mesh, Shapeset* shapeset)
-    {
-      this->mesh = mesh;
-
-      if(shapeset == NULL)
-      {
-        this->shapeset = new HdivShapeset;
-        this->own_shapeset = true;
-      }
-      else
-        this->shapeset = shapeset;
-
-      if(this->shapeset->get_num_components() < 2)
-        throw Hermes::Exceptions::Exception("HdivSpace requires a vector shapeset.");
-
-      if(!hdiv_proj_ref++)
-      {
-        this->precalculate_projection_matrix(0, hdiv_proj_mat, hdiv_chol_p);
-      }
-
-      this->proj_mat = hdiv_proj_mat;
-      this->chol_p   = hdiv_chol_p;
-
-      Space<Scalar>::load(filename);
+      this->precalculate_projection_matrix(0, this->proj_mat, this->chol_p);
     }
 
     template<typename Scalar>
@@ -159,12 +89,11 @@ namespace Hermes
         throw Hermes::Exceptions::Exception("Wrong shapeset type in HdivSpace<Scalar>::set_shapeset()");
     }
 
-    //// dof assignment ////////////////////////////////////////////////////////////////////////////////
-
     template<typename Scalar>
     void HdivSpace<Scalar>::assign_edge_dofs()
     {
       Node* en;
+      this->edge_functions_count = 0;
       for_all_edge_nodes(en, this->mesh)
       {
         if(en->ref > 1 || en->bnd || this->mesh->peek_vertex_node(en->p1, en->p2) != NULL)
@@ -174,22 +103,25 @@ namespace Hermes
 
           if(en->bnd)
             if(this->essential_bcs != NULL)
-              if(this->essential_bcs->get_boundary_condition(this->mesh->get_boundary_markers_conversion().get_user_marker(en->marker).marker) != NULL)
+              if(this->essential_bcs->get_boundary_condition(this->mesh->boundary_markers_conversion.get_user_marker(en->marker).marker) != NULL)
                 this->ndata[en->id].dof = this->H2D_CONSTRAINED_DOF;
               else
               {
                 this->ndata[en->id].dof = this->next_dof;
                 this->next_dof += ndofs * this->stride;
+                      this->edge_functions_count += ndofs;
               }
             else
             {
               this->ndata[en->id].dof = this->next_dof;
               this->next_dof += ndofs * this->stride;
+                      this->edge_functions_count += ndofs;
             }
           else
           {
             this->ndata[en->id].dof = this->next_dof;
             this->next_dof += ndofs * this->stride;
+                      this->edge_functions_count += ndofs;
           }
         }
         else
@@ -203,16 +135,16 @@ namespace Hermes
     void HdivSpace<Scalar>::assign_bubble_dofs()
     {
       Element* e;
+      this->bubble_functions_count = 0;
       for_all_active_elements(e, this->mesh)
       {
         typename Space<Scalar>::ElementData* ed = &this->edata[e->id];
         ed->bdof = this->next_dof;
         ed->n = this->shapeset->get_num_bubbles(ed->order, e->get_mode());
         this->next_dof += ed->n * this->stride;
+          this->bubble_functions_count += ed->n;
       }
     }
-
-    //// assembly lists ////////////////////////////////////////////////////////////////////////////////
 
     template<typename Scalar>
     void HdivSpace<Scalar>::get_boundary_assembly_list_internal(Element* e, int surf_num, AsmList<Scalar>* al) const
@@ -260,7 +192,7 @@ namespace Hermes
     //// BC stuff //////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Scalar>
-    Scalar* HdivSpace<Scalar>::get_bc_projection(SurfPos* surf_pos, int order)
+    Scalar* HdivSpace<Scalar>::get_bc_projection(SurfPos* surf_pos, int order, EssentialBoundaryCondition<Scalar> *bc)
     {
       assert(order >= 0);
       Scalar* proj = new Scalar[order + 1];
@@ -286,7 +218,7 @@ namespace Hermes
           surf_pos->t = surf_pos->lo * s + surf_pos->hi * t;
 
           // If the BC on this part of the boundary is constant.
-          EssentialBoundaryCondition<Scalar> *bc = this->essential_bcs->get_boundary_condition(this->mesh->get_boundary_markers_conversion().get_user_marker(surf_pos->marker).marker);
+          EssentialBoundaryCondition<Scalar> *bc = this->essential_bcs->get_boundary_condition(this->mesh->boundary_markers_conversion.get_user_marker(surf_pos->marker).marker);
 
           if(bc->get_value_type() == EssentialBoundaryCondition<Scalar>::BC_CONST)
           {

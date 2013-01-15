@@ -40,6 +40,11 @@ namespace Hermes
     };
     class Shapeset;
 
+    template<typename Scalar> class L2Space;
+    template<typename Scalar> class H1Space;
+    template<typename Scalar> class HcurlSpace;
+    template<typename Scalar> class HdivSpace;
+
     /// @defgroup spaces FEM Spaces handling
 
     /// @ingroup spaces
@@ -99,14 +104,21 @@ namespace Hermes
     ///
 
     template<typename Scalar>
-    class HERMES_API Space : public Hermes::Mixins::Loggable, public Hermes::Hermes2D::Mixins::StateQueryable
+    class HERMES_API Space : public Hermes::Mixins::Loggable, public Hermes::Hermes2D::Mixins::StateQueryable, public Hermes::Hermes2D::Mixins::XMLParsing
     {
     public:
-      Space(Mesh* mesh, Shapeset* shapeset, EssentialBCs<Scalar>* essential_bcs, int p_init);
+      Space();
+      Space(const Mesh* mesh, Shapeset* shapeset, EssentialBCs<Scalar>* essential_bcs);
 
-      virtual ~Space();
+      /// Common code for constructors.
+      void init();
 
+      /// State querying helpers.
       virtual bool isOkay() const;
+      inline std::string getClassName() const { return "Space"; }
+
+      /// Destructor.
+      virtual ~Space();
 
       /// Sets element polynomial order. Can be called by the user. Should not be called
       /// for many elements at once, since assign_dofs() is called at the end of this function.
@@ -168,12 +180,52 @@ namespace Hermes
       /// essnetial boundary conditions.
       void update_essential_bc_values();
 
-      virtual Scalar* get_bc_projection(SurfPos* surf_pos, int order) = 0;
+      Shapeset* get_shapeset() const;
+
+      /// Saves this space into a file.
+      bool save(const char *filename) const;
+
+      /// Loads a space from a file.
+      static Space<Scalar>* load(const char *filename, Mesh* mesh, bool validate, EssentialBCs<Scalar>* essential_bcs = NULL, Shapeset* shapeset = NULL);
 
       /// Obtains an assembly list for the given element.
       virtual void get_element_assembly_list(Element* e, AsmList<Scalar>* al, unsigned int first_dof = 0) const;
 
-      Shapeset* get_shapeset() const;
+      /// Copy from Space instance 'space'
+      virtual void copy(const Space<Scalar>* space, Mesh* new_mesh);
+
+      /// Class for creating reference space.
+      class HERMES_API ReferenceSpaceCreator
+      {
+      public:
+        /// Constructor.
+        /// \param[in] coarse_space The coarse (original) space.
+        /// \param[in] ref_mesh The refined mesh.
+        /// \param[in] order_increase Increase of the polynomial order.
+        ReferenceSpaceCreator(const Space<Scalar>* coarse_space, const Mesh* ref_mesh, unsigned int order_increase = 1);
+
+        /// Method that does the creation.
+        /// THIS IS THE METHOD TO OVERLOAD FOR CUSTOM CREATING OF A REFERENCE SPACE.
+        virtual void handle_orders(Space<Scalar>* ref_space);
+
+        /// Methods that user calls to get the reference space pointer (has to be properly casted if necessary).
+        virtual Space<Scalar>* create_ref_space(bool assign_dofs = true);
+
+        /// Construction initialization.
+      private:
+        L2Space<Scalar>* init_construction_l2();
+        H1Space<Scalar>* init_construction_h1();
+        HcurlSpace<Scalar>* init_construction_hcurl();
+        HdivSpace<Scalar>* init_construction_hdiv();
+
+        /// Construction finalization.
+        virtual void finish_construction(Space<Scalar>* ref_space);
+
+        /// Storage.
+        const Space<Scalar>* coarse_space;
+        const Mesh* ref_mesh;
+        unsigned int order_increase;
+      };
 
       /// Sets element polynomial order. This version does not call assign_dofs() and is
       /// intended primarily for internal use.
@@ -190,18 +242,16 @@ namespace Hermes
       /// \brief Assings the degrees of freedom to all Spaces in the Hermes::vector.
       static int assign_dofs(Hermes::vector<Space<Scalar>*> spaces);
 
-      /// Typedef for function pointer being passed to methods duplicating spaces, or creating reference spaces.
-      typedef bool (*reference_space_p_callback_function)(int);
+      virtual Scalar* get_bc_projection(SurfPos* surf_pos, int order, EssentialBoundaryCondition<Scalar> *bc) = 0;
 
-      /// Creates a copy of the space, increases order of all elements by
-      /// "order_increase".
-      virtual Space<Scalar>* duplicate(Mesh* mesh, int order_increase = 0, reference_space_p_callback_function p_callback = NULL) const = 0;
+      static void update_essential_bc_values(Hermes::vector<Space<Scalar>*> spaces, double time);
 
-      /// Copies element orders from another space. 'inc' is an optional order
-      /// increase. If the source space has a coarser mesh, the orders are distributed
-      /// recursively. This is useful for reference solution spaces.
-      void copy_orders(const Space<Scalar>* space, int order_increase = 0, reference_space_p_callback_function p_callback = NULL);
-    protected:
+      static void update_essential_bc_values(Space<Scalar>*s, double time);
+
+      /// Internal. Return type of this space (H1 = HERMES_H1_SPACE, Hcurl = HERMES_HCURL_SPACE,
+      /// Hdiv = HERMES_HDIV_SPACE, L2 = HERMES_L2_SPACE)
+      virtual SpaceType get_type() const = 0;
+
       static Node* get_mid_edge_vertex_node(Element* e, int i, int j);
 
       /// Sets polynomial orders to elements created by Mesh::regularize() using "parents".
@@ -223,8 +273,17 @@ namespace Hermes
       /// call assign_dofs(). For internal use.
       void set_uniform_order_internal(int order, int marker);
 
-      virtual void free();
+      void free();
 
+      /// Returns the total (global) number of vertex functions.
+      /// The DOF ordering starts with vertex functions, so it it necessary to know how many of them there are.
+      int get_vertex_functions_count();
+      /// Returns the total (global) number of edge functions.
+      int get_edge_functions_count();
+      /// Returns the total (global) number of bubble functions.
+      int get_bubble_functions_count();
+
+    protected:
       /// Number of degrees of freedom (dimension of the space).
       int ndof;
 
@@ -239,13 +298,14 @@ namespace Hermes
       EssentialBCs<Scalar>* essential_bcs;
 
       /// FE mesh.
-      Mesh* mesh;
+      const Mesh* mesh;
 
       int default_tri_order, default_quad_order;
+      int vertex_functions_count, edge_functions_count, bubble_functions_count;
       int first_dof, next_dof;
       int stride;
       int seq, mesh_seq;
-      bool was_assigned;
+      int was_assigned;
 
       struct BaseComponent
       {
@@ -303,7 +363,7 @@ namespace Hermes
       /// enough to contain all node and element id's, and to reallocate them if not.
       virtual void resize_tables();
 
-      void copy_orders_recurrent(Element* e, int order);
+      void update_orders_recurrent(Element* e, int order);
 
       virtual void reset_dof_assignment(); ///< Resets assignment of DOF to an unassigned state.
       virtual void assign_vertex_dofs() = 0;
@@ -336,44 +396,10 @@ namespace Hermes
 
       /// Internal. Used by DiscreteProblem to detect changes in the space.
       int get_seq() const;
-
-    public:
-
-      /// Internal. Return type of this space (H1 = HERMES_H1_SPACE, Hcurl = HERMES_HCURL_SPACE,
-      /// Hdiv = HERMES_HDIV_SPACE, L2 = HERMES_L2_SPACE)
-      virtual SpaceType get_type() const = 0;
-
-      /// Create globally refined spaces.
-      /// It will always uniformly refined every element in the mesh, dividing both quads and triangles
-      /// into 4 smaller element in the natural way.
-      /// \param[in] coarse The coarse spaces out of which the refined ones are created and returned by this method.
-      /// \param[in] order_increase The 'uniform' increase in polynomial order. Default = 1.
-      /// \param[in] p_callback An instance of function pointer determining whether or not to increase the polynomial order
-      /// by order_increase. The function passed takes the element id and return boolean (to refine / not to refine).
-      static Hermes::vector<Space<Scalar>*>* construct_refined_spaces(Hermes::vector<Space<Scalar>*> coarse, int order_increase = 1, 
-        reference_space_p_callback_function p_callback = NULL);
-
-      /// Create globally refined space.
-      /// See construct_refined_spaces() for details.
-      static Space<Scalar>* construct_refined_space(Space<Scalar>* coarse, int order_increase = 1, 
-        reference_space_p_callback_function p_callback = NULL);
-
-      static void update_essential_bc_values(Hermes::vector<Space<Scalar>*> spaces, double time);
-
-      static void update_essential_bc_values(Space<Scalar>*s, double time);
-
-      friend class Adapt<Scalar>;
-      friend class DiscreteProblem<Scalar>;
-      template<typename T> friend class CalculationContinuity;
-
-      /// Saves this space into a file.
-      bool save(const char *filename) const;
-
-      /// Loads a space from a file.
-      void load(const char *filename, EssentialBCs<Scalar>* essential_bcs = NULL);
-
       template<typename T> friend class OGProjection;
       template<typename T> friend class NewtonSolver;
+      template<typename T> friend class PicardSolver;
+      template<typename T> friend class LinearSolver;
       template<typename T> friend class OGProjectionNOX;
       template<typename T> friend class LocalProjection;
       template<typename T> friend class Solution;
@@ -386,6 +412,9 @@ namespace Hermes
       friend class Views::Orderizer;
       friend class Views::OrderView;
       template<typename T> friend class Views::VectorBaseView;
+      friend class Adapt<Scalar>;
+      friend class DiscreteProblem<Scalar>;
+      template<typename T> friend class CalculationContinuity;
     };
   }
 }

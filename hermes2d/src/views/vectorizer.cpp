@@ -197,7 +197,7 @@ namespace Hermes
         }
 
         // no splitting: output a linear triangle
-        add_triangle(iv0, iv1, iv2);
+        add_triangle(iv0, iv1, iv2, fns[0]->get_active_element()->marker);
       }
 
       void Vectorizer::process_quad(MeshFunction<double>** fns, int iv0, int iv1, int iv2, int iv3, int level,
@@ -327,13 +327,13 @@ namespace Hermes
         // output two linear triangles,
         if(!flip)
         {
-          add_triangle(iv3, iv0, iv1);
-          add_triangle(iv1, iv2, iv3);
+          add_triangle(iv3, iv0, iv1, fns[0]->get_active_element()->marker);
+          add_triangle(iv1, iv2, iv3, fns[0]->get_active_element()->marker);
         }
         else
         {
-          add_triangle(iv0, iv1, iv2);
-          add_triangle(iv2, iv3, iv0);
+          add_triangle(iv0, iv1, iv2, fns[0]->get_active_element()->marker);
+          add_triangle(iv2, iv3, iv0, fns[0]->get_active_element()->marker);
         }
       }
 
@@ -408,9 +408,11 @@ namespace Hermes
 
         // reuse or allocate vertex, triangle and edge arrays
         verts = (double4*) malloc(sizeof(double4) * vertex_size);
-        tris = (int3*) malloc(sizeof(int3) * triangle_size);
-        edges = (int3*) malloc(sizeof(int3) * edges_size);
-        dashes = (int2*) malloc(sizeof(int2) * dashes_size);
+				this->tris = (int3*) realloc(this->tris, sizeof(int3) * this->triangle_size);
+				this->tri_markers = (int*) realloc(this->tri_markers, sizeof(int) * this->triangle_size);
+				this->edges = (int2*) realloc(this->edges, sizeof(int2) * this->edges_size);
+				this->edge_markers = (int*) realloc(this->edge_markers, sizeof(int) * this->edges_size);
+				dashes = (int2*) malloc(sizeof(int2) * dashes_size);
         info = (int4*) malloc(sizeof(int4) * vertex_size);
         this->empty = false;
 
@@ -428,8 +430,8 @@ namespace Hermes
         meshes.push_back(ysln->get_mesh());
 
         // Parallelization
-        MeshFunction<double>*** fns = new MeshFunction<double>**[Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads)];
-        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
+        MeshFunction<double>*** fns = new MeshFunction<double>**[Hermes2DApi.get_integral_param_value(Hermes::Hermes2D::numThreads)];
+        for(unsigned int i = 0; i < Hermes2DApi.get_integral_param_value(Hermes::Hermes2D::numThreads); i++)
         {
           fns[i] = new MeshFunction<double>*[2];
           fns[i][0] = xsln->clone();
@@ -440,8 +442,8 @@ namespace Hermes
           fns[i][1]->set_quad_2d(&g_quad_lin);
         }
 
-        Transformable*** trfs = new Transformable**[Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads)];
-        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
+        Transformable*** trfs = new Transformable**[Hermes2DApi.get_integral_param_value(Hermes::Hermes2D::numThreads)];
+        for(unsigned int i = 0; i < Hermes2DApi.get_integral_param_value(Hermes::Hermes2D::numThreads); i++)
         {
           trfs[i] = new Transformable*[2];
           trfs[i][0] = fns[i][0];
@@ -478,9 +480,9 @@ namespace Hermes
 
         trav_masterMax.begin(meshes.size(), &(meshes.front()));
 
-        Traverse* trav = new Traverse[Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads)];
+        Traverse* trav = new Traverse[Hermes2DApi.get_integral_param_value(Hermes::Hermes2D::numThreads)];
 
-        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
+        for(unsigned int i = 0; i < Hermes2DApi.get_integral_param_value(Hermes::Hermes2D::numThreads); i++)
         {
           trav[i].begin(meshes.size(), &(meshes.front()), trfs[i]);
           trav[i].stack = trav_masterMax.stack;
@@ -489,7 +491,7 @@ namespace Hermes
         int state_i;
 
 #define CHUNKSIZE 1
-int num_threads_used = Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads);
+int num_threads_used = Hermes2DApi.get_integral_param_value(Hermes::Hermes2D::numThreads);
 #pragma omp parallel shared(trav_masterMax) private(state_i) num_threads(num_threads_used)
         {
 #pragma omp for schedule(dynamic, CHUNKSIZE)
@@ -529,7 +531,7 @@ int num_threads_used = Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads)
         }
 
         trav_masterMax.finish();
-        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
+        for(unsigned int i = 0; i < Hermes2DApi.get_integral_param_value(Hermes::Hermes2D::numThreads); i++)
           trav[i].finish();
         delete [] trav;
 
@@ -538,9 +540,9 @@ int num_threads_used = Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads)
 
         trav_master.begin(meshes.size(), &(meshes.front()));
 
-        trav = new Traverse[Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads)];
+        trav = new Traverse[Hermes2DApi.get_integral_param_value(Hermes::Hermes2D::numThreads)];
 
-        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
+        for(unsigned int i = 0; i < Hermes2DApi.get_integral_param_value(Hermes::Hermes2D::numThreads); i++)
         {
           trav[i].begin(meshes.size(), &(meshes.front()), trfs[i]);
           trav[i].stack = trav_master.stack;
@@ -548,7 +550,7 @@ int num_threads_used = Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads)
 
         trav_master.begin(meshes.size(), &(meshes.front()));
 
-        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
+        for(unsigned int i = 0; i < Hermes2DApi.get_integral_param_value(Hermes::Hermes2D::numThreads); i++)
           trav[i].begin(meshes.size(), &(meshes.front()), trfs[i]);
 
 #pragma omp parallel shared(trav_master) private(state_i) num_threads(num_threads_used)
@@ -603,7 +605,7 @@ int num_threads_used = Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads)
         }
 
         trav_master.finish();
-        for(unsigned int i = 0; i < Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads); i++)
+        for(unsigned int i = 0; i < Hermes2DApi.get_integral_param_value(Hermes::Hermes2D::numThreads); i++)
         {
           trav[i].finish();
           for(unsigned int j = 0; j < 2; j++)
@@ -626,7 +628,7 @@ int num_threads_used = Hermes2DApi.get_param_value(Hermes::Hermes2D::numThreads)
           if(mid0 >= 0 || mid1 >= 0 || mid2 >= 0)
           {
             this->del_slot = i;
-            regularize_triangle(iv0, iv1, iv2, mid0, mid1, mid2);
+            regularize_triangle(iv0, iv1, iv2, mid0, mid1, mid2, tri_markers[i]);
           }
         }
 

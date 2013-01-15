@@ -117,7 +117,7 @@ namespace Hermes
       {
         delete [] K_vector;
         K_vector = new Scalar[num_stages * Space<Scalar>::get_num_dofs(this->spaces)];
-        this->info("Runge-Kutta: K vectors are being set to zero, as the spaces changed during computation.");
+        this->info("\tRunge-Kutta: K vectors are being set to zero, as the spaces changed during computation.");
         memset(K_vector, 0, num_stages * Space<Scalar>::get_num_dofs(this->spaces) * sizeof(Scalar));
       }
       delete [] u_ext_vec;
@@ -147,7 +147,7 @@ namespace Hermes
       {
         delete [] K_vector;
         K_vector = new Scalar[num_stages * Space<Scalar>::get_num_dofs(this->spaces)];
-        this->info("Runge-Kutta: K vector is being set to zero, as the spaces changed during computation.");
+        this->info("\tRunge-Kutta: K vector is being set to zero, as the spaces changed during computation.");
         memset(K_vector, 0, num_stages * Space<Scalar>::get_num_dofs(this->spaces) * sizeof(Scalar));
       }
       delete [] u_ext_vec;
@@ -309,7 +309,7 @@ namespace Hermes
       if(error_fns != Hermes::vector<Solution<Scalar>*>() && bt->is_embedded() == false)
         throw Hermes::Exceptions::Exception("rk_time_step_newton(): R-K method must be embedded if temporal error estimate is requested.");
 
-      info("Runge-Kutta: time step, time: %f, time step: %f", this->time, this->time_step);
+      info("\tRunge-Kutta: time step, time: %f, time step: %f", this->time, this->time_step);
 
       // Set the correct time to the essential boundary conditions.
       for (unsigned int stage_i = 0; stage_i < num_stages; stage_i++)
@@ -322,7 +322,10 @@ namespace Hermes
       // to define a num_stages x num_stages block weak formulation.
       for (unsigned int i = 0; i < num_stages; i++)
         for(unsigned int space_i = 0; space_i < spaces.size(); space_i++)
-          stage_spaces_vector.push_back(spaces[space_i]->duplicate(spaces[space_i]->get_mesh()));
+        {
+          typename Space<Scalar>::ReferenceSpaceCreator ref_space_creator(spaces[space_i], spaces[space_i]->get_mesh(), 0);
+          stage_spaces_vector.push_back(ref_space_creator.create_ref_space());
+        }
 
       this->stage_dp_right->set_spaces(stage_spaces_vector);
 
@@ -377,7 +380,7 @@ namespace Hermes
           else
             sprintf(fileName, "%s%i", this->RhsFilename.c_str(), it);
           FILE* rhs_file = fopen(fileName, "w+");
-          vector_right->dump(rhs_file, this->RhsVarname.c_str(), this->RhsFormat);
+          vector_right->dump(rhs_file, this->RhsVarname.c_str(), this->RhsFormat, this->rhs_number_format);
           fclose(rhs_file);
         }
 
@@ -398,9 +401,9 @@ namespace Hermes
 
         // Info for the user.
         if(it == 1)
-          this->info("Runge-Kutta: Newton initial residual norm: %g", residual_norm);
+          this->info("\tRunge-Kutta: Newton initial residual norm: %g", residual_norm);
         else
-          this->info("Runge-Kutta: Newton iteration %d, residual norm: %g", it-1, residual_norm);
+          this->info("\tRunge-Kutta: Newton iteration %d, residual norm: %g", it-1, residual_norm);
 
         // If maximum allowed residual norm is exceeded, fail.
         if(residual_norm > newton_max_allowed_residual_norm)
@@ -434,7 +437,7 @@ namespace Hermes
               sprintf(fileName, "%s%i", this->matrixFilename.c_str(), it);
             FILE* matrix_file = fopen(fileName, "w+");
 
-            matrix_right->dump(matrix_file, this->matrixVarname.c_str(), this->matrixFormat);
+            matrix_right->dump(matrix_file, this->matrixVarname.c_str(), this->matrixFormat, this->matrix_number_format);
             fclose(matrix_file);
           }
 
@@ -459,7 +462,7 @@ namespace Hermes
       if(it >= newton_max_iter)
       {
         this->tick();
-        this->info("Runge-Kutta: time step duration: %f s.\n", this->last());
+        this->info("\tRunge-Kutta: time step duration: %f s.\n", this->last());
         throw Exceptions::ValueException("Newton iterations", it, newton_max_iter);
       }
 
@@ -513,8 +516,8 @@ namespace Hermes
       }
 
       // Delete stage spaces.
-      for (unsigned int i = 0; i < num_stages; i++)
-        delete stage_spaces_vector[i];
+      for (unsigned int i = 0; i < num_stages * spaces.size(); i++)
+          delete stage_spaces_vector[i];
 
       // Delete all residuals.
       if(!residual_as_vector)
@@ -526,7 +529,7 @@ namespace Hermes
 
       iteration++;
       this->tick();
-      this->info("Runge-Kutta: time step duration: %f s.\n", this->last());
+      this->info("\tRunge-Kutta: time step duration: %f s.\n", this->last());
     }
 
     template<typename Scalar>
@@ -707,6 +710,9 @@ namespace Hermes
       Hermes::vector<VectorFormVol<Scalar> *> vfvol = stage_wf_right.vfvol;
       Hermes::vector<VectorFormSurf<Scalar> *> vfsurf = stage_wf_right.vfsurf;
 
+      for(unsigned int slns_time_prev_i = 0; slns_time_prev_i < slns_time_prev.size(); slns_time_prev_i++)
+          stage_wf_right.ext.push_back(slns_time_prev[slns_time_prev_i]);
+
       // Duplicate matrix volume forms, scale them according
       // to the Butcher's table, enhance them with additional
       // external solutions, and anter them as blocks to the
@@ -716,12 +722,6 @@ namespace Hermes
       {
         MatrixFormVol<Scalar> *mfv_ij = mfvol[m];
         mfv_ij->scaling_factor = -this->time_step * bt->get_A(mfv_ij->i / spaces.size(), mfv_ij->j / spaces.size());
-
-        mfv_ij->ext.clear();
-
-        for(unsigned int slns_time_prev_i = 0; slns_time_prev_i < slns_time_prev.size(); slns_time_prev_i++)
-          mfv_ij->ext.push_back(slns_time_prev[slns_time_prev_i]);
-
         mfv_ij->set_current_stage_time(this->time + bt->get_C(mfv_ij->i / spaces.size()) * this->time_step);
       }
 
@@ -732,12 +732,6 @@ namespace Hermes
       {
         MatrixFormSurf<Scalar> *mfs_ij = mfsurf[m];
         mfs_ij->scaling_factor = -this->time_step * bt->get_A(mfs_ij->i / spaces.size(), mfs_ij->j / spaces.size());
-
-        mfs_ij->ext.clear();
-
-        for(unsigned int slns_time_prev_i = 0; slns_time_prev_i < slns_time_prev.size(); slns_time_prev_i++)
-          mfs_ij->ext.push_back(slns_time_prev[slns_time_prev_i]);
-
         mfs_ij->set_current_stage_time(this->time + bt->get_C(mfs_ij->i / spaces.size()) * this->time_step);
       }
 
@@ -747,12 +741,6 @@ namespace Hermes
       for (unsigned int m = 0; m < vfvol.size(); m++)
       {
         VectorFormVol<Scalar>* vfv_i = vfvol[m];
-
-        vfv_i->ext.clear();
-
-        for(unsigned int slns_time_prev_i = 0; slns_time_prev_i < slns_time_prev.size(); slns_time_prev_i++)
-            vfv_i->ext.push_back(slns_time_prev[slns_time_prev_i]);
-
         vfv_i->set_current_stage_time(this->time + bt->get_C(vfv_i->i / spaces.size())*this->time_step);
       }
 
@@ -762,12 +750,6 @@ namespace Hermes
       for (unsigned int m = 0; m < vfsurf.size(); m++)
       {
         VectorFormSurf<Scalar>* vfs_i = vfsurf[m];
-
-        vfs_i->ext.clear();
-
-        for(unsigned int slns_time_prev_i = 0; slns_time_prev_i < slns_time_prev.size(); slns_time_prev_i++)
-            vfs_i->ext.push_back(slns_time_prev[slns_time_prev_i]);
-
         vfs_i->set_current_stage_time(this->time + bt->get_C(vfs_i->i / spaces.size())*this->time_step);
       }
     }

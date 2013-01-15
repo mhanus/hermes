@@ -49,7 +49,7 @@ namespace Hermes
       template<typename Scalar> class ProjBasedSelector;
       template<typename Scalar> class H1ProjBasedSelector;
       template<typename Scalar> class L2ProjBasedSelector;
-      class HcurlProjBasedSelector;
+      template<typename Scalar> class HcurlProjBasedSelector;
     }
 
     namespace Views
@@ -213,7 +213,7 @@ namespace Hermes
       template<typename Scalar> friend class RefinementSelectors::ProjBasedSelector;
       template<typename Scalar> friend class RefinementSelectors::H1ProjBasedSelector;
       template<typename Scalar> friend class RefinementSelectors::L2ProjBasedSelector;
-      friend class RefinementSelectors::HcurlProjBasedSelector;
+      template<typename Scalar> friend class RefinementSelectors::HcurlProjBasedSelector;
       friend class Views::ScalarView;
       friend class Views::Linearizer;
       friend class RefMap;
@@ -233,11 +233,15 @@ namespace Hermes
     {
     public:
       Mesh();
-      ~Mesh() {
-        free();
-      }
+      virtual ~Mesh();
 
+      /// Initializes the mesh.
+      /// \param size[in] Hash table size; must be a power of two.
+      void init(int size = H2D_DEFAULT_HASH_SIZE);
+
+      /// State querying helpers.
       virtual bool isOkay() const;
+      inline std::string getClassName() const { return "Mesh"; }
 
       /// Rescales the mesh.
       bool rescale(double x_ref, double y_ref);
@@ -340,9 +344,31 @@ namespace Hermes
       /// For internal use.
       void set_seq(unsigned seq);
 
+      /// Class for creating reference mesh.
+      class HERMES_API ReferenceMeshCreator
+      {
+      public:
+        /// Constructor.
+        /// \param[in] coarse_mesh The coarse (original) mesh.
+        /// \param refinement[in] Ignored for triangles. If the element
+        /// is a quad, 0 means refine in both directions, 1 means refine
+        /// horizontally (with respect to the reference domain), 2 means
+        /// refine vertically.
+        ReferenceMeshCreator(Mesh* coarse_mesh, int refinement = 0);
+
+        /// Method that does the creation.
+        /// THIS IS THE METHOD TO OVERLOAD FOR CUSTOM CREATING OF A REFERENCE MESH.
+        virtual Mesh* create_ref_mesh();
+
+      private:
+        /// Storage.
+        Mesh* coarse_mesh;
+        int refinement;
+      };
+
     private:
       /// For internal use.
-      int get_edge_sons(Element* e, int edge, int& son1, int& son2);
+      int get_edge_sons(Element* e, int edge, int& son1, int& son2) const;
 
       /// Refines all quad elements to triangles.
       /// It refines a quadrilateral element into two triangles.
@@ -430,17 +456,17 @@ namespace Hermes
 
         /// Lookup functions.
         /// Find a user marker for this internal marker.
-        StringValid get_user_marker(int internal_marker);
+        StringValid get_user_marker(int internal_marker) const;
 
         /// Find an internal marker for this user_marker.
-        IntValid get_internal_marker(std::string user_marker);
+        IntValid get_internal_marker(std::string user_marker) const;
 
         enum MarkersConversionType {
           HERMES_ELEMENT_MARKERS_CONVERSION = 0,
           HERMES_BOUNDARY_MARKERS_CONVERSION = 1
         };
 
-        virtual MarkersConversionType get_type() = 0;
+        virtual MarkersConversionType get_type() const = 0;
 
       protected:
         /// Conversion tables between the std::string markers the user sets and
@@ -475,14 +501,14 @@ namespace Hermes
       {
       public:
         ElementMarkersConversion();
-        virtual MarkersConversionType get_type();
+        virtual MarkersConversionType get_type() const;
       };
 
       class BoundaryMarkersConversion : public MarkersConversion
       {
       public:
         BoundaryMarkersConversion();
-        virtual MarkersConversionType get_type();
+        virtual MarkersConversionType get_type() const;
       };
 
       ElementMarkersConversion element_markers_conversion;
@@ -515,7 +541,7 @@ namespace Hermes
       template<typename Scalar> friend class RefinementSelectors::ProjBasedSelector;
       template<typename Scalar> friend class RefinementSelectors::H1ProjBasedSelector;
       template<typename Scalar> friend class RefinementSelectors::L2ProjBasedSelector;
-      friend class RefinementSelectors::HcurlProjBasedSelector;
+      template<typename Scalar> friend class RefinementSelectors::HcurlProjBasedSelector;
       friend class PrecalcShapeset;
       template<typename Scalar> friend class Space;
       template<typename Scalar> friend class H1Space;
@@ -619,8 +645,8 @@ namespace Hermes
         vn[0]                           vn[1]       vn[0]        vn[1] vn[0]        vn[1]
       */
 
-      Element* create_quad(int marker, Node* v0, Node* v1, Node* v2, Node* v3, CurvMap* cm);
-      Element* create_triangle(int marker, Node* v0, Node* v1, Node* v2, CurvMap* cm);
+      Element* create_quad(int marker, Node* v0, Node* v1, Node* v2, Node* v3, CurvMap* cm, int id = -1);
+      Element* create_triangle(int marker, Node* v0, Node* v1, Node* v2, CurvMap* cm, int id = -1);
       void refine_element(Element* e, int refinement);
 
       /// Vector for storing refinements in order to be able to save/load meshes with identical element IDs.

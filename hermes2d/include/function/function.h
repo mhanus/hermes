@@ -34,7 +34,7 @@ namespace Hermes
       template<typename Scalar> class ProjBasedSelector;
       template<typename Scalar> class L2ProjBasedSelector;
       template<typename Scalar> class H1ProjBasedSelector;
-      class HcurlProjBasedSelector;
+      template<typename Scalar> class HcurlProjBasedSelector;
     };
     template<typename Scalar> class Geom;
 
@@ -104,7 +104,7 @@ namespace Hermes
 
       /// Default destructor.
       /// Added to delete Function::sub_tables.
-      ~Function();
+      virtual ~Function();
 
       /// \brief Returns the number of components of the function being represented by the class.
       int get_num_components() const;
@@ -241,7 +241,7 @@ namespace Hermes
       template<typename T> friend class KellyTypeAdapt;
       template<typename T> friend class RefinementSelectors::H1ProjBasedSelector;
       template<typename T> friend class RefinementSelectors::L2ProjBasedSelector;
-      friend class RefinementSelectors::HcurlProjBasedSelector;
+      template<typename T> friend class RefinementSelectors::HcurlProjBasedSelector;
       template<typename T> friend class Adapt;
       friend class Views::Orderizer;
       friend class Views::Vectorizer;

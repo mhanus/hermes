@@ -39,19 +39,19 @@ namespace Hermes
             {
               /* Jacobian */
               // Diffusion.
-              add_matrix_form(new DefaultJacobianDiffusion<Scalar>(0, 0, regions[i], new Hermes1DFunction<Scalar>(D_map[i]),
+              this->add_matrix_form(new DefaultJacobianDiffusion<Scalar>(0, 0, regions[i], new Hermes1DFunction<Scalar>(D_map[i]),
                 HERMES_SYM));
               // Absorption.
-              add_matrix_form(new DefaultMatrixFormVol<Scalar>(0, 0, regions[i], new Hermes2DFunction<Scalar>(Sigma_a_map[i]),
+              this->add_matrix_form(new DefaultMatrixFormVol<Scalar>(0, 0, regions[i], new Hermes2DFunction<Scalar>(Sigma_a_map[i]),
                 HERMES_SYM));
 
               /* Residual */
               // Diffusion.
-              add_vector_form(new DefaultResidualDiffusion<Scalar>(0, regions[i], new Hermes1DFunction<Scalar>(D_map[i])));
+              this->add_vector_form(new DefaultResidualDiffusion<Scalar>(0, regions[i], new Hermes1DFunction<Scalar>(D_map[i])));
               // Absorption.
-              add_vector_form(new DefaultResidualVol<Scalar>(0, regions[i], new Hermes2DFunction<Scalar>(Sigma_a_map[i])));
+              this->add_vector_form(new DefaultResidualVol<Scalar>(0, regions[i], new Hermes2DFunction<Scalar>(Sigma_a_map[i])));
               // Sources.
-              add_vector_form(new DefaultVectorFormVol<Scalar>(0, regions[i], new Hermes2DFunction<Scalar>(-Q_map[i])));
+              this->add_vector_form(new DefaultVectorFormVol<Scalar>(0, regions[i], new Hermes2DFunction<Scalar>(-Q_map[i])));
             }
           }
         }
@@ -530,7 +530,7 @@ namespace Hermes
             template<typename ScalarClass>
             template<typename Real, typename Scalar>
             Scalar VacuumBoundaryCondition::Jacobian<ScalarClass>::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
-              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const
+              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
             {
               Scalar result;
 
@@ -547,7 +547,7 @@ namespace Hermes
             template<typename ScalarClass>
             template<typename Real, typename Scalar>
             Scalar VacuumBoundaryCondition::Residual<ScalarClass>::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
-              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const
+              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
             {
               Scalar result;
 
@@ -564,7 +564,7 @@ namespace Hermes
             template<typename ScalarClass>
             template<typename Real, typename Scalar>
             Scalar DiffusionReaction::Jacobian<ScalarClass>::matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
-              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const
+              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
             {
               Scalar result;
 
@@ -596,7 +596,7 @@ namespace Hermes
             template<typename ScalarClass>
             template<typename Real, typename Scalar>
             Scalar DiffusionReaction::Residual<ScalarClass>::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
-              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const
+              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
             {
               Scalar result;
 
@@ -628,7 +628,7 @@ namespace Hermes
             template<typename ScalarClass>
             template<typename Real, typename Scalar>
             Scalar FissionYield::Jacobian<ScalarClass>::matrix_form( int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
-              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const
+              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
             {
               if(!matprop.get_fission_multigroup_structure()[gto])
                 return Scalar(0.0);
@@ -652,7 +652,7 @@ namespace Hermes
             template<typename ScalarClass>
             template<typename Real, typename Scalar>
             Scalar FissionYield::OuterIterationForm<ScalarClass>::vector_form( int n, double *wt, Func<Scalar> *u_ext[],
-              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext ) const
+              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
             {
               if(!matprop.get_fission_multigroup_structure()[g])
                 return Scalar(0.0);
@@ -666,8 +666,8 @@ namespace Hermes
               for (int i = 0; i < n; i++)
               {
                 Scalar local_res = Scalar(0);
-                for (int gfrom = 0; gfrom < ext->get_nf(); gfrom++)
-                  local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext->fn[gfrom]->val[i];
+                for (int gfrom = 0; gfrom < this->wf->get_ext().size(); gfrom++)
+                  local_res += nu_elem[gfrom] * Sigma_f_elem[gfrom] * ext[gfrom]->val[i];
 
                 local_res = local_res * wt[i] * v->val[i];
 
@@ -685,7 +685,7 @@ namespace Hermes
             template<typename ScalarClass>
             template<typename Real, typename Scalar>
             Scalar FissionYield::Residual<ScalarClass>::vector_form( int n, double *wt, Func<Scalar> *u_ext[],
-              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext ) const
+              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext ) const
             {
               if(!matprop.get_fission_multigroup_structure()[gto])
                 return Scalar(0.0);
@@ -709,7 +709,7 @@ namespace Hermes
             template<typename ScalarClass>
             template<typename Real, typename Scalar>
             Scalar Scattering::Jacobian<ScalarClass>::matrix_form( int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
-              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext  ) const
+              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext  ) const
             {
               Scalar result = Scalar(0);
               if(geom_type == HERMES_PLANAR) result = int_u_v<Real, Scalar>(n, wt, u, v);
@@ -725,7 +725,7 @@ namespace Hermes
             template<typename ScalarClass>
             template<typename Real, typename Scalar>
             Scalar Scattering::Residual<ScalarClass>::vector_form( int n, double *wt, Func<Scalar> *u_ext[],
-              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext ) const
+              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext ) const
             {
               Scalar result = Scalar(0);
               if(geom_type == HERMES_PLANAR) result = int_u_ext_v<Real, Scalar>(n, wt, u_ext[gfrom], v);
@@ -741,7 +741,7 @@ namespace Hermes
             template<typename ScalarClass>
             template<typename Real, typename Scalar>
             Scalar ExternalSources::LinearForm<ScalarClass>::vector_form(int n, double *wt, Func<Scalar> *u_ext[],
-              Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const
+              Func<Real> *v, Geom<Real> *e, Func<Scalar> **ext) const
             {
                             std::string mat = this->mesh->get_element_markers_conversion().get_user_marker(e->elem_marker).marker;
 
@@ -771,21 +771,21 @@ namespace Hermes
 
               for (unsigned int gto = 0; gto < G; gto++)
               {
-                add_matrix_form(new DiffusionReaction::Jacobian<Scalar>(gto, matprop, mesh, geom_type));
-                add_vector_form(new DiffusionReaction::Residual<Scalar>(gto, matprop, mesh, geom_type));
+                this->add_matrix_form(new DiffusionReaction::Jacobian<Scalar>(gto, matprop, mesh, geom_type));
+                this->add_vector_form(new DiffusionReaction::Residual<Scalar>(gto, matprop, mesh, geom_type));
 
                 for (unsigned int gfrom = 0; gfrom < G; gfrom++)
                 {
                   if(Ss_nnz[gto][gfrom])
                   {
-                    add_matrix_form(new Scattering::Jacobian<Scalar>(gto, gfrom, matprop, mesh, geom_type));
-                    add_vector_form(new Scattering::Residual<Scalar>(gto, gfrom, matprop, mesh, geom_type));
+                    this->add_matrix_form(new Scattering::Jacobian<Scalar>(gto, gfrom, matprop, mesh, geom_type));
+                    this->add_vector_form(new Scattering::Residual<Scalar>(gto, gfrom, matprop, mesh, geom_type));
                   }
 
                   if(chi_nnz[gto])
                   {
-                    add_matrix_form(new FissionYield::Jacobian<Scalar>(gto, gfrom, matprop, mesh, geom_type));
-                    add_vector_form(new FissionYield::Residual<Scalar>(gto, gfrom, matprop, mesh, geom_type));
+                    this->add_matrix_form(new FissionYield::Jacobian<Scalar>(gto, gfrom, matprop, mesh, geom_type));
+                    this->add_vector_form(new FissionYield::Residual<Scalar>(gto, gfrom, matprop, mesh, geom_type));
                   }
                 }
               }
@@ -797,7 +797,7 @@ namespace Hermes
             {
               lhs_init(matprop.get_G(), matprop, mesh, geom_type);
               for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-                add_vector_form(new ExternalSources::LinearForm<Scalar>(gto, matprop, mesh, geom_type));
+                this->add_vector_form(new ExternalSources::LinearForm<Scalar>(gto, matprop, mesh, geom_type));
             }
 
             template<typename Scalar>
@@ -807,7 +807,7 @@ namespace Hermes
             {
               lhs_init(matprop.get_G(), matprop, mesh, geom_type);
               for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-                add_vector_form(new WeakFormsH1::DefaultVectorFormVol<Scalar>(gto, src_area, f_src, geom_type));
+                this->add_vector_form(new WeakFormsH1::DefaultVectorFormVol<Scalar>(gto, src_area, f_src, geom_type));
             }
 
             template<typename Scalar>
@@ -818,7 +818,7 @@ namespace Hermes
             {
               lhs_init(matprop.get_G(), matprop, mesh, geom_type);
               for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-                add_vector_form(new WeakFormsH1::DefaultVectorFormVol<Scalar>(gto, src_areas, f_src, geom_type));
+                this->add_vector_form(new WeakFormsH1::DefaultVectorFormVol<Scalar>(gto, src_areas, f_src, geom_type));
             }
 
             template<typename Scalar>
@@ -832,7 +832,7 @@ namespace Hermes
 
               lhs_init(matprop.get_G(), matprop, mesh, geom_type);
               for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-                add_vector_form(new WeakFormsH1::DefaultVectorFormVol<Scalar>(gto, src_area, f_src[gto], geom_type));
+                this->add_vector_form(new WeakFormsH1::DefaultVectorFormVol<Scalar>(gto, src_area, f_src[gto], geom_type));
             }
 
             template<typename Scalar>
@@ -846,7 +846,7 @@ namespace Hermes
 
               lhs_init(matprop.get_G(), matprop, mesh, geom_type);
               for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-                add_vector_form(new WeakFormsH1::DefaultVectorFormVol<Scalar>(gto, src_areas, f_src[gto], geom_type));
+                this->add_vector_form(new WeakFormsH1::DefaultVectorFormVol<Scalar>(gto, src_areas, f_src[gto], geom_type));
             }
 
             template<typename Scalar>
@@ -859,22 +859,22 @@ namespace Hermes
 
               for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
               {
-                add_matrix_form(new DiffusionReaction::Jacobian<Scalar>(gto, matprop, mesh, geom_type));
-                add_vector_form(new DiffusionReaction::Residual<Scalar>(gto, matprop, mesh, geom_type));
+                this->add_matrix_form(new DiffusionReaction::Jacobian<Scalar>(gto, matprop, mesh, geom_type));
+                this->add_vector_form(new DiffusionReaction::Residual<Scalar>(gto, matprop, mesh, geom_type));
 
                 for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
                 {
                   if(Ss_nnz[gto][gfrom])
                   {
-                    add_matrix_form(new Scattering::Jacobian<Scalar>(gto, gfrom, matprop, mesh, geom_type));
-                    add_vector_form(new Scattering::Residual<Scalar>(gto, gfrom, matprop, mesh, geom_type));
+                    this->add_matrix_form(new Scattering::Jacobian<Scalar>(gto, gfrom, matprop, mesh, geom_type));
+                    this->add_vector_form(new Scattering::Residual<Scalar>(gto, gfrom, matprop, mesh, geom_type));
                   }
                 }
 
                 FissionYield::OuterIterationForm<Scalar>* keff_iteration_form =
                   new FissionYield::OuterIterationForm<Scalar>( gto, matprop, mesh, iterates, initial_keff_guess, geom_type );
                 keff_iteration_forms.push_back(keff_iteration_form);
-                add_vector_form(keff_iteration_form);
+                this->add_vector_form(keff_iteration_form);
               }
             }
 
@@ -932,34 +932,34 @@ namespace Hermes
             template class HERMES_API VacuumBoundaryCondition::Residual<std::complex<double> >;
 
             template double VacuumBoundaryCondition::Jacobian<double>::matrix_form<double, double>(int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-              Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
+              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
 
             template double VacuumBoundaryCondition::Residual<double>::vector_form<double, double>(int n, double *wt, Func<double> *u_ext[],
-              Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
+              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
 
             template double DiffusionReaction::Jacobian<double>::matrix_form<double, double>(int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-              Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
+              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
 
             template double DiffusionReaction::Residual<double>::vector_form<double, double>(int n, double *wt, Func<double> *u_ext[],
-              Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
+              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
 
             template double FissionYield::Jacobian<double>::matrix_form<double, double>( int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-              Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
+              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
 
             template double FissionYield::OuterIterationForm<double>::vector_form<double, double>( int n, double *wt, Func<double> *u_ext[],
-              Func<double> *v, Geom<double> *e, ExtData<double> *ext ) const;
+              Func<double> *v, Geom<double> *e, Func<double> **ext ) const;
 
             template double FissionYield::Residual<double>::vector_form<double, double>( int n, double *wt, Func<double> *u_ext[],
-              Func<double> *v, Geom<double> *e, ExtData<double> *ext ) const;
+              Func<double> *v, Geom<double> *e, Func<double> **ext ) const;
 
             template double Scattering::Jacobian<double>::matrix_form<double, double>( int n, double *wt, Func<double> *u_ext[], Func<double> *u,
-              Func<double> *v, Geom<double> *e, ExtData<double> *ext  ) const;
+              Func<double> *v, Geom<double> *e, Func<double> **ext  ) const;
 
             template double Scattering::Residual<double>::vector_form<double, double>( int n, double *wt, Func<double> *u_ext[],
-              Func<double> *v, Geom<double> *e, ExtData<double> *ext ) const;
+              Func<double> *v, Geom<double> *e, Func<double> **ext ) const;
 
             template double ExternalSources::LinearForm<double>::vector_form<double, double>(int n, double *wt, Func<double> *u_ext[],
-              Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
+              Func<double> *v, Geom<double> *e, Func<double> **ext) const;
           }
         }
 

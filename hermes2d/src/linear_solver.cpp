@@ -28,6 +28,12 @@ namespace Hermes
   namespace Hermes2D
   {
     template<typename Scalar>
+    LinearSolver<Scalar>::LinearSolver() : dp(new DiscreteProblemLinear<Scalar>()), sln_vector(NULL), own_dp(true)
+    {
+      this->init();
+    }
+
+    template<typename Scalar>
     LinearSolver<Scalar>::LinearSolver(DiscreteProblemLinear<Scalar>* dp) : dp(dp), sln_vector(NULL), own_dp(false)
     {
       this->init();
@@ -53,6 +59,16 @@ namespace Hermes
       this->matrix_solver = create_linear_solver<Scalar>(this->jacobian, this->residual);
       this->set_verbose_output(true);
     }
+
+    template<typename Scalar>
+    bool LinearSolver<Scalar>::isOkay() const
+    {
+      if(static_cast<DiscreteProblem<Scalar>*>(this->dp)->get_weak_formulation() == NULL)
+        return false;
+      if(static_cast<DiscreteProblem<Scalar>*>(this->dp)->get_spaces().size() == 0)
+        return false;
+      return true;
+    }
     
     template<typename Scalar>
     void LinearSolver<Scalar>::set_time(double time)
@@ -64,11 +80,29 @@ namespace Hermes
       Space<Scalar>::update_essential_bc_values(spaces, time);
       const_cast<WeakForm<Scalar>*>(this->dp->wf)->set_current_time(time);
     }
-      
+
+    template<typename Scalar>
+    void LinearSolver<Scalar>::set_weak_formulation(const WeakForm<Scalar>* wf)
+    {
+      (static_cast<DiscreteProblem<Scalar>*>(this->dp))->set_weak_formulation(wf);
+    }
+
     template<typename Scalar>
     void LinearSolver<Scalar>::set_time_step(double time_step)
     {
       const_cast<WeakForm<Scalar>*>(this->dp->wf)->set_current_time_step(time_step);
+    }
+
+    template<typename Scalar>
+    SparseMatrix<Scalar>* LinearSolver<Scalar>::get_jacobian()
+    {
+      return this->jacobian;
+    }
+
+    template<typename Scalar>
+    Vector<Scalar>* LinearSolver<Scalar>::get_residual()
+    {
+      return this->residual;
     }
 
     template<typename Scalar>
@@ -104,6 +138,8 @@ namespace Hermes
     template<typename Scalar>
     void LinearSolver<Scalar>::solve()
     {
+      this->check();
+
       this->tick();
 
       this->on_initialization();
@@ -117,7 +153,7 @@ namespace Hermes
         else
           sprintf(fileName, "%s%i", this->RhsFilename.c_str(), 1);
         FILE* rhs_file = fopen(fileName, "w+");
-        residual->dump(rhs_file, this->RhsVarname.c_str(), this->RhsFormat);
+        residual->dump(rhs_file, this->RhsVarname.c_str(), this->RhsFormat, this->rhs_number_format);
         fclose(rhs_file);
       }
       if(this->output_matrixOn && (this->output_matrixIterations == -1 || this->output_matrixIterations >= 1))
@@ -129,7 +165,7 @@ namespace Hermes
             sprintf(fileName, "%s%i", this->matrixFilename.c_str(), 1);
           FILE* matrix_file = fopen(fileName, "w+");
 
-          jacobian->dump(matrix_file, this->matrixVarname.c_str(), this->matrixFormat);
+          jacobian->dump(matrix_file, this->matrixVarname.c_str(), this->matrixFormat, this->matrix_number_format);
           fclose(matrix_file);
         }
 
@@ -140,7 +176,7 @@ namespace Hermes
       this->on_finish();
       
       this->tick();
-      this->info("Linear solver solution duration: %f s.\n", this->last());
+      this->info("\tLinear solver solution duration: %f s.\n", this->last());
     }
 
     template<typename Scalar>

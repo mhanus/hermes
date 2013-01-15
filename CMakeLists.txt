@@ -18,8 +18,6 @@ project(hermes)
   # HermesCommon
     set(HERMES_COMMON_DEBUG     YES)
     set(HERMES_COMMON_RELEASE   YES)
-    # Tests settings.
-    set(HERMES_COMMON_WITH_TESTS YES)
 
   # Hermes2D:
   set(WITH_H2D                        YES)
@@ -30,17 +28,9 @@ project(hermes)
     set(H2D_WITH_GLUT           YES)
     set(H2D_WITH_VIEWER_GUI     NO)
     
-    # Tests settings.
+    # Test examples settings.
     set(H2D_WITH_TEST_EXAMPLES  YES)
-    set(H2D_WITH_TESTS          YES)
 
-  # Reporting and logging:
-    set(REPORT_WITH_LOGO        YES)  #logo will be shown
-    set(REPORT_TO_FILE          YES)  #reports will be mirrored to a file
-    set(REPORT_ALL              NO)   #do not report all events, just selected ones
-    set(REPORT_WARNING          YES)  #warnings will be reported
-    set(REPORT_INFO             YES)  #info will be reported
-    
   # Installation path:
     set(TARGET_ROOT             /usr/local) #default installation path for the library will be /usr/local/lib,
                                             #for include files /usr/local/include
@@ -381,12 +371,6 @@ project(hermes)
   message("Build with OPENMP: ${WITH_OPENMP}")
   message("Build with EXODUSII: ${WITH_EXODUSII}")
   
-  if(REPORT_ALL)
-    message("Report all events: YES")
-  else(REPORT_ALL)
-    message("Report warnings: ${REPORT_WARNING}")
-    message("Report results/info: ${REPORT_INFO}")
-  endif(REPORT_ALL)
   message("---------------------")
   message("Hermes common library:")
   message("\tBuild Debug version: ${HERMES_COMMON_DEBUG}")

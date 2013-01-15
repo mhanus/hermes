@@ -74,13 +74,13 @@ namespace Hermes
       template<typename Scalar>
       DefaultMatrixFormVol<Scalar>::~DefaultMatrixFormVol()
       {
-        // FIXME: Should be deleted here only if it was created here.
-        //if(coeff != HERMES_ONE) delete coeff;
+        
+        if(coeff == HERMES_ONE) delete coeff;
       };
 
       template<typename Scalar>
       Scalar DefaultMatrixFormVol<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *u, Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR) {
@@ -106,7 +106,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultMatrixFormVol<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-        Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
+        Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR) {
@@ -131,7 +131,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      MatrixFormVol<Scalar>* DefaultMatrixFormVol<Scalar>::clone()
+      MatrixFormVol<Scalar>* DefaultMatrixFormVol<Scalar>::clone() const
       {
         return new DefaultMatrixFormVol<Scalar>(*this);
       }
@@ -146,7 +146,8 @@ namespace Hermes
         this->setSymFlag(sym);
         
         // If coeff is HERMES_ONE, initialize it to be constant 1.0.
-        if(coeff == HERMES_ONE) this->coeff = new Hermes1DFunction<Scalar>(1.0);
+        if(coeff == HERMES_ONE)
+          this->coeff = new Hermes1DFunction<Scalar>(1.0);
       };
 
       template<typename Scalar>
@@ -164,13 +165,12 @@ namespace Hermes
       template<typename Scalar>
       DefaultJacobianDiffusion<Scalar>::~DefaultJacobianDiffusion()
       {
-        // FIXME: Should be deleted here only if it was created here.
-        //if(coeff != HERMES_ONE) delete coeff;
+        if(coeff==HERMES_ONE) delete coeff;
       };
 
       template<typename Scalar>
       Scalar DefaultJacobianDiffusion<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *u,
-        Func<double> *v, Geom<double> *e, ExtData<Scalar> *ext) const
+        Func<double> *v, Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR) {
@@ -205,7 +205,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultJacobianDiffusion<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR) {
@@ -239,7 +239,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      MatrixFormVol<Scalar>* DefaultJacobianDiffusion<Scalar>::clone()
+      MatrixFormVol<Scalar>* DefaultJacobianDiffusion<Scalar>::clone() const
       {
         return new DefaultJacobianDiffusion<Scalar>(*this);
       }
@@ -272,13 +272,13 @@ namespace Hermes
       template<typename Scalar>
       DefaultMatrixFormDiffusion<Scalar>::~DefaultMatrixFormDiffusion()
       {
-        // FIXME: Should be deleted here only if it was created here.
-        //if(coeff != HERMES_ONE) delete coeff;
+        
+        if(coeff == HERMES_ONE) delete coeff;
       };
 
       template<typename Scalar>
       Scalar DefaultMatrixFormDiffusion<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *u,
-        Func<double> *v, Geom<double> *e, ExtData<Scalar> *ext) const
+        Func<double> *v, Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR) {
@@ -304,7 +304,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultMatrixFormDiffusion<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR) {
@@ -329,7 +329,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      MatrixFormVol<Scalar>* DefaultMatrixFormDiffusion<Scalar>::clone()
+      MatrixFormVol<Scalar>* DefaultMatrixFormDiffusion<Scalar>::clone() const
       {
         return new DefaultMatrixFormDiffusion<Scalar>(*this);
       }
@@ -371,14 +371,14 @@ namespace Hermes
       template<typename Scalar>
       DefaultJacobianAdvection<Scalar>::~DefaultJacobianAdvection()
       {
-        // FIXME: Should be deleted here only if it was created here.
+        
         //if(coeff1 != HERMES_ONE) delete coeff1;
         //if(coeff2 != HERMES_ONE) delete coeff2;
       };
 
       template<typename Scalar>
       Scalar DefaultJacobianAdvection<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *u,
-        Func<double> *v, Geom<double> *e, ExtData<Scalar> *ext) const
+        Func<double> *v, Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         for (int i = 0; i < n; i++) {
@@ -392,7 +392,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultJacobianAdvection<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         for (int i = 0; i < n; i++) {
@@ -406,7 +406,7 @@ namespace Hermes
 
       // This is to make the form usable in rk_time_step_newton().
       template<typename Scalar>
-      MatrixFormVol<Scalar>* DefaultJacobianAdvection<Scalar>::clone()
+      MatrixFormVol<Scalar>* DefaultJacobianAdvection<Scalar>::clone() const
       {
         return new DefaultJacobianAdvection<Scalar>(*this);
       }
@@ -438,13 +438,13 @@ namespace Hermes
       template<typename Scalar>
       DefaultVectorFormVol<Scalar>::~DefaultVectorFormVol()
       {
-        // FIXME: Should be deleted here only if it was created here.
-        //if(coeff != HERMES_ONE) delete coeff;
+        
+        if(coeff == HERMES_ONE) delete coeff;
       };
 
       template<typename Scalar>
       Scalar DefaultVectorFormVol<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR) {
@@ -469,7 +469,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultVectorFormVol<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR) {
@@ -494,7 +494,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      VectorFormVol<Scalar>* DefaultVectorFormVol<Scalar>::clone()
+      VectorFormVol<Scalar>* DefaultVectorFormVol<Scalar>::clone() const
       {
         return new DefaultVectorFormVol<Scalar>(*this);
       }
@@ -526,13 +526,13 @@ namespace Hermes
       template<typename Scalar>
       DefaultResidualVol<Scalar>::~DefaultResidualVol()
       {
-        // FIXME: Should be deleted here only if it was created here.
-        //if(coeff != HERMES_ONE) delete coeff;
+        
+        if(coeff == HERMES_ONE) delete coeff;
       };
 
       template<typename Scalar>
       Scalar DefaultResidualVol<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR) {
@@ -557,7 +557,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultResidualVol<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR) {
@@ -582,7 +582,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      VectorFormVol<Scalar>* DefaultResidualVol<Scalar>::clone()
+      VectorFormVol<Scalar>* DefaultResidualVol<Scalar>::clone() const
       {
         return new DefaultResidualVol(*this);
       }
@@ -612,13 +612,13 @@ namespace Hermes
       template<typename Scalar>
       DefaultResidualDiffusion<Scalar>::~DefaultResidualDiffusion()
       {
-        // FIXME: Should be deleted here only if it was created here.
-        //if(coeff != HERMES_ONE) delete coeff;
+        
+        if(coeff == HERMES_ONE) delete coeff;
       };
 
       template<typename Scalar>
       Scalar DefaultResidualDiffusion<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR) {
@@ -647,7 +647,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultResidualDiffusion<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         for (int i = 0; i < n; i++) {
@@ -660,7 +660,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      VectorFormVol<Scalar>* DefaultResidualDiffusion<Scalar>::clone()
+      VectorFormVol<Scalar>* DefaultResidualDiffusion<Scalar>::clone() const
       {
         return new DefaultResidualDiffusion<Scalar>(*this);
       }
@@ -701,14 +701,14 @@ namespace Hermes
       template<typename Scalar>
       DefaultResidualAdvection<Scalar>::~DefaultResidualAdvection()
       {
-        // FIXME: Should be deleted here only if it was created here.
+        
         //if(coeff1 != HERMES_ONE) delete coeff1;
         //if(coeff2 != HERMES_ONE) delete coeff2;
       };
 
       template<typename Scalar>
       Scalar DefaultResidualAdvection<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         Func<Scalar>* u_prev = u_ext[idx_i];
@@ -721,7 +721,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultResidualAdvection<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         Func<Ord>* u_prev = u_ext[idx_i];
@@ -733,7 +733,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      VectorFormVol<Scalar>* DefaultResidualAdvection<Scalar>::clone()
+      VectorFormVol<Scalar>* DefaultResidualAdvection<Scalar>::clone() const
       {
         return new DefaultResidualAdvection<Scalar>(*this);
       }
@@ -765,13 +765,13 @@ namespace Hermes
       template<typename Scalar>
       DefaultMatrixFormSurf<Scalar>::~DefaultMatrixFormSurf()
       {
-        // FIXME: Should be deleted here only if it was created here.
-        //if(coeff != HERMES_ONE) delete coeff;
+        
+        if(coeff == HERMES_ONE) delete coeff;
       };
 
       template<typename Scalar>
       Scalar DefaultMatrixFormSurf<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *u, Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR) {
@@ -797,7 +797,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultMatrixFormSurf<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-        Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
+        Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR) {
@@ -822,7 +822,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      MatrixFormSurf<Scalar>* DefaultMatrixFormSurf<Scalar>::clone()
+      MatrixFormSurf<Scalar>* DefaultMatrixFormSurf<Scalar>::clone() const
       {
         return new DefaultMatrixFormSurf<Scalar>(*this);
       }
@@ -855,13 +855,13 @@ namespace Hermes
       template<typename Scalar>
       DefaultJacobianFormSurf<Scalar>::~DefaultJacobianFormSurf()
       {
-        // FIXME: Should be deleted here only if it was created here.
-        //if(coeff != HERMES_ONE) delete coeff;
+        
+        if(coeff == HERMES_ONE) delete coeff;
       };
 
       template<typename Scalar>
       Scalar DefaultJacobianFormSurf<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *u, Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         for (int i = 0; i < n; i++) {
@@ -874,7 +874,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultJacobianFormSurf<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u,
-        Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
+        Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         for (int i = 0; i < n; i++) {
@@ -886,7 +886,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      MatrixFormSurf<Scalar>* DefaultJacobianFormSurf<Scalar>::clone()
+      MatrixFormSurf<Scalar>* DefaultJacobianFormSurf<Scalar>::clone() const
       {
         return new DefaultJacobianFormSurf<Scalar>(*this);
       }
@@ -918,13 +918,13 @@ namespace Hermes
       template<typename Scalar>
       DefaultVectorFormSurf<Scalar>::~DefaultVectorFormSurf()
       {
-        // FIXME: Should be deleted here only if it was created here.
-        //if(coeff != HERMES_ONE) delete coeff;
+        
+        if(coeff == HERMES_ONE) delete coeff;
       };
 
       template<typename Scalar>
       Scalar DefaultVectorFormSurf<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR) {
@@ -950,7 +950,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultVectorFormSurf<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR) {
@@ -975,7 +975,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      VectorFormSurf<Scalar>* DefaultVectorFormSurf<Scalar>::clone()
+      VectorFormSurf<Scalar>* DefaultVectorFormSurf<Scalar>::clone() const
       {
         return new DefaultVectorFormSurf<Scalar>(*this);
       }
@@ -1007,13 +1007,13 @@ namespace Hermes
       template<typename Scalar>
       DefaultResidualSurf<Scalar>::~DefaultResidualSurf()
       {
-        // FIXME: Should be deleted here only if it was created here.
-        //if(coeff != HERMES_ONE) delete coeff;
+        
+        if(coeff == HERMES_ONE) delete coeff;
       };
 
       template<typename Scalar>
       Scalar DefaultResidualSurf<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const
+        Geom<double> *e, Func<Scalar> **ext) const
       {
         Scalar result = 0;
         if(gt == HERMES_PLANAR) {
@@ -1039,7 +1039,7 @@ namespace Hermes
 
       template<typename Scalar>
       Ord DefaultResidualSurf<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-        Geom<Ord> *e, ExtData<Ord> *ext) const
+        Geom<Ord> *e, Func<Ord> **ext) const
       {
         Ord result = Ord(0);
         if(gt == HERMES_PLANAR) {
@@ -1064,7 +1064,7 @@ namespace Hermes
       }
 
       template<typename Scalar>
-      VectorFormSurf<Scalar>* DefaultResidualSurf<Scalar>::clone()
+      VectorFormSurf<Scalar>* DefaultResidualSurf<Scalar>::clone() const
       {
         return new DefaultResidualSurf(*this);
       }

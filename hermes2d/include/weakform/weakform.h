@@ -43,9 +43,9 @@ namespace Hermes
     class Shapeset;
     template<typename T> class Func;
     template<typename T> class Geom;
-    template<typename T> class ExtData;
 
     template<typename Scalar> class Form;
+    template<typename Scalar> class OGProjection;
     template<typename Scalar> class MatrixFormVol;
     template<typename Scalar> class VectorFormVol;
     template<typename Scalar> class MatrixFormSurf;
@@ -73,7 +73,6 @@ namespace Hermes
     class HERMES_API WeakForm : public Hermes::Mixins::IntegrableWithGlobalOrder, public Hermes::Mixins::Loggable
     {
     public:
-
       /// Constructor.
       ///
       /// \param[in]  neq   Number of equations.
@@ -114,31 +113,43 @@ namespace Hermes
       virtual double get_current_time() const;
       virtual double get_current_time_step() const;
 
-      Hermes::vector<MatrixFormVol<Scalar> *> get_mfvol();
-      Hermes::vector<MatrixFormSurf<Scalar> *> get_mfsurf();
-      Hermes::vector<MatrixFormDG<Scalar> *> get_mfDG();
+      Hermes::vector<Form<Scalar> *> get_forms() const;
 
-      Hermes::vector<VectorFormVol<Scalar> *> get_vfvol();
-      Hermes::vector<VectorFormSurf<Scalar> *> get_vfsurf();
-      Hermes::vector<VectorFormDG<Scalar> *> get_vfDG();
+      Hermes::vector<MatrixFormVol<Scalar> *> get_mfvol() const;
+      Hermes::vector<MatrixFormSurf<Scalar> *> get_mfsurf() const;
+      Hermes::vector<MatrixFormDG<Scalar> *> get_mfDG() const;
+
+      Hermes::vector<VectorFormVol<Scalar> *> get_vfvol() const;
+      Hermes::vector<VectorFormSurf<Scalar> *> get_vfsurf() const;
+      Hermes::vector<VectorFormDG<Scalar> *> get_vfDG() const;
 
       /// Deletes all volumetric and surface forms.
       void delete_all();
 
-    protected:
-      /// Internal. Used by DiscreteProblem to detect changes in the weakform.
-      int get_seq() const { return seq; }
+      /// external functions.
+      void set_ext(MeshFunction<Scalar>* ext);
+      void set_ext(Hermes::vector<MeshFunction<Scalar>*> ext);
+      Hermes::vector<MeshFunction<Scalar>*> get_ext() const;
+      
+      virtual WeakForm* clone() const;
 
-      bool** get_blocks(bool force_diagonal_blocks) const;
+    protected:
+      void cloneMembers(const WeakForm<Scalar>* otherWf);
+
+      void free_ext();
+
+      /// External solutions.
+      Hermes::vector<MeshFunction<Scalar>*> ext;
 
       double current_time;
       double current_time_step;
 
       unsigned int neq;
 
-      int seq;
-
       bool is_matfree;
+
+      /// Holds all forms.
+      Hermes::vector<Form<Scalar> *> forms;
 
       /// Holds volumetric matrix forms.
       Hermes::vector<MatrixFormVol<Scalar> *> mfvol;
@@ -158,10 +169,15 @@ namespace Hermes
       /// Holds DG vector forms.
       Hermes::vector<VectorFormDG<Scalar> *> vfDG;
 
+      bool** get_blocks(bool force_diagonal_blocks) const;
+
       friend class DiscreteProblem<Scalar>;
       friend class DiscreteProblemLinear<Scalar>;
       friend class RungeKutta<Scalar>;
+      friend class OGProjection<Scalar>;
       friend class Hermes::Preconditioners::Precond<Scalar>;
+
+      bool warned_nonOverride;
     };
 
     /// By default, the form is initialized with the following natural attributes:
@@ -173,19 +189,21 @@ namespace Hermes
     public:
       /// Constructor with coordinates.
       Form();
+      virtual ~Form() {};
 
       /// get-set methods
       /// areas
       void set_area(std::string area);
       void set_areas(Hermes::vector<std::string> areas);
-      Hermes::vector<std::string> getAreas();
-      /// external functions.
+      Hermes::vector<std::string> getAreas() const;
+
+      /// external functions - dual functionality with the overall WeakForm.
+      /// For Agros, this approach is better in some way, for e.g. Euler equations,
+      /// the other one (for the whole WeakForm) is faster.
       void set_ext(MeshFunction<Scalar>* ext);
       void set_ext(Hermes::vector<MeshFunction<Scalar>*> ext);
-      Hermes::vector<MeshFunction<Scalar>*> getExt();
+      Hermes::vector<MeshFunction<Scalar>*> get_ext() const;
       
-      virtual ~Form() {};
-
     protected:
       /// Set pointer to a WeakForm.
       inline void set_weakform(WeakForm<Scalar>* wf) { this->wf = wf; }
@@ -193,15 +211,15 @@ namespace Hermes
       /// Markers of the areas where this form will be assembled.
       Hermes::vector<std::string> areas;
 
-      /// External solutions.
-      Hermes::vector<MeshFunction<Scalar>*> ext;
-
       /// External solutions for this form will start
       /// with u_ext[u_ext_offset] where u_ext[] are external
       /// solutions coming to the assembling procedure via the
       /// external coefficient vector.
       int u_ext_offset;
       
+      /// External solutions.
+      Hermes::vector<MeshFunction<Scalar>*> ext;
+
       /// For time-dependent right-hand side functions.
       /// E.g. for Runge-Kutta methods. Otherwise the one time for the whole WeakForm can be used.
       void set_current_stage_time(double time);
@@ -238,10 +256,10 @@ namespace Hermes
       SymFlag sym;
 
       virtual Scalar value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *u, Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const;
+        Geom<double> *e, Func<Scalar> **ext) const;
 
       virtual Hermes::Ord ord(int n, double *wt, Func<Hermes::Ord> *u_ext[], Func<Hermes::Ord> *u, Func<Hermes::Ord> *v,
-        Geom<Hermes::Ord> *e, ExtData<Hermes::Ord> *ext) const;
+        Geom<Hermes::Ord> *e, Func<Ord> **ext) const;
     };
 
     template<typename Scalar>
@@ -252,11 +270,11 @@ namespace Hermes
       MatrixFormVol(unsigned int i, unsigned int j);
 
       void setSymFlag(SymFlag sym);
-      SymFlag getSymFlag();
+      SymFlag getSymFlag() const;
 
       virtual ~MatrixFormVol() {};
 
-      virtual MatrixFormVol* clone();
+      virtual MatrixFormVol* clone() const;
     };
 
     template<typename Scalar>
@@ -268,7 +286,7 @@ namespace Hermes
 
       virtual ~MatrixFormSurf() {};
 
-      virtual MatrixFormSurf* clone();
+      virtual MatrixFormSurf* clone() const;
     };
 
     template<typename Scalar>
@@ -280,7 +298,7 @@ namespace Hermes
 
       virtual ~MatrixFormDG() {};
 
-      virtual MatrixFormDG* clone();
+      virtual MatrixFormDG* clone() const;
     };
 
     template<typename Scalar>
@@ -293,10 +311,10 @@ namespace Hermes
       virtual ~VectorForm() {};
 
       virtual Scalar value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *v,
-        Geom<double> *e, ExtData<Scalar> *ext) const;
+        Geom<double> *e, Func<Scalar> **ext) const;
 
       virtual Hermes::Ord ord(int n, double *wt, Func<Hermes::Ord> *u_ext[], Func<Hermes::Ord> *v, Geom<Hermes::Ord> *e,
-        ExtData<Hermes::Ord> *ext) const;
+        Func<Ord> **ext) const;
       unsigned int i;
     };
 
@@ -309,7 +327,7 @@ namespace Hermes
 
       virtual ~VectorFormVol() {};
 
-      virtual VectorFormVol* clone();
+      virtual VectorFormVol* clone() const;
     };
 
     template<typename Scalar>
@@ -321,7 +339,7 @@ namespace Hermes
 
       virtual ~VectorFormSurf() {};
 
-      virtual VectorFormSurf* clone();
+      virtual VectorFormSurf* clone() const;
     };
 
     template<typename Scalar>
@@ -333,7 +351,7 @@ namespace Hermes
 
       virtual ~VectorFormDG() {};
 
-      virtual VectorFormDG* clone();
+      virtual VectorFormDG* clone() const;
     };
   }
 }

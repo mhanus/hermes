@@ -25,12 +25,10 @@ namespace Hermes
   namespace Hermes2D
   {
     template<typename Scalar>
-    double** HcurlSpace<Scalar>::hcurl_proj_mat = NULL;
-    template<typename Scalar>
-    double*  HcurlSpace<Scalar>::hcurl_chol_p   = NULL;
-    template<typename Scalar>
-    int      HcurlSpace<Scalar>::hcurl_proj_ref = 0;
-
+    HcurlSpace<Scalar>::HcurlSpace() : Space<Scalar>()
+    {
+    }
+    
     template<typename Scalar>
     void HcurlSpace<Scalar>::init(Shapeset* shapeset, int p_init)
     {
@@ -41,13 +39,7 @@ namespace Hermes
       }
       if(this->shapeset->get_num_components() < 2) throw Hermes::Exceptions::Exception("HcurlSpace requires a vector shapeset.");
 
-      if(!hcurl_proj_ref++)
-      {
-        this->precalculate_projection_matrix(0, hcurl_proj_mat, hcurl_chol_p);
-      }
-
-      this->proj_mat = hcurl_proj_mat;
-      this->chol_p   = hcurl_chol_p;
+      this->precalculate_projection_matrix(0, this->proj_mat, this->chol_p);
 
       // set uniform poly order in elements
       if(p_init < 0) throw Hermes::Exceptions::Exception("P_INIT must be >= 0 in an Hcurl space.");
@@ -58,15 +50,15 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    HcurlSpace<Scalar>::HcurlSpace(Mesh* mesh, EssentialBCs<Scalar>* essential_bcs, int p_init, Shapeset* shapeset)
-      : Space<Scalar>(mesh, shapeset, essential_bcs, p_init)
+    HcurlSpace<Scalar>::HcurlSpace(const Mesh* mesh, EssentialBCs<Scalar>* essential_bcs, int p_init, Shapeset* shapeset)
+      : Space<Scalar>(mesh, shapeset, essential_bcs)
     {
       init(shapeset, p_init);
     }
 
     template<typename Scalar>
-    HcurlSpace<Scalar>::HcurlSpace(Mesh* mesh, int p_init, Shapeset* shapeset)
-      : Space<Scalar>(mesh, shapeset, NULL, p_init)
+    HcurlSpace<Scalar>::HcurlSpace(const Mesh* mesh, int p_init, Shapeset* shapeset)
+      : Space<Scalar>(mesh, shapeset, NULL)
     {
       init(shapeset, p_init);
     }
@@ -74,79 +66,18 @@ namespace Hermes
     template<typename Scalar>
     HcurlSpace<Scalar>::~HcurlSpace()
     {
-      if(!--hcurl_proj_ref)
-      {
-        delete [] hcurl_proj_mat;
-        delete [] hcurl_chol_p;
-      }
       if(this->own_shapeset)
         delete this->shapeset;
     }
 
     template<typename Scalar>
-    Space<Scalar>* HcurlSpace<Scalar>::duplicate(Mesh* mesh, int order_increase, typename Space<Scalar>::reference_space_p_callback_function p_callback) const
+    void HcurlSpace<Scalar>::copy(const Space<Scalar>* space, Mesh* new_mesh)
     {
-      HcurlSpace* space = new HcurlSpace(mesh, this->essential_bcs, 0, this->shapeset);
+      Space<Scalar>::copy(space, new_mesh);
 
-      // Set all elements not to have changed from the adaptation.
-      Element *e;
-      for_all_active_elements(e, space->get_mesh())
-        space->edata[e->id].changed_in_last_adaptation = false;
-
-      space->copy_orders(this, order_increase, p_callback);
-      return space;
+      this->precalculate_projection_matrix(0, this->proj_mat, this->chol_p);
     }
-
-    template<typename Scalar>
-    void HcurlSpace<Scalar>::load(const char *filename, Mesh* mesh, EssentialBCs<Scalar>* essential_bcs, Shapeset* shapeset)
-    {
-      this->mesh = mesh;
-
-      if(shapeset == NULL)
-      {
-        this->shapeset = new HcurlShapeset;
-        this->own_shapeset = true;
-      }
-      else
-        this->shapeset = shapeset;
-
-      if(this->shapeset->get_num_components() < 2)
-        throw Hermes::Exceptions::Exception("HcurlSpace requires a vector shapeset.");
-
-      if(!hcurl_proj_ref++)
-        this->precalculate_projection_matrix(0, hcurl_proj_mat, hcurl_chol_p);
-
-      this->proj_mat = hcurl_proj_mat;
-      this->chol_p   = hcurl_chol_p;
-
-      Space<Scalar>::load(filename, essential_bcs);
-    }
-
-    template<typename Scalar>
-    void HcurlSpace<Scalar>::load(const char *filename, Mesh* mesh, Shapeset* shapeset)
-    {
-      this->mesh = mesh;
-
-      if(shapeset == NULL)
-      {
-        this->shapeset = new HcurlShapeset;
-        this->own_shapeset = true;
-      }
-      else
-        this->shapeset = shapeset;
-
-      if(this->shapeset->get_num_components() < 2)
-        throw Hermes::Exceptions::Exception("HcurlSpace requires a vector shapeset.");
-
-      if(!hcurl_proj_ref++)
-        this->precalculate_projection_matrix(0, hcurl_proj_mat, hcurl_chol_p);
-
-      this->proj_mat = hcurl_proj_mat;
-      this->chol_p   = hcurl_chol_p;
-
-      Space<Scalar>::load(filename);
-    }
-
+    
     template<typename Scalar>
     void HcurlSpace<Scalar>::set_shapeset(Shapeset *shapeset)
     {
@@ -163,6 +94,7 @@ namespace Hermes
     void HcurlSpace<Scalar>::assign_edge_dofs()
     {
       Node* en;
+      this->edge_functions_count = 0;
       for_all_edge_nodes(en, this->mesh)
       {
         if(en->ref > 1 || en->bnd || this->mesh->peek_vertex_node(en->p1, en->p2) != NULL)
@@ -171,22 +103,25 @@ namespace Hermes
           this->ndata[en->id].n = ndofs;
           if(en->bnd)
             if(this->essential_bcs != NULL)
-              if(this->essential_bcs->get_boundary_condition(this->mesh->get_boundary_markers_conversion().get_user_marker(en->marker).marker) != NULL)
+              if(this->essential_bcs->get_boundary_condition(this->mesh->boundary_markers_conversion.get_user_marker(en->marker).marker) != NULL)
                 this->ndata[en->id].dof = this->H2D_CONSTRAINED_DOF;
               else
               {
                 this->ndata[en->id].dof = this->next_dof;
                 this->next_dof += ndofs * this->stride;
+                      this->edge_functions_count += ndofs;
               }
             else
             {
               this->ndata[en->id].dof = this->next_dof;
               this->next_dof += ndofs * this->stride;
+                      this->edge_functions_count += ndofs;
             }
           else
           {
             this->ndata[en->id].dof = this->next_dof;
             this->next_dof += ndofs * this->stride;
+                      this->edge_functions_count += ndofs;
           }
         }
         else
@@ -198,16 +133,16 @@ namespace Hermes
     void HcurlSpace<Scalar>::assign_bubble_dofs()
     {
       Element* e;
+      this->bubble_functions_count = 0;
       for_all_active_elements(e, this->mesh)
       {
         typename Space<Scalar>::ElementData* ed = &this->edata[e->id];
         ed->bdof = this->next_dof;
         ed->n = this->shapeset->get_num_bubbles(ed->order, e->get_mode());
         this->next_dof += ed->n * this->stride;
+          this->bubble_functions_count += ed->n;
       }
     }
-
-    //// assembly lists ////////////////////////////////////////////////////////////////////////////////
 
     template<typename Scalar>
     void HcurlSpace<Scalar>::get_boundary_assembly_list_internal(Element* e, int surf_num, AsmList<Scalar>* al) const
@@ -244,7 +179,7 @@ namespace Hermes
     //// BC stuff //////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Scalar>
-    Scalar* HcurlSpace<Scalar>::get_bc_projection(SurfPos* surf_pos, int order)
+    Scalar* HcurlSpace<Scalar>::get_bc_projection(SurfPos* surf_pos, int order, EssentialBoundaryCondition<Scalar> *bc)
     {
       assert(order >= 0);
       Scalar* proj = new Scalar[order + 1];
@@ -268,9 +203,6 @@ namespace Hermes
         {
           double t = (pt[j][0] + 1) * 0.5, s = 1.0 - t;
           surf_pos->t = surf_pos->lo * s + surf_pos->hi * t;
-
-          // If the BC on this part of the boundary is constant.
-          EssentialBoundaryCondition<Scalar> *bc = this->essential_bcs->get_boundary_condition(this->mesh->get_boundary_markers_conversion().get_user_marker(surf_pos->marker).marker);
 
           if(bc->get_value_type() == EssentialBoundaryCondition<Scalar>::BC_CONST)
           {

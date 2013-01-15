@@ -26,10 +26,29 @@ namespace Hermes
         return this->get_spaces()[n];
       }
 
+      void StateQueryable::check() const
+      {
+        if(!this->isOkay())
+          {
+            std::stringstream ss;
+            ss << "The instance of " << this->getClassName() << " is not OK.";
+            throw Hermes::Exceptions::Exception(ss.str().c_str());
+          }
+      }
+
+      XMLParsing::XMLParsing() : validate(true)
+      {
+      }
+
+      void XMLParsing::set_validation(bool to_set)
+      {
+        this->validate = to_set;
+      }
+
       template<typename Scalar>
-      MatrixRhsOutput<Scalar>::MatrixRhsOutput() : output_matrixOn(false), output_matrixIterations(-1), matrixFilename("Matrix_"), 
-        matrixVarname("A"), matrixFormat(Hermes::Algebra::DF_MATLAB_SPARSE), output_rhsOn(false), output_rhsIterations(-1),
-        RhsFilename("Rhs_"), RhsVarname("b"), RhsFormat(Hermes::Algebra::DF_MATLAB_SPARSE)
+      MatrixRhsOutput<Scalar>::MatrixRhsOutput() : output_matrixOn(false), output_matrixIterations(-1), matrixFilename("Matrix_"),
+        matrixVarname("A"), matrixFormat(Hermes::Algebra::DF_MATLAB_SPARSE), matrix_number_format("%lf"), output_rhsOn(false), output_rhsIterations(-1),
+        RhsFilename("Rhs_"), RhsVarname("b"), RhsFormat(Hermes::Algebra::DF_MATLAB_SPARSE), rhs_number_format("%lf")
       {
       }
       template<typename Scalar>
@@ -53,6 +72,11 @@ namespace Hermes
       {
         this->matrixFormat = format;
       }
+      template<typename Scalar>
+      void MatrixRhsOutput<Scalar>::set_matrix_number_format(char* number_format)
+      {
+        this->matrix_number_format = number_format;
+      }
 
       template<typename Scalar>
       void MatrixRhsOutput<Scalar>::output_rhs(int firstIterations)
@@ -74,6 +98,11 @@ namespace Hermes
       void MatrixRhsOutput<Scalar>::set_rhs_E_matrix_dump_format(EMatrixDumpFormat format)
       {
         this->RhsFormat = format;
+      }
+      template<typename Scalar>
+      void MatrixRhsOutput<Scalar>::set_rhs_number_format(char* number_format)
+      {
+        this->rhs_number_format = number_format;
       }
 
       template HERMES_API class SettableSpaces<double>;

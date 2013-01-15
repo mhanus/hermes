@@ -53,7 +53,8 @@ namespace Hermes
       /// @param[in] ai row indices
       /// @param[in] ax values
       void create(unsigned int size, unsigned int nnz, int* ap, int* ai, Scalar* ax);
-    protected:
+
+      /// \brief Default constructor.
       CSCMatrix();
       /// \brief Constructor with specific size
       /// Calls alloc.
@@ -80,7 +81,7 @@ namespace Hermes
       /// @param[in] mat added matrix
       virtual void add_as_block(unsigned int i, unsigned int j, CSCMatrix<Scalar>* mat);
       virtual void add(unsigned int m, unsigned int n, Scalar **mat, int *rows, int *cols);
-      virtual bool dump(FILE *file, const char *var_name, EMatrixDumpFormat fmt = DF_MATLAB_SPARSE);
+      virtual bool dump(FILE *file, const char *var_name, EMatrixDumpFormat fmt = DF_MATLAB_SPARSE, char* number_format = "%lf");
       virtual unsigned int get_matrix_size() const;
       virtual unsigned int get_nnz() const;
       virtual double get_fill_in() const;
@@ -136,7 +137,6 @@ namespace Hermes
       /// @param[in] size size of vector
       UMFPackVector(unsigned int size);
       virtual ~UMFPackVector();
-    protected:
       virtual void alloc(unsigned int ndofs);
       virtual void free();
       virtual Scalar get(unsigned int idx);
@@ -148,7 +148,7 @@ namespace Hermes
       virtual void add(unsigned int n, unsigned int *idx, Scalar *y);
       virtual void add_vector(Vector<Scalar>* vec);
       virtual void add_vector(Scalar* vec);
-      virtual bool dump(FILE *file, const char *var_name, EMatrixDumpFormat fmt = DF_MATLAB_SPARSE);
+      virtual bool dump(FILE *file, const char *var_name, EMatrixDumpFormat fmt = DF_MATLAB_SPARSE, char* number_format = "%lf");
 
       /// @return pointer to array with vector data
       /// \sa #v

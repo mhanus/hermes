@@ -25,6 +25,11 @@ namespace Hermes
   namespace Hermes2D
   {
     template<typename Scalar>
+    L2Space<Scalar>::L2Space() : Space<Scalar>()
+    {
+    }
+
+    template<typename Scalar>
     void L2Space<Scalar>::init(Shapeset* shapeset, int p_init)
     {
       if(shapeset == NULL)
@@ -44,8 +49,8 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    L2Space<Scalar>::L2Space(Mesh* mesh, int p_init, Shapeset* shapeset)
-      : Space<Scalar>(mesh, shapeset, NULL, p_init)
+    L2Space<Scalar>::L2Space(const Mesh* mesh, int p_init, Shapeset* shapeset)
+      : Space<Scalar>(mesh, shapeset, NULL)
     {
       init(shapeset, p_init);
     }
@@ -59,36 +64,12 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    Space<Scalar>* L2Space<Scalar>::duplicate(Mesh* mesh, int order_increase, typename Space<Scalar>::reference_space_p_callback_function p_callback) const
+    void L2Space<Scalar>::copy(const Space<Scalar>* space, Mesh* new_mesh)
     {
-      L2Space<Scalar>* space = new L2Space(mesh, 0, this->shapeset);
-
-      // Set all elements not to have changed from the adaptation.
-      Element *e;
-      for_all_active_elements(e, space->get_mesh())
-        space->edata[e->id].changed_in_last_adaptation = false;
-
-      space->copy_orders(this, order_increase, p_callback);
-      return space;
-    }
-
-    template<typename Scalar>
-    void L2Space<Scalar>::load(const char *filename, Mesh* mesh, Shapeset* shapeset)
-    {
-      this->mesh = mesh;
-
-      if(shapeset == NULL)
-      {
-        this->shapeset = new L2Shapeset;
-        this->own_shapeset = true;
-      }
-      else
-        this->shapeset = shapeset;
+      Space<Scalar>::copy(space, new_mesh);
 
       ldata = NULL;
       lsize = 0;
-
-      Space<Scalar>::load(filename);
     }
 
     template<typename Scalar>
@@ -119,12 +100,14 @@ namespace Hermes
     void L2Space<Scalar>::assign_bubble_dofs()
     {
       Element* e;
+      this->bubble_functions_count = 0;
       for_all_active_elements(e, this->mesh)
       {
         typename Space<Scalar>::ElementData* ed = &this->edata[e->id];
         ed->bdof = this->next_dof;
         ed->n = this->shapeset->get_num_bubbles(ed->order, e->get_mode()); //FIXME: this function might return invalid value because retrieved bubble functions for non-uniform orders might be invalid for the given order.
         this->next_dof += ed->n * this->stride;
+          this->bubble_functions_count += ed->n;
       }
     }
 
@@ -135,7 +118,6 @@ namespace Hermes
     template<typename Scalar>
     void L2Space<Scalar>::get_element_assembly_list(Element* e, AsmList<Scalar>* al, unsigned int first_dof) const
     {
-      // some checks
       if(e->id >= this->esize || this->edata[e->id].order < 0)
         throw Hermes::Exceptions::Exception("Uninitialized element order (id = #%d).", e->id);
       if(!this->is_up_to_date())
@@ -172,7 +154,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    Scalar* L2Space<Scalar>::get_bc_projection(SurfPos* surf_pos, int order)
+    Scalar* L2Space<Scalar>::get_bc_projection(SurfPos* surf_pos, int order, EssentialBoundaryCondition<Scalar> *bc)
     {
       throw Hermes::Exceptions::Exception("Method get_bc_projection() called from an L2Space.");
       return NULL;

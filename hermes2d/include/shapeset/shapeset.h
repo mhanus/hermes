@@ -40,7 +40,7 @@ namespace Hermes
       template<typename Scalar> class ProjBasedSelector;
       template<typename Scalar> class H1ProjBasedSelector;
       template<typename Scalar> class L2ProjBasedSelector;
-      class HcurlProjBasedSelector;
+      template<typename Scalar> class HcurlProjBasedSelector;
     };
 
     enum SpaceType {
@@ -101,7 +101,6 @@ namespace Hermes
       /// Returns 2 if this is a vector shapeset, 1 otherwise.
       int get_num_components() const;
 
-    protected:
       /// Returns the maximum poly degree for all shape functions.
       int get_max_order() const;
 
@@ -116,6 +115,7 @@ namespace Hermes
       /// shapesets with non-symmetric edge functions).
       int get_edge_index(int edge, int ori, int order, ElementMode2D mode) const;
 
+    protected:
       /// Returns a complete set of indices of bubble functions for an element of the given order.
       int* get_bubble_indices(int order, ElementMode2D mode) const;
 
@@ -203,7 +203,14 @@ namespace Hermes
       ///
       double get_constrained_value(int n, int index, double x, double y, int component, ElementMode2D mode);
 
-      template<typename Scalar> friend class DiscreteProblem; template<typename Scalar> friend class Solution; friend class CurvMap; friend class RefMap; template<typename Scalar> friend class RefinementSelectors::H1ProjBasedSelector; template<typename Scalar> friend class RefinementSelectors::L2ProjBasedSelector; friend class RefinementSelectors::HcurlProjBasedSelector; template<typename Scalar> friend class RefinementSelectors::OptimumSelector; friend class PrecalcShapeset;
+      template<typename Scalar> friend class DiscreteProblem;
+      template<typename Scalar> friend class Solution;
+      friend class CurvMap; friend class RefMap;
+      template<typename Scalar> friend class RefinementSelectors::H1ProjBasedSelector;
+      template<typename Scalar> friend class RefinementSelectors::L2ProjBasedSelector;
+      template<typename Scalar> friend class RefinementSelectors::HcurlProjBasedSelector;
+      template<typename Scalar> friend class RefinementSelectors::OptimumSelector;
+      friend class PrecalcShapeset;
       friend void check_leg_tri(Shapeset* shapeset);
       friend void check_gradleg_tri(Shapeset* shapeset);
       template<typename Scalar> friend class Space;

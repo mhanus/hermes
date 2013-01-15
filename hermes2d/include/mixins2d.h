@@ -20,6 +20,8 @@ namespace Hermes
     /// could use - setting of spaces, output of linear algebraic structures, ...
     namespace Mixins
     {
+      /// \ingroup g_mixins2d
+      /// Mixin for classes where Spaces can be (re-)set during their existence.
       template<typename Scalar>
       class HERMES_API SettableSpaces
       {
@@ -32,13 +34,42 @@ namespace Hermes
         virtual const Space<Scalar>* get_space(int n) const;
       };
 
+
+      /// \ingroup g_mixins2d
+      /// Mixin that allows for asking about the instance state (ok / not ok).
       class HERMES_API StateQueryable
       {
       public:
         /// Ask if the instance is fine.
         virtual bool isOkay() const = 0;
+
+        /// Get class name, for the purpose of messaging.
+        virtual std::string getClassName() const = 0;
+
+        /// Method to handle the state.
+        void check() const;
       };
 
+      /// \ingroup g_mixins2d
+      /// Any XML parsing class should inherit from this mixin.
+      /// It serves various purposes, first of which is disabling / re-enabling of validation
+      /// against the schema referenced in a file being loaded.
+      class HERMES_API XMLParsing
+      {
+      public:
+        /// Constructor.
+        XMLParsing();
+
+        /// Set to validate / not to validate.
+        void set_validation(bool to_set);
+
+      protected:
+        /// Internal.
+        bool validate;
+      };
+
+      /// \ingroup g_mixins2d
+      /// Mixin that interfaces linear algebra structures output.
       template<typename Scalar>
       class HERMES_API MatrixRhsOutput
       {
@@ -59,6 +90,9 @@ namespace Hermes
         /// Sets varname for the matrix
         /// Default: "DF_MATLAB_SPARSE - matlab file".
         void set_matrix_E_matrix_dump_format(EMatrixDumpFormat format);
+        /// Sets number format for the matrix output.
+        /// Default: "%lf".
+        void set_matrix_number_format(char* number_format);
         
         /// Sets this instance to output the rhs in several first iterations.
         /// \param[in] firstIterations Only during so many first iterations. Default: -1 meaning, that during all iterations, the rhs will be saved.
@@ -73,6 +107,9 @@ namespace Hermes
         /// Sets varname for the rhs
         /// Default: "DF_MATLAB_SPARSE - matlab file".
         void set_rhs_E_matrix_dump_format(EMatrixDumpFormat format);
+        /// Sets number format for the vector output.
+        /// Default: "%lf".
+        void set_rhs_number_format(char* number_format);
         
       protected:
         bool output_matrixOn;
@@ -80,12 +117,14 @@ namespace Hermes
         std::string matrixFilename;
         std::string matrixVarname;
         EMatrixDumpFormat matrixFormat;
+		char* matrix_number_format;
 
         bool output_rhsOn;
         int output_rhsIterations;
         std::string RhsFilename;
         std::string RhsVarname;
         EMatrixDumpFormat RhsFormat;
+		char* rhs_number_format;
       };
     }
   }

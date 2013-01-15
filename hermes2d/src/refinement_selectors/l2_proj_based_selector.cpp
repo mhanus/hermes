@@ -15,7 +15,7 @@ namespace Hermes
 
       template<typename Scalar>
       L2ProjBasedSelector<Scalar>::L2ProjBasedSelector(CandList cand_list, double conv_exp, int max_order, L2Shapeset* user_shapeset)
-        : ProjBasedSelector<Scalar>(cand_list, conv_exp, max_order, user_shapeset == NULL ? new L2Shapeset() : user_shapeset, typename OptimumSelector<Scalar>::Range(1, 1), typename OptimumSelector<Scalar>::Range(0, H2DRS_MAX_L2_ORDER))
+        : ProjBasedSelector<Scalar>(cand_list, conv_exp, max_order, user_shapeset == NULL ? new L2Shapeset() : user_shapeset, typename OptimumSelector<Scalar>::Range(1, 1), typename OptimumSelector<Scalar>::Range(0, H2DRS_MAX_L2_ORDER)), user_shapeset(user_shapeset == NULL ? false : true)
       {
         if(user_shapeset != NULL)
         {
@@ -25,9 +25,19 @@ namespace Hermes
       }
 
       template<typename Scalar>
+      L2ProjBasedSelector<Scalar>::~L2ProjBasedSelector()
+      {
+        if(!this->user_shapeset)
+          delete this->shapeset;
+      }
+
+      template<typename Scalar>
       Selector<Scalar>* L2ProjBasedSelector<Scalar>::clone()
       {
-        return new L2ProjBasedSelector(this->cand_list, this->conv_exp, this->max_order);
+        L2ProjBasedSelector<Scalar>* newSelector = new L2ProjBasedSelector(this->cand_list, this->conv_exp, this->max_order, (L2Shapeset*)this->shapeset);
+        newSelector->set_error_weights(this->error_weight_h, this->error_weight_p, this->error_weight_aniso);
+        newSelector->isAClone = true;
+        return newSelector;
       }
 
       template<typename Scalar>
@@ -265,10 +275,6 @@ namespace Hermes
       template<typename Scalar>
       Scalar** L2ProjBasedSelector<Scalar>::precalc_ref_solution(int inx_son, Solution<Scalar>* rsln, Element* element, int intr_gip_order)
       {
-        //set element and integration order
-        rsln->set_active_element(element);
-        rsln->set_quad_order(intr_gip_order);
-
         //fill with values
         Scalar** rvals_son = precalc_rvals[inx_son];
         rvals_son[H2D_L2FE_VALUE] = rsln->get_fn_values(0);

@@ -74,7 +74,7 @@ namespace Hermes
     };
 
     template<typename Scalar>
-    class HERMES_API Solution : public MeshFunction<Scalar>
+    class HERMES_API Solution : public MeshFunction<Scalar>, public Hermes::Hermes2D::Mixins::XMLParsing
     {
     public:
       Solution();
@@ -82,6 +82,9 @@ namespace Hermes
       Solution (Space<Scalar>* s, Vector<Scalar>* coeff_vec);
       Solution (Space<Scalar>* s, Scalar* coeff_vec);
       virtual ~Solution();
+
+      /// State querying helpers.
+      inline std::string getClassName() const { return "Solution"; }
 
       void assign(Solution* sln);
       inline Solution& operator = (Solution& sln) { assign(&sln); return *this; }
@@ -93,11 +96,11 @@ namespace Hermes
 
       /// Saves the complete solution (i.e., including the internal copy of the mesh and
       /// element orders) to an XML file.
-      void save(const char* filename) const;
+      virtual void save(const char* filename) const;
 
       /// Loads the solution from a file previously created by Solution::save(). This completely
       /// restores the solution in the memory.
-      void load(const char* filename, Mesh* mesh);
+      void load(const char* filename, Space<Scalar>* space);
 
       /// Returns solution value or derivatives at element e, in its reference domain point (xi1, xi2).
       /// 'item' controls the returned value: 0 = value, 1 = dx, 2 = dy, 3 = dxx, 4 = dyy, 5 = dxy.
@@ -117,7 +120,7 @@ namespace Hermes
       /// NOTE: This function should be used for postprocessing only, it is not effective
       /// enough for calculations. Since it searches for an element sequentinally, it is extremelly
       /// slow. Prefer Solution::get_ref_value if possible.
-      virtual Scalar get_pt_value(double x, double y, int item = H2D_FN_VAL_0);
+      virtual Func<Scalar>* get_pt_value(double x, double y);
 
       /// Multiplies the function represented by this class by the given coefficient.
       void multiply(Scalar coef);
@@ -163,9 +166,10 @@ namespace Hermes
       /// Internal.
       virtual void set_active_element(Element* e);
 
-      virtual MeshFunction<Scalar>* clone();
+      virtual MeshFunction<Scalar>* clone() const;
 
       static void set_static_verbose_output(bool verbose);
+
     protected:
       static bool static_verbose_output;
 
@@ -244,7 +248,7 @@ namespace Hermes
       template<typename T> friend class RefinementSelectors::ProjBasedSelector;
       template<typename T> friend class RefinementSelectors::H1ProjBasedSelector;
       template<typename T> friend class RefinementSelectors::L2ProjBasedSelector;
-      friend class RefinementSelectors::HcurlProjBasedSelector;
+      template<typename T> friend class RefinementSelectors::HcurlProjBasedSelector;
     };
   }
 }

@@ -31,15 +31,20 @@ namespace Hermes
     /// @ingroup userSolvingAPI
     /// Class for solving linear problems.
     template <typename Scalar>
-    class LinearSolver : public Hermes::Mixins::Loggable, public Hermes::Mixins::TimeMeasurable, public Hermes::Mixins::IntegrableWithGlobalOrder, public Hermes::Mixins::SettableComputationTime, public Hermes::Hermes2D::Mixins::SettableSpaces<Scalar>, public Hermes::Mixins::OutputAttachable, public Hermes::Hermes2D::Mixins::MatrixRhsOutput<Scalar>
+    class LinearSolver : public Hermes::Mixins::Loggable, public Hermes::Mixins::TimeMeasurable, public Hermes::Mixins::SettableComputationTime, public Hermes::Hermes2D::Mixins::SettableSpaces<Scalar>, public Hermes::Mixins::OutputAttachable, public Hermes::Hermes2D::Mixins::MatrixRhsOutput<Scalar>, public Hermes::Hermes2D::Mixins::StateQueryable
     {
     public:
+      LinearSolver();
       LinearSolver(DiscreteProblemLinear<Scalar>* dp);
       LinearSolver(const WeakForm<Scalar>* wf, const Space<Scalar>* space);
       LinearSolver(const WeakForm<Scalar>* wf, Hermes::vector<const Space<Scalar>*> spaces);
       void init();
 
       ~LinearSolver();
+
+      /// State querying helpers.
+      virtual bool isOkay() const;
+      inline std::string getClassName() const { return "LinearSolver"; }
 
       /// Basic solve method.
       virtual void solve();
@@ -54,6 +59,14 @@ namespace Hermes
       virtual void set_space(const Space<Scalar>* space);
       virtual Hermes::vector<const Space<Scalar>*> get_spaces() const;
       
+      /// Set the weak forms.
+      void set_weak_formulation(const WeakForm<Scalar>* wf);
+
+      /// Get the Jacobian.
+      SparseMatrix<Scalar>* get_jacobian();
+
+      /// Get the Residual.
+      Vector<Scalar>* get_residual();
     protected:
       DiscreteProblemLinear<Scalar>* dp; ///< FE problem being solved.
 
