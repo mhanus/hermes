@@ -402,10 +402,6 @@ namespace Hermes
       /// Note: this function creates a base mesh.
       void convert_quads_to_triangles();
 
-    private:
-      /// For internal use.
-      int get_edge_sons(Element* e, int edge, int& son1, int& son2);
-
       /// Convert all active elements to a base mesh.
       void convert_to_base();
 
