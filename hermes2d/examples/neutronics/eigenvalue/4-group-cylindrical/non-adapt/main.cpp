@@ -62,8 +62,8 @@ double k_eff = 1.0;
 int main(int argc, char* argv[])
 {  
   // Set the number of threads used in Hermes.
-  Hermes::HermesCommonApi.set_param_value(Hermes::exceptionsPrintCallstack, 0);
-  Hermes::Hermes2D::Hermes2DApi.set_param_value(Hermes::Hermes2D::numThreads, 1);
+  Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
 
   // Load the mesh.
   Mesh mesh;
