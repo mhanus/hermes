@@ -37,45 +37,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
     }
   }
-  
-  namespace Common { namespace WeakForms
-  {    
-    HomogeneousPart::~HomogeneousPart()
-    {
-      std::vector<MatrixFormVol<double>*>::const_iterator matrices_it = matrix_forms.begin();
-      for ( ; matrices_it != matrix_forms.end(); ++matrices_it)
-        delete *matrices_it;
-      matrix_forms.clear();
-      
-      std::vector<VectorFormVol<double>*>::const_iterator vectors_it = vector_forms.begin();
-      for ( ; vectors_it != vector_forms.end(); ++vectors_it)
-        delete *vectors_it;
-      vector_forms.clear();
-    }
-    
-    void NeutronicsProblem::add_forms_from_homogeneous_part()
-    {
-      std::vector<MatrixFormVol<double>*>::const_iterator matrices_it = homogeneous_part->matrix_forms.begin();
-      for ( ; matrices_it != homogeneous_part->matrix_forms.end(); ++matrices_it)
-        add_matrix_form(*matrices_it);
-      
-      std::vector<VectorFormVol<double>*>::const_iterator vectors_it = homogeneous_part->vector_forms.begin();
-      for ( ; vectors_it != homogeneous_part->vector_forms.end(); ++vectors_it)
-        add_vector_form(*vectors_it);
-    }
-    
-  /* WeakForms */
-  }
-  /* Common */
-  }
     
   namespace Diffusion { namespace WeakForms
   {   
-    HomogeneousPart::HomogeneousPart(const Common::MaterialProperties::MaterialPropertyMaps* matprop,
-                                     GeomType geom_type, bool include_fission)
-    {
-      const Diffusion::MaterialProperties::MaterialPropertyMaps *mp = static_cast<const MaterialPropertyMaps*>(matprop);
-      
+    void DiffusionWeakForm::add_forms_from_homogeneous_part(Common::WeakForms::NeutronicsProblem* wf, 
+                                                            const MaterialPropertyMaps *mp, GeomType geom_type, bool include_fission)
+    {      
       bool2 Ss_nnz = mp->get_scattering_nonzero_structure();
       bool1 chi_nnz = mp->get_fission_nonzero_structure();
       
@@ -93,25 +60,25 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         for (unsigned int gto = 0; gto < mp->get_G(); gto++)
         {
-          matrix_forms.push_back(new DiffusionReaction::Jacobian(regions, gto, D[gto], Sigma_r[gto], geom_type));
-          vector_forms.push_back(new DiffusionReaction::Residual(regions, gto, D[gto], Sigma_r[gto], geom_type));
+          wf->add_matrix_form(new DiffusionReaction::Jacobian(regions, gto, D[gto], Sigma_r[gto], geom_type));
+          wf->add_vector_form(new DiffusionReaction::Residual(regions, gto, D[gto], Sigma_r[gto], geom_type));
           
           for (unsigned int gfrom = 0; gfrom < mp->get_G(); gfrom++)
           {
             if (Ss_nnz[gto][gfrom] && gto != gfrom)
             {
-              matrix_forms.push_back(new Scattering::Jacobian(regions, gto, gfrom, Sigma_s[gto][gfrom], geom_type));
-              vector_forms.push_back(new Scattering::Residual(regions, gto, gfrom, Sigma_s[gto][gfrom], geom_type));
+              wf->add_matrix_form(new Scattering::Jacobian(regions, gto, gfrom, Sigma_s[gto][gfrom], geom_type));
+              wf->add_vector_form(new Scattering::Residual(regions, gto, gfrom, Sigma_s[gto][gfrom], geom_type));
             }
             
             if (include_fission && chi_nnz[gto])
             {
-              matrix_forms.push_back(new FissionYield::Jacobian(regions, gto, gfrom, 
-                                                                chi[gto], nu[gfrom], Sigma_f[gfrom], 
-                                                                geom_type));
-              vector_forms.push_back(new FissionYield::Residual(regions, gto, gfrom, 
-                                                                chi[gto], nu[gfrom], Sigma_f[gfrom],
-                                                                geom_type));
+              wf->add_matrix_form( new FissionYield::Jacobian(regions, gto, gfrom, 
+                                                              chi[gto], nu[gfrom], Sigma_f[gfrom], 
+                                                              geom_type) );
+              wf->add_vector_form( new FissionYield::Residual(regions, gto, gfrom, 
+                                                              chi[gto], nu[gfrom], Sigma_f[gfrom],
+                                                              geom_type) );
             }
           }
         }
@@ -121,23 +88,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
                                            GeomType geom_type) 
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
-    {
-      homogeneous_part = new HomogeneousPart(&matprop, geom_type, true);
-      add_forms_from_homogeneous_part();
-            
+    {            
       std::set<std::string>::const_iterator material = matprop.get_materials_list().begin();
       for ( ; material != matprop.get_materials_list().end(); ++material)
       {
         Hermes::vector<std::string> regions = matprop.get_regions(*material);
         
         rank1 src_data = matprop.get_iso_src(*material);
-        
         for (unsigned int gto = 0; gto < G; gto++)
-        {
-          VectorFormVol<double> *src = new ExternalSources::LinearForm(regions, gto, src_data[gto], geom_type);
-          source_terms.push_back(src);
-          add_vector_form(src);
-        }
+          add_vector_form(new ExternalSources::LinearForm(regions, gto, src_data[gto], geom_type));
       }
     }
     
@@ -146,15 +105,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            GeomType geom_type  ) 
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
     {
-      homogeneous_part = new HomogeneousPart(&matprop, geom_type, true);
-      add_forms_from_homogeneous_part();
-      
       for (unsigned int gto = 0; gto < G; gto++)
-      {
-        VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_area, minus_f_src, geom_type);
-        source_terms.push_back(src);
-        add_vector_form(src);
-      }
+        add_vector_form(new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_area, minus_f_src, geom_type));
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
@@ -163,15 +115,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            GeomType geom_type  ) 
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
     {
-      homogeneous_part = new HomogeneousPart(&matprop, geom_type, true);
-      add_forms_from_homogeneous_part();
-      
       for (unsigned int gto = 0; gto < G; gto++)
-      {
-        VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_areas, minus_f_src, geom_type);
-        source_terms.push_back(src);
-        add_vector_form(src);
-      }
+        add_vector_form(new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_areas, minus_f_src, geom_type));
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
@@ -183,15 +128,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       if (minus_f_src.size() != G)
         ErrorHandling::error_function(Messages::E_INVALID_SIZE);
       
-      homogeneous_part = new HomogeneousPart(&matprop, geom_type, true);
-      add_forms_from_homogeneous_part();
-      
       for (unsigned int gto = 0; gto < G; gto++)
-      {
-        VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_area, minus_f_src[gto], geom_type);
-        source_terms.push_back(src);
-        add_vector_form(src);
-      }
+        add_vector_form(new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_area, minus_f_src[gto], geom_type));
     }
     
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
@@ -203,23 +141,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       if (minus_f_src.size() != G)
         ErrorHandling::error_function(Messages::E_INVALID_SIZE);
       
-      homogeneous_part = new HomogeneousPart(&matprop, geom_type, true);
-      add_forms_from_homogeneous_part();
-      
       for (unsigned int gto = 0; gto < G; gto++)
-      {
-        VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_areas, minus_f_src[gto], geom_type);
-        source_terms.push_back(src);
-        add_vector_form(src);
-      }
-    }
-    
-    FixedSourceProblem::~FixedSourceProblem()
-    {
-      std::vector<VectorFormVol<double>*>::const_iterator it = source_terms.begin();
-      for ( ; it != source_terms.end(); ++it)
-        delete *it;
-      source_terms.clear();
+        add_vector_form(new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_areas, minus_f_src[gto], geom_type));
     }
     
     KeffEigenvalueProblem::KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
@@ -228,9 +151,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                 GeomType geom_type ) 
       : Common::WeakForms::KeffEigenvalueProblem(matprop.get_G(), &matprop, geom_type, initial_keff_guess)
     {            
-      homogeneous_part = new HomogeneousPart(&matprop, geom_type, false);
-      add_forms_from_homogeneous_part();
-      
       init_rhs(iterates);
     }
 
@@ -241,9 +161,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                 GeomType geom_type ) 
       : Common::WeakForms::KeffEigenvalueProblem(matprop.get_G(), &matprop, geom_type, initial_keff_guess, fission_materials)
     {
-      homogeneous_part = new HomogeneousPart(&matprop, geom_type, false);
-      add_forms_from_homogeneous_part();
-      
       init_rhs(iterates);
     }
     
@@ -262,7 +179,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       std::set<std::string>::const_iterator material = mp->get_materials_list().begin();
       for ( ; material != mp->get_materials_list().end(); ++material)
       {
-        if (fission_materials.size() > 0) 
+        if (!fission_materials.empty()) 
           if (std::find(fission_materials.begin(), fission_materials.end(), *material) == fission_materials.end())
             continue;
           
@@ -273,17 +190,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         rank1 nu = mp->get_nu(*material);
         
         for (unsigned int gto = 0; gto < G; gto++)
-        { 
-          FissionYield::OuterIterationForm* keff_iteration_form;
-          
-          keff_iteration_form = new FissionYield::OuterIterationForm( regions, gto, 
-                                                                      chi[gto], nu, Sigma_f,
-                                                                      scalar_flux_iterates, keff, 
-                                                                      geom_type );
-        
-          keff_iteration_forms.push_back(keff_iteration_form);
-          add_vector_form(keff_iteration_form);
-        }
+          add_vector_form(new FissionYield::OuterIterationForm( regions, gto, 
+                                                                chi[gto], nu, Sigma_f,
+                                                                scalar_flux_iterates, keff, 
+                                                                geom_type ) );
       }
     }
     
@@ -291,9 +201,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     { 
       keff = new_keff;
       
-      std::vector<FissionYield::OuterIterationForm*>::const_iterator it = keff_iteration_forms.begin();
-      for ( ; it != keff_iteration_forms.end(); ++it)
-        (*it)->update_keff(new_keff); 
+      Hermes::vector<Form<double> *>::const_iterator it = get_forms().begin();
+      for ( ; it != get_forms().end(); ++it)
+      { 
+        FissionYield::OuterIterationForm* keff_iteration_form = dynamic_cast<FissionYield::OuterIterationForm*>(*it);
+        if (keff_iteration_form != NULL)
+          keff_iteration_form->update_keff(new_keff); 
+      }
     }
     
     void KeffEigenvalueProblem::update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed)
@@ -309,14 +223,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 
   namespace SPN { namespace WeakForms
   {
-    HomogeneousPart::HomogeneousPart(unsigned int N_odd,
-                                     const Common::MaterialProperties::MaterialPropertyMaps* matprop,
-                                     GeomType geom_type, bool include_fission)
+    void SPNWeakForm::add_forms_from_homogeneous_part(Common::WeakForms::NeutronicsProblem* wf, 
+                                                      const MaterialPropertyMaps *mp, GeomType geom_type, bool include_fission)
     {
-      unsigned int G = matprop->get_G();
-      
-      const SPN::MaterialProperties::MaterialPropertyMaps *mp = static_cast<const MaterialPropertyMaps*>(matprop);
-      SPN::WeakFormParts::MomentGroupFlattener mg(G);
+      unsigned int G = mp->get_G();
       
       bool1 diagonal_moments = mp->is_Sigma_rn_diagonal();
       bool2 present(N_odd * G, bool1(N_odd * G, false));
@@ -386,7 +296,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
       std::cout << std::endl;
 */    
-      int dssrJ = 0, dssrR = 0, fyJ = 0, fyR = 0, odsJ = 0, odsR = 0, odrJ = 0, odrR = 0; // DEBUG
+      //int dssrJ = 0, dssrR = 0, fyJ = 0, fyR = 0, odsJ = 0, odsR = 0, odrJ = 0, odrR = 0; // DEBUG
       
       std::set<std::string>::const_iterator material = mp->get_materials_list().begin();
       for ( ; material != mp->get_materials_list().end(); ++material)
@@ -411,25 +321,25 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 
             double D = -Coeffs::D(m) * odd_Sigma_rn_inv[m][gto][gto];
       
-            matrix_forms.push_back(new DiagonalStreamingAndReactions::Jacobian(regions, m, gto, G, D, Sigma_r, geom_type)); dssrJ++;
-            vector_forms.push_back(new DiagonalStreamingAndReactions::Residual(regions, m, gto, G, D, Sigma_r, geom_type)); dssrR++;
+            wf->add_matrix_form(new DiagonalStreamingAndReactions::Jacobian(regions, m, gto, G, D, Sigma_r, geom_type));// dssrJ++;
+            wf->add_vector_form(new DiagonalStreamingAndReactions::Residual(regions, m, gto, G, D, Sigma_r, geom_type));// dssrR++;
             
             if (include_fission && chi_nnz[gto]) {
-              vector_forms.push_back(new FissionYield::Residual(regions, m, N_odd, gto, G, chi[gto], nu, Sigma_f, geom_type));  fyR++;
+              wf->add_vector_form(new FissionYield::Residual(regions, m, N_odd, gto, G, chi[gto], nu, Sigma_f, geom_type));// fyR++;
             }
             
-            vector_forms.push_back(new OffDiagonalReactions::Residual(regions, m, N_odd, gto, G, Sigma_rn, geom_type)); odrR++;
+            wf->add_vector_form(new OffDiagonalReactions::Residual(regions, m, N_odd, gto, G, Sigma_rn, geom_type));// odrR++;
             
             if (G > 1) {
-              vector_forms.push_back(new OffDiagonalStreaming::Residual(regions, m, gto, G, 
-                                                                        odd_Sigma_rn_inv[m][gto], geom_type)); odsR++;
+              wf->add_vector_form(new OffDiagonalStreaming::Residual(regions, m, gto, G, 
+                                                                     odd_Sigma_rn_inv[m][gto], geom_type));// odsR++;
             }
             
             for (unsigned int gfrom = 0; gfrom < G; gfrom++)
             {
               if (gfrom != gto) {
                 double D = -Coeffs::D(m) * odd_Sigma_rn_inv[m][gto][gfrom];
-                matrix_forms.push_back(new OffDiagonalStreaming::Jacobian(regions, m, gto, gfrom, G, D, geom_type)); odsJ++;
+                wf->add_matrix_form(new OffDiagonalStreaming::Jacobian(regions, m, gto, gfrom, G, D, geom_type));// odsJ++;
               }
               
               for (unsigned int n = 0; n < N_odd; n++)
@@ -437,8 +347,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                 unsigned int j = mg.pos(n, gfrom);
                 
                 if (include_fission && chi_nnz[gto]) {
-                  matrix_forms.push_back( new FissionYield::Jacobian(regions, m, n, gto, gfrom, G, 
-                                                                     chi[gto], nu[gfrom], Sigma_f[gfrom], geom_type) ); fyJ++;
+                  wf->add_matrix_form( new FissionYield::Jacobian(regions, m, n, gto, gfrom, G, 
+                                                                  chi[gto], nu[gfrom], Sigma_f[gfrom], geom_type) );// fyJ++;
                 }
                 
                 //// cout << "(" << i << "," << j << ") : P" << present[i][j] << " S" << sym[i][j] << endl;
@@ -450,9 +360,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                     for (unsigned int k = 0; k < m; k++)
                       Sigma_rn_local += Coeffs::system_matrix(m, n, k) * Sigma_rn[2*k][gto][gfrom];
       
-                    matrix_forms.push_back( new OffDiagonalReactions::Jacobian( regions, m, n, gto, gfrom, G, 
-                                                                                Sigma_rn_local, geom_type, 
-                                                                                sym[i][j] ? HERMES_SYM : HERMES_NONSYM) ); odrJ++;
+                    wf->add_matrix_form( new OffDiagonalReactions::Jacobian(regions, m, n, gto, gfrom, G, 
+                                                                            Sigma_rn_local, geom_type, 
+                                                                            sym[i][j] ? HERMES_SYM : HERMES_NONSYM) );// odrJ++;
                   }
                 }
               }
@@ -476,10 +386,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            GeomType geom_type) 
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
         SPNWeakForm(N, matprop.get_G())
-    {
-      homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, true);
-      add_forms_from_homogeneous_part();
-      
+    {      
       std::set<std::string>::const_iterator material = matprop.get_materials_list().begin();
       for ( ; material != matprop.get_materials_list().end(); ++material)
       {
@@ -489,11 +396,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         for (unsigned int m = 0; m < N_odd; m++)
           for (unsigned int gto = 0; gto < G; gto++)
-          {
-            VectorFormVol<double> *src = new ExternalSources::LinearForm(regions, m, gto, G, src_data[gto], geom_type);
-            source_terms.push_back(src);
-            add_vector_form(src);
-          }
+            add_vector_form(new ExternalSources::LinearForm(regions, m, gto, G, src_data[gto], geom_type));
       }
     }
     
@@ -503,15 +406,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
         SPNWeakForm(N, matprop.get_G())
     {      
-      homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, true);
-      add_forms_from_homogeneous_part();
-      
       for (unsigned int m = 0; m < N_odd; m++)
         for (unsigned int gto = 0; gto < G; gto++)
         {
           VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(mg.pos(m,gto), src_area, minus_isotropic_source, geom_type);
           src->setScalingFactor(Coeffs::even_moment(0, m));
-          source_terms.push_back(src);
           add_vector_form(src);
         }
     }
@@ -522,16 +421,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            GeomType geom_type  )
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
         SPNWeakForm(N, matprop.get_G())
-    {      
-      homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, true);
-      add_forms_from_homogeneous_part();
-      
+    {            
       for (unsigned int m = 0; m < N_odd; m++)
         for (unsigned int gto = 0; gto < G; gto++)
         {
           VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(mg.pos(m,gto), src_areas, minus_isotropic_source, geom_type);
           src->setScalingFactor(Coeffs::even_moment(0, m));
-          source_terms.push_back(src);
           add_vector_form(src);
         }
     }
@@ -545,16 +440,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {
       if (minus_isotropic_sources.size() != G)
         ErrorHandling::error_function(Messages::E_INVALID_SIZE);
-      
-      homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, true);
-      add_forms_from_homogeneous_part();
-      
+            
       for (unsigned int m = 0; m < N_odd; m++)
         for (unsigned int gto = 0; gto < G; gto++)
         {
           VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(mg.pos(m,gto), src_area, minus_isotropic_sources[gto], geom_type);
           src->setScalingFactor(Coeffs::even_moment(0, m));
-          source_terms.push_back(src);
           add_vector_form(src);
         }
     }                                                                                   
@@ -569,25 +460,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       if (minus_isotropic_sources.size() != G)
         ErrorHandling::error_function(Messages::E_INVALID_SIZE);
       
-      homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, true);
-      add_forms_from_homogeneous_part();
-      
       for (unsigned int m = 0; m < N_odd; m++)
         for (unsigned int gto = 0; gto < G; gto++)
         {
           VectorFormVol<double> *src = new WeakFormsH1::DefaultVectorFormVol<double>(mg.pos(m,gto), src_areas, minus_isotropic_sources[gto], geom_type);
           src->setScalingFactor(Coeffs::even_moment(0, m));
-          source_terms.push_back(src);
           add_vector_form(src);
         }
-    }
-    
-    FixedSourceProblem::~FixedSourceProblem()
-    {
-      std::vector<VectorFormVol<double>*>::const_iterator it = source_terms.begin();
-      for ( ; it != source_terms.end(); ++it)
-        delete *it;
-      source_terms.clear();
     }
     
     KeffEigenvalueProblem::KeffEigenvalueProblem(const MaterialPropertyMaps& matprop, unsigned int N,
@@ -605,13 +484,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       SupportClasses::MomentFilter::get_scalar_fluxes_with_derivatives(stored_flux_solutions, &scalar_flux_iterates, G);
       
-      homogeneous_part = new HomogeneousPart(N_odd, &matprop, geom_type, false);
-      add_forms_from_homogeneous_part();
-      
       std::set<std::string>::const_iterator material = matprop.get_materials_list().begin();
       for ( ; material != matprop.get_materials_list().end(); ++material)
       {
-        if (fission_materials.size() > 0) 
+        if (!fission_materials.empty()) 
           if (std::find(fission_materials.begin(), fission_materials.end(), *material) == fission_materials.end())
             continue;
           
@@ -622,31 +498,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         rank1 nu = matprop.get_nu(*material);
         
         for (unsigned int m = 0; m < N_odd; m++)
-        {
           for (unsigned int gto = 0; gto < G; gto++)
-          {            
-            FissionYield::OuterIterationForm* keff_iteration_form;
-            
-            keff_iteration_form = new FissionYield::OuterIterationForm( regions, 
-                                                                        m, gto, G, 
-                                                                        chi[gto], nu, Sigma_f, 
-                                                                        scalar_flux_iterates, initial_keff_guess, 
-                                                                        geom_type );
-            
-            keff_iteration_forms.push_back(keff_iteration_form);
-            add_vector_form(keff_iteration_form);
-          }
-        }
+            add_vector_form(new FissionYield::OuterIterationForm( regions, 
+                                                                  m, gto, G, 
+                                                                  chi[gto], nu, Sigma_f, 
+                                                                  scalar_flux_iterates, initial_keff_guess, 
+                                                                  geom_type ));
       }
     }
     
     KeffEigenvalueProblem::~KeffEigenvalueProblem()
-    {
-      std::vector<FissionYield::OuterIterationForm*>::const_iterator it = keff_iteration_forms.begin();
-      for ( ; it != keff_iteration_forms.end(); ++it)
-        delete *it;
-      keff_iteration_forms.clear();
-      
+    {  
       SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_flux_iterates);
     }
     
@@ -654,9 +516,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     { 
       keff = new_keff;
       
-      std::vector<FissionYield::OuterIterationForm*>::const_iterator it = keff_iteration_forms.begin();
-      for ( ; it != keff_iteration_forms.end(); ++it)
-        (*it)->update_keff(new_keff); 
+      Hermes::vector<Form<double> *>::const_iterator it = get_forms().begin();
+      for ( ; it != get_forms().end(); ++it)
+      { 
+        FissionYield::OuterIterationForm* keff_iteration_form = dynamic_cast<FissionYield::OuterIterationForm*>(*it);
+        if (keff_iteration_form != NULL)
+          keff_iteration_form->update_keff(new_keff); 
+      }
     }
     
     void KeffEigenvalueProblem::update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed)
