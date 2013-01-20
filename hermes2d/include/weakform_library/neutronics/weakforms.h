@@ -36,6 +36,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                            Hermes::vector<double> D_map, 
                            Hermes::vector<double> Sigma_a_map, 
                            Hermes::vector<double> Q_map );
+                           
+        virtual WeakForm<double>* clone() const { return new FixedSourceProblem(*this); }
     };
   }
   
@@ -163,6 +165,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                            GeomType geom_type = HERMES_PLANAR);
         
         virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_DIFFUSION; }
+        
+        virtual WeakForm<double>* clone() const { return new FixedSourceProblem(*this); }
     };
             
     class KeffEigenvalueProblem : public Common::WeakForms::KeffEigenvalueProblem, protected DiffusionWeakForm
@@ -199,6 +203,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         }
         
         virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_DIFFUSION; }
+        
+        // FIXME: Should be OK for multithreaded assembling; may not be usable in keff
+        // eigenvalue iteration, since scalar_flux_iterates that are being updated during 
+        // that iteration won't point to correct OuterIterationForm ext functions after
+        // cloning (brand new ext functions will be created by WeakForm::cloneMembers, but
+        // they can't be assigned to scalar_flux_iterates because cloneMembers is called 
+        // *after* clone() and is private to WeakForm. Could be fixed by updating directly
+        // ext functions of all forms of type OuterIterationForm.
+        virtual WeakForm<double>* clone() const { return new KeffEigenvalueProblem(*this); }
     };  
   
   /* WeakForms */
@@ -255,6 +268,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                            GeomType geom_type = HERMES_PLANAR);
         
         virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_SPN; }
+        
+        virtual WeakForm<double>* clone() const { return new FixedSourceProblem(*this); }
     };
     
     class KeffEigenvalueProblem : public Common::WeakForms::KeffEigenvalueProblem, protected SPNWeakForm
@@ -287,6 +302,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         }
         
         virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_SPN; }
+        
+        // FIXME: Should be OK for multithreaded assembling; may not be usable in keff
+        // eigenvalue iteration, since scalar_flux_iterates that are being updated during 
+        // that iteration won't point to correct OuterIterationForm ext functions after
+        // cloning (brand new ext functions will be created by WeakForm::cloneMembers, but
+        // they can't be assigned to scalar_flux_iterates because cloneMembers is called 
+        // *after* clone() and is private to WeakForm. Could be fixed by updating directly
+        // ext functions of all forms of type OuterIterationForm.
+        virtual WeakForm<double>* clone() const { return new KeffEigenvalueProblem(*this); }
     };
         
   /* WeakForms */
