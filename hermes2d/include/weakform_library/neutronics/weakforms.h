@@ -56,14 +56,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                           const MaterialPropertyMaps* matprop,
                           GeomType geom_type)
           : WeakForm<double>(n_eq), 
-            matprop(matprop), geom_type(geom_type), G(matprop->get_G())
-        { 
-          add_forms_from_homogeneous_part(); 
-        }
+            matprop(matprop), geom_type(geom_type), G(matprop->get_G()) {};
         
-        virtual void add_forms_from_homogeneous_part() { 
-          this->warn("You should override add_forms_from_homogeneous_part for each type of neutronics weak formulation."); 
-        };
+        virtual void add_forms_from_homogeneous_part() = 0;
         
       public:
         virtual ~NeutronicsProblem() { };
@@ -136,7 +131,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     class FixedSourceProblem : public Common::WeakForms::NeutronicsProblem, protected DiffusionWeakForm
     {  
       protected:
-        void add_forms_from_homogeneous_part() { 
+        virtual void add_forms_from_homogeneous_part() { 
           DiffusionWeakForm::add_forms_from_homogeneous_part(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, true); 
         }
         
@@ -173,7 +168,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {
       protected:          
         void init_rhs(const Hermes::vector<Solution<double>*>& iterates);
-        void add_forms_from_homogeneous_part() { 
+        virtual void add_forms_from_homogeneous_part() { 
           DiffusionWeakForm::add_forms_from_homogeneous_part(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, false); 
         }
         
@@ -239,7 +234,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     class FixedSourceProblem : public Common::WeakForms::NeutronicsProblem, protected SPNWeakForm
     {
       protected:
-        void add_forms_from_homogeneous_part() { 
+        virtual void add_forms_from_homogeneous_part() { 
           SPNWeakForm::add_forms_from_homogeneous_part(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, true); 
         }
         
@@ -275,7 +270,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     class KeffEigenvalueProblem : public Common::WeakForms::KeffEigenvalueProblem, protected SPNWeakForm
     {
       protected:        
-        void add_forms_from_homogeneous_part() { 
+        virtual void add_forms_from_homogeneous_part() { 
           SPNWeakForm::add_forms_from_homogeneous_part(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, false); 
         }
         
