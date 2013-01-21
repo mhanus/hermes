@@ -131,6 +131,13 @@ int main(int argc, char* argv[])
   TimeMeasurable cpu_time;
   cpu_time.tick();
 
+  // Initialize the FE problem.
+  DiscreteProblem<double> dp(&wf, &space);
+
+  // Create Newton's solver on reference mesh.
+  NewtonSolver<double> newton(&dp);
+  newton.set_verbose_output(false);
+
   // Adaptivity loop:
   int as = 1; bool done = false;
   do
@@ -138,16 +145,14 @@ int main(int argc, char* argv[])
     Loggable::Static::info("---- Adaptivity step %d:", as);
 
     // Construct globally refined reference mesh and setup reference space.
-    Space<double>* ref_space = Space<double>::construct_refined_space(&space);
+    Mesh::ReferenceMeshCreator ref_mesh_creator(&mesh);
+    Mesh* ref_mesh = ref_mesh_creator.create_ref_mesh();
+    Space<double>::ReferenceSpaceCreator ref_space_creator(&space, ref_mesh);
+    Space<double>* ref_space = ref_space_creator.create_ref_space();
+
     int ndof_ref = ref_space->get_num_dofs();
-
-    // Initialize the FE problem.
-    DiscreteProblem<double> dp(&wf, ref_space);
-
-    // Perform Newton's iteration on reference emesh.
-    NewtonSolver<double> newton(&dp);
-    newton.set_verbose_output(false);
-
+    newton.set_space(ref_space);
+    
     try
     {
       newton.solve();
@@ -211,7 +216,7 @@ int main(int argc, char* argv[])
     if (space.get_num_dofs() >= NDOF_STOP) done = true;
     
     if(done == false) 
-      delete ref_space->get_mesh();
+      delete ref_mesh;
     delete ref_space;
   }
   while (done == false);
