@@ -88,7 +88,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, 
                                            GeomType geom_type) 
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
-    {            
+    {  
+      add_forms_from_homogeneous_part();
+      
       std::set<std::string>::const_iterator material = matprop.get_materials_list().begin();
       for ( ; material != matprop.get_materials_list().end(); ++material)
       {
@@ -105,6 +107,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            GeomType geom_type  ) 
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
     {
+      add_forms_from_homogeneous_part();
+      
       for (unsigned int gto = 0; gto < G; gto++)
         add_vector_form(new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_area, minus_f_src, geom_type));
     }
@@ -115,6 +119,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            GeomType geom_type  ) 
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
     {
+      add_forms_from_homogeneous_part();
+      
       for (unsigned int gto = 0; gto < G; gto++)
         add_vector_form(new WeakFormsH1::DefaultVectorFormVol<double>(gto, src_areas, minus_f_src, geom_type));
     }
@@ -125,6 +131,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            GeomType geom_type ) 
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
     {
+      add_forms_from_homogeneous_part();
+      
       if (minus_f_src.size() != G)
         ErrorHandling::error_function(Messages::E_INVALID_SIZE);
       
@@ -138,6 +146,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            GeomType geom_type ) 
       : NeutronicsProblem(matprop.get_G(), &matprop, geom_type)
     {
+      add_forms_from_homogeneous_part();
+      
       if (minus_f_src.size() != G)
         ErrorHandling::error_function(Messages::E_INVALID_SIZE);
       
@@ -150,7 +160,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                 double initial_keff_guess, 
                                                 GeomType geom_type ) 
       : Common::WeakForms::KeffEigenvalueProblem(matprop.get_G(), &matprop, geom_type, initial_keff_guess)
-    {            
+    { 
+      add_forms_from_homogeneous_part();
       init_rhs(iterates);
     }
 
@@ -161,6 +172,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                 GeomType geom_type ) 
       : Common::WeakForms::KeffEigenvalueProblem(matprop.get_G(), &matprop, geom_type, initial_keff_guess, fission_materials)
     {
+      add_forms_from_homogeneous_part();
       init_rhs(iterates);
     }
     
@@ -386,7 +398,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            GeomType geom_type) 
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
         SPNWeakForm(N, matprop.get_G())
-    {      
+    { 
+      add_forms_from_homogeneous_part();
+      
       std::set<std::string>::const_iterator material = matprop.get_materials_list().begin();
       for ( ; material != matprop.get_materials_list().end(); ++material)
       {
@@ -405,7 +419,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            GeomType geom_type  )
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
         SPNWeakForm(N, matprop.get_G())
-    {      
+    { 
+      add_forms_from_homogeneous_part();
+      
       for (unsigned int m = 0; m < N_odd; m++)
         for (unsigned int gto = 0; gto < G; gto++)
         {
@@ -421,7 +437,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                            GeomType geom_type  )
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
         SPNWeakForm(N, matprop.get_G())
-    {            
+    {  
+      add_forms_from_homogeneous_part();
+      
       for (unsigned int m = 0; m < N_odd; m++)
         for (unsigned int gto = 0; gto < G; gto++)
         {
@@ -438,6 +456,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
         SPNWeakForm(N, matprop.get_G())
     {
+      add_forms_from_homogeneous_part();
+      
       if (minus_isotropic_sources.size() != G)
         ErrorHandling::error_function(Messages::E_INVALID_SIZE);
             
@@ -457,6 +477,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
         SPNWeakForm(N, matprop.get_G())
     {
+      add_forms_from_homogeneous_part();
+      
       if (minus_isotropic_sources.size() != G)
         ErrorHandling::error_function(Messages::E_INVALID_SIZE);
       
@@ -478,6 +500,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                  initial_keff_guess, fission_materials),
         SPNWeakForm(N, matprop.get_G())
     { 
+      add_forms_from_homogeneous_part();
+      
       stored_flux_solutions.reserve(iterates.size());
       for (Hermes::vector<Solution<double>*>::const_iterator it = iterates.begin(); it != iterates.end(); ++it)
         stored_flux_solutions.push_back(*it);
