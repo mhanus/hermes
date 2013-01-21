@@ -32,7 +32,7 @@ const int P_INIT[N_EQUATIONS] = {
   1, 1//, 1, 1//, 1
 };
 
-const double THRESHOLD = 0.6;            // This is a quantitative parameter of the adapt(...) function and
+const double THRESHOLD = 0.66;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
 const int STRATEGY = 0;                  // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
@@ -179,6 +179,11 @@ int main(int argc, char* argv[])
   if (DISPLAY_MESHES && HERMES_VISUALIZATION)
     views.inspect_meshes(meshes);
   
+  // Get region areas for flux averaging.
+  PostProcessor pp(NEUTRONICS_SPN);      
+  Hermes::vector<double> areas;
+  pp.get_areas(meshes[0], edit_regions, &areas);
+  
   // Create pointers to the coarse and fine mesh solutions.
   Hermes::vector<Solution<double>*> coarse_solutions, solutions;
   
@@ -195,24 +200,19 @@ int main(int argc, char* argv[])
     spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
   
   ConstantableSpacesVector spaces(&spaces_);
-   
+  
   // Initialize the weak formulation.
   CustomWeakForm wf(matprop, SPN_ORDER);
   
-  // Get region areas for flux averaging.
-  PostProcessor pp(NEUTRONICS_SPN);      
-  Hermes::vector<double> areas;
-  pp.get_areas(meshes[0], edit_regions, &areas);
-  
+  DiscreteProblem<double> dp(&wf, spaces.get_const());
+    
+  // Create the solver based on Newton's method.
+  NewtonSolver<double> *newton = new NewtonSolver<double>(&dp);
+  newton->set_verbose_output(false);
+    
   if (STRATEGY < 0)
   {
     report_num_dof("Solving on unadapted meshes, #DOF: ", spaces.get());
-    
-    DiscreteProblem<double> dp(&wf, spaces.get_const());
-
-    // Perform Newton's iteration on reference mesh.
-    NewtonSolver<double> *newton = new NewtonSolver<double>(&dp);
-    newton->set_verbose_output(false);
   
     try
     {
@@ -226,9 +226,6 @@ int main(int argc, char* argv[])
     
     // Translate the resulting coefficient vector into instances of Solution.
     Solution<double>::vector_to_solutions(newton->get_sln_vector(), spaces.get_const(), solutions);
-
-    // Solution of discrete problem completed, delete the solver object.
-    delete newton;
     
     cpu_time.tick();
     Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
@@ -277,25 +274,37 @@ int main(int argc, char* argv[])
     H1ProjBasedSelector<double> selector(CAND_LIST, CONV_EXP, H2DRS_DEFAULT_ORDER);
     Hermes::vector<RefinementSelectors::Selector<double>*> selectors;
     for (unsigned int i = 0; i < N_EQUATIONS; i++)
+    {
       selectors.push_back(&selector);
+      selector.set_error_weights( 0.5*H2DRS_DEFAULT_ERR_WEIGHT_H + 0.5*H2DRS_DEFAULT_ERR_WEIGHT_P );
+    }
     
     // Adaptivity loop.
     int as = 1; bool done = false;
+    Hermes::vector<Space<double>*> ref_spaces_;
+    ref_spaces_.resize(N_EQUATIONS);
     do 
     {
       Loggable::Static::info("---- Adaptivity step %d:", as);
       
       // Initialize the fine mesh problem.
-      ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get()));
-      int ndof_fine = Space<double>::get_num_dofs(fine_spaces.get());
       
-      report_num_dof("Solving on fine meshes, #DOF: ", fine_spaces.get());
+      for (unsigned int i = 0; i < N_EQUATIONS; i++)
+      {
+        Mesh::ReferenceMeshCreator ref_mesh_creator(meshes[i]);
+        Mesh* ref_mesh = ref_mesh_creator.create_ref_mesh();
+        Space<double>::ReferenceSpaceCreator ref_space_creator(spaces.get_const()[i], ref_mesh);
+        Space<double>* ref_space = ref_space_creator.create_ref_space();
+        ref_spaces_[i] = ref_space;
+      }
     
-      DiscreteProblem<double> dp(&wf, fine_spaces.get_const());
+      ConstantableSpacesVector ref_spaces(&ref_spaces_);
+      int ndof_fine = Space<double>::get_num_dofs(ref_spaces.get());
+      
+      report_num_dof("Solving on fine meshes, #DOF: ", ref_spaces.get());
 
       // Perform Newton's iteration on reference mesh.
-      NewtonSolver<double> *newton = new NewtonSolver<double>(&dp);
-      newton->set_verbose_output(false);
+      newton->set_spaces(ref_spaces.get_const());
     
       try
       {
@@ -308,13 +317,10 @@ int main(int argc, char* argv[])
       }
       
       // Translate the resulting coefficient vector into instances of Solution.
-      Solution<double>::vector_to_solutions(newton->get_sln_vector(), fine_spaces.get_const(), solutions);
-
-      // Solution of discrete problem completed, delete the solver object.
-      delete newton;
+      Solution<double>::vector_to_solutions(newton->get_sln_vector(), ref_spaces.get_const(), solutions);
       
       // Project the fine mesh solution onto the coarse mesh.
-      report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces.get());
+      report_num_dof("Projecting fine-mesh solutions into coarse meshes, #DOF: ", spaces.get());
       OGProjection<double> ogProjection;
       ogProjection.project_global(spaces.get_const(), solutions, coarse_solutions);
 
@@ -389,7 +395,7 @@ int main(int argc, char* argv[])
       Loggable::Static::info("  --- Calculating total relative error of pseudo-fluxes approximation.");
           
       Adapt<double> adaptivity(spaces.get());  
-          
+         
       MomentGroupFlattener mg(N_GROUPS);  // Creates a single index from the moment-group pair.
       // Set the error estimation/normalization form.
       for (unsigned int g = 0; g < N_GROUPS; g++)
@@ -420,7 +426,7 @@ int main(int argc, char* argv[])
       cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       
       // If err_est is too large, adapt the mesh.
-      if (pseudo_flux_err_est_rel < ERR_STOP || as == MAX_ADAPT_NUM || ndof_fine >= NDOF_STOP) 
+      if (scalar_flux_err_est_rel < ERR_STOP || as == MAX_ADAPT_NUM || ndof_fine >= NDOF_STOP) 
         done = true;
       else 
       {
@@ -431,8 +437,10 @@ int main(int argc, char* argv[])
       if (!done)
       {
         for(unsigned int i = 0; i < N_EQUATIONS; i++)
-          delete fine_spaces.get()[i]->get_mesh();
-        delete &fine_spaces.get();
+        {
+          delete ref_spaces_[i]->get_mesh();
+          delete ref_spaces_[i];
+        }
         
         // Increase the adaptivity step counter.
         as++;
@@ -462,12 +470,11 @@ int main(int argc, char* argv[])
           // Make the fine-mesh spaces the final spaces for further analyses.
           delete spaces.get()[i]->get_mesh(); // Alternatively "delete meshes[i]".
           delete spaces.get()[i];
-          spaces.get()[i] = fine_spaces.get()[i]; 
+          spaces.get()[i] = ref_spaces.get()[i]; 
 
           // Delete the auxiliary coarse-mesh solutions.
           delete coarse_solutions[i];   
         }
-        delete &fine_spaces.get();
       }
     }
     while (done == false);
@@ -500,8 +507,7 @@ int main(int argc, char* argv[])
   // Final clean up.
   for(unsigned int i = 0; i < N_EQUATIONS; i++)
   {
-    if (STRATEGY >= 0)
-      delete spaces.get()[i]->get_mesh();
+    delete spaces.get()[i]->get_mesh();
     delete spaces.get()[i];
     delete solutions[i];
   }
