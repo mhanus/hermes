@@ -74,7 +74,7 @@ namespace Hermes
     };
 
     template<typename Scalar>
-    class HERMES_API Solution : public MeshFunction<Scalar>, public Hermes::Hermes2D::Mixins::XMLParsing
+    class HERMES_API Solution : public MeshFunction<Scalar>, public Hermes2D::Mixins::XMLParsing
     {
     public:
       Solution();
@@ -234,6 +234,8 @@ namespace Hermes
       Element* e_last; ///< last visited element when getting solution values at specific points
 
       friend class RefMap;
+      template<typename T> friend class ElemwiseParameterNonlinear;
+      template<typename T> friend class ElemwiseParameterNonlinearHermesFunc;      
       template<typename T> friend class KellyTypeAdapt;
       template<typename T> friend class CalculationContinuity;
       template<typename T> friend class OGProjection;

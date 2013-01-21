@@ -9,6 +9,7 @@ project(hermes2d)
   endif(WIN32)
 
   SET(H2D_XML_SCHEMAS_DIRECTORY "\"${PROJECT_SOURCE_DIR}/xml_schemas\"")
+  SET(H2D_PRECALCULATED_FORMS_DIRECTORY "\"${PROJECT_SOURCE_DIR}/precalculated_forms\"")
 
   configure_file(
     config.h.cmake
@@ -93,12 +94,13 @@ project(hermes2d)
   include_directories(${CMAKE_HOME_DIRECTORY}/hermes2d/include/integrals)
   include_directories(${CMAKE_HOME_DIRECTORY}/hermes2d/include/linearizer)
   include_directories(${CMAKE_HOME_DIRECTORY}/hermes2d/include/adapt)
+  include_directories(${CMAKE_HOME_DIRECTORY}/hermes2d/include/projections)
+  include_directories(${CMAKE_HOME_DIRECTORY}/hermes2d/include/precalculated_forms)
   include_directories(${CMAKE_HOME_DIRECTORY}/hermes2d/include/quadrature)
   include_directories(${CMAKE_HOME_DIRECTORY}/hermes2d/include/refinement_selectors)
   include_directories(${CMAKE_HOME_DIRECTORY}/hermes2d/include/views)
   include_directories(${CMAKE_HOME_DIRECTORY}/hermes2d/include/weakform)
   include_directories(${CMAKE_HOME_DIRECTORY}/hermes2d/include/weakform_library)
-  include_directories(${CMAKE_HOME_DIRECTORY}/hermes2d/include/projections)
 
   #
   # Source files for the Hermes2d library.
@@ -126,7 +128,7 @@ project(hermes2d)
     src/function/solution_h2d_xml.cpp
 
     src/api2d.cpp
-	src/mixins2d.cpp
+    src/mixins2d.cpp
     
     src/mesh/refmap.cpp
     src/mesh/curved.cpp
@@ -144,6 +146,11 @@ project(hermes2d)
     src/mesh/traverse.cpp
     src/mesh/mesh_data.cpp
 
+    src/elemwise_parameter/elemwise_parameter.cpp
+    src/elemwise_parameter/elemwise_parameter_func.cpp
+    src/elemwise_parameter/elemwise_parameter_mesh_func.cpp
+	src/elemwise_parameter/elemwise_parameter_nonlinear.cpp
+    
     src/quadrature/limit_order.cpp
     src/quadrature/quad_std.cpp
 
@@ -201,6 +208,9 @@ project(hermes2d)
     src/projections/ogprojection_nox.cpp
     src/projections/localprojection.cpp
 
+    src/precalculated_forms/weakforms_h1_const.cpp
+    src/precalculated_forms/weakforms_h1_nonlinear.cpp
+    
     src/weakform_library/weakforms_elasticity.cpp
     src/weakform_library/weakforms_h1.cpp
     src/weakform_library/weakforms_hcurl.cpp
@@ -236,7 +246,7 @@ project(hermes2d)
     include/integrals/hcurl.h
     
     include/api2d.h
-	include/mixins2d.h
+    include/mixins2d.h
     
     include/mesh/refmap.h
     include/mesh/curved.h
@@ -254,6 +264,11 @@ project(hermes2d)
     include/mesh/traverse.h
     include/mesh/mesh_data.h
 
+    include/elemwise_parameter/elemwise_parameter.h
+    include/elemwise_parameter/elemwise_parameter_func.h
+    include/elemwise_parameter/elemwise_parameter_mesh_func.h
+	include/elemwise_parameter/elemwise_parameter_nonlinear.h
+    
     include/quadrature/limit_order.h
     include/quadrature/quad.h
     include/quadrature/quad_all.h
@@ -309,6 +324,9 @@ project(hermes2d)
     include/projections/ogprojection_nox.h
     include/projections/localprojection.h
 
+    include/precalculated_forms/weakforms_h1_const.h
+    include/precalculated_forms/weakforms_h1_nonlinear.h
+    
     include/weakform_library/weakforms_elasticity.h
     include/weakform_library/weakforms_h1.h
     include/weakform_library/weakforms_hcurl.h
@@ -382,13 +400,15 @@ project(hermes2d)
   file(GLOB INC_INTEGRALS  "include/integrals/*.h")
   file(GLOB INC_LINEARIZER "include/linearizer/*.h")
   file(GLOB INC_ADAPT      "include/adapt/*.h")
+  file(GLOB INC_elemwise_parameter "include/elemwise_parameter/*.h")
+  file(GLOB INC_PROJECTIONS "include/projections/*.h")
+  file(GLOB INC_PRECALC     "include/precalculated_forms/*.h")
   file(GLOB INC_QUAD       "include/quadrature/*.h")
   file(GLOB INC_REF_SEL    "include/refinement_selectors/*.h")
   file(GLOB INC_VIEWS      "include/views/*.h")
   file(GLOB INC_WEAKFORM   "include/weakform/*.h")
   file(GLOB INC_WEAKFORM_LIBRARY "include/weakform_library/*.h")
-  file(GLOB INC_PROJECTIONS "include/projections/*.h")
-
+  
   install(FILES ${INC}           DESTINATION ${TARGET_ROOT}/include/hermes2d)
   install(FILES ${INC_SPACE}     DESTINATION ${TARGET_ROOT}/include/hermes2d/space)
   install(FILES ${INC_MESH}      DESTINATION ${TARGET_ROOT}/include/hermes2d/mesh)
@@ -399,12 +419,14 @@ project(hermes2d)
   install(FILES ${INC_INTEGRALS} DESTINATION ${TARGET_ROOT}/include/hermes2d/integrals)
   install(FILES ${INC_LINEARIZER}DESTINATION ${TARGET_ROOT}/include/hermes2d/linearizer)
   install(FILES ${INC_ADAPT}     DESTINATION ${TARGET_ROOT}/include/hermes2d/adapt)
+  install(FILES ${INC_elemwise_parameter}  DESTINATION ${TARGET_ROOT}/include/hermes2d/elemwise_parameter)
+  install(FILES ${INC_PROJECTIONS}  DESTINATION ${TARGET_ROOT}/include/hermes2d/projections)
+  install(FILES ${INC_PRECALC}  DESTINATION ${TARGET_ROOT}/include/hermes2d/precalculated_forms)
   install(FILES ${INC_QUAD}      DESTINATION ${TARGET_ROOT}/include/hermes2d/quadrature)
   install(FILES ${INC_REF_SEL}   DESTINATION ${TARGET_ROOT}/include/hermes2d/refinement_selectors)
   install(FILES ${INC_VIEWS}     DESTINATION ${TARGET_ROOT}/include/hermes2d/views)
   install(FILES ${INC_WEAKFORM}  DESTINATION ${TARGET_ROOT}/include/hermes2d/weakform)
   install(FILES ${INC_WEAKFORM_LIBRARY}  DESTINATION ${TARGET_ROOT}/include/hermes2d/weakform_library)
-  install(FILES ${INC_PROJECTIONS}  DESTINATION ${TARGET_ROOT}/include/hermes2d/projections)
 
 IF(EXISTS "hermes2d/test_examples")
   if(H2D_WITH_TEST_EXAMPLES)
