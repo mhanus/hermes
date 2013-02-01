@@ -184,23 +184,34 @@ int main(int argc, char* argv[])
       selectors.push_back(&selector);
     
     // Adaptivity loop:
-    int as = 1; bool done = false; std::vector<Mesh*> old_meshes(power_iterates.size());
+    int as = 1; bool done = false; 
+    std::vector<Mesh*> old_meshes(power_iterates.size());
+    Hermes::vector<Space<double>*> ref_spaces_;
+    ref_spaces_.resize(N_EQUATIONS);
     do 
     {
       Loggable::Static::info("---- Adaptivity step %d:", as);
       
-      // Initialize the fine mesh problem.
       Loggable::Static::info("Solving on fine meshes.");
       
-      ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get()));
-            
-      // Solve the fine mesh problem.
-      report_num_dof("Fine mesh power iteration, NDOF: ", fine_spaces.get());
-      Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, fine_spaces.get_const(), matrix_solver, TOL_PIT_FM);
+      for (unsigned int i = 0; i < N_EQUATIONS; i++)
+      {
+        Mesh::ReferenceMeshCreator ref_mesh_creator(meshes[i]);
+        Mesh* ref_mesh = ref_mesh_creator.create_ref_mesh();
+        Space<double>::ReferenceSpaceCreator ref_space_creator(spaces.get_const()[i], ref_mesh);
+        Space<double>* ref_space = ref_space_creator.create_ref_space();
+        ref_spaces_[i] = ref_space;
+      }
+    
+      ConstantableSpacesVector ref_spaces(&ref_spaces_);
       
-      // Delete meshes dynamically created in 'construct_refined_spaces' in previous adaptativity iteration
+      // Solve the fine mesh problem.
+      report_num_dof("Fine mesh power iteration, NDOF: ", ref_spaces.get());
+      Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, ref_spaces.get_const(), matrix_solver, TOL_PIT_FM);
+      
+      // Delete meshes dynamically created in previous adaptativity iteration
       // (they are still needed in current 'keff_eigenvalue_iteration', but pointers to them get replaced 
-      // in this function by pointers to 'fine_spaces', so we have to keep track of them via 'old_meshes').
+      // in this function by pointers to 'ref_spaces', so we have to keep track of them via 'old_meshes').
       if (as > 1)
         for(unsigned int i = 0; i < power_iterates.size(); i++)
           delete old_meshes[i];
@@ -262,9 +273,11 @@ int main(int argc, char* argv[])
       
       if (!done)
       {
-        for(unsigned int i = 0; i < power_iterates.size(); i++)
-          old_meshes[i] = const_cast<Mesh*>(power_iterates[i]->get_mesh());
-        
+        for(unsigned int i = 0; i < N_EQUATIONS; i++)
+        {
+          old_meshes[i] = ref_spaces_[i]->get_mesh();
+          delete ref_spaces_[i];
+        }
         // Increase counter.
         as++;
       }
