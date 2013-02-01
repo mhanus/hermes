@@ -69,11 +69,11 @@ const int MAX_ADAPT_NUM = 60;            // Adaptivity process stops when the nu
 Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  
 
 // Visualisation options.
-const bool HERMES_VISUALIZATION = true;         // Set to "true" to enable Hermes OpenGL visualization. 
-const bool VTK_VISUALIZATION = false;           // Set to "true" to enable VTK output.
+const bool HERMES_VISUALIZATION = false;         // Set to "true" to enable Hermes OpenGL visualization. 
+const bool VTK_VISUALIZATION = true;           // Set to "true" to enable VTK output.
 const bool DISPLAY_MESHES = false;              // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
-const bool SHOW_INTERMEDIATE_ORDERS = true;     // Set to "true" to display coarse mesh solutions during adaptivity.
-const bool SHOW_INTERMEDIATE_SOLUTIONS = true;  // Set to "true" to display solutions on intermediate meshes during adaptivity.
+const bool SHOW_INTERMEDIATE_ORDERS = false;     // Set to "true" to display coarse mesh solutions during adaptivity.
+const bool SHOW_INTERMEDIATE_SOLUTIONS = false;  // Set to "true" to display solutions on intermediate meshes during adaptivity.
 
 // Problem parameters:
 
@@ -136,7 +136,7 @@ int main(int argc, char* argv[])
 {
   // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 0);
-  Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
+  //Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
 
   // Time measurement.
   TimeMeasurable cpu_time;
