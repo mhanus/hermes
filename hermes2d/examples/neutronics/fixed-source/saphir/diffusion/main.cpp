@@ -119,11 +119,12 @@ int main(int argc, char* argv[])
   H1ProjBasedSelector<double> selector(CAND_LIST, CONV_EXP, H2DRS_DEFAULT_ORDER);
 
   // Initialize views.
+#ifndef NOGLUT  
   Views::ScalarView sview("Solution", new Views::WinGeom(0, 0, 440, 350));
   sview.fix_scale_width(50);
   sview.show_mesh(false);
   Views::OrderView oview("Polynomial orders", new Views::WinGeom(450, 0, 400, 350));
-  
+#endif  
   // DOF and CPU convergence graphs initialization.
   SimpleGraph graph_dof, graph_cpu;
   
@@ -176,9 +177,10 @@ int main(int argc, char* argv[])
     cpu_time.tick();
    
     // View the coarse mesh solution and polynomial orders.
+#ifndef NOGLUT
     sview.show(&sln);
     oview.show(&space);
-
+#endif
     // Skip visualization time.
     cpu_time.tick(TimeMeasurable::HERMES_SKIP);
 
@@ -224,6 +226,7 @@ int main(int argc, char* argv[])
   cpu_time.tick();
   Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
 
+#ifndef NOGLUT
   // Show the reference solution - the final result.
   sview.set_title("Fine mesh solution");
   sview.show_mesh(false);
@@ -231,5 +234,16 @@ int main(int argc, char* argv[])
 
   // Wait for all views to be closed.
   Views::View::wait();
+#else
+  // Output solution in VTK format.
+  Hermes::Hermes2D::Views::Linearizer lin;
+  bool mode_3D = true;
+  lin.save_solution_vtk(&ref_sln, "sln.vtk", "Neutron flux", mode_3D);
+
+  // Output mesh and element orders in VTK format.
+  Hermes::Hermes2D::Views::Orderizer ord;
+  ord.save_orders_vtk(&space, "ord.vtk");
+#endif
+  
   return 0;
 }
