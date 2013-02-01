@@ -654,10 +654,12 @@ void calculateCache(CustomWeakFormPoissonCacheCalculation& wf, Shapeset* shapese
 
 void calculateResultWithConstantForms(CustomWeakFormPoisson& wf)
 {
-  Views::BaseView<double> m;
-  m.show(space);
-  m.wait_for_close();
-
+  if (HERMES_VISUALIZATION)
+  {
+  	Views::BaseView<double> m;
+  	m.show(space);
+  	m.wait_for_close();
+  }
 
   // Utilities.
   int ndof = space->get_num_dofs();
@@ -717,12 +719,12 @@ void calculateResultWithConstantForms(CustomWeakFormPoisson& wf)
     ord.save_orders_vtk(space, "ord.vtk");
   }
 
-  // Visualize the solution.
-  Hermes::Hermes2D::Views::ScalarView viewS("Solution", new Hermes::Hermes2D::Views::WinGeom(50, 50, 1000, 800));
-
   if(HERMES_VISUALIZATION)
   {
-    viewS.show(&sln);
+	// Visualize the solution.
+	Hermes::Hermes2D::Views::ScalarView viewS("Solution", new Hermes::Hermes2D::Views::WinGeom(50, 50, 1000, 800));
+
+	viewS.show(&sln);
     viewS.wait_for_close();
   }
 
