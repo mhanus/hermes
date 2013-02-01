@@ -160,26 +160,33 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {
       if (sviews != NULL)
       {
+#ifndef NOGLUT
         for (unsigned int i = 0; i < n_equations; i++)
           delete sviews[i];
+#endif
         delete [] sviews;
       }
       
       if (oviews != NULL)
       {
+#ifndef NOGLUT
         for (unsigned int i = 0; i < n_equations; i++)
           delete oviews[i];
+#endif
         delete [] oviews;
       }
       
       if (mviews != NULL)
       {
+#ifndef NOGLUT
         for (unsigned int i = 0; i < n_equations; i++)
           delete mviews[i];
+#endif
         delete [] mviews;
       }
     }
-    
+
+#ifndef NOGLUT
     void Visualization::inspect_meshes(Hermes::vector< Mesh* > meshes)
     {
       if (display_meshes)
@@ -218,7 +225,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       oviews = NULL;
     }
-    
+#endif
+
   /* SupportClasses */
   }
   /* Common */
@@ -226,6 +234,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   
   namespace Diffusion { namespace SupportClasses
   {
+#ifndef NOGLUT
     void Visualization::init(unsigned int G, unsigned int width, unsigned int height, bool display_meshes)
     {
       for (unsigned int g = 0; g < n_groups; g++)
@@ -265,7 +274,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       for (unsigned int g = 0; g < n_groups; g++)
         oviews[g]->show(spaces[g]);
     }
-    
+#endif
+
     void Visualization::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
                                     Hermes::vector< Solution<double>* > solutions, bool mode_3D)
     {
@@ -617,6 +627,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       n_odd_moments = n_moments/2;
       Common::SupportClasses::Visualization::init(G * n_odd_moments, G);
       
+#ifndef NOGLUT
       for (unsigned int g = 0; g < n_groups; g++)
       {
         std::string title_flux = base_title_flux + itos(g) + std::string(", pseudo-flux #");
@@ -641,6 +652,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             mviews[mg.pos(m,g)] = new Views::MeshView((title + itos(m)).c_str(), new Views::WinGeom(m*(width+2), g*(height+2), width, height));
         }
       }
+#endif
     }
     
     Visualization::~Visualization()
@@ -648,16 +660,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       assert((sviews_app == NULL && vviews == NULL) || (sviews_app != NULL && vviews != NULL));
       if (sviews_app != NULL)
       {
+#ifndef NOGLUT
         for (unsigned int i = 0; i < n_equations; i++)
         {
           delete sviews_app[i];
           delete vviews[i];
         }
+#endif
         delete [] sviews_app;
         delete [] vviews;
       }
     }
-            
+
+#ifndef NOGLUT
     void Visualization::show_meshes(Hermes::vector< Mesh* > meshes)
     {
       if (display_meshes)
@@ -743,6 +758,26 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
     }
     
+    void Visualization::inspect_solutions(Hermes::vector< Solution<double>* > solutions)
+    {
+      show_solutions(solutions);
+      Views::View::wait();
+      
+      for (unsigned int i = 0; i < n_equations; i++)
+        delete sviews[i];
+      delete [] sviews;
+      
+      sviews = NULL;
+    }
+
+    void Visualization::show_orders(Hermes::vector< Space<double>* > spaces)
+    {
+      for (unsigned int g = 0; g < n_groups; g++)
+        for (unsigned int m = 0; m < n_odd_moments; m++)
+          oviews[mg.pos(m,g)]->show(spaces[mg.pos(m,g)]);
+    }
+#endif
+    
     void Visualization::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
                                     Hermes::vector< Solution<double>* > solutions, bool mode_3D)
     { 
@@ -777,25 +812,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           ord.save_orders_vtk(spaces[mg.pos(m,g)], file.c_str());
           info("Information about approximation space for moment %d, group %d saved in VTK format to file %s.", 2*m+1, g, file.c_str());
         }
-    }
-    
-    void Visualization::inspect_solutions(Hermes::vector< Solution<double>* > solutions)
-    {
-      show_solutions(solutions);
-      Views::View::wait();
-      
-      for (unsigned int i = 0; i < n_equations; i++)
-        delete sviews[i];
-      delete [] sviews;
-      
-      sviews = NULL;
-    }
-
-    void Visualization::show_orders(Hermes::vector< Space<double>* > spaces)
-    {
-      for (unsigned int g = 0; g < n_groups; g++)
-        for (unsigned int m = 0; m < n_odd_moments; m++)
-          oviews[mg.pos(m,g)]->show(spaces[mg.pos(m,g)]);
     }
   
   /* SupportClasses */
