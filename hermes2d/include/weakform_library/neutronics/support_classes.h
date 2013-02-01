@@ -154,10 +154,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         virtual void show_meshes(Hermes::vector<Mesh*> meshes) = 0;
         virtual void show_solutions(Hermes::vector< Solution<double>* > solutions) = 0;
         virtual void show_orders(Hermes::vector<Space<double>*> spaces) = 0;
-        
+
+#ifndef NOGLUT
         void inspect_meshes(Hermes::vector<Mesh*> meshes);
         void inspect_solutions(Hermes::vector< Solution<double>* > solutions);
         void inspect_orders(Hermes::vector<Space<double>*> spaces);
+#else
+        void inspect_meshes(Hermes::vector<Mesh*> meshes) {};
+        void inspect_solutions(Hermes::vector< Solution<double>* > solutions) {};
+        void inspect_orders(Hermes::vector<Space<double>*> spaces) {};
+#endif
         
         Views::ScalarView** get_solution_views(unsigned int* num) { *num = n_equations; return sviews; }
         Views::OrderView** get_order_views(unsigned int* num)     { *num = n_equations; return oviews; }
@@ -176,12 +182,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     class Visualization : public Common::SupportClasses::Visualization
     {
       protected:
+#ifndef NOGLUT
         void init(unsigned int G, unsigned int width, unsigned int height, bool display_meshes);
-        
+#else
+        void init(unsigned int G, unsigned int width, unsigned int height, bool display_meshes) {};
+#endif
       public:
         Visualization(unsigned int G, bool display_meshes = false)
           : Common::SupportClasses::Visualization(G, G, 450, 450, display_meshes)
-        { 
+        {
           init(G, 450, 450, display_meshes); 
         }
         Visualization(unsigned int G, unsigned int width, unsigned int height, bool display_meshes = false)
@@ -190,9 +199,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           init(G, width, height, display_meshes); 
         }
         
+#ifndef NOGLUT
         void show_meshes(Hermes::vector<Mesh*> meshes);
         void show_solutions(Hermes::vector< Solution<double>* > solutions);
         void show_orders(Hermes::vector<Space<double>*> spaces);     
+#else
+        void show_meshes(Hermes::vector<Mesh*> meshes) {};
+        void show_solutions(Hermes::vector< Solution<double>* > solutions) {};
+        void show_orders(Hermes::vector<Space<double>*> spaces) {};     
+#endif
         
         void save_solutions_vtk(const std::string& base_filename, const std::string& base_varname,
                                 Hermes::vector< Solution<double>* > solutions,  bool mode_3D = false);
@@ -467,7 +482,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           init(spn_order, G, width, height, display_meshes);
         }
         virtual ~Visualization();
-        
+
+#ifndef NOGLUT 
         void show_meshes(Hermes::vector<Mesh*> meshes);
         void show_solutions(Hermes::vector< Solution<double>* > solutions);
         void show_orders(Hermes::vector<Space<double>*> spaces);
@@ -477,13 +493,23 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         void show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView* vview,
                                   Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
         void show_all_flux_moments(Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
+#else        
+        void show_meshes(Hermes::vector<Mesh*> meshes) {};
+        void show_solutions(Hermes::vector< Solution<double>* > solutions) {};
+        void show_orders(Hermes::vector<Space<double>*> spaces) {};
         
+        void inspect_solutions(Hermes::vector< Solution<double>* > solutions);
+        
+        void show_even_flux_moment(unsigned int moment, unsigned int group, Views::ScalarView* sview,
+                                   Hermes::vector< Solution<double>* > solutions) {};
+        void show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView* vview,
+                                  Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop) {};
+        void show_all_flux_moments(Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop) {};
+#endif
         
         void save_solutions_vtk(const std::string& base_filename, const std::string& base_varname,
                                 Hermes::vector< Solution<double>* > solutions, bool mode_3D = false);                   
         void save_orders_vtk(const std::string& base_filename, Hermes::vector<Space<double>*> spaces);
-        
-        void inspect_solutions(Hermes::vector< Solution<double>* > solutions);
     };       
     
   /* SupportClasses */
