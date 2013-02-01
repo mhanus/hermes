@@ -105,6 +105,9 @@ project(hermes)
     
   ### end DEFAULT CONFIGURATION ###
 
+  # Allow to override the default values in CMake.vars:
+  include(CMake.vars OPTIONAL)
+
   #ADDED BY COLMAN
   IF (APPLE)
     IF (NOT CMAKE_SYSTEM_PROCESSOR MATCHES powerpc)
@@ -144,9 +147,6 @@ project(hermes)
     include(${CMAKE_HOME_DIRECTORY}/OSX.cmake)
   ENDIF (APPLE)
   # end ADDED BY COLMAN
-
-  # Allow to override the default values in CMake.vars:
-  include(CMake.vars OPTIONAL)
   
   # Determine the number of cores.
   if(WIN32)
