@@ -56,9 +56,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                           const MaterialPropertyMaps* matprop,
                           GeomType geom_type)
           : WeakForm<double>(n_eq), 
-            matprop(matprop), geom_type(geom_type), G(matprop->get_G()) {};
-        
-        virtual void add_forms_from_homogeneous_part() = 0;
+            matprop(matprop), geom_type(geom_type), G(matprop->get_G()) 
+        { };
         
       public:
         virtual ~NeutronicsProblem() { };
@@ -71,8 +70,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {
       protected:
         double keff;
-        const Hermes::vector<std::string>& fission_materials;
-        Hermes::vector<std::string> fission_regions;
 
         Hermes::vector<Solution<double>*> stored_flux_solutions;
         Hermes::vector<MeshFunction<double>*> scalar_flux_iterates;
@@ -81,20 +78,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         KeffEigenvalueProblem(unsigned int n_eq,
                               const MaterialPropertyMaps* matprop,
                               GeomType geom_type, 
-                              double initial_keff_guess,
-                              const Hermes::vector<std::string>& fission_materials = Hermes::vector<std::string>()) 
+                              double initial_keff_guess) 
           : NeutronicsProblem(n_eq, matprop, geom_type),
-            keff(initial_keff_guess), fission_materials(fission_materials)
-        { 
-          Hermes::vector<std::string>::const_iterator it = fission_materials.begin();
-          Hermes::vector<std::string>::iterator insert_it = fission_regions.begin();
-          for ( ; it != fission_materials.end(); ++it)
-          {
-            Hermes::vector<std::string> regs = matprop->get_regions(*it);
-            fission_regions.insert(insert_it, regs.begin(), regs.end());
-            insert_it = fission_regions.begin();
-          }
-        };
+            keff(initial_keff_guess)
+        { };
         
       public:        
         virtual void update_keff(double new_keff) = 0; //TODO: Define a common FissionYield::OuterIteration class,
@@ -108,7 +95,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                       
         double get_keff() const { return keff; } 
         const Hermes::vector<MeshFunction<double>*>& get_scalar_flux_iterates() const { return scalar_flux_iterates; }
-        const Hermes::vector<std::string>& get_fission_regions() const { return fission_regions; }
     };
     
   /* WeakForms */  
@@ -123,41 +109,55 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     class DiffusionWeakForm
     {
-      protected:        
-        void add_forms_from_homogeneous_part(Common::WeakForms::NeutronicsProblem* wf, 
-                                             const MaterialPropertyMaps *mp, GeomType geom_type, bool include_fission);
+      protected:
+        enum FissionTreatment { IMPLICIT, EXPLICIT, NONE };
+        
+        DiffusionWeakForm() {};
+        
+        void add_forms_nonlinear(Common::WeakForms::NeutronicsProblem* wf, 
+                                const MaterialPropertyMaps *mp, GeomType geom_type, FissionTreatment include_fission);
+        void add_forms(Common::WeakForms::NeutronicsProblem* wf, 
+                      const MaterialPropertyMaps *mp, GeomType geom_type, FissionTreatment include_fission);
     };
           
     class FixedSourceProblem : public Common::WeakForms::NeutronicsProblem, protected DiffusionWeakForm
     {  
       protected:
-        virtual void add_forms_from_homogeneous_part() { 
-          DiffusionWeakForm::add_forms_from_homogeneous_part(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, true); 
+        virtual void add_forms_from_homogeneous_part(bool solve_by_newton, FissionTreatment include_fission = IMPLICIT) { 
+          if (solve_by_newton) 
+            add_forms_nonlinear(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, include_fission);
+          else
+            add_forms(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, include_fission);
         }
         
       public:
         FixedSourceProblem(const MaterialPropertyMaps& matprop, 
-                           GeomType geom_type = HERMES_PLANAR);
+                           GeomType geom_type = HERMES_PLANAR,
+                           bool solve_by_newton = false);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, 
                            Hermes2DFunction<double> *minus_f_src,
                            const std::string& src_area = HERMES_ANY,
-                           GeomType geom_type = HERMES_PLANAR);
+                           GeomType geom_type = HERMES_PLANAR,
+                           bool solve_by_newton = false);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, 
                            Hermes2DFunction<double> *minus_f_src,
                            const Hermes::vector<std::string>& src_areas,
-                           GeomType geom_type = HERMES_PLANAR);
+                           GeomType geom_type = HERMES_PLANAR,
+                           bool solve_by_newton = false);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, 
                            const std::vector<Hermes2DFunction<double>*>& minus_f_src,
                            const std::string& src_area = HERMES_ANY,
-                           GeomType geom_type = HERMES_PLANAR);
+                           GeomType geom_type = HERMES_PLANAR,
+                           bool solve_by_newton = false);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, 
                            const std::vector<Hermes2DFunction<double>*>& minus_f_src,
                            const Hermes::vector<std::string>& src_areas,
-                           GeomType geom_type = HERMES_PLANAR);
+                           GeomType geom_type = HERMES_PLANAR,
+                           bool solve_by_newton = false);
         
         virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_DIFFUSION; }
         
@@ -166,35 +166,34 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             
     class KeffEigenvalueProblem : public Common::WeakForms::KeffEigenvalueProblem, protected DiffusionWeakForm
     {
-      protected:          
+      protected:    
         void init_rhs(const Hermes::vector<Solution<double>*>& iterates);
-        virtual void add_forms_from_homogeneous_part() { 
-          DiffusionWeakForm::add_forms_from_homogeneous_part(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, false); 
+        
+        virtual void add_forms_from_homogeneous_part(bool solve_by_newton, FissionTreatment include_fission = NONE) { 
+          if (solve_by_newton) 
+            add_forms_nonlinear(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, include_fission);
+          else
+            add_forms(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, include_fission);
         }
         
       public:                                        
         KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
                               const Hermes::vector<Solution<double>*>& iterates,
                               double initial_keff_guess,
-                              GeomType geom_type = HERMES_PLANAR );    
-                                                                                
-        KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                              const Hermes::vector<Solution<double>*>& iterates, 
-                              const Hermes::vector<std::string>& fission_materials,
-                              double initial_keff_guess,
-                              GeomType geom_type = HERMES_PLANAR );                                            
+                              GeomType geom_type = HERMES_PLANAR,
+                              bool solve_by_newton = false);                                
                                         
         void update_keff(double new_keff);
         void update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed);
         
         Common::SupportClasses::SourceFilter* create_source_filter() {
-          return new SupportClasses::SourceFilter(*matprop, fission_regions, geom_type);
+          return new SupportClasses::SourceFilter(*matprop, geom_type);
         }
         Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<Solution<double>*>& solutions) {
-          return new SupportClasses::SourceFilter(solutions, *matprop, fission_regions, geom_type);
+          return new SupportClasses::SourceFilter(solutions, *matprop, geom_type);
         }
         Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions) {
-          return new SupportClasses::SourceFilter(solutions, *matprop, fission_regions, geom_type);
+          return new SupportClasses::SourceFilter(solutions, *matprop, geom_type);
         }
         
         virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_DIFFUSION; }
@@ -222,45 +221,58 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     class SPNWeakForm
     {
       protected:
+        enum FissionTreatment { IMPLICIT, EXPLICIT, NONE };
+        
         unsigned int N, N_odd;
         MomentGroupFlattener mg;
         
         SPNWeakForm(unsigned int N, unsigned int G) : N(N), N_odd((N+1)/2), mg(G) { };
         
-        void add_forms_from_homogeneous_part(Common::WeakForms::NeutronicsProblem* wf, 
-                                             const MaterialPropertyMaps *mp, GeomType geom_type, bool include_fission);
+        void add_forms_nonlinear(Common::WeakForms::NeutronicsProblem* wf, 
+                                 const MaterialPropertyMaps *mp, GeomType geom_type, FissionTreatment include_fission);
+        
+        void add_forms(Common::WeakForms::NeutronicsProblem* wf, 
+                       const MaterialPropertyMaps *mp, GeomType geom_type, FissionTreatment include_fission);
     };
             
     class FixedSourceProblem : public Common::WeakForms::NeutronicsProblem, protected SPNWeakForm
     {
       protected:
-        virtual void add_forms_from_homogeneous_part() { 
-          SPNWeakForm::add_forms_from_homogeneous_part(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, true); 
+        virtual void add_forms_from_homogeneous_part(bool solve_by_newton, FissionTreatment include_fission = IMPLICIT) { 
+          if (solve_by_newton) 
+            add_forms_nonlinear(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, include_fission);
+          else
+            add_forms(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, include_fission); 
         }
         
       public:
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                           GeomType geom_type = HERMES_PLANAR);
+                           GeomType geom_type = HERMES_PLANAR,
+                           bool solve_by_newton = false);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
                            Hermes2DFunction<double> *minus_isotropic_source,
                            std::string src_area = HERMES_ANY,
-                           GeomType geom_type = HERMES_PLANAR);
+                           GeomType geom_type = HERMES_PLANAR,
+                           bool solve_by_newton = false);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
                            Hermes2DFunction<double> *minus_isotropic_source,
                            Hermes::vector<std::string> src_areas,
-                           GeomType geom_type = HERMES_PLANAR);
+                           GeomType geom_type = HERMES_PLANAR,
+                           bool solve_by_newton = false);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
                            const std::vector<Hermes2DFunction<double>*>& minus_isotropic_sources,
                            std::string src_area = HERMES_ANY,
-                           GeomType geom_type = HERMES_PLANAR);
+                           GeomType geom_type = HERMES_PLANAR,
+                           bool solve_by_newton = false);
         
         FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
                            const std::vector<Hermes2DFunction<double>*>& minus_isotropic_sources,
                            Hermes::vector<std::string> src_areas,
-                           GeomType geom_type = HERMES_PLANAR);
+                           GeomType geom_type = HERMES_PLANAR,
+                           bool solve_by_newton = false);
         
         virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_SPN; }
         
@@ -270,16 +282,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     class KeffEigenvalueProblem : public Common::WeakForms::KeffEigenvalueProblem, protected SPNWeakForm
     {
       protected:        
-        virtual void add_forms_from_homogeneous_part() { 
-          SPNWeakForm::add_forms_from_homogeneous_part(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, false); 
+        virtual void add_forms_from_homogeneous_part(bool solve_by_newton, FissionTreatment include_fission = NONE) { 
+          if (solve_by_newton) 
+            add_forms_nonlinear(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, include_fission);
+          else
+            add_forms(this, static_cast<const MaterialPropertyMaps*>(matprop), geom_type, include_fission); 
         }
         
       public:
         KeffEigenvalueProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                              const Hermes::vector<Solution<double>*>& iterates, 
-                              const Hermes::vector<std::string>& fission_regions,
+                              const Hermes::vector<Solution<double>*>& iterates,
                               double initial_keff_guess,
-                              GeomType geom_type = HERMES_PLANAR );
+                              GeomType geom_type = HERMES_PLANAR,
+                              bool solve_by_newton = false);
         
         virtual ~KeffEigenvalueProblem();
         
@@ -287,13 +302,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         void update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed);
                 
         Common::SupportClasses::SourceFilter* create_source_filter() {
-          return new SupportClasses::SourceFilter(*matprop, fission_regions, geom_type);
+          return new SupportClasses::SourceFilter(*matprop, geom_type);
         }
         Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<Solution<double>*>& solutions) {
-          return new SupportClasses::SourceFilter(solutions, *matprop, fission_regions, geom_type);
+          return new SupportClasses::SourceFilter(solutions, *matprop, geom_type);
         }
         Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions) {
-          return new SupportClasses::SourceFilter(solutions, *matprop, fission_regions, geom_type);
+          return new SupportClasses::SourceFilter(solutions, *matprop, geom_type);
         }
         
         virtual NeutronicsMethod get_method_type() const { return NEUTRONICS_SPN; }

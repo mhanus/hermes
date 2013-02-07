@@ -87,6 +87,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         std::map<std::string, std::string> region_material_map;
         std::map<std::string, Hermes::vector<std::string> > material_region_map;
         
+        Hermes::vector<std::string> fission_materials;
+        Hermes::vector<std::string> fission_regions;
+        
         unsigned int G;
         
         bool1 fission_nonzero_structure;
@@ -215,6 +218,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         const rank1& get_nu(const std::string& material) const;
         const rank1& get_chi(const std::string& material) const;
         const rank1& get_iso_src(const std::string& material) const;
+        
+        void set_fission_materials(const Hermes::vector<std::string>& fission_materials);
+        const Hermes::vector<std::string>& get_fission_regions() const { return fission_regions; }
+        const Hermes::vector<std::string>& get_fission_materials() const { return fission_materials; }
         
         unsigned int get_G() const { return G; } 
         

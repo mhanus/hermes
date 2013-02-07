@@ -11,7 +11,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   namespace Common { namespace MaterialProperties
   {
     MaterialPropertyMaps::MaterialPropertyMaps(unsigned int G, const RegionMaterialMap& reg_mat_map)
-      : region_material_map(reg_mat_map), G(G)
+      : region_material_map(reg_mat_map), G(G), 
+        fission_materials(Hermes::vector<std::string>()), fission_regions(Hermes::vector<std::string>())
     {
       RegionMaterialMap::const_iterator it = reg_mat_map.begin();
       for ( ; it != reg_mat_map.end(); ++it)
@@ -22,12 +23,27 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     
     MaterialPropertyMaps::MaterialPropertyMaps(unsigned int G, const std::set<std::string>& mat_list) 
-      : materials_list(mat_list), G(G)  
+      : materials_list(mat_list), G(G),
+        fission_materials(Hermes::vector<std::string>()), fission_regions(Hermes::vector<std::string>())  
     { 
       std::set<std::string>::const_iterator it = mat_list.begin();
       for ( ; it != mat_list.end(); ++it)
         material_region_map[*it].push_back(*it);
     };
+    
+    void MaterialPropertyMaps::set_fission_materials(const Hermes::vector<std::string>& fission_materials)
+    {
+      this->fission_materials = fission_materials;
+          
+      Hermes::vector<std::string>::const_iterator it = fission_materials.begin();
+      Hermes::vector<std::string>::iterator insert_it = fission_regions.begin();
+      for ( ; it != fission_materials.end(); ++it)
+      {
+        Hermes::vector<std::string> regs = this->get_regions(*it);
+        fission_regions.insert(insert_it, regs.begin(), regs.end());
+        insert_it = fission_regions.begin();
+      }
+    }
 
     void MaterialPropertyMaps::extend_to_multigroup(const MaterialPropertyMap0& mrsg_map, 
                                                     MaterialPropertyMap1 *mrmg_map)
