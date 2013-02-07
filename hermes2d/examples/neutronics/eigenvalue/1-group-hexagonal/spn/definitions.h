@@ -5,11 +5,9 @@ using namespace Hermes::Mixins;
 #include "weakforms_neutronics.h"
 using namespace Neutronics::SPN;
 
-class CustomWeakForm : public WeakForms::KeffEigenvalueProblem
+class CustomWeakForm : public WeakForms::FixedSourceProblem
 {
   public:
     CustomWeakForm(const MaterialProperties::MaterialPropertyMaps& matprop, unsigned int N,
-                   const Hermes::vector<Solution<double>*>& iterates,
-                   const Hermes::vector<std::string>& fission_regions,
-                   double init_keff, const std::string& bdy_vacuum);
+                   const std::string& bdy_vacuum);
 };

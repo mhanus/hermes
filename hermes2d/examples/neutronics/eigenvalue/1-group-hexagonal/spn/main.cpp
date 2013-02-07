@@ -13,14 +13,14 @@ const unsigned int N_ODD_MOMENTS = (N_MOMENTS+1)/2;
 const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
 
 const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
-  1, 1//, 2, 2                              
+  1, 1//, 1//, 2                              
 };
 const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
-  1, 1//, 2, 2                             
+  1, 1//, 1//, 2                             
 };      
 const double THRESHOLD = 0.3;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
-const int STRATEGY = 1;                  // Adaptive strategy:
+const int STRATEGY = 0;                  // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
                                          //   error is processed. If more elements have similar errors, refine
                                          //   all to keep the mesh symmetric.
@@ -50,21 +50,20 @@ const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the nu
 Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
                                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
                                                   
-const bool HERMES_VISUALIZATION = true;  // Set to "true" to enable Hermes OpenGL visualization. 
+const bool HERMES_VISUALIZATION = false;  // Set to "true" to enable Hermes OpenGL visualization. 
 const bool VTK_VISUALIZATION = false;     // Set to "true" to enable VTK output.
 const bool DISPLAY_MESHES = false;       // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
 const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
 
 // Power iteration control.
-double k_eff = 1.0;         // Initial eigenvalue approximation.
-double TOL_PIT_CM = 1e-5;   // Tolerance for eigenvalue convergence on the coarse mesh.
-double TOL_PIT_FM = 1e-6;   // Tolerance for eigenvalue convergence on the fine mesh.
+double TOL_PIT_CM = 1e-6;   // Tolerance for eigenvalue convergence on the coarse mesh.
+double TOL_PIT_FM = 1e-7;   // Tolerance for eigenvalue convergence on the fine mesh.
 
 int main(int argc, char* argv[])
 {
   // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 0);
-  Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
+  //Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
 
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -75,6 +74,7 @@ int main(int argc, char* argv[])
   matprop.set_nu(nu);
   matprop.set_Sigma_tn(St);
   matprop.set_Sigma_sn(Ssn);
+  matprop.set_fission_materials(fission_materials);
   
   matprop.validate();
   
@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
   
   // Convert the mesh so that it has one type of elements (optional). 
   //meshes[0]->convert_quads_to_triangles();
-  //meshes[0]->convert_triangles_to_quads(); OBSOLETE
+  //meshes[0]->convert_triangles_to_quads();
   
   for (unsigned int i = 1; i < N_EQUATIONS; i++) 
   {
@@ -109,27 +109,27 @@ int main(int argc, char* argv[])
   if (DISPLAY_MESHES && HERMES_VISUALIZATION)
     views.inspect_meshes(meshes);
 
-  // Create pointers to the dominant eigenvector approximation that will be iteratively refined in the 
-  // power iteration.
-  Hermes::vector<Solution<double>*> power_iterates;
-  
-  // Initialize all the new solution variables.
-  for (unsigned int i = 0; i < N_EQUATIONS; i++) 
-    power_iterates.push_back(new ConstantSolution<double>(meshes[i], 1.0));   
-  
-  // Create the approximation spaces with the default shapeset.
+  // Initialize the weak formulation.
+  CustomWeakForm wf(matprop, SPN_ORDER, bdy_vacuum);
+        
+  // Create pointers to solutions from the latest power iteration and approximation spaces with default shapeset.
+  Hermes::vector<Solution<double>*> power_iterates;  
   Hermes::vector<Space<double> *> spaces_;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
+  {
     spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
+    power_iterates.push_back(new Solution<double>());
+  }
   
   ConstantableSpacesVector spaces(&spaces_);
-   
-  // Initialize the weak formulation.
-  CustomWeakForm wf(matprop, SPN_ORDER, power_iterates, fission_materials, k_eff, bdy_vacuum);
-        
+    
   // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
   report_num_dof("Coarse mesh power iteration, NDOF: ", spaces.get());
-  Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, spaces.get_const(), matrix_solver, TOL_PIT_CM);
+  
+  Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces.get_const());
+  keff_eigenvalue_iteration.set_picard_tol(TOL_PIT_CM);
+  keff_eigenvalue_iteration.solve();    
+  Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), spaces.get_const(), power_iterates);
   
   if (STRATEGY >= 0)
   {
@@ -159,26 +159,40 @@ int main(int argc, char* argv[])
     for (unsigned int i = 0; i < N_EQUATIONS; i++)
       selectors.push_back(&selector);
     
+    keff_eigenvalue_iteration.set_picard_tol(TOL_PIT_FM);
+    
     // Adaptivity loop:
-    int as = 1; bool done = false; std::vector<Mesh*> old_meshes(power_iterates.size());
+    int as = 1; bool done = false; 
+    Hermes::vector<Space<double>*> ref_spaces_;    
+    ref_spaces_.resize(N_EQUATIONS);
+    std::vector<Mesh*> old_meshes(N_EQUATIONS);
     do 
     {
       Loggable::Static::info("---- Adaptivity step %d:", as);
       
-      // Initialize the fine mesh problem.
       Loggable::Static::info("Solving on fine meshes.");
       
-      ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get()));
-           
-      // Solve the fine mesh problem.
-      report_num_dof("Fine mesh power iteration, NDOF: ", fine_spaces.get());
-      Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, fine_spaces.get_const(), matrix_solver, TOL_PIT_FM);
+      for (unsigned int i = 0; i < N_EQUATIONS; i++)
+      {
+        Mesh::ReferenceMeshCreator ref_mesh_creator(meshes[i]);
+        Mesh* ref_mesh = ref_mesh_creator.create_ref_mesh();
+        Space<double>::ReferenceSpaceCreator ref_space_creator(spaces.get_const()[i], ref_mesh);
+        Space<double>* ref_space = ref_space_creator.create_ref_space();
+        ref_spaces_[i] = ref_space;
+      }
+    
+      ConstantableSpacesVector ref_spaces(&ref_spaces_);
       
-      // Delete meshes dynamically created in 'construct_refined_spaces' in previous adaptativity iteration
-      // (they are still needed in current 'keff_eigenvalue_iteration', but pointers to them get replaced 
-      // in this function by pointers to 'fine_spaces', so we have to keep track of them via 'old_meshes').
+      // Solve the fine mesh problem.
+      report_num_dof("Fine mesh power iteration, NDOF: ", ref_spaces.get());     
+      keff_eigenvalue_iteration.set_spaces(ref_spaces.get_const());
+      keff_eigenvalue_iteration.solve(power_iterates);
+      Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), ref_spaces.get_const(), power_iterates);
+      
+      // Delete meshes dynamically created in previous adaptivity iteration (they are needed to project previous power_iterates 
+      // to current reference meshes during the above call of keff_eigenvalue_iteration.solve(power_iterates) ).
       if (as > 1)
-        for(unsigned int i = 0; i < power_iterates.size(); i++)
+        for(unsigned int i = 0; i < N_EQUATIONS; i++)
           delete old_meshes[i];
             
       report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces.get());
@@ -208,7 +222,7 @@ int main(int argc, char* argv[])
       // Report results.
       
       // Millipercent eigenvalue error w.r.t. the reference value (see physical_parameters.cpp). 
-      double keff_err = 1e5*fabs(wf.get_keff() - REF_K_EFF)/REF_K_EFF;
+      double keff_err = 1e5*fabs(keff_eigenvalue_iteration.get_keff() - REF_K_EFF)/REF_K_EFF;
       
       report_errors("odd moment err_est_coarse (H1): ", h1_moment_errors);
       Loggable::Static::info("total err_est_coarse (H1): %g%%", h1_err_est);
@@ -238,10 +252,11 @@ int main(int argc, char* argv[])
       
       if (!done)
       {
-        for(unsigned int i = 0; i < power_iterates.size(); i++)
-          old_meshes[i] = const_cast<Mesh*>(power_iterates[i]->get_mesh());
-      
-        delete &fine_spaces.get();
+        for(unsigned int i = 0; i < N_EQUATIONS; i++)
+        {
+          old_meshes[i] = ref_spaces_[i]->get_mesh();
+          delete ref_spaces_[i];
+        }
         
         // Increase counter.
         as++;
@@ -263,25 +278,33 @@ int main(int argc, char* argv[])
     }
     
     // Millipercent eigenvalue error w.r.t. the reference value (see physical_parameters.cpp). 
-    double keff_err = 1e5*fabs(wf.get_keff() - REF_K_EFF)/REF_K_EFF;
+    double keff_err = 1e5*fabs(keff_eigenvalue_iteration.get_keff() - REF_K_EFF)/REF_K_EFF;
     Loggable::Static::info("K_eff error = %g pcm", keff_err);
   }
   
   cpu_time.tick();
   Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
   
-  Views::View::wait(Views::HERMES_WAIT_KEYPRESS);
+  if (HERMES_VISUALIZATION)
+    Views::View::wait(Views::HERMES_WAIT_KEYPRESS);
   
   // Test the unit source normalization.
   Neutronics::PostProcessor pp(NEUTRONICS_SPN);
   pp.normalize_to_unit_fission_source(&power_iterates, matprop);
-  views.show_solutions(power_iterates);
   
-  SupportClasses::SourceFilter sf(power_iterates, matprop, wf.get_fission_regions());
+  SupportClasses::SourceFilter sf(power_iterates, matprop);
   Loggable::Static::info("Total fission source by normalized flux: %g.", sf.integrate());
     
-  // Wait for the view to be closed.  
-  Views::View::wait();
+  if (HERMES_VISUALIZATION)
+  {
+    views.show_solutions(power_iterates);
+    Views::View::wait();
+  }
+  if (VTK_VISUALIZATION)
+  {
+    views.save_solutions_vtk("flux", "flux", power_iterates);
+    views.save_orders_vtk("space", spaces.get());
+  }
   
   return 0;
 }
