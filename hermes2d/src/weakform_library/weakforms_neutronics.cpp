@@ -132,8 +132,6 @@ void StationaryPicardSolver::solve(double *coeff_vec)
       throw Exceptions::LinearMatrixSolverException();
     
     memcpy(this->sln_vector, this->linear_solver->get_sln_vector(), sizeof(double)*ndof);
-    
-    this->on_step_end();
 
     // If Anderson is used, store the new vector in the memory.
     if (anderson_is_on)
@@ -170,9 +168,9 @@ void StationaryPicardSolver::solve(double *coeff_vec)
           this->sln_vector[i] += anderson_coeffs[j-1] * previous_vectors[j][i] - (1.0 - anderson_beta) * anderson_coeffs[j-1] * (previous_vectors[j][i] - previous_vectors[j-1][i]);
         }
       }
-      
-      this->on_step_end();
     }
+    
+    this->on_step_end();
     
     // Calculate relative error between last_iter_vector[] and this->sln_vector[].
     // FIXME: this is wrong in the complex case (complex conjugation must be used).
