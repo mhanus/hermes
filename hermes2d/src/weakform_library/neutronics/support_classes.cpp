@@ -882,15 +882,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   }
 
   void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< Solution<double>* >* solutions, 
-                                                        const Common::MaterialProperties::MaterialPropertyMaps& matprop, 
-                                                        const Hermes::vector< std::string >& src_areas) const
+                                                        const Common::MaterialProperties::MaterialPropertyMaps& matprop) const
   {
     Common::SupportClasses::SourceFilter *sf;
     
     if (method == NEUTRONICS_DIFFUSION)
-      sf = new Common::SupportClasses::SourceFilter(*solutions, matprop, src_areas, geom_type);
+      sf = new Common::SupportClasses::SourceFilter(*solutions, matprop, geom_type);
     else if (method == NEUTRONICS_SPN)
-      sf = new SPN::SupportClasses::SourceFilter(*solutions, matprop, src_areas, geom_type);
+      sf = new SPN::SupportClasses::SourceFilter(*solutions, matprop, geom_type);
     
     normalize_to_unit_fission_source(solutions, sf->integrate());
     
@@ -899,7 +898,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 
   void PostProcessor::normalize_to_unit_power(Hermes::vector< Solution<double>* >* solutions, 
                                               const Common::MaterialProperties::MaterialPropertyMaps& matprop, 
-                                              double power_per_fission, const Hermes::vector< std::string >& src_areas) const
+                                              double power_per_fission) const
   {
     // TODO
   }
