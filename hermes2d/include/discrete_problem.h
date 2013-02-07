@@ -134,6 +134,7 @@ namespace Hermes
       template<typename T> friend class PicardSolver;
       template<typename T> friend class RungeKutta;
       template<typename T> friend class KellyTypeAdapt;
+      friend class StationaryPicardSolver;
     };
   }
 }
