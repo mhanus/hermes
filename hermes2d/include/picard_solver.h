@@ -78,7 +78,7 @@ namespace Hermes
       PicardSolver(DiscreteProblem<Scalar>* dp);
       PicardSolver(const WeakForm<Scalar>* wf, const Space<Scalar>* space);
       PicardSolver(const WeakForm<Scalar>* wf, Hermes::vector<const Space<Scalar>*> spaces);
-      ~PicardSolver();
+      virtual ~PicardSolver();
 
       /// State querying helpers.
       virtual bool isOkay() const;

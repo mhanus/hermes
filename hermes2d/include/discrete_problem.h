@@ -391,6 +391,7 @@ namespace Hermes
       template<typename T> friend class LinearSolver;
       template<typename T> friend class NewtonSolver;
       template<typename T> friend class PicardSolver;
+      friend class StationaryPicardSolver;
       template<typename T> friend class RungeKutta;
       friend class StationaryPicardSolver;
     };
