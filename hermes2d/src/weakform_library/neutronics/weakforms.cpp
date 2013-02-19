@@ -209,16 +209,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
     }
     
-    void KeffEigenvalueProblem::update_keff(double new_keff) 
+    void KeffEigenvalueProblem::update_keff(double new_keff, bool update_forms) 
     { 
       keff = new_keff;
       
-      Hermes::vector<Form<double> *>::const_iterator it = get_forms().begin();
-      for ( ; it != get_forms().end(); ++it)
-      { 
-        FissionYield::OuterIterationForm* keff_iteration_form = dynamic_cast<FissionYield::OuterIterationForm*>(*it);
-        if (keff_iteration_form != NULL)
-          keff_iteration_form->update_keff(new_keff); 
+      if (update_forms)
+      {
+        Hermes::vector<Form<double> *>::const_iterator it = get_forms().begin();
+        for ( ; it != get_forms().end(); ++it)
+        { 
+          FissionYield::OuterIterationForm* keff_iteration_form = dynamic_cast<FissionYield::OuterIterationForm*>(*it);
+          if (keff_iteration_form != NULL)
+            keff_iteration_form->update_keff(new_keff); 
+        }
       }
     }
     
@@ -536,16 +539,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_flux_iterates);
     }
     
-    void KeffEigenvalueProblem::update_keff(double new_keff) 
+    void KeffEigenvalueProblem::update_keff(double new_keff, bool update_forms) 
     { 
       keff = new_keff;
       
-      Hermes::vector<Form<double> *>::const_iterator it = get_forms().begin();
-      for ( ; it != get_forms().end(); ++it)
-      { 
-        FissionYield::OuterIterationForm* keff_iteration_form = dynamic_cast<FissionYield::OuterIterationForm*>(*it);
-        if (keff_iteration_form != NULL)
-          keff_iteration_form->update_keff(new_keff); 
+      if (update_forms)
+      {
+        Hermes::vector<Form<double> *>::const_iterator it = get_forms().begin();
+        for ( ; it != get_forms().end(); ++it)
+        { 
+          FissionYield::OuterIterationForm* keff_iteration_form = dynamic_cast<FissionYield::OuterIterationForm*>(*it);
+          if (keff_iteration_form != NULL)
+            keff_iteration_form->update_keff(new_keff); 
+        }
       }
     }
     

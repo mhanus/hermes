@@ -97,7 +97,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         };
         
       public:        
-        virtual void update_keff(double new_keff) = 0; //TODO: Define a common FissionYield::OuterIteration class,
+        virtual void update_keff(double new_keff, bool update_forms = false) = 0; //TODO: Define a common FissionYield::OuterIteration class,
                                                       // so that this method may be defined here instead of in both
                                                       // SPN and Diffusion KeffEigenvalueProblem.
         virtual void update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed) = 0;
@@ -184,7 +184,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                               double initial_keff_guess,
                               GeomType geom_type = HERMES_PLANAR );                                            
                                         
-        void update_keff(double new_keff);
+        void update_keff(double new_keff, bool update_forms = false);
         void update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed);
         
         Common::SupportClasses::SourceFilter* create_source_filter() {
@@ -283,7 +283,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         virtual ~KeffEigenvalueProblem();
         
-        void update_keff(double new_keff);
+        void update_keff(double new_keff, bool update_forms = false);
         void update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed);
                 
         Common::SupportClasses::SourceFilter* create_source_filter() {
