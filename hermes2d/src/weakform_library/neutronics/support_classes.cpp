@@ -803,6 +803,454 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   /* SPN */
   }
   
+  namespace SN { namespace SupportClasses
+  {
+    double SphericalHarmonic::plgndr(double x) const
+    {
+      if (abs(x) > 1)
+        ErrorHandling::error_function("Invalid arguments for plgndr. |x| > 1");
+      
+      double pmm = 1;
+      
+      if (m > 0)
+      {
+        double prod = 1;
+        for (int i = 1; i <= 2*m; i+=2)
+          prod *= i;
+        pmm = prod * std::pow( sqrt((1-x)*(1+x)), m );
+      }
+      
+      if (l == m)
+        return pmm;
+      else
+      {
+        double pmmp1 = (2*m+1)*x*pmm;
+        
+        if (l == m+1)
+          return pmmp1;
+        else
+        {
+          double pll;
+          for (int ll = m+2; ll <= l; ll++)
+          {
+            pll = ( (2*ll-1)*x*pmmp1-(ll+m-1)*pmm ) / ( ll-m );
+            pmm = pmmp1;
+            pmmp1 = pll;
+          }
+          return pll;
+        }
+      }
+    }
+
+    double SphericalHarmonic::operator()(double xi, double eta, double mu) const
+    {
+      if(std::abs(mu*mu+eta*eta+xi*xi-1.0) > 1.0e-5)
+        ErrorHandling::error_function("Invalid direction cosines in SphericalHarmonic::operator()");
+
+      if((l == 0) && (m == 0))
+        return 1.0;
+      else if((l == 1) && (m == -1))
+        return eta;
+      else if((l == 1) && (m == 0))
+        return mu;
+      else if((l == 1) && (m == 1))
+        return xi;
+      else if((l == 2) && (m == -2))
+        return sqrt(3.0)*xi*eta;
+      else if((l == 2) && (m == -1))
+        return sqrt(3.0)*mu*eta;
+      else if((l == 2) && (m == 0))
+        return 0.5*(3.0*mu*mu-1.0);
+      else if((l == 2) && (m == 1))
+        return sqrt(3.0)*mu*xi;
+      else if((l == 2) && (m == 2))
+        return 0.5*sqrt(3.0)*(xi*xi-eta*eta);
+      else if((l == 3) && (m == -3))
+        return sqrt(5./8.)*eta*(3.0*xi*xi-eta*eta);
+      else if((l == 3) && (m == -2))
+        return sqrt(15.0)*xi*eta*mu;
+      else if((l == 3) && (m == -1))
+        return sqrt(3./8.)*eta*(5.0*mu*mu-1.0);
+      else if((l == 3) && (m == 0))
+        return 0.5*mu*(5.0*mu*mu-3.0);
+      else if((l == 3) && (m == 1))
+        return sqrt(3./8.)*xi*(5.0*mu*mu-1.0);
+      else if((l == 3) && (m == 2))
+        return sqrt(15.0/4.0)*mu*(xi*xi-eta*eta);
+      else if((l == 3) && (m == 3))
+        return sqrt(5./8.)*xi*(xi*xi-3.0*eta*eta);
+      else if((l == 4) && (m == -4))
+        return 0.5*sqrt(35.)*xi*eta*(xi*xi-eta*eta);
+      else if((l == 4) && (m == -3))
+        return 0.5*sqrt(0.5*35.)*mu*eta*(3.*xi*xi-eta*eta);
+      else if((l == 4) && (m == -2))
+        return sqrt(5.)*(21.*mu*mu-3.)*xi*eta/6.;
+      else if((l == 4) && (m == -1))
+        return 0.5*sqrt(2.5)*mu*eta*(7.*mu*mu-3.);
+      else if((l == 4) && (m == 0))
+        return (35.*Hermes::sqr(mu)*Hermes::sqr(mu)-30.*mu*mu+3.)/8.;
+      else if((l == 4) && (m == 1))
+        return 0.5*sqrt(2.5)*mu*xi*(7.*mu*mu-3.);
+      else if((l == 4) && (m == 2))
+        return sqrt(5.)*(21.*mu*mu-3.)*(xi*xi-eta*eta)/12.;
+      else if((l == 4) && (m == 3))
+        return 0.5*sqrt(0.5*35.)*mu*xi*(xi*xi-3.*eta*eta);
+      else if((l == 4) && (m == 4))
+        return sqrt(35.)*(Hermes::sqr(xi)*Hermes::sqr(xi)-6.*Hermes::sqr(xi*eta)+Hermes::sqr(eta)*Hermes::sqr(eta))/8.;
+      else if((l == 5) && (m == -5))
+        return 21.*eta*(5.*Hermes::sqr(xi)*Hermes::sqr(xi)-10.*Hermes::sqr(xi*eta)+Hermes::sqr(eta)*Hermes::sqr(eta))/(8.*sqrt(14.));
+      else if((l == 5) && (m == -4))
+        return 0.5*105.*mu*xi*eta*(xi*xi-eta*eta)/sqrt(35.);
+      else if((l == 5) && (m == -3))
+        return 35.*(9*mu*mu-1.)*eta*(3.*xi*xi-eta*eta)/(8.*sqrt(70.));
+      else if((l == 5) && (m == -2))
+        return 0.5*sqrt(105.)*mu*(3.*mu*mu-1.)*xi*eta;
+      else if((l == 5) && (m == -1))
+        return sqrt(15.)*eta*(21.*Hermes::sqr(mu)*Hermes::sqr(mu)-14.*mu*mu+1.)/8.;
+      else if((l == 5) && (m == 0))
+        return mu*(63.*Hermes::sqr(mu)*Hermes::sqr(mu)-70.*mu*mu+15.)/8.;
+      else if((l == 5) && (m == 1))
+        return sqrt(15.)*xi*(21.*Hermes::sqr(mu)*Hermes::sqr(mu)-14.*mu*mu+1.)/8.;
+      else if((l == 5) && (m == 2))
+        return 0.25*sqrt(105.)*mu*(3.*mu*mu-1.)*(xi*xi-eta*eta);
+      else if((l == 5) && (m == 3))
+        return 35.*(9*mu*mu-1.)*xi*(xi*xi-3.*eta*eta)/(8.*sqrt(70.));
+      else if((l == 5) && (m == 4))
+        return 105.*mu*(Hermes::sqr(xi)*Hermes::sqr(xi)-6.*Hermes::sqr(xi*eta)+Hermes::sqr(eta)*Hermes::sqr(eta))/(8.*sqrt(35.));
+      else if((l == 5) && (m == 5))
+        return 21.*xi*(Hermes::sqr(xi)*Hermes::sqr(xi)-10.*Hermes::sqr(xi*eta)+5.*Hermes::sqr(eta)*Hermes::sqr(eta))/(8.*sqrt(14.));
+      else
+      { 
+        double phi = 1./sqrt(1 - Hermes::sqr(mu)) * acos(xi);
+        if (eta < 0)
+          phi = 2*M_PI - phi;
+        
+        if (m > 0)
+          return sqrt(2*factorial(l - m) / factorial(l + m) ) * plgndr(mu) * cos(m * phi);
+        else if (m == 0)
+          return plgndr(mu);
+        else
+          return sqrt(2*factorial(l + m) / factorial(l - m) ) * plgndr(mu) * sin(-m * phi);
+      }
+    }
+
+    /* Ordinates in the four octants of the upper hemisphere are ordered as
+    *
+    *      13         12
+    *     17  5     4  16
+    *    21  9 1   0 8  20
+    *            o
+    *    22 10 2   3 11 23
+    *     18  6     7  19
+    *       14        15
+    **/
+    OrdinatesData::OrdinatesData(unsigned int N, const std::string& filename) : N(N), M(N*(N+2)/2)
+    {
+      std::ifstream ifs(filename.c_str());
+      
+      if (ifs.fail())
+        Neutronics::ErrorHandling::error_function("Discrete ordinates could not be loaded from %s.", filename.c_str());
+      
+      std::string tmp;
+      std::getline(ifs, tmp);
+      std::getline(ifs, tmp);
+      
+      int read_n;
+      do
+      {
+        ifs >> read_n;
+        if (read_n == N)
+          break;
+        
+        std::getline(ifs, tmp);    
+        for (int n = 0; n < read_n; n++)
+          std::getline(ifs, tmp);
+        std::getline(ifs, tmp);
+      } 
+      while (!ifs.eof());
+      
+      if (ifs.eof())
+        Neutronics::ErrorHandling::error_function("Required set of discrete ordinates could not be found in %s", filename.c_str());
+      
+      double *mu_base = new double [N/2];
+      
+      std::getline(ifs, tmp);    
+      for (int n = 0; n < N/2; n++)
+        ifs >> mu_base[n];
+      
+      std::getline(ifs, tmp, '"');
+      std::getline(ifs, tmp);
+      std::getline(ifs, tmp);
+      
+      do 
+      {
+        ifs >> read_n;
+        if (read_n == N)
+          break;
+        
+        std::getline(ifs, tmp);    
+        for (int n = 0; n < read_n; n++)
+          std::getline(ifs, tmp);
+        std::getline(ifs, tmp);
+      }
+      while (!ifs.eof());
+      
+      if (ifs.eof())
+        Neutronics::ErrorHandling::error_function("Required set of weights could not be found in %s.", filename.c_str());
+      
+      double *wt = new double [N/2];
+      
+      std::getline(ifs, tmp);    
+      for (int n = 0; n < N/2; n++)
+        ifs >> wt[n];
+    
+      ifs.close();
+      
+      xi.reserve(M);
+      eta.reserve(M);
+      mu.reserve(M);
+      pw.reserve(M);
+      reflections_about_x.reserve(M);
+      reflections_about_y.reserve(M);
+      
+      int dir = 0;
+      
+      for (int n = 1; n <= N/2; n++) // for each polar level
+      { 
+        for (int i = 1; i <= n; i++) // for each azimuthal point in the first octant
+        {  
+          double omega = (2*n - 2*i + 1)/(2.*n) * M_PI/2.;
+          double xi1q = std::sqrt(1-sqr(mu_base[n-1])) * std::cos(omega);
+          double eta1q = std::sqrt(1-sqr(mu_base[n-1])) * std::sin(omega);
+          
+          // octant 1, ordinate index dir
+          xi.push_back( xi1q );
+          eta.push_back( eta1q );   
+          reflections_about_x.push_back( dir + 3 );
+          reflections_about_y.push_back( dir + 1 );
+          
+          // octant 2, ordinate index dir+1
+          xi.push_back(-xi1q );
+          eta.push_back( eta1q );   
+          reflections_about_x.push_back( dir + 2 );
+          reflections_about_y.push_back( dir );
+          
+          // octant 3, ordinate index dir+2
+          xi.push_back(-xi1q );
+          eta.push_back(-eta1q );   
+          reflections_about_x.push_back( dir + 1 );
+          reflections_about_y.push_back( dir + 3 );
+          
+          // octant 4, ordinate index dir+3
+          xi.push_back( xi1q );
+          eta.push_back(-eta1q );   
+          reflections_about_x.push_back( dir );
+          reflections_about_y.push_back( dir + 2 );
+          
+          for (int j = 0; j < 4; j++)
+          {
+            mu.push_back(mu_base[n-1]);
+            pw.push_back( wt[n-1] / (8*n)); // equal weights in each polar level, summing up to 1 over the whole sphere.
+          }
+          
+          dir+=4;
+        }
+      }
+      
+      delete [] mu_base;
+      delete [] wt;
+    }
+
+    std::ostream& operator<<(std::ostream& os, const OrdinatesData& odata)
+    {
+      using namespace std;
+      
+      os << "Discrete ordinates" << endl;
+      os << "  N = " << odata.N << endl;
+      os << "____________________________________" << endl;
+
+      int m = 0;
+      std::vector<double>::const_iterator xi = odata.xi.begin();
+      std::vector<double>::const_iterator eta = odata.eta.begin();
+      std::vector<double>::const_iterator mu = odata.mu.begin();
+      std::vector<double>::const_iterator pw = odata.pw.begin(); 
+      for ( ; xi != odata.xi.end(); ++xi, ++eta, ++mu, ++pw)
+      { 
+        os << endl << *xi << ", " << *eta << ", " << *mu << ", " << *pw << endl;
+        os << " --- " << odata.xi[odata.reflections_about_x[m]] << ", " << odata.eta[odata.reflections_about_x[m]] << ", " << odata.mu[odata.reflections_about_x[m]] << endl;
+        os << "  |  " << odata.xi[odata.reflections_about_y[m]] << ", " << odata.eta[odata.reflections_about_y[m]] << ", " << odata.mu[odata.reflections_about_y[m]] << endl; 
+        m++;
+      }
+      
+      os << endl << m << " ordinates loaded (M = " << odata.M << ")." << endl;
+      
+      double sum = 0.0;
+      for (int n = 0; n < odata.M; n++)
+        sum += odata.pw[n];
+      
+      os << "sum of weights over the whole sphere: " << 2*sum << endl;
+      
+      const char* pwfile = "pw.m";
+      FILE* fp;
+      fp = fopen(pwfile, "wt");
+      fprintf(fp, "pw = [ \n");
+      for (int n = 0; n < odata.M; n++)
+        fprintf(fp, "\t%1.15f\n", odata.pw[n]);
+      fprintf(fp, "];");
+      fclose(fp);
+      
+      os << "weights written to: " << pwfile << endl << endl;
+    }
+
+
+    template<typename Real>
+    void OrdinatesData::ordinates_to_moment(unsigned int l, int m, unsigned int g, unsigned int G, const ExtData< Real >* solution_fns, int num_quad_pts, Real* moment_values_at_quad_pts) const
+    {
+      SphericalHarmonic Rlm(l, m);
+      AngleGroupFlattener ag(G);
+      
+      for (int quad_pt = 0; quad_pt < num_quad_pts; quad_pt++)
+      {
+        moment_values_at_quad_pts[quad_pt] = Real(0);
+        
+        for (int n = 0; n < M; n++)
+          moment_values_at_quad_pts[quad_pt] += pw[n] * solution_fns->fn[ag.pos(n,g)]->val[quad_pt] * Rlm(xi[n], eta[n], mu[n]);
+      
+        moment_values_at_quad_pts[quad_pt] *= 2;       // add contribution from the lower hemisphere
+        moment_values_at_quad_pts[quad_pt] *= 4*M_PI;  // make integral of the unity function over the whole sphere equal to 4 PI
+      }
+    }
+    
+    template void OrdinatesData::ordinates_to_moment<double>(unsigned int l, int m, unsigned int g, unsigned int G, const ExtData< double >* solution_fns, int num_quad_pts, double* moment_values_at_quad_pts) const;
+    template void OrdinatesData::ordinates_to_moment<Hermes::Ord>(unsigned int l, int m, unsigned int g, unsigned int G, const ExtData< Hermes::Ord >* solution_fns, int num_quad_pts, Hermes::Ord* moment_values_at_quad_pts) const;
+
+    template<typename Real>
+    void OrdinatesData::ordinates_to_moment(unsigned int l, int m, unsigned int g, unsigned int G, const Hermes::vector< Real* >& solution_values_at_quad_pts, int num_quad_pts, Real *moment_values_at_quad_pts) const
+    {
+      SphericalHarmonic Rlm = SphericalHarmonic(l, m);
+      AngleGroupFlattener ag(G);
+      
+      for (int quad_pt = 0; quad_pt < num_quad_pts; quad_pt++)
+      {
+        moment_values_at_quad_pts[quad_pt] = Real(0);
+         
+        for (int n = 0; n < M; n++)
+          moment_values_at_quad_pts[quad_pt] += pw[n] * solution_values_at_quad_pts.at(ag.pos(n,g))[quad_pt] * Rlm(xi[n], eta[n], mu[n]);
+      
+        moment_values_at_quad_pts[quad_pt] *= 2;  // add contribution from the lower hemisphere
+        moment_values_at_quad_pts[quad_pt] *= 4*M_PI;  // make integral of the unity function over the whole sphere equal to 4 PI
+      }
+    }
+    
+    template void OrdinatesData::ordinates_to_moment<double>(unsigned int l, int m, unsigned int g, unsigned int G, const Hermes::vector< double* >& solution_values_at_quad_pts, int num_quad_pts, double *moment_values_at_quad_pts) const;
+    template void OrdinatesData::ordinates_to_moment<Hermes::Ord>(unsigned int l, int m, unsigned int g, unsigned int G, const Hermes::vector< Hermes::Ord* >& solution_values_at_quad_pts, int num_quad_pts, Hermes::Ord *moment_values_at_quad_pts) const;
+    
+    void MomentFilter::Val::set_active_element(Element* e)
+    {
+      SimpleFilter<double>::set_active_element(e);
+
+      order = -1;
+      
+      unsigned int dir = 0;
+      for (int sol_idx = ag.pos(dir,g); sol_idx < num; sol_idx = ag.pos(++dir,g))
+        if (sln[sol_idx]->get_fn_order() > order)
+          order = sln[sol_idx]->get_fn_order();
+    }
+    
+    MeshFunction<double>* MomentFilter::Val::clone()
+    {
+      Hermes::vector<MeshFunction<double>*> slns;
+
+      for(int i = 0; i < this->num; i++)
+        slns.push_back(this->sln[i]->clone());
+
+      return new Val(l, m, g, G, slns, odata);
+    }
+    
+    void MomentFilter::ValDxDy::set_active_element(Element* e)
+    {
+      DXDYFilter<double>::set_active_element(e);
+      
+      order = -1;
+      
+      unsigned int dir = 0;
+      for (int sol_idx = ag.pos(dir,g); sol_idx < num; sol_idx = ag.pos(++dir,g))
+        if (sln[sol_idx]->get_fn_order() > order)
+          order = sln[sol_idx]->get_fn_order();
+    }
+    
+    MeshFunction<double>* MomentFilter::ValDxDy::clone()
+    {
+      Hermes::vector<MeshFunction<double>*> slns;
+
+      for(int i = 0; i < this->num; i++)
+        slns.push_back(this->sln[i]->clone());
+
+      return new ValDxDy(l, m, g, G, slns, odata);
+    }
+    
+    // TODO: Templatize.
+    void MomentFilter::get_scalar_fluxes(const Hermes::vector< Solution<double>* >& angular_fluxes, 
+                                          Hermes::vector< MeshFunction<double>* >* scalar_fluxes,
+                                          unsigned int G,
+                                          const OrdinatesData& odata)
+    {          
+      scalar_fluxes->reserve(G);
+      for (unsigned int g = 0; g < G; g++)
+        scalar_fluxes->push_back(new MomentFilter::Val(0, 0, g, G, angular_fluxes, odata));
+    }
+    
+    void MomentFilter::get_scalar_fluxes(const Hermes::vector< Solution<double>* >& angular_fluxes, 
+                                          Hermes::vector< Filter<double>* >* scalar_fluxes,
+                                          unsigned int G,
+                                          const OrdinatesData& odata)
+    {          
+      scalar_fluxes->reserve(G);
+      for (unsigned int g = 0; g < G; g++)
+        scalar_fluxes->push_back(new MomentFilter::Val(0, 0, g, G, angular_fluxes, odata));
+    }
+    
+    void MomentFilter::get_scalar_fluxes_with_derivatives(const Hermes::vector< Solution<double>* >& angular_fluxes, 
+                                                          Hermes::vector< MeshFunction<double>* >* scalar_fluxes,
+                                                          unsigned int G,
+                                                          const OrdinatesData& odata)
+    {          
+      scalar_fluxes->reserve(G);
+      for (unsigned int g = 0; g < G; g++)
+        scalar_fluxes->push_back(new MomentFilter::ValDxDy(0, 0, g, G, angular_fluxes, odata));
+    }
+    
+    void MomentFilter::get_scalar_fluxes_with_derivatives(const Hermes::vector< Solution<double>* >& angular_fluxes, 
+                                                          Hermes::vector< Filter<double>* >* scalar_fluxes,
+                                                          unsigned int G,
+                                                          const OrdinatesData& odata)
+    {          
+      scalar_fluxes->reserve(G);
+      for (unsigned int g = 0; g < G; g++)
+        scalar_fluxes->push_back(new MomentFilter::ValDxDy(0, 0, g, G, angular_fluxes, odata));
+    }
+    
+    void MomentFilter::clear_scalar_fluxes(Hermes::vector< MeshFunction<double>* >* scalar_fluxes)
+    {
+      Hermes::vector< MeshFunction<double>* >::const_iterator it = scalar_fluxes->begin();
+      for( ; it != scalar_fluxes->end(); ++it)
+        delete *it;
+      scalar_fluxes->clear();
+    }
+    
+    void MomentFilter::clear_scalar_fluxes(Hermes::vector< Filter<double>* >* scalar_fluxes)
+    {
+      Hermes::vector< Filter<double>* >::const_iterator it = scalar_fluxes->begin();
+      for( ; it != scalar_fluxes->end(); ++it)
+        delete *it;
+      scalar_fluxes->clear();
+    }
+    
+  /* SupportClasses */
+  }
+  /* SN */
+  }
+  
   double PostProcessor::integrate(MeshFunction<double>* solution, const Hermes::vector<std::string>& areas) const
   {
     Quad2D* quad = &g_quad_2d_std;
@@ -875,6 +1323,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       sf = new Common::SupportClasses::SourceFilter(*solutions, matprop, src_areas, geom_type);
     else if (method == NEUTRONICS_SPN)
       sf = new SPN::SupportClasses::SourceFilter(*solutions, matprop, src_areas, geom_type);
+    else if (method == NEUTRONICS_SN)
+      // TODO
+      ErrorHandling::error_function("SN SourceFilter not yet implemented.");
     
     normalize_to_unit_fission_source(solutions, sf->integrate());
     
@@ -989,6 +1440,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G());
+    else if (method == NEUTRONICS_SN)
+      SN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G(), odata);
     else if (method == NEUTRONICS_DIFFUSION)
       for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
         scalar_fluxes.push_back(*it);
@@ -1017,6 +1470,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    else if (method == NEUTRONICS_SN)
+      SN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
   }
   
   double PostProcessor::get_integrated_group_reaction_rates(ReactionType reaction, const Hermes::vector< Solution<double>* >& solutions, 
@@ -1027,6 +1482,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G());
+    else if (method == NEUTRONICS_SN)
+      SN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G(), odata);
     else if (method == NEUTRONICS_DIFFUSION)
       for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
         scalar_fluxes.push_back(*it);
@@ -1048,6 +1505,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    else if (method == NEUTRONICS_SN)
+      SN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
     
     return result;
   }
@@ -1061,6 +1520,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G());
+    else if (method == NEUTRONICS_SN)
+      SN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, matprop.get_G(), odata);
     else if (method == NEUTRONICS_DIFFUSION)
       for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
         scalar_fluxes.push_back(*it);
@@ -1069,6 +1530,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     for ( ; region != regions.end(); ++region)
     {
+      std::cout << *region << std::endl;
       double result = 0.0;
       for (unsigned int group = 0; group < matprop.get_G(); group++)
       {
@@ -1091,6 +1553,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    else if (method == NEUTRONICS_SN)
+      SN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
   }
   
   double PostProcessor::get_integrated_reaction_rates(ReactionType reaction, const Hermes::vector< Solution<double>* >& solutions, 
@@ -1112,6 +1576,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G);
+    else if (method == NEUTRONICS_SN)
+      SN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G, odata);
     else if (method == NEUTRONICS_DIFFUSION)
       for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
         scalar_fluxes.push_back(*it);
@@ -1122,6 +1588,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    else if (method == NEUTRONICS_SN)
+      SN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
   }
   
   double PostProcessor::get_integrated_group_scalar_fluxes(const Hermes::vector< Solution<double>* >& solutions, 
@@ -1132,6 +1600,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G);
+    else if (method == NEUTRONICS_SN)
+      SN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G, odata);
     else if (method == NEUTRONICS_DIFFUSION)
       for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
         scalar_fluxes.push_back(*it);
@@ -1140,6 +1610,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    else if (method == NEUTRONICS_SN)
+      SN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
     
     return result;
   }
@@ -1151,6 +1623,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G);
+    else if (method == NEUTRONICS_SN)
+      SN::SupportClasses::MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, G, odata);
     else if (method == NEUTRONICS_DIFFUSION)
       for (Hermes::vector<Solution<double>*>::const_iterator it = solutions.begin(); it != solutions.end(); ++it)
         scalar_fluxes.push_back(*it);
@@ -1166,6 +1640,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    else if (method == NEUTRONICS_SN)
+      SN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
   }
 
   double PostProcessor::get_integrated_scalar_fluxes(const Hermes::vector< Solution<double>* >& solutions, unsigned int G,

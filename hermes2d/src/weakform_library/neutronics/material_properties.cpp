@@ -1090,6 +1090,137 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   /* SPN */
   }    
   
+  namespace SN { namespace MaterialProperties
+  {    
+    void MaterialPropertyMaps::validate()
+    {
+      if (Sigma_t.empty())
+        ErrorHandling::error_function(Messages::E_SIGMA_T_REQUIRED);
+      
+      Common::MaterialProperties::MaterialPropertyMaps::validate();
+             
+      std::for_each(Sigma_t.begin(), Sigma_t.end(), Validation::ensure_size(G));
+    }
+    
+    rank1 MaterialPropertyMaps::compute_Sigma_a(const std::string& material) const
+    {
+      if (!Sigma_a.empty())
+        return Common::MaterialProperties::MaterialPropertyMaps::get_Sigma_a(material);
+      
+      MaterialPropertyMap1::const_iterator St_mat = this->Sigma_t.find(material);
+      MaterialPropertyMap3::const_iterator Ss_mat = this->Sigma_sn.find(material);
+      if (St_mat != this->Sigma_t.end())
+      {
+        rank1 Sa = St_mat->second;
+        
+        if (Ss_mat != this->Sigma_sn.end())
+        {
+          rank2 Ss = Ss_mat->second.front();
+          
+          for (unsigned int gfrom = 0; gfrom < G; gfrom++)
+            for (unsigned int gto = 0; gto < G; gto++)
+              Sa[gfrom] -= Ss[gto][gfrom];
+        }  
+        
+        return Sa;
+      }
+      else
+      {
+        ErrorHandling::error_function(Messages::E_INVALID_MARKER);
+        return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
+      }
+    }
+    
+    rank1 MaterialPropertyMaps::get_Sigma_t(const std::string& material) const
+    {
+      MaterialPropertyMap1::const_iterator St_mat = this->Sigma_t.find(material);
+      if (St_mat != this->Sigma_t.end())
+        return St_mat->second;
+      else
+      {
+        ErrorHandling::error_function(Messages::E_INVALID_MARKER);
+        return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
+      }
+    }
+    
+    rank3 MaterialPropertyMaps::get_Sigma_sn(const std::string& material) const
+    {
+      MaterialPropertyMap3::const_iterator Ss_mat = this->Sigma_sn.find(material);
+      if (Ss_mat != this->Sigma_sn.end())
+        return Ss_mat->second;
+      else
+        return rank3(); // return empty array if material not found or Sigma_sn not entered.
+    }
+    
+    rank2 MaterialPropertyMaps::compute_Sigma_s(const std::string& material) const
+    {
+      MaterialPropertyMap3::const_iterator Ss_mat = this->Sigma_sn.find(material);
+      if (Ss_mat != this->Sigma_sn.end())
+        return Ss_mat->second.front();
+      else
+      {
+        ErrorHandling::error_function(Messages::E_INVALID_MARKER);
+        return *(new rank2()); // To avoid MSVC problems; execution should never come to this point.
+      }
+    }
+    
+    std::ostream& operator<<(std::ostream& os, const MaterialPropertyMaps& matprop)
+    {
+      using namespace std;
+      
+      os << static_cast<const Common::MaterialProperties::MaterialPropertyMaps&>(matprop) << endl;
+      
+      int gto_width = 12;
+      int elem_width = 14;
+      int total_width = 2*gto_width + elem_width*(matprop.G);          
+
+      MaterialPropertyMap1::const_iterator St_elem = matprop.Sigma_t.begin();
+      MaterialPropertyMap3::const_iterator Ssn_elem = matprop.Sigma_sn.begin();
+      for ( ; St_elem != matprop.Sigma_t.end(); ++St_elem, ++Ssn_elem)
+      {
+        std::string mat = St_elem->first;
+        rank1 St = St_elem->second;
+        
+        os << setw(total_width) << setfill('_') << ' ' << endl << setfill(' ');
+        os << setw(total_width/2+mat.length()/2) << mat << endl << endl;
+        
+        os << setw(gto_width)  << "trgt group";
+        os << setw(elem_width) << "Sigma_t";
+        
+        for (unsigned int gto = 0; gto < matprop.G; gto++)
+          os << endl << setw(gto_width) << gto << setw(elem_width) << St[gto];
+        os << endl;
+        
+        os << setw(matprop.G*elem_width) << "Sigma_sn";
+
+        if (!Ssn_elem->second.empty())
+        {
+          rank3 Ssn_moments = Ssn_elem->second;
+          rank3::const_iterator Ssn_moment = Ssn_moments.begin();
+        
+          int moment = 0;
+          for ( ; Ssn_moment != Ssn_moments.end(); ++Ssn_moment, ++moment)
+          {
+            os << endl << setw(total_width/2+2) << "moment " << moment << endl;
+
+            for (unsigned int gto = 0; gto < matprop.G; gto++)
+            {
+              for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
+                os << setw(elem_width) << (*Ssn_moment)[gto][gfrom];               
+              os << endl;
+            }
+          }
+        }
+      }
+      
+      return os << endl;
+    }
+    
+  /* MaterialProperties */
+  }
+  /* SN */
+  }
+  
 /* Neutronics */
 }
 /* Hermes2D */

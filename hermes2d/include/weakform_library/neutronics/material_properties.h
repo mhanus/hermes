@@ -457,6 +457,64 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   /* SPN */
   }
   
+  namespace SN { namespace MaterialProperties
+  {    
+    using Common::MaterialProperties::Validation;
+    
+    class MaterialPropertyMaps : public Common::MaterialProperties::MaterialPropertyMaps
+    {
+      protected:
+                
+        MaterialPropertyMap3 Sigma_sn;
+        MaterialPropertyMap1 Sigma_t;
+                        
+      public:
+        
+        MaterialPropertyMaps(unsigned int G,
+                             std::set<std::string> mat_list = std::set<std::string>()) 
+          : Common::MaterialProperties::MaterialPropertyMaps(G, mat_list)
+        {}
+        
+        MaterialPropertyMaps(unsigned int G, 
+                             const RegionMaterialMap& reg_mat_map)
+          : Common::MaterialProperties::MaterialPropertyMaps(G, reg_mat_map)
+        {}
+                                
+        virtual void validate();
+                                    
+        virtual void set_Sigma_sn(const MaterialPropertyMap3& Ss) {
+          this->Sigma_sn = Ss;
+        }
+        
+        virtual void set_Sigma_t(const MaterialPropertyMap1& St) {
+          this->Sigma_t = St;
+        }
+                            
+        const MaterialPropertyMap3& get_Sigma_sn() const {
+          return this->Sigma_sn;
+        }
+        
+        const MaterialPropertyMap1& get_Sigma_t() const {
+          return this->Sigma_t;
+        }
+        
+        virtual rank3 get_Sigma_sn(const std::string& material) const;
+        virtual rank1 get_Sigma_t(const std::string& material) const;
+        
+        virtual rank1 compute_Sigma_t(const std::string& material) const {
+          return get_Sigma_t(material);
+        }
+        virtual rank1 compute_Sigma_a(const std::string& material) const;
+        virtual rank2 compute_Sigma_s(const std::string& material) const;
+        
+        friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
+    };
+    
+  /* MaterialProperties */
+  }
+  /* SN */
+  }
+  
   template <typename NDArrayType>
   class material_property_map
   {
