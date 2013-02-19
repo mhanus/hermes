@@ -50,6 +50,8 @@ namespace Hermes
 
     protected:
       void init(const Hermes::vector<MeshFunction<Scalar>*>& solutions);
+      
+      virtual void alloc();
 
       virtual void set_quad_2d(Quad2D* quad_2d);
 
@@ -65,9 +67,9 @@ namespace Hermes
 
       int num;
 
-      MeshFunction<Scalar>* sln[10];
+      MeshFunction<Scalar>** sln;
 
-      uint64_t sln_sub[10];
+      uint64_t* sln_sub;
 
       /// There is a 2-layer structure of the precalculated tables.
       /// The first (the lowest) one is the layer where mapping of integral orders to
@@ -77,9 +79,9 @@ namespace Hermes
       /// The highest layer (in contrast to the PrecalcShapeset class) is represented
       /// here only by this array.
 #ifdef _MSC_VER // For Visual Studio compiler the latter does not compile.
-      std::map<uint64_t, LightArray<Node*>*> tables[10];
+      std::map<uint64_t, LightArray<Node*>*>* tables;
 #else
-      std::map<uint64_t, LightArray<struct Filter<Scalar>::Node*>*> tables[10];
+      std::map<uint64_t, LightArray<struct Filter<Scalar>::Node*>*>* tables;
 #endif
 
       bool unimesh;
@@ -123,7 +125,9 @@ namespace Hermes
       virtual Scalar get_pt_value(double x, double y, int item = H2D_FN_VAL_0);
 
     protected:
-      int item[10];
+      int* item;
+      
+      virtual void alloc() { Filter<Scalar>::alloc(); item = new int [this->num]; }
 
       virtual void filter_fn(int n, Hermes::vector<Scalar*> values, Scalar* result) = 0;
 

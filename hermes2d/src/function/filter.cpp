@@ -26,8 +26,7 @@ namespace Hermes
     Filter<Scalar>::Filter(MeshFunction<Scalar>** solutions, int num) : MeshFunction<Scalar>()
     {
       this->num = num;
-      if(num > 10)
-        throw Hermes::Exceptions::Exception("Attempt to create an instance of Filter with more than 10 MeshFunctions.");
+      this->alloc();
       for(int i = 0; i < this->num; i++)
         this->sln[i] = solutions[i];
       this->init();
@@ -37,8 +36,7 @@ namespace Hermes
     Filter<Scalar>::Filter(const Hermes::vector<MeshFunction<Scalar>*>& solutions) : MeshFunction<Scalar>()
     {
       this->num = solutions.size();
-      if(num > 10)
-        throw Hermes::Exceptions::Exception("Attempt to create an instance of Filter with more than 10 MeshFunctions.");
+      this->alloc();
       for(int i = 0; i < this->num; i++)
         this->sln[i] = solutions.at(i);
       this->init();
@@ -48,8 +46,7 @@ namespace Hermes
     Filter<Scalar>::Filter(const Hermes::vector<Solution<Scalar>*>& solutions) : MeshFunction<Scalar>()
     {
       this->num = solutions.size();
-      if(num > 10)
-        throw Hermes::Exceptions::Exception("Attempt to create an instance of Filter with more than 10 MeshFunctions.");
+      this->alloc();
       for(int i = 0; i < this->num; i++)
         this->sln[i] = solutions.at(i);
       this->init();
@@ -59,8 +56,7 @@ namespace Hermes
     void Filter<Scalar>::init(const Hermes::vector<MeshFunction<Scalar>*>& solutions)
     {
       this->num = solutions.size();
-      if(num > 10)
-        throw Hermes::Exceptions::Exception("Attempt to create an instance of Filter with more than 10 MeshFunctions.");
+      this->alloc();
       for(int i = 0; i < this->num; i++)
         this->sln[i] = solutions.at(i);
       this->init();
@@ -71,12 +67,25 @@ namespace Hermes
     {
       this->deleteSolutions = true;
     }
+    
+    template<typename Scalar>
+    void Filter<Scalar>::alloc()
+    {
+      this->sln = new MeshFunction<Scalar>* [this->num];
+      this->sln_sub = new uint64_t [this->num];
+      
+#ifdef _MSC_VER // For Visual Studio compiler the latter does not compile.
+      this->tables = new std::map<uint64_t, LightArray<Node*>*> [this->num];
+#else
+      this->tables = new std::map<uint64_t, LightArray<struct Filter<Scalar>::Node*>*> [this->num];
+#endif
+    }
 
     template<typename Scalar>
     void Filter<Scalar>::init()
     {
       // construct the union mesh, if necessary
-      const Mesh* meshes[10];
+      const Mesh** meshes = new const Mesh* [this->num];
       for(int i = 0; i < this->num; i++)
         meshes[i] = this->sln[i]->get_mesh();
       this->mesh = meshes[0];
@@ -114,6 +123,8 @@ namespace Hermes
       set_quad_2d(&g_quad_2d_std);
 
       this->deleteSolutions = false;
+      
+      delete [] meshes;
     }
 
     template<typename Scalar>
@@ -125,6 +136,7 @@ namespace Hermes
         for(int i = 0; i < this->num; i++)
           delete this->sln[i];
       }
+      delete [] this->sln;
     }
 
     template<typename Scalar>
@@ -151,7 +163,7 @@ namespace Hermes
         {
           this->sln[i]->set_active_element(unidata[i][e->id].e);
           this->sln[i]->set_transform(unidata[i][e->id].idx);
-          sln_sub[i] = this->sln[i]->get_transform();
+          this->sln_sub[i] = this->sln[i]->get_transform();
         }
       }
 
@@ -184,6 +196,8 @@ namespace Hermes
         }
         tables[i].clear();
       }
+      delete [] tables;
+      delete [] sln_sub;
 
       if(unimesh)
       {
@@ -197,8 +211,10 @@ namespace Hermes
     template<typename Scalar>
     void Filter<Scalar>::reinit()
     {
-      free();
-      init();
+      this->free();
+      delete [] this->sln;
+      this->alloc();
+      this->init();
     }
 
     template<typename Scalar>
@@ -238,12 +254,12 @@ namespace Hermes
     SimpleFilter<Scalar>::SimpleFilter(const Hermes::vector<MeshFunction<Scalar>*>& solutions, const Hermes::vector<int>& items)
     {
       this->num = solutions.size();
-      if(this->num > 10)
-        throw Hermes::Exceptions::Exception("Attempt to create an instance of Filter with more than 10 MeshFunctions.");
       if(items.size() != (unsigned) this->num)
         if(items.size() > 0)
           throw Hermes::Exceptions::Exception("Attempt to create an instance of SimpleFilter with different supplied number of MeshFunctions than the number of types of data used from them.");
 
+      this->alloc();
+      
       for(int i = 0; i < this->num; i++)
 
       {
@@ -262,12 +278,13 @@ namespace Hermes
     SimpleFilter<Scalar>::SimpleFilter(const Hermes::vector<Solution<Scalar>*>& solutions, const Hermes::vector<int>& items)
     {
       this->num = solutions.size();
-      if(this->num > 10)
-        throw Hermes::Exceptions::Exception("Attempt to create an instance of Filter with more than 10 MeshFunctions.");
+      
       if(items.size() != (unsigned) this->num)
         if(items.size() > 0)
           throw Hermes::Exceptions::Exception("Attempt to create an instance of SimpleFilter with different supplied number of MeshFunctions than the number of types of data used from them.");
 
+      this->alloc();
+      
       for(int i = 0; i < this->num; i++)
       {
         this->sln[i] = solutions.at(i);
@@ -284,6 +301,7 @@ namespace Hermes
     template<typename Scalar>
     SimpleFilter<Scalar>::~SimpleFilter()
     {
+      delete [] this->item;
     }
 
     template<typename Scalar>
@@ -316,7 +334,7 @@ namespace Hermes
       for (int j = 0; j < this->num_components; j++)
       {
         // obtain corresponding tables
-        Scalar* tab[10];
+        Scalar** tab = new Scalar* [this->num];
         for (int i = 0; i < this->num; i++)
         {
           int a = 0, b = 0, mask = item[i];
@@ -332,6 +350,8 @@ namespace Hermes
 
         // apply the filter
         filter_fn(np, values, node->values[j][0]);
+        
+        delete [] tab;
       }
 
       if(this->nodes->present(order))
@@ -348,7 +368,7 @@ namespace Hermes
     {
       if(it & (H2D_FN_DX | H2D_FN_DY | H2D_FN_DXX | H2D_FN_DYY | H2D_FN_DXY))
         throw Hermes::Exceptions::Exception("Filter not defined for derivatives.");
-      Scalar val[10];
+      Scalar *val = new Scalar[this->num];
       for (int i = 0; i < this->num; i++)
         val[i] = this->sln[i]->get_pt_value(x, y, item[i]);
 
@@ -359,6 +379,8 @@ namespace Hermes
 
       // apply the filter
       filter_fn(1, values, &result);
+      
+      delete [] val;
 
       return result;
     }
@@ -510,7 +532,9 @@ namespace Hermes
       for (int j = 0; j < this->num_components; j++)
       {
         // obtain solution tables
-        Scalar *val[10], *dx[10], *dy[10];
+        Scalar **val = new Scalar* [this->num];
+        Scalar **dx = new Scalar* [this->num];
+        Scalar **dy = new Scalar* [this->num];
         for (int i = 0; i < this->num; i++)
         {
           val[i] = this->sln[i]->get_fn_values(j);
@@ -532,6 +556,10 @@ namespace Hermes
 
         // apply the filter
         filter_fn(np, values_vector, dx_vector, dy_vector, node->values[j][0], node->values[j][1], node->values[j][2]);
+        
+        delete [] val;
+        delete [] dx;
+        delete [] dy;
       }
 
       if(this->nodes->present(order))
