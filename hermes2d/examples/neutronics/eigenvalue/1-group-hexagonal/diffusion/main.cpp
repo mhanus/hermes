@@ -18,7 +18,7 @@ const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the in
         
 const double THRESHOLD = 0.3;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
-const int STRATEGY = 0;                 // Adaptive strategy:
+const int STRATEGY = -1;                 // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
                                          //   error is processed. If more elements have similar errors, refine
                                          //   all to keep the mesh symmetric.
@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
     
   // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
   report_num_dof("Coarse mesh power iteration, NDOF: ", spaces.get());
-  Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, spaces.get_const(), matrix_solver, TOL_PIT_CM);
+  Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, spaces.get_const(), matrix_solver, TOL_PIT_CM, 0, true, Hermes::Algebra::DF_MATLAB_SPARSE);
   
   if (STRATEGY >= 0)
   {
