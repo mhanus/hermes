@@ -9,7 +9,7 @@ namespace Hermes
   {
     namespace Neutronics
     {      
-      enum NeutronicsMethod { NEUTRONICS_DIFFUSION, NEUTRONICS_SPN };
+      enum NeutronicsMethod { NEUTRONICS_DIFFUSION, NEUTRONICS_SPN, NEUTRONICS_SN };
       enum ReactionType { 
         ABSORPTION, TOTAL, IN_SCATTERING, SELF_SCATTERING, OUT_SCATTERING, FISSION, NU_FISSION 
       };
@@ -51,6 +51,8 @@ namespace Hermes
           "Entered material properties make the Sigma_rn matrix almost singular. Its inversion will most likely fail.";
         static const char* E_EVEN_SPN =
           "The \"simplified P_N\" model may be used only with odd N.";
+        static const char* E_ODD_SN =
+          "The \"S_N\" method may be used only with even N.";
         static const char* W_SCATTERING_TRUNCATION =
           "Using SP_%d model - scattering data entered for N > %d will be ignored.";
         static const char* E_MISMATCHED_ORDER_OF_ANISOTROPY =
