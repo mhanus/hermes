@@ -73,8 +73,8 @@ namespace Hermes
     public:
       PicardSolver();
       PicardSolver(DiscreteProblem<Scalar>* dp);
-      PicardSolver(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space);
-      PicardSolver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
+      PicardSolver(const WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar> space);
+      PicardSolver(const WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> > spaces);
       virtual ~PicardSolver();
 
       /// Sets the attribute verbose_output for the inner Newton's loop to the paramater passed.
