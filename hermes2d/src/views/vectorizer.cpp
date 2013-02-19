@@ -490,7 +490,7 @@ namespace Hermes
 
 #define CHUNKSIZE 1
 int num_threads_used = Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads);
-#pragma omp parallel shared(trav_master) private(state_i) num_threads(num_threads_used)
+#pragma omp parallel shared(trav_masterMax) private(state_i) num_threads(num_threads_used)
         {
 #pragma omp for schedule(dynamic, CHUNKSIZE)
           for(state_i = 0; state_i < num_states; state_i++)
@@ -528,7 +528,7 @@ int num_threads_used = Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads);
           }
         }
 
-        trav_master.finish();
+        trav_masterMax.finish();
         for(unsigned int i = 0; i < Hermes2DApi.getParamValue(Hermes::Hermes2D::numThreads); i++)
           trav[i].finish();
         delete [] trav;
