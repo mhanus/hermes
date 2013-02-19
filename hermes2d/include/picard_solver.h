@@ -46,7 +46,7 @@ namespace Hermes
       PicardSolver(const WeakForm<Scalar>* wf, Hermes::vector<const Space<Scalar>*> spaces, Solution<Scalar>* sln_prev_iter);
       PicardSolver(const WeakForm<Scalar>* wf, const Space<Scalar>* space, Hermes::vector<Solution<Scalar>* > slns_prev_iter);
       PicardSolver(const WeakForm<Scalar>* wf, Hermes::vector<const Space<Scalar>*> spaces, Hermes::vector<Solution<Scalar>* > slns_prev_iter);
-      ~PicardSolver();
+      virtual ~PicardSolver();
       /// Sets the attribute verbose_output for the inner Newton's loop to the paramater passed.
       void set_verbose_output_linear_solver(bool verbose_output_to_set);
 
@@ -75,19 +75,23 @@ namespace Hermes
       /// Set the Anderson beta coefficient. See the details about the Anderson acceleration for 
       /// explanation of this parameter.
       void set_anderson_beta(double beta);
+
     private:
       void init();
+        /// This instance owns its DP.
+      const bool own_dp;
+
+    protected:
       Hermes::vector<Solution<Scalar>* > slns_prev_iter;
       bool verbose_output_linear_solver;
-
-      /// This instance owns its DP.
-      const bool own_dp;
 
       double tol;
       int max_iter;
       int num_last_vectors_used;
       bool anderson_is_on;
       double anderson_beta;
+      
+      void calculate_anderson_coeffs(Scalar** previous_vectors, Scalar* anderson_coeffs, int num_last_vectors_used, int ndof);
     };
   }
 }

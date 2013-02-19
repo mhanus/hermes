@@ -152,7 +152,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    void calculate_anderson_coeffs(Scalar** previous_vectors, Scalar* anderson_coeffs, int num_last_vectors_used, int ndof)
+    void PicardSolver<Scalar>::calculate_anderson_coeffs(Scalar** previous_vectors, Scalar* anderson_coeffs, int num_last_vectors_used, int ndof)
     {
       if(num_last_vectors_used <= 1) throw Hermes::Exceptions::Exception("Anderson acceleration makes sense only if at least two last iterations are used.");
 
@@ -373,7 +373,7 @@ namespace Hermes
         double rel_error = abs_error / last_iter_vec_norm;
 
         // Output for the user.
-        this->info("---- Picard iter %d, ndof %d, rel. error %g%%", it, ndof, rel_error);
+        this->info("---- Picard iter %d, ndof %d, rel. error %g%%", it, ndof, rel_error * 100);
 
         // Stopping because error is sufficiently low.
         if(rel_error < tol)
@@ -393,6 +393,15 @@ namespace Hermes
           return;
         }
 
+        this->onStepEnd();
+
+        // Renew the last iteration vector.
+        for (int i = 0; i < ndof; i++)
+          last_iter_vector[i] = this->sln_vector[i];
+
+        // Translate the last coefficient vector into previous Solution(s).
+        Solution<Scalar>::vector_to_solutions(this->sln_vector, spaces,  slns_prev_iter);
+        
         // Stopping because maximum number of iterations reached.
         if(it >= max_iter)
         {
@@ -409,21 +418,13 @@ namespace Hermes
           this->tick();
           this->info("Picard: solution duration: %f s.\n", this->last());
 
-          this->on_finish();
+          this->onFinish();
           throw Hermes::Exceptions::Exception("Picard: maximum allowed number of Picard iterations exceeded.");
           return;
         }
-        this->onStepEnd();
-
+        
         // Increase counter of iterations.
         it++;
-
-        // Renew the last iteration vector.
-        for (int i = 0; i < ndof; i++)
-          last_iter_vector[i] = this->sln_vector[i];
-
-        // Translate the last coefficient vector into previous Solution(s).
-        Solution<Scalar>::vector_to_solutions(this->sln_vector, spaces,  slns_prev_iter);
       }
     }
     template class HERMES_API PicardSolver<double>;
