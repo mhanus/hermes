@@ -1256,6 +1256,11 @@ namespace Hermes
         elements.free();
         HashTable::free();
 
+        this->boundary_markers_conversion.conversion_table.clear();
+        this->boundary_markers_conversion.conversion_table_inverse.clear();
+        this->element_markers_conversion.conversion_table.clear();
+        this->element_markers_conversion.conversion_table_inverse.clear();
+
         this->refinements.clear();
     }
 
