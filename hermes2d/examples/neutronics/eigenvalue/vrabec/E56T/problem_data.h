@@ -23,8 +23,8 @@ const RegionMaterialMap rm_map = region_material_map
   ("7", "Pokryti")
   ("8", "Voda");
 
-const Hermes::vector<std::string> fission_regions = Hermes::vector<std::string>(
-  "1", "2", "3", "4", "5", "6"
+const HermesMultiArray<std::string> fission_materials(
+  "Palivo"
 );
 
 //////  Physical parameters.  /////////////////////////////////////////////////////////////////

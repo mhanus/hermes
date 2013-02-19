@@ -2,10 +2,8 @@
 #include "definitions.h"
 
 CustomWeakForm::CustomWeakForm( const MaterialProperties::MaterialPropertyMaps& matprop,
-                                const Hermes::vector<Solution<double>*>& iterates, 
-                                const Hermes::vector<std::string>& fission_regions,
-                                double init_keff, const Hermes::vector<std::string>& bdy_vacuum )
-  : WeakForms::KeffEigenvalueProblem(matprop, iterates, fission_regions, init_keff)
+                                const Hermes::vector<std::string>& bdy_vacuum )
+  : WeakForms::FixedSourceProblem(matprop)
 {
   /*for (unsigned int g = 0; g < matprop.get_G(); g++)
   {
