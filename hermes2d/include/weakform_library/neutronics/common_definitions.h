@@ -114,6 +114,10 @@ namespace Hermes
           operator std::vector<NDArrayType>() {
             return m_data;
           }
+          
+          operator std::vector<NDArrayType>() const {
+            return m_data;
+          }
       };
       
       template <typename NDArrayType>
@@ -132,6 +136,10 @@ namespace Hermes
           }
           
           operator Hermes::vector<NDArrayType>() {
+            return m_data;
+          }
+          
+          operator Hermes::vector<NDArrayType>() const {
             return m_data;
           }
       };
