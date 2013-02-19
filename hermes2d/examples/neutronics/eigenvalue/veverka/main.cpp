@@ -10,13 +10,13 @@ const unsigned int N_GROUPS = 2;
 const unsigned int N_EQUATIONS = N_GROUPS;
 
 const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
-  2, 2
+  5, 5
 };
 const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
   1, 1
 }; 
 const int SELECTIVE_REF_NUM[N_EQUATIONS] = {
-  1, 2
+  0, 0
 };
         
 const double THRESHOLD = 0.6;            // This is a quantitative parameter of the adapt(...) function and
@@ -58,7 +58,6 @@ const bool DISPLAY_MESHES = true;       // Set to "true" to display initial mesh
 const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
 
 // Power iteration control.
-double k_eff = 1.0;         // Initial eigenvalue approximation.
 double TOL_PIT_CM = 1e-5;   // Tolerance for eigenvalue convergence on the coarse mesh.
 double TOL_PIT_FM = 1e-5;   // Tolerance for eigenvalue convergence on the fine mesh.
 
@@ -156,6 +155,10 @@ int main(int argc, char* argv[])
   Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces.get_const());
   keff_eigenvalue_iteration.set_picard_tol(TOL_PIT_CM);
   keff_eigenvalue_iteration.set_picard_max_iter(1000);
+  //keff_eigenvalue_iteration.set_matrix_E_matrix_dump_format(Hermes::Algebra::DF_HERMES_BIN);
+  //keff_eigenvalue_iteration.set_matrix_filename("A");
+  //keff_eigenvalue_iteration.set_matrix_number_format("%1.15f");
+  //keff_eigenvalue_iteration.output_matrix(1);
   keff_eigenvalue_iteration.solve();
   Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), spaces.get_const(), power_iterates);
   
