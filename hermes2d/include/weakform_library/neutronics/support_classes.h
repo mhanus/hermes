@@ -458,11 +458,199 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   }
   /* SPN */
   }
+  
+  namespace SN { namespace SupportClasses 
+  {
+    class DegreeOrderGroupFlattener
+    {
+      unsigned int G;
+      
+      public:
+        DegreeOrderGroupFlattener() : G(1) {};
+        DegreeOrderGroupFlattener(unsigned int G) : G(G) {};
+        
+        void set_G(unsigned int G) { this->G = G; }
+        unsigned int get_G() const { return G; }
+        
+        // Accessed array is supposed to contain only elements with even deg+ord. 
+        // Progression A002620 used to define the first term (starting position in the linear array for orders and groups 
+        // belonging to given degree).
+        
+        unsigned int pos(unsigned int degree, int order, unsigned int group = 0) const {
+          return G*(((degree+1)*(degree+1))/2) + G*(order/2) + group;
+        }
+        unsigned int operator() (unsigned int degree, int order, unsigned int group = 0) const {
+          return G*(((degree+1)*(degree+1))/2) + G*(order/2) + group;
+        }
+    };
+    
+    class AngleGroupFlattener
+    {
+      unsigned int G;
+      
+      public:
+        AngleGroupFlattener() : G(1) {};
+        AngleGroupFlattener(unsigned int G) : G(G) {};
+        
+        void set_G(unsigned int G) { this->G = G; }
+        unsigned int get_G() const { return G; }
+        
+        unsigned int pos(unsigned int angle, unsigned int group) const {
+          return angle * G + group;
+        }
+        unsigned int operator() (unsigned int angle, unsigned int group) const {
+          return angle * G + group;
+        }
+    };
+    
+    struct OrdinatesData
+    {
+      OrdinatesData(unsigned int N, const std::string& filename);
+      
+      template<typename Real>
+      void ordinates_to_moment(unsigned int l, int m, unsigned int g, unsigned int G,
+                               const ExtData< Real >* solution_fns, int num_quad_pts, Real *moment_values_at_quad_pts) const;
+      
+      template<typename Real>
+      void ordinates_to_moment(unsigned int l, int m, unsigned int g, unsigned int G,
+                               const Hermes::vector< Real* >& solution_values_at_quad_pts, int num_quad_pts, Real *moment_values_at_quad_pts) const;
+      
+      unsigned int N, M;
+      std::vector<double> xi, eta, mu, pw;
+      
+      std::vector<int> reflections_about_x;
+      std::vector<int> reflections_about_y;
+      
+      friend std::ostream & operator<< (std::ostream& os, const OrdinatesData& odata);
+    };
+    
+    class SphericalHarmonic
+    {
+      unsigned int l;
+      int m;
+      
+      double plgndr(double x) const;
+      
+      int factorial(unsigned int n) const
+      {
+        int fact=1;
+        for (int i=1; i<=n; i++)
+          fact*=i;
+        return fact;
+      }
+      
+      public:
+        SphericalHarmonic(unsigned int l, int m) : l(l), m(m)
+        {
+          if (m > l)
+            Neutronics::ErrorHandling::error_function("Invalid arguments for SphericalHarmonic::operator(): m > l");
+        }
+        
+        double operator() (double xi, double eta, double mu) const;
+    };
+    
+    struct MomentFilter
+    {
+      class Common 
+      {
+        protected:
+          Common(unsigned int l, int m, unsigned int group, unsigned int G,
+                 const OrdinatesData& odata) 
+            : l(l), m(m),  g(group), G(G), ag(G), odata(odata)
+          {
+            if (group >= G) ErrorHandling::error_function("MomentFilter::Common > %s", Messages::E_INVALID_GROUP_INDEX);
+          }
+          
+          unsigned int l, g, G;
+          int m;
+          AngleGroupFlattener ag;
+          const OrdinatesData& odata;
+      };
+      
+      class Val : protected Common, public SimpleFilter<double>
+      {
+        public:       
+          Val(unsigned int l, int m, unsigned int group, unsigned int G, 
+              const Hermes::vector<MeshFunction<double>*>& solutions,
+              const OrdinatesData& odata)
+            : Common(l, m, group, G, odata), SimpleFilter<double>(solutions, Hermes::vector<int>())
+          {
+          };
+          Val(unsigned int l, int m, unsigned int group, unsigned int G, 
+              const Hermes::vector<Solution<double>*>& solutions,
+              const OrdinatesData& odata)
+            : Common(l, m, group, G, odata), SimpleFilter<double>(solutions, Hermes::vector<int>())
+          {
+          };
+          
+          virtual MeshFunction<double>* clone();
+          
+          virtual void set_active_element(Element* e);
+          
+        protected:             
+          void filter_fn(int n, Hermes::vector<double*> values, double* result) {
+            odata.ordinates_to_moment<double>(l, m, g, G, values, n, result);
+          }
+          
+      };
+      
+      class ValDxDy : protected Common, public DXDYFilter<double>
+      {
+        public:
+          ValDxDy(unsigned int l, int m, unsigned int group, unsigned int G,
+                  const Hermes::vector<MeshFunction<double>*>& solutions,
+                  const OrdinatesData& odata)
+            : Common(l, m, group, G, odata), DXDYFilter<double>(solutions)
+          {
+          };
+          ValDxDy(unsigned int l, int m, unsigned int group, unsigned int G,
+                  const Hermes::vector<Solution<double>*>& solutions,
+                  const OrdinatesData& odata)
+            : Common(l, m, group, G, odata), DXDYFilter<double>(solutions)
+          {
+          };
+          
+          virtual MeshFunction<double>* clone();
+          
+          virtual void set_active_element(Element* e);
+          
+        protected:
+          void filter_fn(int n, 
+                         Hermes::vector<double *> values, Hermes::vector<double *> dx, Hermes::vector<double *> dy, 
+                         double* rslt, double* rslt_dx, double* rslt_dy) 
+          {
+            odata.ordinates_to_moment<double>(l, m, g, G, values, n, rslt);
+            odata.ordinates_to_moment<double>(l, m, g, G, dx, n, rslt_dx);
+            odata.ordinates_to_moment<double>(l, m, g, G, dy, n, rslt_dy);
+          };
+      };
+      
+      static void get_scalar_fluxes(const Hermes::vector<Solution<double>*>& angular_fluxes,
+                                    Hermes::vector<MeshFunction<double>*>* scalar_fluxes,
+                                    unsigned int G, const OrdinatesData& odata);               
+      static void get_scalar_fluxes(const Hermes::vector<Solution<double>*>& angular_fluxes,
+                                    Hermes::vector<Filter<double>*>* scalar_fluxes,
+                                    unsigned int G, const OrdinatesData& odata);  
+      static void get_scalar_fluxes_with_derivatives(const Hermes::vector<Solution<double>*>& angular_fluxes,
+                                                    Hermes::vector<MeshFunction<double>*>* scalar_fluxes,
+                                                    unsigned int G, const OrdinatesData& odata);
+      static void get_scalar_fluxes_with_derivatives(const Hermes::vector<Solution<double>*>& angular_fluxes,
+                                                    Hermes::vector<Filter<double>*>* scalar_fluxes,
+                                                    unsigned int G, const OrdinatesData& odata);                                                    
+      static void clear_scalar_fluxes(Hermes::vector<MeshFunction<double>*>* scalar_fluxes);
+      static void clear_scalar_fluxes(Hermes::vector<Filter<double>*>* scalar_fluxes);
+    };
+    
+  /* SupportClasses */
+  }
+  /* SN */
+  }
     
   class PostProcessor
   {
     NeutronicsMethod method;
     GeomType geom_type;
+    const SN::SupportClasses::OrdinatesData& odata;
     
     double get_integrated_group_reaction_rates_internal(ReactionType reaction, MeshFunction<double>* solution,
                                                         const Common::MaterialProperties::MaterialPropertyMaps& matprop,
@@ -479,7 +667,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     
     public:
-      PostProcessor(NeutronicsMethod method, GeomType geom_type = HERMES_PLANAR) : method(method), geom_type(geom_type) {};
+      PostProcessor(NeutronicsMethod method, GeomType geom_type = HERMES_PLANAR, const SN::SupportClasses::OrdinatesData* odata = NULL)
+        : method(method), geom_type(geom_type), odata(*odata) {};
       
       double integrate(MeshFunction<double>* solution, const Hermes::vector<std::string>& areas = Hermes::vector<std::string>()) const;
       double integrate(MeshFunction<double>* solution, const std::string& area) const 
