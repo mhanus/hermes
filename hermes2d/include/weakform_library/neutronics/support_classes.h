@@ -585,7 +585,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           {
           };
           
-          virtual MeshFunction<double>* clone();
+          virtual MeshFunction<double>* clone() const;
           
           virtual void set_active_element(Element* e);
           
@@ -612,7 +612,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           {
           };
           
-          virtual MeshFunction<double>* clone();
+          virtual MeshFunction<double>* clone() const;
           
           virtual void set_active_element(Element* e);
           
