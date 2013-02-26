@@ -430,6 +430,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         void show_solutions(Hermes::vector< Solution<double>* > solutions);
         void show_orders(Hermes::vector<Space<double>*> spaces);
         
+        void inspect_solutions(Hermes::vector< Solution<double>* > solutions);
+
         void show_even_flux_moment(unsigned int moment, unsigned int group, Views::ScalarView* sview,
                                    Hermes::vector< Solution<double>* > solutions);
         void show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView* vview,
@@ -440,7 +442,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         void show_solutions(Hermes::vector< Solution<double>* > solutions) {};
         void show_orders(Hermes::vector<Space<double>*> spaces) {};
         
-        void inspect_solutions(Hermes::vector< Solution<double>* > solutions);
+        void inspect_solutions(Hermes::vector< Solution<double>* > solutions) {};
         
         void show_even_flux_moment(unsigned int moment, unsigned int group, Views::ScalarView* sview,
                                    Hermes::vector< Solution<double>* > solutions) {};
