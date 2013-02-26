@@ -44,9 +44,11 @@ private:
     
     VolumetricStreamingAndReactionsMF(const Hermes::vector<std::string>& areas, 
                                       unsigned int n, unsigned int g, unsigned int G, double Sigma_t) 
-      : GenericForm(n, G), MatrixFormVol<double>(ag.pos(n,g), ag.pos(n,g), areas), 
+      : GenericForm(n, G), MatrixFormVol<double>(ag.pos(n,g), ag.pos(n,g)), 
         Sigma_t(Sigma_t)
-    {};
+    {
+      set_areas(areas);
+    };
 
     virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, Func<double> **ext) const;
 
@@ -73,18 +75,23 @@ private:
                                  unsigned int n, unsigned int g, unsigned int G,
                                  const rank3& Sigma_sn, 
                                  const Hermes::vector<MeshFunction<double>*>& iterates) 
-      : GenericForm(n, G), VectorFormVol<double>(ag.pos(n,g), HERMES_ANY, iterates), 
+      : GenericForm(n, G), VectorFormVol<double>(ag.pos(n,g)), 
         odata(odata), Sigma_sn(Sigma_sn), L(Sigma_sn.size()-1), gto(g)
-    {};
+    {
+      set_ext(iterates);
+    };
     
     VolumetricScatteringSourceVF(const SupportClasses::OrdinatesData& odata,
                                  const Hermes::vector<std::string>& areas, 
                                  unsigned int n, unsigned int g, unsigned int G,
                                  const rank3& Sigma_sn, 
                                  const Hermes::vector<MeshFunction<double>*>& iterates) 
-      : GenericForm(n, G), VectorFormVol<double>(ag.pos(n,g), areas, iterates), 
+      : GenericForm(n, G), VectorFormVol<double>(ag.pos(n,g)), 
         odata(odata), Sigma_sn(Sigma_sn), L(Sigma_sn.size()-1), gto(g)
-    {};
+    {
+      set_areas(areas);
+      set_ext(iterates);
+    };
 
     template<typename Real>
     Real vector_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
@@ -121,18 +128,23 @@ private:
                               unsigned int n, unsigned int g, unsigned int G, 
                               double chi_to, const rank1& nu, const rank1& Sigma_f,
                               const Hermes::vector<MeshFunction<double>*>& iterates) 
-      : GenericForm(n, G), VectorFormVol<double>(ag(n,g), HERMES_ANY, iterates),
+      : GenericForm(n, G), VectorFormVol<double>(ag(n,g)),
         odata(odata), g(g), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f)
-    {};
+    {
+      set_ext(iterates);
+    };
     
     VolumetricFissionSourceVF(const SupportClasses::OrdinatesData& odata,
                               const Hermes::vector<std::string>& areas, 
                               unsigned int n, unsigned int g, unsigned int G,
                               double chi_to, const rank1& nu, const rank1& Sigma_f,
                               const Hermes::vector<MeshFunction<double>*>& iterates) 
-      : GenericForm(n, G), VectorFormVol<double>(ag(n,g), areas, iterates),
+      : GenericForm(n, G), VectorFormVol<double>(ag(n,g)),
         odata(odata), g(g), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f)
-    {};
+    {
+      set_areas(areas);
+      set_ext(iterates);
+    };
 
     template<typename Real>
     Real vector_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
@@ -167,8 +179,10 @@ private:
     
     VolumetricExternalSourceVF(const Hermes::vector<std::string>& areas,
                                unsigned int n, unsigned int g, unsigned int G, double Q, bool isotropic = false) 
-      : GenericForm(n, G), VectorFormVol<double>(ag(n,g), areas), Q(isotropic ? Q/(4*M_PI) : Q)
-    {};
+      : GenericForm(n, G), VectorFormVol<double>(ag(n,g)), Q(isotropic ? Q/(4*M_PI) : Q)
+    {
+      set_areas(areas);
+    };
 
     template<typename Real>
     Real vector_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
@@ -210,7 +224,7 @@ private:
   { 
   public:
     BoundaryStreamingMF(unsigned int n, unsigned int g, unsigned int G) 
-      : GenericForm(n, G), MatrixFormSurf<double>(ag.pos(n,g), ag.pos(n,g), HERMES_ANY)
+      : GenericForm(n, G), MatrixFormSurf<double>(ag.pos(n,g), ag.pos(n,g))
     {};
 
     virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, Func<double> **ext) const;
@@ -228,8 +242,10 @@ private:
   public:
     BoundaryStreamingVF(unsigned int n, unsigned int g, unsigned int G, 
                         const Hermes::vector<std::string>& inflow_boundaries) 
-      : GenericForm(n, G), VectorFormSurf<double>(ag.pos(n,g), inflow_boundaries)
-    {};
+      : GenericForm(n, G), VectorFormSurf<double>(ag.pos(n,g))
+    {
+      set_areas(inflow_boundaries);
+    };
 
     virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v, Geom<double> *e, Func<double> **ext) const;
 
@@ -254,9 +270,12 @@ private:
                          unsigned int n, unsigned int g, unsigned int G, 
                          const Hermes::vector<std::string>& reflective_boundaries,
                          const Hermes::vector<MeshFunction<double>*>& iterates) 
-      : GenericForm(n, G), VectorFormSurf<double>(ag.pos(n,g), reflective_boundaries, iterates), 
+      : GenericForm(n, G), VectorFormSurf<double>(ag.pos(n,g)), 
         odata(odata), g(g)
-    {};
+    {
+      set_areas(reflective_boundaries);
+      set_ext(iterates);
+    };
 
     virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v, Geom<double> *e, Func<double> **ext) const;
 
