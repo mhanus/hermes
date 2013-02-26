@@ -511,7 +511,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       template<typename Real>
       void ordinates_to_moment(unsigned int l, int m, unsigned int g, unsigned int G,
-                               const Func< Real >** solution_fns, int num_quad_pts, Real *moment_values_at_quad_pts) const;
+                               Func< Real >* *const solution_fns, int num_quad_pts, Real *moment_values_at_quad_pts) const;
       
       template<typename Real>
       void ordinates_to_moment(unsigned int l, int m, unsigned int g, unsigned int G,
