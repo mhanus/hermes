@@ -203,18 +203,18 @@ private:
     }
   };
   
-  class InterfaceStreamingMF : protected GenericForm, public MatrixFormSurf<double>
+  class InterfaceStreamingMF : protected GenericForm, public MatrixFormDG<double>
   {
   public:
     InterfaceStreamingMF(unsigned int n, unsigned int g, unsigned int G) 
-      : GenericForm(n, G), MatrixFormSurf<double>(ag.pos(n,g), ag.pos(n,g), H2D_DG_INNER_EDGE)
+      : GenericForm(n, G), MatrixFormDG<double>(ag.pos(n,g), ag.pos(n,g))
     {};
 
     virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, Func<double> **ext) const;
 
     virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const;
     
-    MatrixFormSurf<double>* clone()
+    MatrixFormDG<double>* clone()
     {
       return new SNWeakForm::InterfaceStreamingMF(*this);
     }
