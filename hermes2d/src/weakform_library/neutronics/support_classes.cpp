@@ -1120,7 +1120,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 
 
     template<typename Real>
-    void OrdinatesData::ordinates_to_moment(unsigned int l, int m, unsigned int g, unsigned int G, const Func< Real >** solution_fns, int num_quad_pts, Real* moment_values_at_quad_pts) const
+    void OrdinatesData::ordinates_to_moment(unsigned int l, int m, unsigned int g, unsigned int G, Func< Real >**const solution_fns, int num_quad_pts, Real* moment_values_at_quad_pts) const
     {
       SphericalHarmonic Rlm(l, m);
       AngleGroupFlattener ag(G);
@@ -1137,8 +1137,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
     }
     
-    template void OrdinatesData::ordinates_to_moment<double>(unsigned int l, int m, unsigned int g, unsigned int G, const Func< double >** solution_fns, int num_quad_pts, double* moment_values_at_quad_pts) const;
-    template void OrdinatesData::ordinates_to_moment<Hermes::Ord>(unsigned int l, int m, unsigned int g, unsigned int G, const Func< Hermes::Ord >** solution_fns, int num_quad_pts, Hermes::Ord* moment_values_at_quad_pts) const;
+    template void OrdinatesData::ordinates_to_moment<double>(unsigned int l, int m, unsigned int g, unsigned int G, Func< double >**const solution_fns, int num_quad_pts, double* moment_values_at_quad_pts) const;
+    template void OrdinatesData::ordinates_to_moment<Hermes::Ord>(unsigned int l, int m, unsigned int g, unsigned int G, Func< Hermes::Ord >**const solution_fns, int num_quad_pts, Hermes::Ord* moment_values_at_quad_pts) const;
 
     template<typename Real>
     void OrdinatesData::ordinates_to_moment(unsigned int l, int m, unsigned int g, unsigned int G, const Hermes::vector< Real* >& solution_values_at_quad_pts, int num_quad_pts, Real *moment_values_at_quad_pts) const
