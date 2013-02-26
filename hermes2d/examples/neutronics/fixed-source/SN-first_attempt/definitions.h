@@ -6,133 +6,228 @@ using namespace Hermes;
 using namespace Hermes::Hermes2D;
 using namespace Hermes::Hermes2D::Views;
 using namespace Hermes::Mixins;
+using namespace Neutronics;
+using namespace Neutronics::SN;
 
-class CustomWeakForm : public WeakForm<double>
+class SNWeakForm : public WeakForm<double>
 {
 public:
-  CustomWeakForm(const std::string& inflow_boundary, Mesh* mesh, int N);
-
+  SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropertyMaps& matprop, const Hermes::vector<Solution<double>*>& iterates,
+             const Hermes::vector<std::string>& reflective_boundaries, const Hermes::vector<std::string>& inflow_boundaries = Hermes::vector<std::string>());
+  
+  const SupportClasses::OrdinatesData& get_ordinates_data() const { return odata; }
+  
 private:
-  class CustomMatrixFormVol : public MatrixFormVol<double>
+  class GenericForm
   {
-    int direction;
+    protected:
+      GeomType geom_type;
+      unsigned int G;
+      unsigned int direction;
+      SupportClasses::AngleGroupFlattener ag;
+      
+      GenericForm(unsigned int direction, unsigned int G, GeomType geom_type = HERMES_PLANAR)
+        : geom_type(geom_type), direction(direction), G(G), ag(G)
+      {};
+  };
+    
+  class VolumetricStreamingAndReactionsMF : protected GenericForm, public MatrixFormVol<double>
+  {
+    double Sigma_t;
     
   public:
-    CustomMatrixFormVol(int i, int j) : MatrixFormVol<double>(i, j), direction(i)
+    VolumetricStreamingAndReactionsMF(unsigned int n, unsigned int g, unsigned int G, double Sigma_t) 
+      : GenericForm(n, G), MatrixFormVol<double>(ag.pos(n,g), ag.pos(n,g)), 
+        Sigma_t(Sigma_t)
+    {};
+    
+    VolumetricStreamingAndReactionsMF(const Hermes::vector<std::string>& areas, 
+                                      unsigned int n, unsigned int g, unsigned int G, double Sigma_t) 
+      : GenericForm(n, G), MatrixFormVol<double>(ag.pos(n,g), ag.pos(n,g), areas), 
+        Sigma_t(Sigma_t)
     {};
 
-    template<typename Real, typename Scalar>
-    Scalar matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u, Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
+    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
 
-    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, ExtData<double> *ext) const
-    {
-      return matrix_form<double, double>(n, wt, u_ext, u, v, e, ext);
-    }
-
-    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
-    {
-      return matrix_form<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
-    }
+    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;
 
     MatrixFormVol<double>* clone()
     {
-      return new CustomWeakForm::CustomMatrixFormVol(*this);
+      return new SNWeakForm::VolumetricStreamingAndReactionsMF(*this);
     }
     
-    template<typename Real, typename Scalar>
-    Scalar b(Real x, Real y) const;
+    //template<typename Real>
+    //Real b(Real x, Real y) const;
   };
-
-  class CustomVectorFormVol : public VectorFormVol<double>
+  
+  class VolumetricScatteringSourceVF : protected GenericForm, public VectorFormVol<double>
   {
+    const SupportClasses::OrdinatesData& odata;
+    rank3 Sigma_sn;
+    unsigned int L;
+    unsigned int gto;
+    
   public:
-    CustomVectorFormVol(int i) : VectorFormVol<double>(i)
+    VolumetricScatteringSourceVF(const SupportClasses::OrdinatesData& odata,
+                                 unsigned int n, unsigned int g, unsigned int G,
+                                 const rank3& Sigma_sn, 
+                                 const Hermes::vector<MeshFunction<double>*>& iterates) 
+      : GenericForm(n, G), VectorFormVol<double>(ag.pos(n,g), HERMES_ANY, iterates), 
+        odata(odata), Sigma_sn(Sigma_sn), L(Sigma_sn.size()-1), gto(g)
+    {};
+    
+    VolumetricScatteringSourceVF(const SupportClasses::OrdinatesData& odata,
+                                 const Hermes::vector<std::string>& areas, 
+                                 unsigned int n, unsigned int g, unsigned int G,
+                                 const rank3& Sigma_sn, 
+                                 const Hermes::vector<MeshFunction<double>*>& iterates) 
+      : GenericForm(n, G), VectorFormVol<double>(ag.pos(n,g), areas, iterates), 
+        odata(odata), Sigma_sn(Sigma_sn), L(Sigma_sn.size()-1), gto(g)
     {};
 
-    template<typename Real, typename Scalar>
-    Scalar vector_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
+    template<typename Real>
+    Real vector_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
 
     virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v, Geom<double> *e, ExtData<double> *ext) const
     {
-      return vector_form<double, double>(n, wt, u_ext, v, e, ext);
+      return vector_form<double>(n, wt, u_ext, v, e, ext);
     }
 
     virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
     {
-      return vector_form<Ord, Ord>(n, wt, u_ext, v, e, ext);
+      return vector_form<Ord>(n, wt, u_ext, v, e, ext);
+    }  
+
+    VectorFormVol<double>* clone()
+    {
+      return new SNWeakForm::VolumetricScatteringSourceVF(*this);
+    }
+    
+    //template<typename Real>
+    //Real b(Real x, Real y) const;
+  };
+  
+  class VolumetricFissionSourceVF : protected GenericForm, public VectorFormVol<double>
+  {
+    const SupportClasses::OrdinatesData& odata;
+    unsigned int g;
+    double chi_to;
+    rank1 nu;
+    rank1 Sigma_f;
+    
+  public:
+    VolumetricFissionSourceVF(const SupportClasses::OrdinatesData& odata,
+                              unsigned int n, unsigned int g, unsigned int G, 
+                              double chi_to, const rank1& nu, const rank1& Sigma_f,
+                              const Hermes::vector<MeshFunction<double>*>& iterates) 
+      : GenericForm(n, G), VectorFormVol<double>(ag(n,g), HERMES_ANY, iterates),
+        odata(odata), g(g), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f)
+    {};
+    
+    VolumetricFissionSourceVF(const SupportClasses::OrdinatesData& odata,
+                              const Hermes::vector<std::string>& areas, 
+                              unsigned int n, unsigned int g, unsigned int G,
+                              double chi_to, const rank1& nu, const rank1& Sigma_f,
+                              const Hermes::vector<MeshFunction<double>*>& iterates) 
+      : GenericForm(n, G), VectorFormVol<double>(ag(n,g), areas, iterates),
+        odata(odata), g(g), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f)
+    {};
+
+    template<typename Real>
+    Real vector_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+
+    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v, Geom<double> *e, ExtData<double> *ext) const
+    {
+      return vector_form<double>(n, wt, u_ext, v, e, ext);
+    }
+
+    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
+    {
+      return vector_form<Ord>(n, wt, u_ext, v, e, ext);
+    }  
+
+    VectorFormVol<double>* clone()
+    {
+      return new SNWeakForm::VolumetricFissionSourceVF(*this);
+    }
+    
+    //template<typename Real>
+    //Real b(Real x, Real y) const;
+  };
+
+  class VolumetricExternalSourceVF : protected GenericForm, public VectorFormVol<double>
+  {
+    double Q;
+    
+  public:
+    VolumetricExternalSourceVF(unsigned int n, unsigned int g, unsigned int G, double Q, bool isotropic = false) 
+      : GenericForm(n, G), VectorFormVol<double>(ag(n,g)), Q(isotropic ? Q/(4*M_PI) : Q)
+    {};
+    
+    VolumetricExternalSourceVF(const Hermes::vector<std::string>& areas,
+                               unsigned int n, unsigned int g, unsigned int G, double Q, bool isotropic = false) 
+      : GenericForm(n, G), VectorFormVol<double>(ag(n,g), areas), Q(isotropic ? Q/(4*M_PI) : Q)
+    {};
+
+    template<typename Real>
+    Real vector_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *v, Geom<Real> *e, ExtData<Real> *ext) const;
+
+    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v, Geom<double> *e, ExtData<double> *ext) const
+    {
+      return vector_form<double>(n, wt, u_ext, v, e, ext);
+    }
+
+    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
+    {
+      return vector_form<Ord>(n, wt, u_ext, v, e, ext);
     }    
     
     VectorFormVol<double>* clone()
     {
-      return new CustomWeakForm::CustomVectorFormVol(*this);
+      return new SNWeakForm::VolumetricExternalSourceVF(*this);
     }
-
-    double F(double x, double y) const;
-    Ord F(Ord x, Ord y) const;
   };
-
-  class CustomMatrixFormSurface : public MatrixFormSurf<double>
+  
+  class InterfaceStreamingMF : protected GenericForm, public MatrixFormSurf<double>
   {
-    int direction;
-    
   public:
-    CustomMatrixFormSurface(int i, int j) : MatrixFormSurf<double>(i, j, HERMES_ANY), direction(i)
+    InterfaceStreamingMF(unsigned int n, unsigned int g, unsigned int G) 
+      : GenericForm(n, G), MatrixFormSurf<double>(ag.pos(n,g), ag.pos(n,g), H2D_DG_INNER_EDGE)
     {};
 
-    template<typename Real, typename Scalar>
-    Scalar matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u, Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
+    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
 
-    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, ExtData<double> *ext) const
-    {
-      return matrix_form<double, double>(n, wt, u_ext, u, v, e, ext);
-    }    
-
-    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
-    {
-      return matrix_form<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
-    }
+    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;
     
     MatrixFormSurf<double>* clone()
     {
-      return new CustomWeakForm::CustomMatrixFormSurface(*this);
+      return new SNWeakForm::InterfaceStreamingMF(*this);
     }
   };
 
-  class CustomMatrixFormInterface : public MatrixFormSurf<double>
-  {
-    int direction;
-    
+  class BoundaryStreamingMF : protected GenericForm, public MatrixFormSurf<double>
+  { 
   public:
-    CustomMatrixFormInterface(int i, int j) : MatrixFormSurf<double>(i, j, H2D_DG_INNER_EDGE), direction(i)
+    BoundaryStreamingMF(unsigned int n, unsigned int g, unsigned int G) 
+      : GenericForm(n, G), MatrixFormSurf<double>(ag.pos(n,g), ag.pos(n,g), HERMES_ANY)
     {};
 
-    template<typename Real, typename Scalar>
-    Scalar matrix_form(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u, Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext) const;
+    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
 
-    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, ExtData<double> *ext) const
-    {
-      return matrix_form<double, double>(n, wt, u_ext, u, v, e, ext);
-    }
-
-    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
-    {
-      return matrix_form<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
-    }
-
+    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;
+    
     MatrixFormSurf<double>* clone()
     {
-      return new CustomWeakForm::CustomMatrixFormInterface(*this);
+      return new SNWeakForm::BoundaryStreamingMF(*this);
     }
   };
-
-  class CustomVectorFormSurface : public VectorFormSurf<double>
-  {
-    std::string inflow_boundary;
-    int direction;
-    
+  
+  class BoundaryStreamingVF : protected GenericForm, public VectorFormSurf<double>
+  {    
   public:
-    CustomVectorFormSurface(int i, const std::string& inflow_boundary) : VectorFormSurf<double>(i, HERMES_ANY),
-      inflow_boundary(inflow_boundary), direction(i) 
+    BoundaryStreamingVF(unsigned int n, unsigned int g, unsigned int G, 
+                        const Hermes::vector<std::string>& inflow_boundaries) 
+      : GenericForm(n, G), VectorFormSurf<double>(ag.pos(n,g), inflow_boundaries)
     {};
 
     virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
@@ -141,22 +236,44 @@ private:
 
     VectorFormSurf<double>* clone()
     {
-      return new CustomWeakForm::CustomVectorFormSurface(*this);
+      return new SNWeakForm::BoundaryStreamingVF(*this);
     }
 
-    template<typename Real, typename Scalar>
-    Scalar g(const std::string& bdy_marker, Real x, Real y) const;
+    template<typename Real>
+    Real influx(Real x, Real y) const { return Real(0.0); } // vacuum inflow boundary
   };
   
+  class SpecularReflectionVF : protected GenericForm, public VectorFormSurf<double>
+  {
+    const SupportClasses::OrdinatesData& odata;
+    unsigned int g;
+    
+  public:
+    SpecularReflectionVF(const SupportClasses::OrdinatesData& odata,
+                         unsigned int n, unsigned int g, unsigned int G, 
+                         const Hermes::vector<std::string>& reflective_boundaries,
+                         const Hermes::vector<MeshFunction<double>*>& iterates) 
+      : GenericForm(n, G), VectorFormSurf<double>(ag.pos(n,g), reflective_boundaries, iterates), 
+        odata(odata), g(g)
+    {};
+
+    virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v, Geom<double> *e, ExtData<double> *ext) const;
+
+    virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const;
+
+    VectorFormSurf<double>* clone()
+    {
+      return new SNWeakForm::SpecularReflectionVF(*this);
+    }
+  };
+    
   double calculate_a_dot_v(int n, double x, double y, double vx, double vy) const;
-
-  Ord calculate_a_dot_v(int n, Ord x, Ord y, Ord vx, Ord vy) const;
-
-  double upwind_flux(double u_cent, double u_neib, double a_dot_n) const;
-
-  Ord upwind_flux(Ord u_cent, Ord u_neib, Ord a_dot_n) const;
-
-  Mesh* mesh;
   
-  int N;
+  double upwind_flux(double u_cent, double u_neib, double a_dot_n) const;
+  Ord upwind_flux(Ord u_cent, Ord u_neib) const;
+
+  const Mesh* mesh;
+  
+  unsigned int N, M, G;
+  SupportClasses::OrdinatesData odata;
 };
