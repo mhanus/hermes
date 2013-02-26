@@ -45,9 +45,9 @@ const char* preconditioner = "jacobi";
 int main(int argc, char* args[])
 {
   // Set the number of threads used in Hermes.
-  Hermes::HermesCommonApi.setParamValue(Hermes::exceptionsPrintCallstack, 1);
-  Hermes::HermesCommonApi.setParamValue(Hermes::matrixSolverType, matrix_solver_type);
-  Hermes::Hermes2D::Hermes2DApi.setParamValue(Hermes::Hermes2D::numThreads, 1);
+  Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 1);
+  Hermes::HermesCommonApi.set_integral_param_value(Hermes::matrixSolverType, matrix_solver_type);
+  //Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
   
   // Time measurement.
   TimeMeasurable cpu_time;
