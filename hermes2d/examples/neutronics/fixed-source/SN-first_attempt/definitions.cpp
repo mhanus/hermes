@@ -39,7 +39,7 @@ SNWeakForm::SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropert
           if (src_data[gto] > 0) 
             add_vector_form(new VolumetricExternalSourceVF(regions, n, gto, G, src_data[gto], true));
           
-          add_matrix_form_surf(new InterfaceStreamingMF(n, gto, G));
+          add_matrix_form_DG(new InterfaceStreamingMF(n, gto, G));
           add_matrix_form_surf(new BoundaryStreamingMF(n, gto, G));
           
           if (!inflow_boundaries.empty())
