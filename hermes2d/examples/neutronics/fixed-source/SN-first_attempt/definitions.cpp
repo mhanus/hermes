@@ -52,7 +52,7 @@ SNWeakForm::SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropert
 }
 
 double SNWeakForm::VolumetricStreamingAndReactionsMF::value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v,
-                                                  Geom<double> *e, ExtData<double> *ext) const
+                                                  Geom<double> *e, Func<double> **ext) const
 {
   double result = 0.0;
   for (int i = 0; i < n; i++)
@@ -65,7 +65,7 @@ double SNWeakForm::VolumetricStreamingAndReactionsMF::value(int n, double *wt, F
 }
 
 Ord SNWeakForm::VolumetricStreamingAndReactionsMF::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v,
-                                                  Geom<Ord> *e, ExtData<Ord> *ext) const
+                                                  Geom<Ord> *e, Func<Ord> **ext) const
 { 
   return u->val[0] * (v->dx[0]+v->dy[0]+v->val[0]);
 }
@@ -78,7 +78,7 @@ Real SNWeakForm::VolumetricStreamingAndReactionsMF::b(Real x, Real y) const
 */
 
 template<typename Real>
-Real SNWeakForm::VolumetricScatteringSourceVF::vector_form(int n, double* wt, Func< Real >* u_ext[], Func< Real >* v, Geom< Real >* e, ExtData< Real >* ext) const
+Real SNWeakForm::VolumetricScatteringSourceVF::vector_form(int n, double* wt, Func< Real >* u_ext[], Func< Real >* v, Geom< Real >* e, Func< Real >** ext) const
 {
   Real result(0.0);
   Real *moment_values_at_quad_pts = new Real [n];
@@ -126,7 +126,7 @@ Real SNWeakForm::VolumetricScatteringSourceVF::vector_form(int n, double* wt, Fu
 
 
 template<typename Real>
-Real SNWeakForm::VolumetricFissionSourceVF::vector_form(int n, double* wt, Func< Real >* u_ext[], Func< Real >* v, Geom< Real >* e, ExtData< Real >* ext) const
+Real SNWeakForm::VolumetricFissionSourceVF::vector_form(int n, double* wt, Func< Real >* u_ext[], Func< Real >* v, Geom< Real >* e, Func< Real >** ext) const
 {
   Real result(0.0);
     
@@ -137,7 +137,7 @@ Real SNWeakForm::VolumetricFissionSourceVF::vector_form(int n, double* wt, Func<
       // Angular integration to get scalar flux at quadrature point.
       Real group_scalar_flux(0.0);
       for (int dir = 0; dir < odata.M; dir++)
-        group_scalar_flux += odata.pw[dir] * ext->fn[ag.pos(dir,gfrom)]->val[quad_pt];
+        group_scalar_flux += odata.pw[dir] * ext[ag.pos(dir,gfrom)]->val[quad_pt];
       //group_scalar_flux *= 2 / (4*M_PI) * 2*M_PI;
       group_scalar_flux *= 2;
       
@@ -160,7 +160,7 @@ Real SNWeakForm::VolumetricFissionSourceVF::vector_form(int n, double* wt, Func<
 
 template<typename Real>
 Real SNWeakForm::VolumetricExternalSourceVF::vector_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *v,
-                                                  Geom<Real> *e, ExtData<Real> *ext) const
+                                                  Geom<Real> *e, Func<Real> **ext) const
 {
   Real result = Real(0.0);
   for (int i = 0; i < n; i++)
@@ -186,7 +186,7 @@ Ord SNWeakForm::VolumetricExternalSourceVF::Q(Ord x, Ord y) const
 */
 
 double SNWeakForm::BoundaryStreamingMF::value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v,
-                                                      Geom<double> *e, ExtData<double> *ext) const
+                                                      Geom<double> *e, Func<double> **ext) const
 {
   double result = 0.0;
   for (int i = 0; i < n; i++)
@@ -204,13 +204,13 @@ double SNWeakForm::BoundaryStreamingMF::value(int n, double *wt, Func<double> *u
 }
 
 Ord SNWeakForm::BoundaryStreamingMF::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v,
-                                                      Geom<Ord> *e, ExtData<Ord> *ext) const
+                                                      Geom<Ord> *e, Func<Ord> **ext) const
 { 
   return u->val[0]*v->val[0];
 }
 
 double SNWeakForm::InterfaceStreamingMF::value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v,
-                                                        Geom<double> *e, ExtData<double> *ext) const
+                                                        Geom<double> *e, Func<double> **ext) const
 {
   double result = 0.0;
 
@@ -227,13 +227,13 @@ double SNWeakForm::InterfaceStreamingMF::value(int n, double *wt, Func<double> *
 }
 
 Ord SNWeakForm::InterfaceStreamingMF::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v,
-                                                      Geom<Ord> *e, ExtData<Ord> *ext) const
+                                                      Geom<Ord> *e, Func<Ord> **ext) const
 { 
   return static_cast<SNWeakForm*>(wf)->upwind_flux(u->get_val_central(0), u->get_val_neighbor(0)) * (v->get_val_central(0) - v->get_val_neighbor(0));
 }
 
 double SNWeakForm::BoundaryStreamingVF::value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                                                Geom<double> *e, ExtData<double> *ext) const
+                                                Geom<double> *e, Func<double> **ext) const
 {
   double result = 0;
   for (int quad_pt = 0; quad_pt < n; quad_pt++) 
@@ -250,14 +250,14 @@ double SNWeakForm::BoundaryStreamingVF::value(int n, double *wt, Func<double> *u
   return result;
 }
 
-Ord SNWeakForm::BoundaryStreamingVF::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
+Ord SNWeakForm::BoundaryStreamingVF::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const
 {
   //std::cout << "BoundaryStreamingVF :: " << v->val[0] * influx<Ord>(e->x[0], e->y[0]) << std::endl;
   return v->val[0] * influx<Ord>(e->x[0], e->y[0]);
 }
 
 double SNWeakForm::SpecularReflectionVF::value(int n, double *wt, Func<double> *u_ext[], Func<double> *v,
-                                                Geom<double> *e, ExtData<double> *ext) const
+                                                Geom<double> *e, Func<double> **ext) const
 {
   double eps = 1e-14;
   double result = 0;
@@ -271,9 +271,9 @@ double SNWeakForm::SpecularReflectionVF::value(int n, double *wt, Func<double> *
       double boundary_data = 0.0;
       
       if (fabs(e->nx[quad_pt] - 1.0) < eps || fabs(e->nx[quad_pt] + 1.0) < eps && fabs(e->ny[quad_pt]) < eps)
-        boundary_data = ext->fn[ag.pos(odata.reflections_about_x[direction],g)]->val[quad_pt];
+        boundary_data = ext[ag.pos(odata.reflections_about_x[direction],g)]->val[quad_pt];
       else if (fabs(e->ny[quad_pt] - 1.0) < eps || fabs(e->ny[quad_pt] + 1.0) < eps && fabs(e->nx[quad_pt]) < eps)
-        boundary_data = ext->fn[ag.pos(odata.reflections_about_y[direction],g)]->val[quad_pt];
+        boundary_data = ext[ag.pos(odata.reflections_about_y[direction],g)]->val[quad_pt];
       else
         Hermes::Mixins::Loggable::Static::warn("Only horizontal or vertical boundaries are currently supported for specular reflection b. c.");
 
@@ -283,9 +283,9 @@ double SNWeakForm::SpecularReflectionVF::value(int n, double *wt, Func<double> *
   return result;
 }
 
-Ord SNWeakForm::SpecularReflectionVF::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext) const
+Ord SNWeakForm::SpecularReflectionVF::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const
 {
-  int refl_ord = std::max(ext->fn[ag.pos(odata.reflections_about_x[direction],g)]->val[0].get_order(),ext->fn[ag.pos(odata.reflections_about_y[direction],g)]->val[0].get_order());
+  int refl_ord = std::max(ext[ag.pos(odata.reflections_about_x[direction],g)]->val[0].get_order(),ext[ag.pos(odata.reflections_about_y[direction],g)]->val[0].get_order());
   
   //std::cout << "SpecularReflectionVF :: " << static_cast<SNWeakForm*>(wf)->upwind_flux(Ord(0), Ord(refl_ord), Ord(1)) * v->val[0] << std::endl;
   
