@@ -79,7 +79,7 @@ int main(int argc, char* args[])
   mview.show(meshes[0]);
   Views::View::wait();
   
-  Loggable::Static::info("%d elements, %d vertices", meshes[0]->get_num_active_elements(), meshes[0]->get_num_nodes() );
+  Loggable::Static::info("%d elements, %d vertices", meshes[0]->get_num_active_elements(), meshes[0]->get_num_vertex_nodes() );
   
   Hermes::vector<const Space<double> *> spaces;
   
@@ -117,7 +117,7 @@ int main(int argc, char* args[])
   DiscreteProblemLinear<double> dp(&wf, spaces);
   dp.set_fvm();
   //PicardSolver<double> solver(&dp, slns);
-  SourceIteration solver(&dp, slns);
+  SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);
   
@@ -131,7 +131,7 @@ int main(int argc, char* args[])
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);
   try
   {
-    solver.solve();
+    solver.solve(slns);
   }
   catch(std::exception& e)
   {
