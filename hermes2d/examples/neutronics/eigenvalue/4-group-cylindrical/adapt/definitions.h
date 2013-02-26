@@ -13,13 +13,13 @@ public:
   H1AxisymProjectionJacobian() : MatrixFormVol<Scalar>(0, 0) { this->setSymFlag(HERMES_SYM); };
 
   Scalar value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *u, Func<double> *v,
-               Geom<double> *e, ExtData<Scalar> *ext) const
+               Geom<double> *e, Func<Scalar> **ext) const
   {
     return h1_axisym_projection_biform<double, Scalar>(n, wt, u_ext, u, v, e, ext);
   }
 
   Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v,
-          Geom<Ord> *e, ExtData<Ord> *ext) const
+          Geom<Ord> *e, Func<Ord> **ext) const
   {
     return h1_axisym_projection_biform<Ord, Ord>(n, wt, u_ext, u, v, e, ext);
   }
@@ -32,7 +32,7 @@ private:
   
   template<typename TestFunctionDomain, typename SolFunctionDomain>
   static SolFunctionDomain h1_axisym_projection_biform(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *u,
-                                                       Func<TestFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext)
+                                                       Func<TestFunctionDomain> *v, Geom<TestFunctionDomain> *e, Func<SolFunctionDomain> **ext)
   {
     SolFunctionDomain result(0);
     for (int i = 0; i < n; i++)
@@ -52,13 +52,13 @@ public:
   }
 
   Scalar value(int n, double *wt, Func<Scalar> *u_ext[], Func<double> *v,
-                Geom<double> *e, ExtData<Scalar> *ext) const
+                Geom<double> *e, Func<Scalar> **ext) const
   {
     return h1_axisym_projection_liform<double, Scalar>(n, wt, u_ext, v, e, ext);
   }
 
   Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v,
-          Geom<Ord> *e, ExtData<Ord> *ext) const
+          Geom<Ord> *e, Func<Ord> **ext) const
   {
     return h1_axisym_projection_liform<Ord, Ord>(n, wt, u_ext, v, e, ext);
   }
@@ -70,13 +70,13 @@ public:
 private:
   template<typename TestFunctionDomain, typename SolFunctionDomain>
   SolFunctionDomain h1_axisym_projection_liform(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<TestFunctionDomain> *v,
-                                                Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext) const
+                                                Geom<TestFunctionDomain> *e, Func<SolFunctionDomain> **ext) const
   {
     SolFunctionDomain result(0);
     for (int i = 0; i < n; i++)
-      result += wt[i] * e->x[i] * ( ext->fn[0]->val[i]  * v->val[i] 
-                                    + ext->fn[0]->dx[i] * v->dx[i] 
-                                    + ext->fn[0]->dy[i] * v->dy[i] );
+      result += wt[i] * e->x[i] * ( ext[0]->val[i]  * v->val[i] 
+                                    + ext[0]->dx[i] * v->dx[i] 
+                                    + ext[0]->dy[i] * v->dy[i] );
     return result;
   }
 };
@@ -91,17 +91,17 @@ public:
   /// Error bilinear form.
   virtual Scalar value(int n, double *wt, Func<Scalar> *u_ext[],
                         Func<Scalar> *u, Func<Scalar> *v, Geom<double> *e,
-                        ExtData<Scalar> *ext) const;
+                        Func<Scalar> **ext) const;
 
   /// Error bilinear form to estimate order of a function.
   virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[],
                   Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e,
-                  ExtData<Ord> *ext) const;
+                  Func<Ord> **ext) const;
 
 private:
   template<typename TestFunctionDomain, typename SolFunctionDomain>
   static SolFunctionDomain l2_error_form_axisym(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<SolFunctionDomain> *u,
-                                                Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext)
+                                                Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, Func<SolFunctionDomain> **ext)
   {
     SolFunctionDomain result(0);
     for (int i = 0; i < n; i++)
@@ -111,7 +111,7 @@ private:
 
   template<typename TestFunctionDomain, typename SolFunctionDomain>
   static SolFunctionDomain h1_error_form_axisym(int n, double *wt, Func<SolFunctionDomain> *u_ext[], Func<SolFunctionDomain> *u,
-                                                Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, ExtData<SolFunctionDomain> *ext)
+                                                Func<SolFunctionDomain> *v, Geom<TestFunctionDomain> *e, Func<SolFunctionDomain> **ext)
   {
     SolFunctionDomain result(0);
     for (int i = 0; i < n; i++)
@@ -123,7 +123,7 @@ private:
 template<typename Scalar>
 Scalar ErrorForm<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[],
                                 Func<Scalar> *u, Func<Scalar> *v, Geom<double> *e,
-                                ExtData<Scalar> *ext) const
+                                Func<Scalar> **ext) const
 {
   switch (this->projNormType)
   {
@@ -140,7 +140,7 @@ Scalar ErrorForm<Scalar>::value(int n, double *wt, Func<Scalar> *u_ext[],
 template<typename Scalar>
 Ord ErrorForm<Scalar>::ord(int n, double *wt, Func<Ord> *u_ext[],
                         Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e,
-                        ExtData<Ord> *ext) const
+                        Func<Ord> **ext) const
 {
   switch (this->projNormType)
   {

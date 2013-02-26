@@ -32,7 +32,7 @@ class ErrorFormSPN : public Adapt<Scalar>::MatrixFormVolError
     /// Evaluate value of the error norm.
     virtual Scalar value(int n, double *wt, Func<Scalar> *u_ext[],
                           Func<Scalar> *u, Func<Scalar> *v, Geom<double> *e,
-                          ExtData<Scalar> *ext) const
+                          Func<Scalar> **ext) const
     {
       return factor * Adapt<Scalar>::MatrixFormVolError::value(n, wt, u_ext, u, v, e, ext);
     }
