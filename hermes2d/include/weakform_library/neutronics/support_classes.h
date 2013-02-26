@@ -329,7 +329,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
         protected:
           virtual void precalculate(int order, int mask);
-          virtual Func<double>* get_pt_value(double x, double y)
+          virtual Func<double>* get_pt_value(double x, double y, Element* e = NULL)
           { 
             ErrorHandling::error_function("Not implemented yet"); 
             return NULL; 
@@ -509,7 +509,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       template<typename Real>
       void ordinates_to_moment(unsigned int l, int m, unsigned int g, unsigned int G,
-                               const ExtData< Real >* solution_fns, int num_quad_pts, Real *moment_values_at_quad_pts) const;
+                               const Func< Real >** solution_fns, int num_quad_pts, Real *moment_values_at_quad_pts) const;
       
       template<typename Real>
       void ordinates_to_moment(unsigned int l, int m, unsigned int g, unsigned int G,
