@@ -25,7 +25,7 @@ class ErrorFormSPN : public Adapt<Scalar>::MatrixFormVolError
     /// Evaluate value of the error norm.
     virtual Scalar value(int n, double *wt, Func<Scalar> *u_ext[],
                           Func<Scalar> *u, Func<Scalar> *v, Geom<double> *e,
-                          ExtData<Scalar> *ext) const
+                          Func<Scalar> **ext) const
     {
       return factor * Adapt<Scalar>::MatrixFormVolError::value(n, wt, u_ext, u, v, e, ext);
     }
@@ -52,7 +52,7 @@ public:
   /// Evaluate value of the error norm.
   virtual double value(int n, double *wt, Func<double> *u_ext[],
                         Func<double> *u, Geom<double> *e,
-                        ExtData<double> *ext) const
+                        Func<double> **ext) const
   {
     double result = 0.;
     
@@ -77,7 +77,7 @@ public:
   /// Evaluate quadrature order required for accurate integration of the error norm.
   virtual Hermes::Ord ord(int n, double *wt, Func<Hermes::Ord> *u_ext[],
                           Func<Hermes::Ord> *u, Geom<Hermes::Ord> *e,
-                          ExtData<Hermes::Ord> *ext) const
+                          Func<Hermes::Ord> **ext) const
   {
     Hermes::Ord result(0);
     
@@ -115,7 +115,7 @@ public:
   /// Evaluate value of the error norm.
   virtual double value(int n, double *wt, Func<double> *u_ext[],
                         Func<double> *u, Geom<double> *e,
-                        ExtData<double> *ext) const
+                        Func<double> **ext) const
   {
     double result = 0.;
     
@@ -138,7 +138,7 @@ public:
   /// Evaluate quadrature order required for accurate integration of the error norm.
   virtual Hermes::Ord ord(int n, double *wt, Func<Hermes::Ord> *u_ext[],
                           Func<Hermes::Ord> *u, Geom<Hermes::Ord> *e,
-                          ExtData<Hermes::Ord> *ext) const
+                          Func<Hermes::Ord> **ext) const
   {
     Hermes::Ord result(0);
     
@@ -177,7 +177,7 @@ public:
   /// Evaluate value of the error norm.
   virtual double value(int n, double *wt, Func<double> *u_ext[],
                         Func<double> *u, Geom<double> *e,
-                        ExtData<double> *ext) const
+                        Func<double> **ext) const
   {
     std::string mat = matprop.get_material(adapt->get_element_markers_conversion()->get_user_marker(e->elem_marker).marker);
     
@@ -232,7 +232,7 @@ public:
   /// Evaluate quadrature order required for accurate integration of the error norm.
   virtual Hermes::Ord ord(int n, double *wt, Func<Hermes::Ord> *u_ext[],
                           Func<Hermes::Ord> *u, Geom<Hermes::Ord> *e,
-                          ExtData<Hermes::Ord> *ext) const
+                          Func<Hermes::Ord> **ext) const
   {
     Hermes::Ord result(0);
     
@@ -276,7 +276,7 @@ public:
   /// Evaluate value of the error norm.
   virtual double value(int n, double *wt, Func<double> *u_ext[],
                         Func<double> *u, Geom<double> *e,
-                        ExtData<double> *ext) const
+                        Func<double> **ext) const
   {
     double result = 0.;
     
@@ -296,7 +296,7 @@ public:
   /// Evaluate quadrature order required for accurate integration of the error norm.
   virtual Hermes::Ord ord(int n, double *wt, Func<Hermes::Ord> *u_ext[],
                           Func<Hermes::Ord> *u, Geom<Hermes::Ord> *e,
-                          ExtData<Hermes::Ord> *ext) const
+                          Func<Hermes::Ord> **ext) const
   {
     return Hermes::sqr( (u->get_dx_central(0) - u->get_dx_neighbor(0)) +
                         (u->get_dy_central(0) - u->get_dy_neighbor(0)) );
@@ -321,7 +321,7 @@ public:
   /// Evaluate value of the error norm.
   virtual double value(int n, double *wt, Func<double> *u_ext[],
                         Func<double> *u, Geom<double> *e,
-                        ExtData<double> *ext) const
+                        Func<double> **ext) const
   {
     double result = 0.;
     
@@ -337,7 +337,7 @@ public:
   /// Evaluate quadrature order required for accurate integration of the error norm.
   virtual Hermes::Ord ord(int n, double *wt, Func<Hermes::Ord> *u_ext[],
                           Func<Hermes::Ord> *u, Geom<Hermes::Ord> *e,
-                          ExtData<Hermes::Ord> *ext) const
+                          Func<Hermes::Ord> **ext) const
   {
     return Hermes::sqr( e->nx[0] * u->dx[0] + e->ny[0] * u->dy[0] );
   }
