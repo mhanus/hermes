@@ -1173,7 +1173,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           order = sln[sol_idx]->get_fn_order();
     }
     
-    MeshFunction<double>* MomentFilter::Val::clone()
+    MeshFunction<double>* MomentFilter::Val::clone() const
     {
       Hermes::vector<MeshFunction<double>*> slns;
 
@@ -1195,7 +1195,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           order = sln[sol_idx]->get_fn_order();
     }
     
-    MeshFunction<double>* MomentFilter::ValDxDy::clone()
+    MeshFunction<double>* MomentFilter::ValDxDy::clone() const
     {
       Hermes::vector<MeshFunction<double>*> slns;
 
