@@ -15,7 +15,7 @@ const bool MULTIMESH = false;
 // Number of initial uniform mesh refinements.
 const int INIT_REF_NUM = 1;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
-const int P_INIT = 1;
+const int P_INIT = 0;
 
 const unsigned int N_GROUPS = 1;    // Monoenergetic (single group) problem.
 const int N = 6;                    
@@ -114,9 +114,8 @@ int main(int argc, char* args[])
   SNWeakForm wf(N, matprop, slns, reflective_boundaries);
  
   // Initialize the FE problem.
-  DiscreteProblemLinear<double> dp(&wf, spaces);
+  DiscreteProblem<double> dp(&wf, spaces);
   dp.set_fvm();
-  //PicardSolver<double> solver(&dp, slns);
   SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);
@@ -129,6 +128,7 @@ int main(int argc, char* args[])
   solver.set_picard_max_iter(PICARD_MAX_ITER);
   solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);
+  solver.set_verbose_output(true);
   try
   {
     solver.solve(slns);
