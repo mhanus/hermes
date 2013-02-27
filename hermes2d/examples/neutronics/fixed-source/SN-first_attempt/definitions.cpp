@@ -1,18 +1,14 @@
 #include "definitions.h"
 #include <cstdlib>
 
-SNWeakForm::SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropertyMaps& matprop, const Hermes::vector<Solution<double>*>& iterates,
+SNWeakForm::SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropertyMaps& matprop,
                        const Hermes::vector<std::string>& reflective_boundaries, const Hermes::vector<std::string>& inflow_boundaries) 
   : WeakForm<double>(N*(N+2)/2), mesh(iterates[0]->get_mesh()), N(N), M(N*(N+2)/2), G(matprop.get_G()), odata(SupportClasses::OrdinatesData(N, "lgvalues.txt"))
 {  
     bool1 chi_nnz = matprop.get_fission_nonzero_structure();
    
     std::cout << odata;
-    
-    Hermes::vector<MeshFunction<double>*> mfn_iterates;
-    mfn_iterates.resize(M*G);
-    std::copy(iterates.begin(), iterates.end(), mfn_iterates.begin());
-    
+        
     std::set<std::string>::const_iterator material = matprop.get_materials_list().begin();
     for ( ; material != matprop.get_materials_list().end(); ++material)
     {
@@ -32,9 +28,9 @@ SNWeakForm::SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropert
           add_matrix_form(new VolumetricStreamingAndReactionsMF(regions, n, gto, G, Sigma_t[gto]));
           
           if (!Sigma_sn.empty())
-            add_vector_form(new VolumetricScatteringSourceVF(odata, regions, n, gto, G, Sigma_sn, mfn_iterates));
+            add_vector_form(new VolumetricScatteringSourceVF(odata, regions, n, gto, G, Sigma_sn));
           if (chi_nnz[gto])
-            add_vector_form(new VolumetricFissionSourceVF(odata, regions, n, gto, G, chi[gto], nu, Sigma_f, mfn_iterates));
+            add_vector_form(new VolumetricFissionSourceVF(odata, regions, n, gto, G, chi[gto], nu, Sigma_f));
          
           if (src_data[gto] > 0) 
             add_vector_form(new VolumetricExternalSourceVF(regions, n, gto, G, src_data[gto], true));
@@ -45,7 +41,7 @@ SNWeakForm::SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropert
           if (!inflow_boundaries.empty())
             add_vector_form_surf(new BoundaryStreamingVF(n, gto, G, inflow_boundaries));
           if (!reflective_boundaries.empty())
-            add_vector_form_surf(new SpecularReflectionVF(odata, n, gto, G, reflective_boundaries, mfn_iterates));
+            add_vector_form_surf(new SpecularReflectionVF(odata, n, gto, G, reflective_boundaries));
         }
       }
     }
@@ -93,7 +89,7 @@ Real SNWeakForm::VolumetricScatteringSourceVF::vector_form(int n, double* wt, Fu
       {
         if ( ((l + m) % 2) == 0 )
         {
-          odata.ordinates_to_moment(l, m, gfrom, G, ext, n, moment_values_at_quad_pts);
+          odata.ordinates_to_moment(l, m, gfrom, G, u_ext, n, moment_values_at_quad_pts);
           SupportClasses::SphericalHarmonic Rlm(l, m);
           double rlm_in_dir = Rlm(odata.xi[direction], odata.eta[direction], odata.mu[direction]);
             
@@ -137,7 +133,7 @@ Real SNWeakForm::VolumetricFissionSourceVF::vector_form(int n, double* wt, Func<
       // Angular integration to get scalar flux at quadrature point.
       Real group_scalar_flux(0.0);
       for (int dir = 0; dir < odata.M; dir++)
-        group_scalar_flux += odata.pw[dir] * ext[ag.pos(dir,gfrom)]->val[quad_pt];
+        group_scalar_flux += odata.pw[dir] * u_ext[ag.pos(dir,gfrom)]->val[quad_pt];
       //group_scalar_flux *= 2 / (4*M_PI) * 2*M_PI;
       group_scalar_flux *= 2;
       
@@ -271,9 +267,9 @@ double SNWeakForm::SpecularReflectionVF::value(int n, double *wt, Func<double> *
       double boundary_data = 0.0;
       
       if (fabs(e->nx[quad_pt] - 1.0) < eps || fabs(e->nx[quad_pt] + 1.0) < eps && fabs(e->ny[quad_pt]) < eps)
-        boundary_data = ext[ag.pos(odata.reflections_about_x[direction],g)]->val[quad_pt];
+        boundary_data = u_ext[ag.pos(odata.reflections_about_x[direction],g)]->val[quad_pt];
       else if (fabs(e->ny[quad_pt] - 1.0) < eps || fabs(e->ny[quad_pt] + 1.0) < eps && fabs(e->nx[quad_pt]) < eps)
-        boundary_data = ext[ag.pos(odata.reflections_about_y[direction],g)]->val[quad_pt];
+        boundary_data = u_ext[ag.pos(odata.reflections_about_y[direction],g)]->val[quad_pt];
       else
         Hermes::Mixins::Loggable::Static::warn("Only horizontal or vertical boundaries are currently supported for specular reflection b. c.");
 
@@ -285,7 +281,7 @@ double SNWeakForm::SpecularReflectionVF::value(int n, double *wt, Func<double> *
 
 Ord SNWeakForm::SpecularReflectionVF::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const
 {
-  int refl_ord = std::max(ext[ag.pos(odata.reflections_about_x[direction],g)]->val[0].get_order(),ext[ag.pos(odata.reflections_about_y[direction],g)]->val[0].get_order());
+  int refl_ord = std::max(u_ext[ag.pos(odata.reflections_about_x[direction],g)]->val[0].get_order(),u_ext[ag.pos(odata.reflections_about_y[direction],g)]->val[0].get_order());
   
   //std::cout << "SpecularReflectionVF :: " << static_cast<SNWeakForm*>(wf)->upwind_flux(Ord(0), Ord(refl_ord), Ord(1)) * v->val[0] << std::endl;
   

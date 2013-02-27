@@ -111,7 +111,7 @@ int main(int argc, char* args[])
   // Initialize the weak formulation.
   Hermes::vector<std::string> reflective_boundaries;
   reflective_boundaries.push_back("reflective");
-  SNWeakForm wf(N, matprop, slns, reflective_boundaries);
+  SNWeakForm wf(N, matprop, reflective_boundaries);
  
   // Initialize the FE problem.
   DiscreteProblem<double> dp(&wf, spaces);
