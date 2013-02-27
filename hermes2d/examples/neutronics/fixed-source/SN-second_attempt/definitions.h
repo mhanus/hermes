@@ -18,6 +18,8 @@ public:
   
   const SupportClasses::OrdinatesData& get_ordinates_data() const { return odata; }
   
+  virtual WeakForm<double>* clone() const { return new SNWeakForm(*this); }
+  
 private:
   class GenericForm
   {
