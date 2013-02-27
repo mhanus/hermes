@@ -199,7 +199,7 @@ private:
   {
   public:
     InterfaceStreamingMF(unsigned int n, unsigned int g, unsigned int G) 
-      : GenericForm(n, G), MatrixFormSurf<double>(ag.pos(n,g), ag.pos(n,g))
+      : GenericForm(n, G), MatrixFormDG<double>(ag.pos(n,g), ag.pos(n,g))
     {};
 
     virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, Func<double> **ext) const;
