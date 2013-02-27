@@ -111,7 +111,7 @@ int main(int argc, char* args[])
   // Initialize the weak formulation.
   Hermes::vector<std::string> reflective_boundaries(1);
   reflective_boundaries.push_back("reflective");
-  SNWeakForm wf(N, matprop, slns, reflective_boundaries);
+  SNWeakForm wf(N, matprop, reflective_boundaries);
  
   // Initialize the FE problem.
   DiscreteProblemLinear<double> dp(&wf, spaces);
@@ -129,6 +129,7 @@ int main(int argc, char* args[])
   solver.set_picard_max_iter(PICARD_MAX_ITER);
   solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);
+  solver.set_verbose_output(true);
   try
   {
     solver.solve(slns);

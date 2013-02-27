@@ -13,7 +13,7 @@ using namespace Neutronics::SN;
 class SNWeakForm : public WeakForm<double>
 {
 public:
-  SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropertyMaps& matprop, const Hermes::vector<Solution<double>*>& iterates,
+  SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropertyMaps& matprop,
              const Hermes::vector<std::string>& reflective_boundaries, const Hermes::vector<std::string>& inflow_boundaries = Hermes::vector<std::string>());
   
   const SupportClasses::OrdinatesData& get_ordinates_data() const { return odata; }
@@ -73,24 +73,19 @@ private:
   public:
     VolumetricScatteringSourceVF(const SupportClasses::OrdinatesData& odata,
                                  unsigned int n, unsigned int g, unsigned int G,
-                                 const rank3& Sigma_sn, 
-                                 const Hermes::vector<MeshFunction<double>*>& iterates) 
+                                 const rank3& Sigma_sn) 
       : GenericForm(n, G), VectorFormVol<double>(ag.pos(n,g)), 
         odata(odata), Sigma_sn(Sigma_sn), L(Sigma_sn.size()-1), gto(g)
-    {
-      set_ext(iterates);
-    };
+    {};
     
     VolumetricScatteringSourceVF(const SupportClasses::OrdinatesData& odata,
                                  const Hermes::vector<std::string>& areas, 
                                  unsigned int n, unsigned int g, unsigned int G,
-                                 const rank3& Sigma_sn, 
-                                 const Hermes::vector<MeshFunction<double>*>& iterates) 
+                                 const rank3& Sigma_sn) 
       : GenericForm(n, G), VectorFormVol<double>(ag.pos(n,g)), 
         odata(odata), Sigma_sn(Sigma_sn), L(Sigma_sn.size()-1), gto(g)
     {
       set_areas(areas);
-      set_ext(iterates);
     };
 
     template<typename Real>
@@ -126,24 +121,19 @@ private:
   public:
     VolumetricFissionSourceVF(const SupportClasses::OrdinatesData& odata,
                               unsigned int n, unsigned int g, unsigned int G, 
-                              double chi_to, const rank1& nu, const rank1& Sigma_f,
-                              const Hermes::vector<MeshFunction<double>*>& iterates) 
+                              double chi_to, const rank1& nu, const rank1& Sigma_f) 
       : GenericForm(n, G), VectorFormVol<double>(ag(n,g)),
         odata(odata), g(g), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f)
-    {
-      set_ext(iterates);
-    };
+    {};
     
     VolumetricFissionSourceVF(const SupportClasses::OrdinatesData& odata,
                               const Hermes::vector<std::string>& areas, 
                               unsigned int n, unsigned int g, unsigned int G,
-                              double chi_to, const rank1& nu, const rank1& Sigma_f,
-                              const Hermes::vector<MeshFunction<double>*>& iterates) 
+                              double chi_to, const rank1& nu, const rank1& Sigma_f) 
       : GenericForm(n, G), VectorFormVol<double>(ag(n,g)),
         odata(odata), g(g), chi_to(chi_to), nu(nu), Sigma_f(Sigma_f)
     {
       set_areas(areas);
-      set_ext(iterates);
     };
 
     template<typename Real>
@@ -304,13 +294,11 @@ private:
   public:
     SpecularReflectionVF(const SupportClasses::OrdinatesData& odata,
                          unsigned int n, unsigned int g, unsigned int G, 
-                         const Hermes::vector<std::string>& reflective_boundaries,
-                         const Hermes::vector<MeshFunction<double>*>& iterates) 
+                         const Hermes::vector<std::string>& reflective_boundaries) 
       : GenericForm(n, G), VectorFormSurf<double>(ag.pos(n,g)), 
         odata(odata), g(g)
     {
       set_areas(reflective_boundaries);
-      set_ext(iterates);
     };
 
     virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *v, Geom<double> *e, Func<double> **ext) const;
