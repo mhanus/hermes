@@ -137,7 +137,9 @@ int main(int argc, char* args[])
   {
     std::cout << e.what();
   }
-  
+
+  Solution<double>::vector_to_solutions(solver.get_sln_vector(), spaces, slns);
+ 
   cpu_time.tick();
   Loggable::Static::info("Time taken: %lf s", cpu_time.last());
   
