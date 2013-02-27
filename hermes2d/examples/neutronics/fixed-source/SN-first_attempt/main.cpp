@@ -115,7 +115,7 @@ int main(int argc, char* args[])
  
   // Initialize the FE problem.
   DiscreteProblem<double> dp(&wf, spaces);
-  dp.set_fvm();
+  if (P_INIT == 0) dp.set_fvm();
   SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);

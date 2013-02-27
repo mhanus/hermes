@@ -114,9 +114,8 @@ int main(int argc, char* args[])
   SNWeakForm wf(N, matprop, reflective_boundaries);
  
   // Initialize the FE problem.
-  DiscreteProblemLinear<double> dp(&wf, spaces);
-  dp.set_fvm();
-  //PicardSolver<double> solver(&dp, slns);
+  DiscreteProblem<double> dp(&wf, spaces);
+  if (P_INIT == 0) dp.set_fvm();
   SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);
