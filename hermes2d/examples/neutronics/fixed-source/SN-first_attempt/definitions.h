@@ -54,7 +54,7 @@ private:
 
     virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const;
 
-    MatrixFormVol<double>* clone()
+    MatrixFormVol<double>* clone() const
     {
       return new SNWeakForm::VolumetricStreamingAndReactionsMF(*this);
     }
@@ -101,7 +101,7 @@ private:
       return vector_form<Ord>(n, wt, u_ext, v, e, ext);
     }  
 
-    VectorFormVol<double>* clone()
+    VectorFormVol<double>* clone() const
     {
       return new SNWeakForm::VolumetricScatteringSourceVF(*this);
     }
@@ -149,7 +149,7 @@ private:
       return vector_form<Ord>(n, wt, u_ext, v, e, ext);
     }  
 
-    VectorFormVol<double>* clone()
+    VectorFormVol<double>* clone() const
     {
       return new SNWeakForm::VolumetricFissionSourceVF(*this);
     }
@@ -187,7 +187,7 @@ private:
       return vector_form<Ord>(n, wt, u_ext, v, e, ext);
     }    
     
-    VectorFormVol<double>* clone()
+    VectorFormVol<double>* clone() const
     {
       return new SNWeakForm::VolumetricExternalSourceVF(*this);
     }
@@ -204,7 +204,7 @@ private:
 
     virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const;
     
-    MatrixFormDG<double>* clone()
+    MatrixFormDG<double>* clone() const
     {
       return new SNWeakForm::InterfaceStreamingMF(*this);
     }
@@ -221,7 +221,7 @@ private:
 
     virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const;
     
-    MatrixFormSurf<double>* clone()
+    MatrixFormSurf<double>* clone() const
     {
       return new SNWeakForm::BoundaryStreamingMF(*this);
     }
@@ -241,7 +241,7 @@ private:
 
     virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const;
 
-    VectorFormSurf<double>* clone()
+    VectorFormSurf<double>* clone() const
     {
       return new SNWeakForm::BoundaryStreamingVF(*this);
     }
@@ -269,7 +269,7 @@ private:
 
     virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const;
 
-    VectorFormSurf<double>* clone()
+    VectorFormSurf<double>* clone() const
     {
       return new SNWeakForm::SpecularReflectionVF(*this);
     }
