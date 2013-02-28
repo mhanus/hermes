@@ -1,26 +1,84 @@
 #include "definitions.h"
 #include <cstdlib>
 
+IsotropicScatteringAndFissionMatrixForms::IsotropicScatteringAndFissionMatrixForms(const MaterialProperties::MaterialPropertyMaps& matprop, const char* out_tensor) : WeakForm<double>(matprop.get_G())
+{
+  bool assemble_S = false;
+  bool assemble_F = false;
+  
+  if (!strcmp(out_tensor, "S"))
+    assemble_S = true;
+  else if (!strcmp(out_tensor, "F"))
+    assemble_F = true;
+  else
+    error("Wrong specification of matrix to save - use either S or F");
+    
+  bool1 chi_nnz = matprop.get_fission_nonzero_structure();
+  
+  std::set<std::string>::const_iterator material = matprop.get_materials_list().begin();
+  for ( ; material != matprop.get_materials_list().end(); ++material)
+  {
+    Hermes::vector<std::string> regions = matprop.get_regions(*material);
+          
+    rank3 Sigma_sn = matprop.get_Sigma_sn(*material);
+    rank1 Sigma_f = matprop.get_Sigma_f(*material);
+    rank1 chi = matprop.get_chi(*material);
+    rank1 nu = matprop.get_nu(*material);
+    
+    for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
+    {
+      for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
+      {
+        if (!Sigma_sn.empty() && assemble_S)                      
+          add_matrix_form(new Diffusion::WeakFormParts::Scattering::Jacobian(regions, gto, gfrom, -Sigma_sn[0][gto][gfrom]));
+        if (chi_nnz[gto] && assemble_F)
+          add_matrix_form( new Diffusion::WeakFormParts::FissionYield::Jacobian(regions, gto, gfrom, 
+                                                                                chi[gto], -nu[gfrom], Sigma_f[gfrom]) );
+      }
+      
+      add_vector_form(new Diffusion::WeakFormParts::ExternalSources::LinearForm(regions, gto, -1.0));
+    }   
+  }
+}
+
 SNWeakForm::SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropertyMaps& matprop,
-                       const Hermes::vector<std::string>& reflective_boundaries, const Hermes::vector<std::string>& inflow_boundaries) 
+                       const Hermes::vector<std::string>& reflective_boundaries, const Hermes::vector<std::string>& inflow_boundaries,
+                       const char* out_tensor) 
   : WeakForm<double>(N*(N+2)/2), N(N), M(N*(N+2)/2), G(matprop.get_G()), odata(SupportClasses::OrdinatesData(N, "lgvalues.txt"))
 {  
     bool1 chi_nnz = matprop.get_fission_nonzero_structure();
    
     std::cout << odata;
     
+    bool assemble_all = strlen(out_tensor) == 0;    
+    bool assemble_L = false;
+    bool assemble_Q = false;
+
+    if (!assemble_all)
+    {
+      if (!strcmp(out_tensor, "L"))
+        assemble_L = true;
+      else if (!strcmp(out_tensor, "Q"))
+        assemble_Q = true;
+      else
+        error("Wrong specification of a tensor to save - use either L or Q");
+    }
+    
     for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
     {
       for (unsigned int n = 0; n < M; n++)
-      {        
-        add_matrix_form_DG(new InterfaceStreamingMF(n, gto, G));
-        if (!reflective_boundaries.empty())
+      {
+        if (assemble_all || assemble_L)
         {
-          add_matrix_form_surf(new SpecularReflectionMF_X(odata, n, gto, G));
-          add_matrix_form_surf(new SpecularReflectionMF_Y(odata, n, gto, G));
+          add_matrix_form_DG(new InterfaceStreamingMF(n, gto, G));
+          if (!reflective_boundaries.empty())
+          {
+            add_matrix_form_surf(new SpecularReflectionMF_X(odata, n, gto, G));
+            add_matrix_form_surf(new SpecularReflectionMF_Y(odata, n, gto, G));
+          }
+          add_matrix_form_surf(new BoundaryStreamingMF(n, gto, G));
         }
-        add_matrix_form_surf(new BoundaryStreamingMF(n, gto, G));
-        if (!inflow_boundaries.empty())
+        if (!inflow_boundaries.empty() && (assemble_all || assemble_Q))
           add_vector_form_surf(new BoundaryStreamingVF(n, gto, G, inflow_boundaries));
       }
     }
@@ -40,15 +98,16 @@ SNWeakForm::SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropert
       for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
       {
         for (unsigned int n = 0; n < M; n++)
-        {        
-          add_matrix_form(new VolumetricStreamingAndReactionsMF(regions, n, gto, G, Sigma_t[gto]));
+        { 
+          if (assemble_all || assemble_L)
+            add_matrix_form(new VolumetricStreamingAndReactionsMF(regions, n, gto, G, Sigma_t[gto]));
           
-          if (!Sigma_sn.empty())
+          if (!Sigma_sn.empty() && assemble_all)
             add_vector_form(new VolumetricScatteringSourceVF(odata, regions, n, gto, G, Sigma_sn));
-          if (chi_nnz[gto])
+          if (chi_nnz[gto] && assemble_all)
             add_vector_form(new VolumetricFissionSourceVF(odata, regions, n, gto, G, chi[gto], nu, Sigma_f));
-         
-          if (src_data[gto] > 0) 
+          
+          if (src_data[gto] > 0 && (assemble_all || assemble_Q)) 
             add_vector_form(new VolumetricExternalSourceVF(regions, n, gto, G, src_data[gto], true));
         }
       }   
