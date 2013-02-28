@@ -1106,7 +1106,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       os << "sum of weights over the whole sphere: " << 2*sum << endl;
       
-      const char* pwfile = "pw.m";
+      const char* pwfile = "pweights.m";
       FILE* fp;
       fp = fopen(pwfile, "wt");
       fprintf(fp, "pw = [ \n");
