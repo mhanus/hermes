@@ -101,6 +101,65 @@ int main(int argc, char* args[])
   // Initialize the weak formulation.
   Hermes::vector<std::string> reflective_boundaries(1);
   reflective_boundaries.push_back("reflective");
+  
+  if (argc > 1)
+  {
+    bool assemble_Q = !strcmp(args[1], "Q");
+    
+    WeakForm<double> *wf;
+    Hermes::vector<const Space<double> *> spaces;
+    
+    if (!strcmp(args[1], "S") || !strcmp(args[1], "F"))
+    {
+      wf = new IsotropicScatteringAndFissionMatrixForms(matprop, args[1]);
+      SupportClasses::AngleGroupFlattener ag(N_GROUPS);
+      for (int g = 0; g < N_GROUPS; g++)
+        spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[ag(0,g)] : meshes[0], P_INIT));
+    }
+    else
+    {
+      wf = new SNWeakForm(N, matprop, reflective_boundaries, Hermes::vector<std::string>(), args[1]);  
+      for (int n = 0; n < M; n++)
+        spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+    }
+    
+    Loggable::Static::info("Saving %s %s. NDOF = %d", assemble_Q ? "vector" : "matrix", args[1], Space<double>::get_num_dofs(spaces));
+    
+    DiscreteProblem<double> dp(wf, spaces);
+    if (P_INIT == 0) dp.set_fvm();
+    SourceIteration solver(&dp);
+    
+    // Perform the source iteration (by Picard's method with Anderson acceleration).
+    solver.set_picard_max_iter(1);
+    
+    if (assemble_Q)  
+    {
+      solver.output_rhs(1);
+      solver.set_rhs_E_matrix_dump_format(DF_HERMES_BIN);;
+      solver.set_rhs_filename("Q");
+      solver.set_rhs_number_format("%1.15f");
+      solver.set_rhs_varname("Q");
+    }
+    else
+    {
+      solver.output_matrix(1);
+      solver.set_matrix_E_matrix_dump_format(DF_HERMES_BIN);
+      solver.set_matrix_filename(args[1]);
+      solver.set_matrix_number_format("%1.15f");
+      solver.set_matrix_varname(args[1]);
+    }
+    
+    try 
+    { 
+      solver.solve(); 
+    } 
+    catch(std::exception& e) { }
+    
+    delete wf;
+    
+    return 0;
+  }
+  
   SNWeakForm wf(N, matprop, reflective_boundaries);
  
   // Initialize the FE problem.

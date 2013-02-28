@@ -14,7 +14,8 @@ class SNWeakForm : public WeakForm<double>
 {
 public:
   SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropertyMaps& matprop,
-             const Hermes::vector<std::string>& reflective_boundaries, const Hermes::vector<std::string>& inflow_boundaries = Hermes::vector<std::string>());
+             const Hermes::vector<std::string>& reflective_boundaries, const Hermes::vector<std::string>& inflow_boundaries = Hermes::vector<std::string>(),
+             const char* out_tensor = "");
   
   const SupportClasses::OrdinatesData& get_ordinates_data() const { return odata; }
   
@@ -320,4 +321,11 @@ private:
   
   unsigned int N, M, G;
   SupportClasses::OrdinatesData odata;
+};
+
+class IsotropicScatteringAndFissionMatrixForms : public WeakForm<double>
+{
+public:
+  IsotropicScatteringAndFissionMatrixForms(const MaterialProperties::MaterialPropertyMaps& matprop, const char* out_tensor);
+  virtual WeakForm<double>* clone() const { return new IsotropicScatteringAndFissionMatrixForms(*this); }
 };
