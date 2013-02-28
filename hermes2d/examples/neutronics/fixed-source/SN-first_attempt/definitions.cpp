@@ -266,9 +266,9 @@ double SNWeakForm::SpecularReflectionVF::value(int n, double *wt, Func<double> *
     {
       double boundary_data = 0.0;
       
-      if (fabs(e->nx[quad_pt] - 1.0) < eps || fabs(e->nx[quad_pt] + 1.0) < eps && fabs(e->ny[quad_pt]) < eps)
+      if (fabs(e->ny[quad_pt] - 1.0) < eps || fabs(e->ny[quad_pt] + 1.0) < eps && fabs(e->nx[quad_pt]) < eps)
         boundary_data = u_ext[ag.pos(odata.reflections_about_x[direction],g)]->val[quad_pt];
-      else if (fabs(e->ny[quad_pt] - 1.0) < eps || fabs(e->ny[quad_pt] + 1.0) < eps && fabs(e->nx[quad_pt]) < eps)
+      else if (fabs(e->nx[quad_pt] - 1.0) < eps || fabs(e->nx[quad_pt] + 1.0) < eps && fabs(e->ny[quad_pt]) < eps)
         boundary_data = u_ext[ag.pos(odata.reflections_about_y[direction],g)]->val[quad_pt];
       else
         Hermes::Mixins::Loggable::Static::warn("Only horizontal or vertical boundaries are currently supported for specular reflection b. c.");
