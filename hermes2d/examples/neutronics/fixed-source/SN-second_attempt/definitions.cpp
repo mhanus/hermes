@@ -60,7 +60,7 @@ double SNWeakForm::VolumetricStreamingAndReactionsMF::value(int n, double *wt, F
 {
   double result = 0.0;
   for (int i = 0; i < n; i++)
-    result += wt[i] * u->val[i] * ( -static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, v->dx[i], v->dy[i]) + /*b<Real,Real>(e->x[i],e->y[i])*/
+    result += wt[i] * u->val[i] * ( -static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, v->dx[i], v->dy[i]) +
                                     Sigma_t * v->val[i] );
   
   //std::cout << "VolumetricStreamingAndReactionsMF :: " << result << std::endl;
