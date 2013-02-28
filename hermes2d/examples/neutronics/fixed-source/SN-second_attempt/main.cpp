@@ -9,11 +9,11 @@ const bool HERMES_ANG_VISUALIZATION = false;
 const bool VTK_ANG_VISUALIZATION = true;
 const bool HERMES_SCAL_VISUALIZATION = true;
 const bool VTK_SCAL_VISUALIZATION = true;
-
+const bool HERMES_MESH_VISUALIZATION = false;
 
 const bool MULTIMESH = false;
 // Number of initial uniform mesh refinements.
-const int INIT_REF_NUM = 0;
+const int INIT_REF_NUM = 1;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
 const int P_INIT = 0;
 
@@ -27,9 +27,9 @@ const int M = N_GROUPS * N*(N+2)/2;
 // Number of last iterations used.
 // 1... standard fixed point.
 // >1... Anderson acceleration.
-const int PICARD_NUM_LAST_ITER_USED = 3;
+const int PICARD_NUM_LAST_ITER_USED = 4;
 // 0 <= beta <= 1... parameter for the Anderson acceleration.
-const double PICARD_ANDERSON_BETA = 0;
+const double PICARD_ANDERSON_BETA = 0.2;
 // Stopping criterion for the Picard's method.
 const double PICARD_TOL = 5e-3;
 // Maximum allowed number of Picard iterations.
@@ -75,25 +75,15 @@ int main(int argc, char* args[])
   for (int j = 0; j < INIT_REF_NUM; j++) 
     meshes[0]->refine_all_elements();
 
-  MeshView mview("Coarse mesh", new WinGeom(0, 0, 440, 350));
-  mview.show(meshes[0]);
-  Views::View::wait();
+  if (HERMES_MESH_VISUALIZATION)
+  {
+    MeshView mview("Coarse mesh", new WinGeom(0, 0, 440, 350));
+    mview.show(meshes[0]);
+    Views::View::wait();
+  }
   
   Loggable::Static::info("%d elements, %d vertices", meshes[0]->get_num_active_elements(), meshes[0]->get_num_vertex_nodes() );
   
-  Hermes::vector<const Space<double> *> spaces;
-  
-  for (int n = 0; n < M; n++)
-    spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
-  
-  int ndof =  Space<double>::get_num_dofs(spaces);
-
-  // Display the mesh.
-//  OrderView oview("Coarse mesh", new WinGeom(0, 0, 440, 350));
-//  oview.show(spaces[0]);
-//  BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
-//  bview.show(spaces[0]);
-
   Hermes::vector<Solution<double>* > slns;
   for (int i = 0; i < M; i++)
     slns.push_back(new ConstantSolution<double>(MULTIMESH ? meshes[i] : meshes[0], INIT_COND_CONST));
@@ -114,21 +104,38 @@ int main(int argc, char* args[])
   SNWeakForm wf(N, matprop, reflective_boundaries);
  
   // Initialize the FE problem.
+  
+  // Approximation spaces.
+  Hermes::vector<const Space<double> *> spaces;
+  
+  for (int n = 0; n < M; n++)
+    spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+  
+  int ndof =  Space<double>::get_num_dofs(spaces);
+  
+  // Display the mesh.
+//  OrderView oview("Coarse mesh", new WinGeom(0, 0, 440, 350));
+//  oview.show(spaces[0]);
+//  BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
+//  bview.show(spaces[0]);
+
+  // Discrete formulation.
   DiscreteProblem<double> dp(&wf, spaces);
   if (P_INIT == 0) dp.set_fvm();
+  
+  // Algebraic solver.
   SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);
-  
-  Loggable::Static::info("Solving. NDOF = %d", ndof);
-  cpu_time.tick();
-
-  // Perform the source iteration (by Picard's method with Anderson acceleration).
   solver.set_picard_tol(PICARD_TOL);
   solver.set_picard_max_iter(PICARD_MAX_ITER);
   solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);
   solver.set_verbose_output(true);
+  
+  Loggable::Static::info("Solving. NDOF = %d", ndof);
+  cpu_time.tick();
+  
   try
   {
     solver.solve(slns);
@@ -142,9 +149,8 @@ int main(int argc, char* args[])
   
   cpu_time.tick();
   Loggable::Static::info("Time taken: %lf s", cpu_time.last());
-  
-  // Wait for keyboard or mouse input.
-  // View the coarse mesh solution.
+
+  // View the coarse mesh solution and/or save it to .vtk files.
   for (int n = 0; n < M; n++)
   {
     if(HERMES_ANG_VISUALIZATION)
@@ -164,6 +170,8 @@ int main(int argc, char* args[])
       lin.save_solution_vtk(slns[n], (std::string("sln_") + itos(n) + std::string(".vtk")).c_str(), "Solution", mode_3D);
     }
   }
+  
+  // View the coarse mesh scalar flux and/or save it to .vtk files.
   
   Hermes::vector<MeshFunction<double>*> scalar_fluxes;
   SupportClasses::MomentFilter::get_scalar_fluxes(slns, &scalar_fluxes, N_GROUPS, wf.get_ordinates_data());
