@@ -162,7 +162,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           rank1 src_data = matprop.get_iso_src(*material);
           for (unsigned int gto = 0; gto < G; gto++)
-            add_vector_form(new ExternalSources::LinearForm(regions, gto, src_data[gto], geom_type));
+            add_vector_form(new ExternalSources::LinearForm(regions, gto, -src_data[gto], geom_type));
         }
       }
     }
@@ -636,7 +636,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           for (unsigned int m = 0; m < N_odd; m++)
             for (unsigned int gto = 0; gto < G; gto++)
-              add_vector_form(new ExternalSources::LinearForm(regions, m, gto, G, src_data[gto], geom_type));
+              add_vector_form(new ExternalSources::LinearForm(regions, m, gto, G, -src_data[gto], geom_type));
         }
       }
       else
