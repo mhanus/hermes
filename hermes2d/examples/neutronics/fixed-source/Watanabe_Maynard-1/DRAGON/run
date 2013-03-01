@@ -1,0 +1,3 @@
+#!/bin/bash
+
+/opt/neutronics/DRAGON306J/Tests/dragon_t/tmacro/rundragon input.x2m
