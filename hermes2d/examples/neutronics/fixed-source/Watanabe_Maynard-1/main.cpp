@@ -266,6 +266,7 @@ int main(int argc, char* args[])
     std::ofstream fs(file.c_str());
     Loggable::Static::info("Saving the solution vector to %s", file.c_str());
 
+    fs << setprecision(16);
     std::copy(sln_vector, sln_vector+ndof, std::ostream_iterator<double>(fs, "\n"));
     
     fs.close();
@@ -286,6 +287,8 @@ int main(int argc, char* args[])
         
     std::ofstream fs(file.c_str());
     Loggable::Static::info("Saving the scalar flux profile at x=5.625cm to %s", file.c_str());
+    
+    fs << setprecision(16);
     
     for (unsigned int g = 0; g < N_GROUPS; g++)
     {
