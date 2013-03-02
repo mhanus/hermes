@@ -3,7 +3,7 @@
 
 SNWeakForm::SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropertyMaps& matprop,
                        const Hermes::vector<std::string>& reflective_boundaries, const Hermes::vector<std::string>& inflow_boundaries) 
-  : WeakForm<double>(N*(N+2)/2), N(N), M(N*(N+2)/2), G(matprop.get_G()), odata(SupportClasses::OrdinatesData(N, "lgvalues.txt"))
+  : WeakForm<double>(matprop.get_G()*N*(N+2)/2), N(N), M(N*(N+2)/2), G(matprop.get_G()), odata(SupportClasses::OrdinatesData(N, "lgvalues.txt"))
 {  
     bool1 chi_nnz = matprop.get_fission_nonzero_structure();
    
