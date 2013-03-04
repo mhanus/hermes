@@ -92,61 +92,112 @@ int main(int argc, char* args[])
   Hermes::vector<std::string> vacuum_boundaries(1);
   vacuum_boundaries.push_back("vacuum");
   
-  if (argc > 1)
+  switch (argc)
   {
-    bool assemble_matrix = strcmp(args[1], "Q");
-    bool assemble_Q = !strcmp(args[1], "Q") || !strcmp(args[1], "LQ");
-    
-    WeakForm<double> *wf;
-    Hermes::vector<const Space<double> *> spaces;
-    
-    if (!strcmp(args[1], "S") || !strcmp(args[1], "F"))
+    case 2:
     {
-      wf = new IsotropicScatteringMatrixForm(extinction, thermalization);
-      spaces.push_back(new L2Space<double>(meshes[0], P_INIT));
+      bool assemble_matrix = strcmp(args[1], "Q");
+      bool assemble_Q = !strcmp(args[1], "Q") || !strcmp(args[1], "LQ");
+      
+      WeakForm<double> *wf;
+      Hermes::vector<const Space<double> *> spaces;
+      
+      if (!strcmp(args[1], "S") || !strcmp(args[1], "F"))
+      {
+        wf = new IsotropicScatteringMatrixForm(extinction, thermalization);
+        spaces.push_back(new L2Space<double>(meshes[0], P_INIT));
+      }
+      else
+      {
+        wf = new SNWeakForm(N, extinction, thermalization, reflective_boundaries, vacuum_boundaries, args[1]);  
+        for (int n = 0; n < M; n++)
+          spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+      }
+      
+      Loggable::Static::info("Saving %s. NDOF = %d", args[1], Space<double>::get_num_dofs(spaces));
+      
+      DiscreteProblem<double> dp(wf, spaces);
+      if (P_INIT == 0) dp.set_fvm();
+      SourceIteration solver(&dp);
+      
+      // Perform the source iteration (by Picard's method with Anderson acceleration).
+      solver.set_picard_max_iter(1);
+      
+      if (assemble_Q)  
+      {
+        solver.output_rhs(1);
+        solver.set_rhs_E_matrix_dump_format(DF_HERMES_BIN);;
+        solver.set_rhs_filename("Q");
+        solver.set_rhs_number_format("%1.15f");
+        solver.set_rhs_varname("Q");
+      }
+      if (assemble_matrix)
+      {
+        solver.output_matrix(1);
+        solver.set_matrix_E_matrix_dump_format(DF_HERMES_BIN);
+        solver.set_matrix_filename(!strcmp(args[1], "LQ") ? "L" : args[1]);
+        solver.set_matrix_number_format("%1.15f");
+        solver.set_matrix_varname(!strcmp(args[1], "LQ") ? "L" : args[1]);
+      }
+      
+      try 
+      { 
+        solver.solve(); 
+      } 
+      catch(std::exception& e) { }
+      
+      delete wf;
+      
+      return 0;
     }
-    else
+    case 3:
     {
-      wf = new SNWeakForm(N, extinction, thermalization, reflective_boundaries, vacuum_boundaries, args[1]);  
-      for (int n = 0; n < M; n++)
-        spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+      if (!strcmp(args[1], "-sln"))
+      {
+        Hermes::vector<const Space<double> *> spaces;
+  
+        for (int n = 0; n < M; n++)
+          spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+        
+        int ndof =  Space<double>::get_num_dofs(spaces);
+    
+        std::vector<double> x_ext;
+        x_ext.reserve(ndof);
+        std::ifstream ifs( args[2] , std::ifstream::in );
+        read_solution_from_file(ifs, std::back_inserter(x_ext));
+        ifs.close();
+        
+        Hermes::vector<Solution<double>*> sol_ext;
+        for (unsigned int i = 0; i < M; i++) 
+          sol_ext.push_back(new Solution<double>()); 
+        Solution<double>::vector_to_solutions(x_ext.data(), spaces, sol_ext);
+        
+        Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+        SupportClasses::OrdinatesData odata(N, "lgvalues.txt");
+        SupportClasses::MomentFilter::get_scalar_fluxes(sol_ext, &scalar_fluxes, 1, odata);
+        
+        if (HERMES_SCAL_VISUALIZATION)
+        {
+          ScalarView view("Scalar flux", new WinGeom(0, 0, 450, 350));
+          view.fix_scale_width(60);
+          view.show(scalar_fluxes[0]);
+          Views::View::wait();
+        }
+        
+        // VTK output.
+        if(VTK_SCAL_VISUALIZATION)
+        {
+          // Output solution in VTK format.
+          Linearizer lin;
+          bool mode_3D = false;
+          lin.save_solution_vtk(scalar_fluxes[0], "scalar_flux.vtk", "Solution", mode_3D);
+        }
+
+        SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+      }
+      
+      return 0;
     }
-    
-    Loggable::Static::info("Saving %s. NDOF = %d", args[1], Space<double>::get_num_dofs(spaces));
-    
-    DiscreteProblem<double> dp(wf, spaces);
-    if (P_INIT == 0) dp.set_fvm();
-    SourceIteration solver(&dp);
-    
-    // Perform the source iteration (by Picard's method with Anderson acceleration).
-    solver.set_picard_max_iter(1);
-    
-    if (assemble_Q)  
-    {
-      solver.output_rhs(1);
-      solver.set_rhs_E_matrix_dump_format(DF_HERMES_BIN);;
-      solver.set_rhs_filename("Q");
-      solver.set_rhs_number_format("%1.15f");
-      solver.set_rhs_varname("Q");
-    }
-    if (assemble_matrix)
-    {
-      solver.output_matrix(1);
-      solver.set_matrix_E_matrix_dump_format(DF_HERMES_BIN);
-      solver.set_matrix_filename(!strcmp(args[1], "LQ") ? "L" : args[1]);
-      solver.set_matrix_number_format("%1.15f");
-      solver.set_matrix_varname(!strcmp(args[1], "LQ") ? "L" : args[1]);
-    }
-    
-    try 
-    { 
-      solver.solve(); 
-    } 
-    catch(std::exception& e) { }
-    
-    delete wf;
-    
-    return 0;
   }
   
   SNWeakForm wf(N, extinction, thermalization, reflective_boundaries, vacuum_boundaries);
