@@ -288,7 +288,7 @@ int main(int argc, char* args[])
     std::ofstream fs(file.c_str());
     Loggable::Static::info("Saving the scalar flux profile at x=5.625cm to %s", file.c_str());
     
-    fs << setprecision(16);
+    fs << std::setprecision(16);
     
     for (unsigned int g = 0; g < N_GROUPS; g++)
     {
