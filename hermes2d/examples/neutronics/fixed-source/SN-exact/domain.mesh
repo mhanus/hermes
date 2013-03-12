@@ -1,0 +1,17 @@
+vertices = [
+  [  0, 0 ],
+  [  1, 0 ],
+  [  1, 1 ],
+  [  0, 1 ]
+]
+
+elements = [
+  [  0,  1,  2,  3, "medium" ]
+]
+
+boundaries = [
+  [  0,  1, "vacuum" ],
+  [  1,  2, "vacuum" ],
+  [  2,  3, "vacuum" ],
+  [  3,  0, "vacuum" ]  
+]
