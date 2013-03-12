@@ -15,13 +15,13 @@ Real SourceFunction::Q(Real x, Real y) const
   double kappa = c*sigma_t/4;
   
   if (xi < 0 && eta < 0)
-    return eta*(x-1) + xi*(y-1) - kappa + x*y*sigma_t;
+    return eta*(x-1) + xi*(y-1) - kappa + (1-x)*(1-y)*sigma_t;
   else if (xi > 0 && eta < 0)
-    return xi*(1-y) - eta*x - kappa + (1-x)*y*sigma_t;
+    return xi*(1-y) - eta*x - kappa + (1-y)*x*sigma_t;
   else if (xi < 0 && eta > 0)
-    return eta*(1-x) - xi*y - kappa + (1-x)*(1-y)*sigma_t;
+    return eta*(1-x) - xi*y - kappa + (1-x)*y*sigma_t;
   else if (xi > 0 && eta > 0)
-    return eta*x + xi*y - kappa + x*(1-y)*sigma_t;
+    return eta*x + xi*y - kappa + x*y*sigma_t;
   else
     return Real(kappa);
 }
