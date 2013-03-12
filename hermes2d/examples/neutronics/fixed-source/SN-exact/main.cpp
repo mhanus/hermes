@@ -305,7 +305,7 @@ int main(int argc, char* args[])
     std::ofstream fs(file.c_str());
     Loggable::Static::info("Saving the solution vector to %s", file.c_str());
 
-    fs << setprecision(16);
+      fs << std::setprecision(16);
     std::copy(sln_vector, sln_vector+ndof, std::ostream_iterator<double>(fs, "\n"));
     
     fs.close();
