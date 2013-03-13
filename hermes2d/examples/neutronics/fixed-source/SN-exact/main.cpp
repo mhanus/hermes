@@ -17,6 +17,7 @@ const bool HERMES_MESH_VISUALIZATION = false;
 const bool MULTIMESH = false;
 // Number of initial uniform mesh refinements.
 const int INIT_REF_NUM = 4;
+const int REF_TO_BND = 0;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
 const int P_INIT = 1;
 
@@ -70,12 +71,12 @@ int main(int argc, char* args[])
       for (int j = 0; j < INIT_REF_NUM; j++) 
         meshes[i]->refine_all_elements();
       
-      meshes[i]->refine_towards_boundary("vacuum", 3);
+      meshes[i]->refine_towards_boundary("vacuum", REF_TO_BND);
     }
   }
   for (int j = 0; j < INIT_REF_NUM; j++) 
     meshes[0]->refine_all_elements();
-  meshes[0]->refine_towards_boundary("vacuum", 3);
+  meshes[0]->refine_towards_boundary("vacuum", REF_TO_BND);
   
   if (HERMES_MESH_VISUALIZATION)
   {
