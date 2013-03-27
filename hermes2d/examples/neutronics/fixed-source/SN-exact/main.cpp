@@ -100,6 +100,34 @@ int main(int argc, char* args[])
   {
     case 2:
     {
+      if (!strcmp(args[1], "const"))
+      {
+        L2Space<double> sp1(meshes[0], 2);
+        int ndof = sp1.get_num_dofs();
+        
+        Loggable::Static::info("NDOF = %d", ndof);
+        
+        double *ones_v = new double [ndof];
+        for (int i = 0; i < 1; i++)
+          ones_v[i] = 1.0;
+        Solution<double> ones(meshes[0]);
+        Solution<double>::vector_to_solution(ones_v, &sp1, &ones);
+        
+        if (HERMES_SCAL_VISUALIZATION)
+        {
+          BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
+          bview.show(&sp1);
+
+          ScalarView view("Const", new WinGeom(0, 0, 450, 350));
+          view.fix_scale_width(60);
+          view.show(&ones);
+          Views::View::wait();
+        }
+        
+        delete [] ones_v;
+        return 0;
+      }
+      
       bool assemble_matrix = strcmp(args[1], "Q");
       bool assemble_Q = !strcmp(args[1], "Q") || !strcmp(args[1], "LQ");
       
