@@ -12,5 +12,5 @@ const std::string mesh_file = "domain.mesh";
 
 //////  Physical parameters.  /////////////////////////////////////////////////////////////////
 
-const double extinction = 1e2;
-const double thermalization = 1e-4;
+const double extinction = 1e4;
+const double thermalization = 1e-8;
