@@ -12,5 +12,5 @@ const std::string mesh_file = "domain.mesh";
 
 //////  Physical parameters.  /////////////////////////////////////////////////////////////////
 
-const double scattering_ratio = 0.5;
-const double sigma_t = 100;
+const double scattering_ratio = 1-1e-8;
+const double sigma_t = 1e4;
