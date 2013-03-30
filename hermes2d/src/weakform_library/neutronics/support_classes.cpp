@@ -689,8 +689,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         ErrorHandling::warning("Invalid group specified for Visualization::show_even_flux_moment.");
         return;
       }
-      MomentFilter::EvenMomentVal mf(moment, group, n_groups, solutions);
-      sview->show(&mf);
+      MeshFunctionSharedPtr<double> mf = new MomentFilter::EvenMomentVal(moment, group, n_groups, solutions);
+      sview->show(mf);
     }
     
     void Visualization::show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView* vview,
@@ -706,9 +706,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         ErrorHandling::warning("Invalid group specified for Visualization::show_odd_flux_moment.");
         return;
       }
-      MomentFilter::OddMomentVal mfx(0, moment, group, n_groups, solutions, &matprop);
-      MomentFilter::OddMomentVal mfy(1, moment, group, n_groups, solutions, &matprop);
-      vview->show(&mfx, &mfy);
+      MeshFunctionSharedPtr<double> mfx = new MomentFilter::OddMomentVal(0, moment, group, n_groups, solutions, &matprop);
+      MeshFunctionSharedPtr<double> mfy = new MomentFilter::OddMomentVal(1, moment, group, n_groups, solutions, &matprop);
+      vview->show(mfx, mfy);
     }
     
     void Visualization::show_all_flux_moments(Hermes::vector< MeshFunctionSharedPtr<double> > solutions, const MaterialProperties::MaterialPropertyMaps& matprop)
@@ -1688,17 +1688,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   
   void PostProcessor::get_areas(MeshSharedPtr mesh, const Hermes::vector<std::string>& regions, Hermes::vector<double>* results) const
   {
-    ConstantSolution<double> unity(mesh, 1.0);
+    MeshFunctionSharedPtr<double> unity = new ConstantSolution<double> (mesh, 1.0);
     
     Hermes::vector<std::string>::const_iterator region = regions.begin(); 
     for ( ; region != regions.end(); ++region)
-      results->push_back(integrate(&unity, *region));
+      results->push_back(integrate(unity, *region));
   }
 
   double PostProcessor::get_area(MeshSharedPtr mesh, const Hermes::vector< std::string >& regions) const
   {
-    ConstantSolution<double> unity(mesh, 1);
-    return integrate(&unity, regions);
+    MeshFunctionSharedPtr<double> unity = new ConstantSolution<double> (mesh, 1.0);
+    return integrate(unity, regions);
   }    
 
 /* Neutronics */
