@@ -3,7 +3,7 @@
 
 // Fixed source problem with void conditions on all boundaries.
 CustomWeakForm::CustomWeakForm(const MaterialProperties::MaterialPropertyMaps& matprop, unsigned int N)
-  : WeakForms::FixedSourceProblem(matprop, N)
+  : WeakForms::FixedSourceProblem(matprop, N, HERMES_PLANAR, true)
 {
     for (unsigned int m = 0; m < N_odd; m++)
     {
