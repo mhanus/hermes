@@ -339,9 +339,9 @@ namespace Neutronics
           
           // Normalize both flux iterates with the same criterion (unit integrated fission source).
           Solution<double> sln;
-          sln.copy(solutions[i]);
+          sln.copy(solutions[i].get());
           Solution<double> new_sln;
-          new_sln.copy(new_solutions[i]);
+          new_sln.copy(new_solutions[i].get());
           
           sln.multiply(1./src_old);
           new_sln.multiply(1./src_new);
@@ -375,8 +375,11 @@ namespace Neutronics
     while (!eigen_done);
     
     // Free memory.
+    // Not needed when MeshFunctionSharedPtr is used instead of ordinary pointers.
+    /*
     for (unsigned int i = 0; i < solutions.size(); i++) 
       delete new_solutions[i];
+    */
     
     delete new_source;
     delete old_source;
