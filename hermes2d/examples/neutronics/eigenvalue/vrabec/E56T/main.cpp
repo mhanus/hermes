@@ -127,9 +127,9 @@ int main(int argc, char* argv[])
   ConstantableSpacesVector spaces(&spaces_);
     
   // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
-  report_num_dof("Coarse mesh power iteration, NDOF: ", spaces.get());
+  report_num_dof("Coarse mesh power iteration, NDOF: ", spaces);
   
-  Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces.get_const());
+  Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
   keff_eigenvalue_iteration.set_picard_tol(TOL_PIT_CM);
   keff_eigenvalue_iteration.set_picard_max_iter(1000);
   //keff_eigenvalue_iteration.set_matrix_E_matrix_dump_format(Hermes::Algebra::DF_HERMES_BIN);
@@ -137,7 +137,7 @@ int main(int argc, char* argv[])
   //keff_eigenvalue_iteration.set_matrix_number_format("%1.15f");
   //keff_eigenvalue_iteration.output_matrix(1);
   keff_eigenvalue_iteration.solve();
-  Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), spaces.get_const(), power_iterates);
+  Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), spaces, power_iterates);
   
   if (STRATEGY >= 0)
   {
@@ -186,7 +186,7 @@ int main(int argc, char* argv[])
       {
         Mesh::ReferenceMeshCreator ref_mesh_creator(meshes[i]);
         MeshSharedPtr ref_mesh = ref_mesh_creator.create_ref_mesh();
-        Space<double>::ReferenceSpaceCreator ref_space_creator(spaces.get_const()[i], ref_mesh);
+        Space<double>::ReferenceSpaceCreator ref_space_creator(spaces[i], ref_mesh);
         SpaceSharedPtr<double> ref_space = ref_space_creator.create_ref_space();
         ref_spaces_[i] = ref_space;
       }
@@ -194,10 +194,10 @@ int main(int argc, char* argv[])
       ConstantableSpacesVector ref_spaces(&ref_spaces_);
       
       // Solve the fine mesh problem.
-      report_num_dof("Fine mesh power iteration, NDOF: ", ref_spaces.get());     
-      keff_eigenvalue_iteration.set_spaces(ref_spaces.get_const());
+      report_num_dof("Fine mesh power iteration, NDOF: ", ref_spaces);     
+      keff_eigenvalue_iteration.set_spaces(ref_spaces);
       keff_eigenvalue_iteration.solve(power_iterates);
-      Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), ref_spaces.get_const(), power_iterates);
+      Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), ref_spaces, power_iterates);
       
       // Delete meshes dynamically created in previous adaptivity iteration (they are needed to project previous power_iterates 
       // to current reference meshes during the above call of keff_eigenvalue_iteration.solve(power_iterates) ).
@@ -205,9 +205,9 @@ int main(int argc, char* argv[])
         for(unsigned int i = 0; i < N_EQUATIONS; i++)
           delete old_meshes[i];
         
-      report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces.get());
+      report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces);
       OGProjection<double> ogProjection;
-      ogProjection.project_global(spaces.get_const(), power_iterates, coarse_solutions);
+      ogProjection.project_global(spaces, power_iterates, coarse_solutions);
       
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION && INTERMEDIATE_VISUALIZATION)
@@ -215,11 +215,11 @@ int main(int argc, char* argv[])
         cpu_time.tick();
         Loggable::Static::info("Visualizing.");
         views.show_solutions(coarse_solutions);
-        views.show_orders(spaces.get());
+        views.show_orders(spaces);
         cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       }
       
-      Adapt<double> adaptivity(spaces.get());
+      Adapt<double> adaptivity(spaces);
       
       Loggable::Static::info("Calculating errors.");
       Hermes::vector<double> h1_group_errors;
@@ -239,7 +239,7 @@ int main(int argc, char* argv[])
       Loggable::Static::info("k_eff err: %g milli-percent", kinf_err);
       
       // Add entry to DOF convergence graph.
-      int ndof_coarse = Space<double>::get_num_dofs(spaces.get());
+      int ndof_coarse = Space<double>::get_num_dofs(spaces);
       graph_dof.add_values(0, ndof_coarse, h1_err_est);
       graph_dof.add_values(1, ndof_coarse, kinf_err);
       
@@ -256,7 +256,7 @@ int main(int argc, char* argv[])
       {
         Loggable::Static::info("Adapting the coarse meshes.");
         done = adaptivity.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);        
-        if (Space<double>::get_num_dofs(spaces.get()) >= NDOF_STOP) 
+        if (Space<double>::get_num_dofs(spaces) >= NDOF_STOP) 
           done = true;
       }
       
@@ -278,12 +278,12 @@ int main(int argc, char* argv[])
     if (HERMES_VISUALIZATION)
     {
       views.show_solutions(power_iterates);
-      views.show_orders(spaces.get());
+      views.show_orders(spaces);
     }
     if (VTK_VISUALIZATION)
     {
       views.save_solutions_vtk("flux", "flux", power_iterates);
-      views.save_orders_vtk("space", spaces.get());
+      views.save_orders_vtk("space", spaces);
     }
     
     // Millipercent eigenvalue error w.r.t. the reference value (see physical_parameters.cpp). 
@@ -314,7 +314,7 @@ int main(int argc, char* argv[])
   if (VTK_VISUALIZATION)
   {
     views.save_solutions_vtk("flux", "flux", power_iterates);
-    views.save_orders_vtk("space", spaces.get());
+    views.save_orders_vtk("space", spaces);
   }
   
   return 0;

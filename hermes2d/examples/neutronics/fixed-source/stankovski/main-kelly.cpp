@@ -243,14 +243,13 @@ int main(int argc, char* argv[])
   }
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<SpaceSharedPtr<double> > spaces_, ref_spaces_;
+  Hermes::vector<SpaceSharedPtr<double> > spaces, ref_spaces;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
   {
-    spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
+    spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
     if (CALCULATE_REFERENCE_SOLUTION)
-      ref_spaces_.push_back(new H1Space<double>(ref_meshes[i], P_INIT_REF[i]));
+      ref_spaces.push_back(new H1Space<double>(ref_meshes[i], P_INIT_REF[i]));
   }
-  ConstantableSpacesVector spaces(&spaces_), ref_spaces(&ref_spaces_);
   
   // Initialize the weak formulation.
 #ifdef USE_SPN
@@ -274,10 +273,10 @@ int main(int argc, char* argv[])
 
   if (CALCULATE_REFERENCE_SOLUTION)
   {
-    report_num_dof("Solving the reference problem for errors comparison, #DOF: ", ref_spaces.get());
+    report_num_dof("Solving the reference problem for errors comparison, #DOF: ", ref_spaces);
 
     // Initialize the discrete algebraic representation of the problem.
-    DiscreteProblem<double> dp(&wf, ref_spaces.get_const());
+    DiscreteProblem<double> dp(&wf, ref_spaces);
     
     // Initial coefficient vector for the Newton's method.  
     
@@ -296,7 +295,7 @@ int main(int argc, char* argv[])
     }
     
     // Translate the resulting coefficient vector into instances of Solution.
-    Solution<double>::vector_to_solutions(newton.get_sln_vector(), ref_spaces.get_const(), ref_solutions);
+    Solution<double>::vector_to_solutions(newton.get_sln_vector(), ref_spaces, ref_solutions);
     
     cpu_time.tick();
 
@@ -405,8 +404,8 @@ int main(int argc, char* argv[])
       Loggable::Static::info("---- Adaptivity step %d:", as);
                         
       // Initialize the discrete problem.
-      DiscreteProblem<double> dp(&wf, spaces.get_const());
-      report_num_dof("Solving, #DOF: ", spaces.get());
+      DiscreteProblem<double> dp(&wf, spaces);
+      report_num_dof("Solving, #DOF: ", spaces);
       
       // Assemble the Jacobian and perform Newton's iteration. Since the Jacobian may become
       // very large during the h-adaptivity, we destroy the NewtonSolver instance right after
@@ -426,7 +425,7 @@ int main(int argc, char* argv[])
       }
       
       // Translate the resulting coefficient vector into instances of Solution.
-      Solution<double>::vector_to_solutions(newton->get_sln_vector(), spaces.get_const(), solutions);
+      Solution<double>::vector_to_solutions(newton->get_sln_vector(), spaces, solutions);
       
       // Clean up.
       delete newton;
@@ -439,7 +438,7 @@ int main(int argc, char* argv[])
         if (SHOW_INTERMEDIATE_SOLUTIONS)
           views.show_solutions(solutions);
         if (SHOW_INTERMEDIATE_ORDERS)
-          views.show_orders(spaces.get());
+          views.show_orders(spaces);
         cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       }
       
@@ -452,7 +451,7 @@ int main(int argc, char* argv[])
           norms.push_back(error_norm);
       
       bool ignore_visited_segments = true; 
-      KellyTypeAdapt<double> adaptivity(spaces.get(), ignore_visited_segments, 
+      KellyTypeAdapt<double> adaptivity(spaces, ignore_visited_segments, 
                                         Hermes::vector<const InterfaceEstimatorScalingFunction*>(), norms);
                                               
   #ifdef USE_SPN
@@ -538,7 +537,7 @@ int main(int argc, char* argv[])
       
       cpu_time.tick();
 
-      int ndof = Space<double>::get_num_dofs(spaces.get());
+      int ndof = Space<double>::get_num_dofs(spaces);
       if (CALCULATE_REFERENCE_SOLUTION)
       {
         graph_dof_est.add_values(2*run_number, ndof, err_solutions);
@@ -584,13 +583,13 @@ int main(int argc, char* argv[])
     if (HERMES_VISUALIZATION)
     {
       views.show_solutions(solutions);
-      views.show_orders(spaces.get());
+      views.show_orders(spaces);
       Views::View::wait();
     }
     if (VTK_VISUALIZATION)
     {
       views.save_solutions_vtk("flux", "flux", solutions);
-      views.save_orders_vtk("space", spaces.get());
+      views.save_orders_vtk("space", spaces);
     }
     
     // Integrate absorption rates and scalar fluxes over specified edit regions and compare with results
@@ -605,7 +604,7 @@ int main(int argc, char* argv[])
     Hermes::vector<double> absorption_rates, integrated_fluxes, areas;
     pp.get_integrated_reaction_rates(ABSORPTION, solutions, &absorption_rates, matprop, edit_regions);
     pp.get_integrated_scalar_fluxes(solutions, &integrated_fluxes, N_GROUPS, edit_regions);
-    pp.get_areas(spaces.get()[0]->get_mesh(), edit_regions, &areas); // Areas of the edit regions.
+    pp.get_areas(spaces[0]->get_mesh(), edit_regions, &areas); // Areas of the edit regions.
     
     // Multiply integral results by the number of times each region appears in the assembly.
     for (int i = 0; i < 2*n_pins; i++)
@@ -629,9 +628,9 @@ int main(int argc, char* argv[])
     {
         meshes[i]->copy(basic_meshes[i]);
         
-        H1SpaceSharedPtr<double> sp = static_cast< H1SpaceSharedPtr<double> >(spaces.get_const()[i]->duplicate(meshes[i]));
-        delete spaces.get()[i];
-        spaces.get()[i] = sp;
+        H1SpaceSharedPtr<double> sp = static_cast< H1SpaceSharedPtr<double> >(spaces[i]->duplicate(meshes[i]));
+        delete spaces[i];
+        spaces[i] = sp;
     }
   }        
     
@@ -640,13 +639,13 @@ int main(int argc, char* argv[])
   {
     delete solutions[i];
     delete meshes[i];
-    delete spaces.get()[i];
+    delete spaces[i];
     delete basic_meshes[i];
     
     if (CALCULATE_REFERENCE_SOLUTION)
     {
       delete ref_meshes[i];
-      delete ref_spaces.get()[i];
+      delete ref_spaces[i];
       delete ref_solutions[i];
     }
   }
