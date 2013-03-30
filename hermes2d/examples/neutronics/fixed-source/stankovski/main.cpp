@@ -208,14 +208,12 @@ int main(int argc, char* argv[])
     solutions.push_back(new Solution<double>());
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<SpaceSharedPtr<double> > spaces_, basic_spaces;
+  Hermes::vector<SpaceSharedPtr<double> > spaces, basic_spaces;
   for (unsigned int i = 0; i < N_EQUATIONS; i++)
   {
-    spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
+    spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
     basic_spaces.push_back(new H1Space<double>(basic_meshes[i], P_INIT[i]));
   }
-  
-  ConstantableSpacesVector spaces(&spaces_);
   
   // Initialize the weak formulation.
 #ifdef USE_SPN
@@ -263,12 +261,12 @@ int main(int argc, char* argv[])
         Loggable::Static::info("---- Adaptivity step %d:", as);
         
         // Initialize the fine mesh problem.
-        ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get()));
-        int ndof_fine = Space<double>::get_num_dofs(fine_spaces.get());
+        Hermes::vector<SpaceSharedPtr<double> > fine_spaces = Space<double>::construct_refined_spaces(spaces);
+        int ndof_fine = Space<double>::get_num_dofs(fine_spaces);
         
-        report_num_dof("Solving on fine meshes, #DOF: ", fine_spaces.get());
+        report_num_dof("Solving on fine meshes, #DOF: ", fine_spaces);
       
-        DiscreteProblem<double> dp(&wf, fine_spaces.get_const());
+        DiscreteProblem<double> dp(&wf, fine_spaces);
 
         // Perform Newton's iteration on reference mesh.
         NewtonSolver<double> *newton = new NewtonSolver<double>(&dp);
@@ -285,15 +283,15 @@ int main(int argc, char* argv[])
         }
         
         // Translate the resulting coefficient vector into instances of Solution.
-        Solution<double>::vector_to_solutions(newton->get_sln_vector(), fine_spaces.get_const(), solutions);
+        Solution<double>::vector_to_solutions(newton->get_sln_vector(), fine_spaces, solutions);
 
         // Solution of discrete problem completed, delete the solver object.
         delete newton;
         
         // Project the fine mesh solution onto the coarse mesh.
-        report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces.get());
+        report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces);
         OGProjection<double> ogProjection;
-        ogProjection.project_global(spaces.get_const(), solutions, coarse_solutions);
+        ogProjection.project_global(spaces, solutions, coarse_solutions);
 
         // View the coarse-mesh solutions and polynomial orders.
         if (HERMES_VISUALIZATION)
@@ -303,13 +301,13 @@ int main(int argc, char* argv[])
           if (SHOW_INTERMEDIATE_SOLUTIONS)
             views.show_solutions(coarse_solutions);
           if (SHOW_INTERMEDIATE_ORDERS)
-            views.show_orders(spaces.get());
+            views.show_orders(spaces);
           cpu_time.tick(TimeMeasurable::HERMES_SKIP);
         }
         
         // Calculate element errors.
         Loggable::Static::info("Calculating error estimate."); 
-        Adapt<double> adaptivity(spaces.get());
+        Adapt<double> adaptivity(spaces);
                 
   #ifdef USE_SPN            
 
@@ -441,8 +439,8 @@ int main(int argc, char* argv[])
         if (!done)
         {
           for(unsigned int i = 0; i < N_EQUATIONS; i++)
-            delete fine_spaces.get()[i]->get_mesh();
-          delete &fine_spaces.get();
+            delete fine_spaces[i]->get_mesh();
+          delete &fine_spaces;
           
           // Increase the adaptivity step counter.
           as++;
@@ -458,7 +456,7 @@ int main(int argc, char* argv[])
           if (HERMES_VISUALIZATION)
           {
             views.show_solutions(solutions);
-            views.show_orders(spaces.get());
+            views.show_orders(spaces);
             
             // Wait for the view to be closed.  
             Views::View::wait();
@@ -466,12 +464,12 @@ int main(int argc, char* argv[])
           if (VTK_VISUALIZATION)
           {
             views.save_solutions_vtk("flux", "flux", solutions);
-            views.save_orders_vtk("space", spaces.get());
+            views.save_orders_vtk("space", spaces);
           }
       
           // Make the fine-mesh spaces the final spaces for further analyses.
           for (unsigned int i = 0; i < N_EQUATIONS; i++)
-            delete spaces.get()[i]->get_mesh(); // Alternatively "delete meshes[i]".   
+            delete spaces[i]->get_mesh(); // Alternatively "delete meshes[i]".   
           spaces = fine_spaces; 
         }
       }
@@ -498,7 +496,7 @@ int main(int argc, char* argv[])
       Hermes::vector<double> absorption_rates, integrated_fluxes, areas;
       pp.get_integrated_reaction_rates(ABSORPTION, solutions, &absorption_rates, matprop, edit_regions);
       pp.get_integrated_scalar_fluxes(solutions, &integrated_fluxes, N_GROUPS, edit_regions);
-      pp.get_areas(spaces.get()[0]->get_mesh(), edit_regions, &areas); // Areas of the edit regions.
+      pp.get_areas(spaces[0]->get_mesh(), edit_regions, &areas); // Areas of the edit regions.
       
       // Multiply integral results by the number of times each region appears in the assembly.
       for (int i = 0; i < 2*n_pins; i++)
@@ -522,15 +520,15 @@ int main(int argc, char* argv[])
       for(unsigned int i = 0; i < N_EQUATIONS; i++)
       {       
         // Destroy the mesh created by construct_refined_spaces and set it to a new copy of basic_mesh.
-        delete spaces.get()[i]->get_mesh(); 
+        delete spaces[i]->get_mesh(); 
         meshes[i] = new Mesh();
         meshes[i]->copy(basic_meshes[i]); 
         
-        delete spaces.get()[i]; // Destroy the space created by construct_refined_spaces.
-        spaces_[i] = basic_spaces[i]->duplicate(meshes[i]); // Create a new space over the fresh copy of basic_mesh, duplicating the basic_space.
+        delete spaces[i]; // Destroy the space created by construct_refined_spaces.
+        spaces[i] = basic_spaces[i]->duplicate(meshes[i]); // Create a new space over the fresh copy of basic_mesh, duplicating the basic_space.
       }
-      delete &spaces.get(); // Destroy the Hermes::vector<H1SpaceSharedPtr<double> > created by construct_refined_spaces.
-      spaces.set(&spaces_); // Set a new ConstantableSpacesVector to point to the newly created spaces.
+      delete &spaces; // Destroy the Hermes::vector<H1SpaceSharedPtr<double> > created by construct_refined_spaces.
+      spaces.set(&spaces); // Set a new ConstantableSpacesVector to point to the newly created spaces.
             
       // Advance to the next run case ...
     }
@@ -541,11 +539,11 @@ int main(int argc, char* argv[])
   }
   else  // Do not use adaptivity.
   { 
-    report_num_dof("Solving - #DOF: ", spaces.get());
+    report_num_dof("Solving - #DOF: ", spaces);
     
     cpu_time.tick();
     
-    DiscreteProblem<double> dp(&wf, spaces.get_const());
+    DiscreteProblem<double> dp(&wf, spaces);
   
     // Perform Newton's iteration on reference mesh.
     NewtonSolver<double> newton(&dp);
@@ -562,7 +560,7 @@ int main(int argc, char* argv[])
     }
   
     // Translate the resulting coefficient vector into instances of Solution.
-    Solution<double>::vector_to_solutions(newton.get_sln_vector(), spaces.get_const(), solutions);
+    Solution<double>::vector_to_solutions(newton.get_sln_vector(), spaces, solutions);
     
     cpu_time.tick();
     Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
@@ -576,12 +574,12 @@ int main(int argc, char* argv[])
     if (HERMES_VISUALIZATION)
     {
       views.show_solutions(solutions);
-      views.show_orders(spaces.get());
+      views.show_orders(spaces);
     }
     if (VTK_VISUALIZATION)
     {
       views.save_solutions_vtk("flux", "flux", solutions);
-      views.save_orders_vtk("space", spaces.get());
+      views.save_orders_vtk("space", spaces);
     }
     
     // Integrate absorption rates and scalar fluxes over specified edit regions and compare with results
@@ -596,7 +594,7 @@ int main(int argc, char* argv[])
     Hermes::vector<double> absorption_rates, integrated_fluxes, areas;
     pp.get_integrated_reaction_rates(ABSORPTION, solutions, &absorption_rates, matprop, edit_regions);
     pp.get_integrated_scalar_fluxes(solutions, &integrated_fluxes, N_GROUPS, edit_regions);
-    pp.get_areas(spaces.get()[0]->get_mesh(), edit_regions, &areas); // Areas of the edit regions.
+    pp.get_areas(spaces[0]->get_mesh(), edit_regions, &areas); // Areas of the edit regions.
     
     // Multiply integral results by the number of times each region appears in the assembly.
     for (int i = 0; i < 2*n_pins; i++)
@@ -621,9 +619,9 @@ int main(int argc, char* argv[])
   // Final clean up.
   for(unsigned int i = 0; i < N_EQUATIONS; i++)
   {
-    delete spaces.get()[i]->get_mesh(); // In case of STRATEGY == -1, this is the same as "delete meshes[i]"; 
-                                        // otherwise, it will delete "fine_spaces.get()[i]->get_mesh()".
-    delete spaces.get()[i];
+    delete spaces[i]->get_mesh(); // In case of STRATEGY == -1, this is the same as "delete meshes[i]"; 
+                                        // otherwise, it will delete "fine_spaces[i]->get_mesh()".
+    delete spaces[i];
     delete solutions[i];
     
     delete basic_meshes[i];
