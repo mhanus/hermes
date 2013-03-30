@@ -113,16 +113,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         virtual ~Visualization();
         
-        virtual void show_meshes(Hermes::vector<Mesh*> meshes) = 0;
+        virtual void show_meshes(Hermes::vector<MeshSharedPtr> meshes) = 0;
         virtual void show_solutions(Hermes::vector< Solution<double>* > solutions) = 0;
         virtual void show_orders(Hermes::vector<Space<double>*> spaces) = 0;
 
 #ifndef NOGLUT
-        void inspect_meshes(Hermes::vector<Mesh*> meshes);
+        void inspect_meshes(Hermes::vector<MeshSharedPtr> meshes);
         void inspect_solutions(Hermes::vector< Solution<double>* > solutions);
         void inspect_orders(Hermes::vector<Space<double>*> spaces);
 #else
-        void inspect_meshes(Hermes::vector<Mesh*> meshes) {};
+        void inspect_meshes(Hermes::vector<MeshSharedPtr> meshes) {};
         void inspect_solutions(Hermes::vector< Solution<double>* > solutions) {};
         void inspect_orders(Hermes::vector<Space<double>*> spaces) {};
 #endif
@@ -162,11 +162,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         }
         
 #ifndef NOGLUT
-        void show_meshes(Hermes::vector<Mesh*> meshes);
+        void show_meshes(Hermes::vector<MeshSharedPtr> meshes);
         void show_solutions(Hermes::vector< Solution<double>* > solutions);
         void show_orders(Hermes::vector<Space<double>*> spaces);     
 #else
-        void show_meshes(Hermes::vector<Mesh*> meshes) {};
+        void show_meshes(Hermes::vector<MeshSharedPtr> meshes) {};
         void show_solutions(Hermes::vector< Solution<double>* > solutions) {};
         void show_orders(Hermes::vector<Space<double>*> spaces) {};     
 #endif
@@ -426,7 +426,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         virtual ~Visualization();
 
 #ifndef NOGLUT 
-        void show_meshes(Hermes::vector<Mesh*> meshes);
+        void show_meshes(Hermes::vector<MeshSharedPtr> meshes);
         void show_solutions(Hermes::vector< Solution<double>* > solutions);
         void show_orders(Hermes::vector<Space<double>*> spaces);
         
@@ -438,7 +438,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                   Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
         void show_all_flux_moments(Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
 #else        
-        void show_meshes(Hermes::vector<Mesh*> meshes) {};
+        void show_meshes(Hermes::vector<MeshSharedPtr> meshes) {};
         void show_solutions(Hermes::vector< Solution<double>* > solutions) {};
         void show_orders(Hermes::vector<Space<double>*> spaces) {};
         
@@ -710,7 +710,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       void get_integrated_scalar_fluxes(const Hermes::vector<Solution<double>*>& solutions, Hermes::vector<double>* results, 
                                         unsigned int G, const Hermes::vector<std::string>& regions) const;                                                                             
       
-      void get_areas(Mesh *mesh, const Hermes::vector<std::string>& regions, Hermes::vector<double>* results) const;
+      void get_areas(MeshSharedPtr mesh, const Hermes::vector<std::string>& regions, Hermes::vector<double>* results) const;
                                         
                                         
       double get_integrated_group_reaction_rates( ReactionType reaction, const Hermes::vector<Solution<double>*>& solutions,
@@ -728,7 +728,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       double get_integrated_scalar_fluxes(const Hermes::vector<Solution<double>*>& solutions,
                                           unsigned int G, const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
                                           
-      double get_area(Mesh *mesh, const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
+      double get_area(MeshSharedPtr mesh, const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
   };
   
 /* Neutronics */

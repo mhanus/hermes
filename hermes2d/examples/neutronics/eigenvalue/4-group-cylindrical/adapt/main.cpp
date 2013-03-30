@@ -110,7 +110,7 @@ int main(int argc, char* argv[])
   std::cout << matprop;
   
   // Use multimesh, i.e. create one mesh for each energy group.
-  Hermes::vector<Mesh *> meshes;
+  Hermes::vector<MeshSharedPtr > meshes;
   for (unsigned int g = 0; g < matprop.get_G(); g++) 
     meshes.push_back(new Mesh());
   
@@ -213,7 +213,7 @@ int main(int argc, char* argv[])
   Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, spaces.get_const(), matrix_solver, TOL_PIT_CM);
   
   // Adaptivity loop:
-  int as = 1; bool done = false; std::vector<Mesh*> old_meshes(power_iterates.size());
+  int as = 1; bool done = false; std::vector<MeshSharedPtr> old_meshes(power_iterates.size());
   do 
   {
     Loggable::Static::info("---- Adaptivity step %d:", as);
@@ -326,7 +326,7 @@ int main(int argc, char* argv[])
     if (!done)
     {
       for(unsigned int i = 0; i < power_iterates.size(); i++)
-        old_meshes[i] = const_cast<Mesh*>(power_iterates[i]->get_mesh());
+        old_meshes[i] = const_cast<MeshSharedPtr>(power_iterates[i]->get_mesh());
       
       delete &ref_spaces.get();
       
