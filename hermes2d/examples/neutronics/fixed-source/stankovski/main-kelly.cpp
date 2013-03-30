@@ -232,7 +232,7 @@ int main(int argc, char* argv[])
     views.inspect_meshes(meshes);
 
   // Create pointers to final solutions (the fine mesh solutions in case of strategy >= 0).
-  Hermes::vector<Solution<double>*> solutions, ref_solutions;
+  Hermes::vector<MeshFunctionSharedPtr<double> > solutions, ref_solutions;
   
   // Initialize all the new solution variables.
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
@@ -243,7 +243,7 @@ int main(int argc, char* argv[])
   }
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<Space<double> *> spaces_, ref_spaces_;
+  Hermes::vector<SpaceSharedPtr<double> > spaces_, ref_spaces_;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
   {
     spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
@@ -487,7 +487,7 @@ int main(int argc, char* argv[])
                     
   #ifdef USE_SPN        
   
-        Hermes::vector< MeshFunction<double>* > scalar_fluxes, ref_scalar_fluxes;
+        Hermes::vector< MeshFunctionSharedPtr<double> > scalar_fluxes, ref_scalar_fluxes;
         MomentFilter::get_scalar_fluxes_with_derivatives(solutions, &scalar_fluxes, N_GROUPS);
         MomentFilter::get_scalar_fluxes_with_derivatives(ref_solutions, &ref_scalar_fluxes, N_GROUPS);
         
@@ -629,7 +629,7 @@ int main(int argc, char* argv[])
     {
         meshes[i]->copy(basic_meshes[i]);
         
-        H1Space<double>* sp = static_cast< H1Space<double>* >(spaces.get_const()[i]->duplicate(meshes[i]));
+        H1SpaceSharedPtr<double> sp = static_cast< H1SpaceSharedPtr<double> >(spaces.get_const()[i]->duplicate(meshes[i]));
         delete spaces.get()[i];
         spaces.get()[i] = sp;
     }

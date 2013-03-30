@@ -185,7 +185,7 @@ int main(int argc, char* argv[])
   pp.get_areas(meshes[0], edit_regions, &areas);
   
   // Create pointers to the coarse and fine mesh solutions.
-  Hermes::vector<Solution<double>*> coarse_solutions, solutions;
+  Hermes::vector<MeshFunctionSharedPtr<double> > coarse_solutions, solutions;
   
   // Initialize all the new solution variables.
   for (unsigned int i = 0; i < N_EQUATIONS; i++)
@@ -195,7 +195,7 @@ int main(int argc, char* argv[])
   }
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<Space<double> *> spaces_;
+  Hermes::vector<SpaceSharedPtr<double> > spaces_;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
     spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
   
@@ -281,7 +281,7 @@ int main(int argc, char* argv[])
     
     // Adaptivity loop.
     int as = 1; bool done = false;
-    Hermes::vector<Space<double>*> ref_spaces_;
+    Hermes::vector<SpaceSharedPtr<double> > ref_spaces_;
     ref_spaces_.resize(N_EQUATIONS);
     do 
     {
@@ -294,7 +294,7 @@ int main(int argc, char* argv[])
         Mesh::ReferenceMeshCreator ref_mesh_creator(meshes[i]);
         MeshSharedPtr ref_mesh = ref_mesh_creator.create_ref_mesh();
         Space<double>::ReferenceSpaceCreator ref_space_creator(spaces.get_const()[i], ref_mesh);
-        Space<double>* ref_space = ref_space_creator.create_ref_space();
+        SpaceSharedPtr<double> ref_space = ref_space_creator.create_ref_space();
         ref_spaces_[i] = ref_space;
       }
     
@@ -342,7 +342,7 @@ int main(int argc, char* argv[])
       cpu_time.tick();
       
       Loggable::Static::info("  --- Calculating total relative error of scalar flux approximation.");
-      Hermes::vector< MeshFunction<double>* > coarse_scalar_fluxes, fine_scalar_fluxes;
+      Hermes::vector< MeshFunctionSharedPtr<double> > coarse_scalar_fluxes, fine_scalar_fluxes;
       // If error_norm == HERMES_L2_NORM, MomentFilter::get_scalar_fluxes can be used instead (derivatives will not be needed).
       MomentFilter::get_scalar_fluxes_with_derivatives(coarse_solutions, &coarse_scalar_fluxes, N_GROUPS);
       MomentFilter::get_scalar_fluxes_with_derivatives(solutions, &fine_scalar_fluxes, N_GROUPS);

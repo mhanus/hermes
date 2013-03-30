@@ -81,7 +81,7 @@ int main(int argc, char* args[])
   
   Loggable::Static::info("%d elements, %d vertices", meshes[0]->get_num_active_elements(), meshes[0]->get_num_vertex_nodes() );
   
-  Hermes::vector<const Space<double> *> spaces;
+  Hermes::vector<SpaceSharedPtr<double> > spaces;
   
   for (int n = 0; n < M; n++)
     spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
@@ -94,7 +94,7 @@ int main(int argc, char* args[])
 //  BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
 //  bview.show(spaces[0]);
 
-  Hermes::vector<Solution<double>* > slns;
+  Hermes::vector<MeshFunctionSharedPtr<double> > slns;
   for (int i = 0; i < M; i++)
     slns.push_back(new ConstantSolution<double>(MULTIMESH ? meshes[i] : meshes[0], INIT_COND_CONST));
   
@@ -165,7 +165,7 @@ int main(int argc, char* args[])
     }
   }
   
-  Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+  Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes;
   SupportClasses::MomentFilter::get_scalar_fluxes(slns, &scalar_fluxes, N_GROUPS, wf.get_ordinates_data());
   
   for (unsigned int g = 0; g < N_GROUPS; g++)

@@ -269,7 +269,7 @@ int main(int argc, char* argv[])
     views.inspect_meshes(meshes);
   
   // Create pointers to the coarse and fine mesh solutions.
-  Hermes::vector<Solution<double>*> coarse_solutions, solutions;
+  Hermes::vector<MeshFunctionSharedPtr<double> > coarse_solutions, solutions;
   
   // Initialize all the new solution variables.
   for (unsigned int i = 0; i < N_EQUATIONS; i++)
@@ -279,7 +279,7 @@ int main(int argc, char* argv[])
   }
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<Space<double> *> spaces_;
+  Hermes::vector<SpaceSharedPtr<double> > spaces_;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
     spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
   
@@ -383,10 +383,10 @@ int main(int argc, char* argv[])
       Loggable::Static::info("  --- Calculating total relative error of scalar flux approximation.");
       
   #ifdef USE_SPN    
-      Hermes::vector< MeshFunction<double>* >* scalar_fluxes = new Hermes::vector< MeshFunction<double>* >();    
+      Hermes::vector< MeshFunctionSharedPtr<double> >* scalar_fluxes = new Hermes::vector< MeshFunctionSharedPtr<double> >();    
       MomentFilter::get_scalar_fluxes(solutions, scalar_fluxes, N_GROUPS);
   #else // DIFFUSION
-      Hermes::vector< Solution<double>* >* scalar_fluxes = &solutions;
+      Hermes::vector< MeshFunctionSharedPtr<double> >* scalar_fluxes = &solutions;
   #endif
 
       double pointwise_flux_err_ref = 0.0;
@@ -578,7 +578,7 @@ int main(int argc, char* argv[])
     Hermes::vector< Filter<double>* >* scalar_fluxes =  new Hermes::vector< Filter<double>* >();
     MomentFilter::get_scalar_fluxes(solutions, scalar_fluxes, N_GROUPS);
 #else // DIFFUSION
-    Hermes::vector< Solution<double>* >* scalar_fluxes;
+    Hermes::vector< MeshFunctionSharedPtr<double> >* scalar_fluxes;
     scalar_fluxes = &solutions;
 #endif
 

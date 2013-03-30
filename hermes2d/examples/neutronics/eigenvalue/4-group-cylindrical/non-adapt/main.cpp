@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
 
   // Solution variables.
   Solution<double> sln1, sln2, sln3, sln4;
-  Hermes::vector<Solution<double>*> solutions(&sln1, &sln2, &sln3, &sln4);
+  Hermes::vector<MeshFunctionSharedPtr<double> > solutions(&sln1, &sln2, &sln3, &sln4);
   
   // Define initial conditions.
   Loggable::Static::info("Setting initial conditions.");
@@ -83,15 +83,15 @@ int main(int argc, char* argv[])
                            iter2(&mesh, 1.0), 
                            iter3(&mesh, 1.0), 
                            iter4(&mesh, 1.0);
-  Hermes::vector<Solution<double>*> iterates(&iter1, &iter2, &iter3, &iter4);
+  Hermes::vector<MeshFunctionSharedPtr<double> > iterates(&iter1, &iter2, &iter3, &iter4);
 
   // Create H1 spaces with default shapesets.
   H1Space<double> space1(&mesh, P_INIT_1);
   H1Space<double> space2(&mesh, P_INIT_2);
   H1Space<double> space3(&mesh, P_INIT_3);
   H1Space<double> space4(&mesh, P_INIT_4);
-  Hermes::vector<Space<double>*> spaces(&space1, &space2, &space3, &space4);
-  Hermes::vector<const Space<double>*> c_spaces(&space1, &space2, &space3, &space4);
+  Hermes::vector<SpaceSharedPtr<double> > spaces(&space1, &space2, &space3, &space4);
+  Hermes::vector<SpaceSharedPtr<double> > c_spaces(&space1, &space2, &space3, &space4);
   
   int ndof = Space<double>::get_num_dofs(spaces);
   Loggable::Static::info("ndof = %d.", ndof);

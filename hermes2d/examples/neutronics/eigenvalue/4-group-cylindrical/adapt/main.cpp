@@ -130,7 +130,7 @@ int main(int argc, char* argv[])
     meshes[0]->refine_all_elements();
   
   // Create pointers to solutions on coarse and fine meshes and from the latest power iteration, respectively.
-  Hermes::vector<Solution<double>*> coarse_solutions, fine_solutions, power_iterates;
+  Hermes::vector<MeshFunctionSharedPtr<double> > coarse_solutions, fine_solutions, power_iterates;
 
   // Initialize all the new solution variables.
   for (unsigned int g = 0; g < matprop.get_G(); g++) 
@@ -141,7 +141,7 @@ int main(int argc, char* argv[])
   }
   
   // Create the approximation spaces with the default shapeset.
- Hermes::vector<Space<double> *> spaces_;
+ Hermes::vector<SpaceSharedPtr<double> > spaces_;
   for (unsigned int g = 0; g < matprop.get_G(); g++) 
     spaces_.push_back(new H1Space<double>(meshes[g], P_INIT[g]));
   

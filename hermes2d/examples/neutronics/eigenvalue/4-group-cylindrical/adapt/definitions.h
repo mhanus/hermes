@@ -3,7 +3,7 @@
 #include "../weak_formulation.h"
 using Hermes::Ord;
 
-int get_num_of_neg(MeshFunction<double> *sln);
+int get_num_of_neg(MeshFunctionSharedPtr<double> sln);
 
 // Jacobian matrix (same as stiffness matrix since projections are linear).
 template <typename Scalar>

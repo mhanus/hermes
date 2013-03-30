@@ -11,7 +11,7 @@ class CustomWeakForm : public WeakForms::KeffEigenvalueProblem
 {
 public:
   CustomWeakForm( const MaterialProperties::MaterialPropertyMaps& matprop, 
-                  const Hermes::vector<Solution<double>*>& iterates,
+                  const Hermes::vector<MeshFunctionSharedPtr<double> >& iterates,
                   const Hermes::vector<std::string>& fission_materials,
                   double init_keff, const std::string& bdy_vacuum )
     : WeakForms::KeffEigenvalueProblem(matprop, iterates, fission_materials, init_keff, HERMES_AXISYM_Y)

@@ -5,7 +5,7 @@
 #include "definitions.h"
 
 // Calculate number of negative solution values.
-int get_num_of_neg(MeshFunction<double> *sln)
+int get_num_of_neg(MeshFunctionSharedPtr<double> sln)
 {
   Quad2D* quad = &g_quad_2d_std;
   sln->set_quad_2d(quad);
