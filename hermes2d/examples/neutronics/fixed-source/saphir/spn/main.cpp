@@ -195,16 +195,14 @@ int main(int argc, char* argv[])
   }
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<SpaceSharedPtr<double> > spaces_;
+  Hermes::vector<SpaceSharedPtr<double> > spaces;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
-    spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
-  
-  ConstantableSpacesVector spaces(&spaces_);
+    spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
   
   // Initialize the weak formulation.
   CustomWeakForm wf(matprop, SPN_ORDER);
   
-  DiscreteProblem<double> dp(&wf, spaces.get_const());
+  DiscreteProblem<double> dp(&wf, spaces);
     
   // Create the solver based on Newton's method.
   NewtonSolver<double> *newton = new NewtonSolver<double>(&dp);
@@ -212,7 +210,7 @@ int main(int argc, char* argv[])
     
   if (STRATEGY < 0)
   {
-    report_num_dof("Solving on unadapted meshes, #DOF: ", spaces.get());
+    report_num_dof("Solving on unadapted meshes, #DOF: ", spaces);
   
     try
     {
@@ -225,7 +223,7 @@ int main(int argc, char* argv[])
     }
     
     // Translate the resulting coefficient vector into instances of Solution.
-    Solution<double>::vector_to_solutions(newton->get_sln_vector(), spaces.get_const(), solutions);
+    Solution<double>::vector_to_solutions(newton->get_sln_vector(), spaces, solutions);
     
     cpu_time.tick();
     Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
@@ -242,7 +240,7 @@ int main(int argc, char* argv[])
     if (VTK_VISUALIZATION)
     {
       views.save_solutions_vtk("flux", "flux", solutions);
-      views.save_orders_vtk("space", spaces.get());
+      views.save_orders_vtk("space", spaces);
     }
   }
   else
@@ -281,8 +279,8 @@ int main(int argc, char* argv[])
     
     // Adaptivity loop.
     int as = 1; bool done = false;
-    Hermes::vector<SpaceSharedPtr<double> > ref_spaces_;
-    ref_spaces_.resize(N_EQUATIONS);
+    Hermes::vector<SpaceSharedPtr<double> > ref_spaces;
+    ref_spaces.resize(N_EQUATIONS);
     do 
     {
       Loggable::Static::info("---- Adaptivity step %d:", as);
@@ -293,18 +291,17 @@ int main(int argc, char* argv[])
       {
         Mesh::ReferenceMeshCreator ref_mesh_creator(meshes[i]);
         MeshSharedPtr ref_mesh = ref_mesh_creator.create_ref_mesh();
-        Space<double>::ReferenceSpaceCreator ref_space_creator(spaces.get_const()[i], ref_mesh);
+        Space<double>::ReferenceSpaceCreator ref_space_creator(spaces[i], ref_mesh);
         SpaceSharedPtr<double> ref_space = ref_space_creator.create_ref_space();
-        ref_spaces_[i] = ref_space;
+        ref_spaces[i] = ref_space;
       }
-    
-      ConstantableSpacesVector ref_spaces(&ref_spaces_);
-      int ndof_fine = Space<double>::get_num_dofs(ref_spaces.get());
       
-      report_num_dof("Solving on fine meshes, #DOF: ", ref_spaces.get());
+      int ndof_fine = Space<double>::get_num_dofs(ref_spaces);
+      
+      report_num_dof("Solving on fine meshes, #DOF: ", ref_spaces);
 
       // Perform Newton's iteration on reference mesh.
-      newton->set_spaces(ref_spaces.get_const());
+      newton->set_spaces(ref_spaces);
     
       try
       {
@@ -317,12 +314,12 @@ int main(int argc, char* argv[])
       }
       
       // Translate the resulting coefficient vector into instances of Solution.
-      Solution<double>::vector_to_solutions(newton->get_sln_vector(), ref_spaces.get_const(), solutions);
+      Solution<double>::vector_to_solutions(newton->get_sln_vector(), ref_spaces, solutions);
       
       // Project the fine mesh solution onto the coarse mesh.
-      report_num_dof("Projecting fine-mesh solutions into coarse meshes, #DOF: ", spaces.get());
+      report_num_dof("Projecting fine-mesh solutions into coarse meshes, #DOF: ", spaces);
       OGProjection<double> ogProjection;
-      ogProjection.project_global(spaces.get_const(), solutions, coarse_solutions);
+      ogProjection.project_global(spaces, solutions, coarse_solutions);
 
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION)
@@ -332,7 +329,7 @@ int main(int argc, char* argv[])
         if (SHOW_INTERMEDIATE_SOLUTIONS)
           views.show_solutions(coarse_solutions);
         if (SHOW_INTERMEDIATE_ORDERS)
-          views.show_orders(spaces.get());
+          views.show_orders(spaces);
         cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       }
       
@@ -394,7 +391,7 @@ int main(int argc, char* argv[])
       // Calculate error estimate for each solution component and the total error estimate.
       Loggable::Static::info("  --- Calculating total relative error of pseudo-fluxes approximation.");
           
-      Adapt<double> adaptivity(spaces.get());  
+      Adapt<double> adaptivity(spaces);  
          
       MomentGroupFlattener mg(N_GROUPS);  // Creates a single index from the moment-group pair.
       // Set the error estimation/normalization form.
@@ -462,7 +459,7 @@ int main(int argc, char* argv[])
         if (VTK_VISUALIZATION)
         {
           views.save_solutions_vtk("flux", "flux", solutions);
-          views.save_orders_vtk("space", spaces.get());
+          views.save_orders_vtk("space", spaces);
         }
     
         for (unsigned int i = 0; i < N_EQUATIONS; i++)

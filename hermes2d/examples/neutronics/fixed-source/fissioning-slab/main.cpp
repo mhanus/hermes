@@ -425,11 +425,9 @@ int main(int argc, char* argv[])
   }
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<SpaceSharedPtr<double> > spaces_;
+  Hermes::vector<SpaceSharedPtr<double> > spaces;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
-    spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
-  
-  ConstantableSpacesVector spaces(&spaces_);
+    spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
   
   // Initialize the weak formulation.
   CustomWeakForm wf(matprop, SPN_ORDER);
@@ -492,12 +490,12 @@ int main(int argc, char* argv[])
       Loggable::Static::info("---- Adaptivity step %d:", as);
       
       // Initialize the fine mesh problem.
-      ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get()));
-      int ndof_fine = Space<double>::get_num_dofs(fine_spaces.get());
+      Hermes::vector<SpaceSharedPtr<double> > fine_spaces = Space<double>::construct_refined_spaces(spaces);
+      int ndof_fine = Space<double>::get_num_dofs(fine_spaces);
       
-      report_num_dof("Solving on fine meshes, #DOF: ", fine_spaces.get());
+      report_num_dof("Solving on fine meshes, #DOF: ", fine_spaces);
     
-      DiscreteProblem<double> dp(&wf, fine_spaces.get_const());
+      DiscreteProblem<double> dp(&wf, fine_spaces);
 
       // Perform Newton's iteration on reference mesh.
       NewtonSolver<double> *newton = new NewtonSolver<double>(&dp);
@@ -514,15 +512,15 @@ int main(int argc, char* argv[])
       }
       
       // Translate the resulting coefficient vector into instances of Solution.
-      Solution<double>::vector_to_solutions(newton->get_sln_vector(), fine_spaces.get_const(), solutions);
+      Solution<double>::vector_to_solutions(newton->get_sln_vector(), fine_spaces, solutions);
 
       // Solution of discrete problem completed, delete the solver object.
       delete newton;
       
       // Project the fine mesh solution onto the coarse mesh.
-      report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces.get());
+      report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces);
       OGProjection<double> ogProjection;
-      ogProjection.project_global(spaces.get_const(), solutions, coarse_solutions);
+      ogProjection.project_global(spaces, solutions, coarse_solutions);
 
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION)
@@ -532,7 +530,7 @@ int main(int argc, char* argv[])
         if (SHOW_INTERMEDIATE_SOLUTIONS)
           views.show_solutions(coarse_solutions);
         if (SHOW_INTERMEDIATE_ORDERS)
-          views.show_orders(spaces.get());
+          views.show_orders(spaces);
         cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       }   
 
@@ -607,7 +605,7 @@ int main(int argc, char* argv[])
       // Calculate error estimate for each solution component and the total error estimate.
       Loggable::Static::info("  --- Calculating total relative error of the solution approximation.");
           
-      Adapt<double> adaptivity(spaces.get());  
+      Adapt<double> adaptivity(spaces);  
       
   #ifdef USE_SPN    
       MomentGroupFlattener mg(N_GROUPS);  // Creates a single index from the moment-group pair.
@@ -653,8 +651,8 @@ int main(int argc, char* argv[])
       if (!done)
       {
         for(unsigned int i = 0; i < N_EQUATIONS; i++)
-          delete fine_spaces.get()[i]->get_mesh();
-        delete &fine_spaces.get();
+          delete fine_spaces[i]->get_mesh();
+        delete &fine_spaces;
         
         // Increase the adaptivity step counter.
         as++;
@@ -670,20 +668,20 @@ int main(int argc, char* argv[])
         {
           Loggable::Static::info("Visualizing final solutions.");
           views.inspect_solutions(solutions);
-          views.inspect_orders(fine_spaces.get());
+          views.inspect_orders(fine_spaces);
         }
         
         for (unsigned int i = 0; i < N_EQUATIONS; i++)
         {
           // Make the fine-mesh spaces the final spaces for further analyses.
-          delete spaces.get()[i]->get_mesh(); // Alternatively "delete meshes[i]".
-          delete spaces.get()[i];
-          spaces.get()[i] = fine_spaces.get()[i]; 
+          delete spaces[i]->get_mesh(); // Alternatively "delete meshes[i]".
+          delete spaces[i];
+          spaces[i] = fine_spaces[i]; 
 
           // Delete the auxiliary coarse-mesh solutions.
           delete coarse_solutions[i];   
         }
-        delete &fine_spaces.get(); 
+        delete &fine_spaces; 
       }
     }
     while (done == false);
@@ -702,11 +700,11 @@ int main(int argc, char* argv[])
   }
   else
   {
-    report_num_dof("Solving - #DOF: ", spaces.get());
+    report_num_dof("Solving - #DOF: ", spaces);
     
     cpu_time.tick();
        
-    DiscreteProblem<double> dp(&wf, spaces.get_const());
+    DiscreteProblem<double> dp(&wf, spaces);
   
     // Perform Newton's iteration on reference mesh.
     NewtonSolver<double> newton(&dp);
@@ -723,7 +721,7 @@ int main(int argc, char* argv[])
     }
   
     // Translate the resulting coefficient vector into instances of Solution.
-    Solution<double>::vector_to_solutions(newton.get_sln_vector(), spaces.get_const(), solutions);
+    Solution<double>::vector_to_solutions(newton.get_sln_vector(), spaces, solutions);
     
     cpu_time.tick();
     total_cpu_time = cpu_time.accumulated();
@@ -734,7 +732,7 @@ int main(int argc, char* argv[])
     {
       Loggable::Static::info("Visualizing solutions.");
       views.inspect_solutions(solutions);
-      views.inspect_orders(spaces.get());
+      views.inspect_orders(spaces);
     }
   }
   
@@ -756,7 +754,7 @@ int main(int argc, char* argv[])
   if (VTK_VISUALIZATION)
   {
     views.save_solutions_vtk("flux", "flux", solutions);
-    views.save_orders_vtk("space", spaces.get());
+    views.save_orders_vtk("space", spaces);
   }
   
   // Output file names.
@@ -849,8 +847,8 @@ int main(int argc, char* argv[])
   // Final clean up.
   for(unsigned int i = 0; i < N_EQUATIONS; i++)
   {
-    delete spaces.get()[i]->get_mesh();
-    delete spaces.get()[i];
+    delete spaces[i]->get_mesh();
+    delete spaces[i];
     delete solutions[i];
   }
 
