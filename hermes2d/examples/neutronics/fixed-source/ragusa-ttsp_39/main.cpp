@@ -129,7 +129,7 @@ int main(int argc, char* argv[])
 {
   // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 0);
-  Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
+  //Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
 
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -155,7 +155,6 @@ int main(int argc, char* argv[])
   // Load the mesh on which the 1st solution component (1st group, 0th moment) will be approximated.
   MeshReaderH2DXML mesh_reader;
   mesh_reader.load("mesh.xml", meshes[0]);
-  
   for (unsigned int i = 1; i < N_EQUATIONS; i++) 
   {
     // Obtain meshes for the subsequent components by cloning the mesh loaded for the 1st one.
@@ -167,7 +166,7 @@ int main(int argc, char* argv[])
   }
   for (int j = 0; j < INIT_REF_NUM[0]; j++) 
     meshes[0]->refine_all_elements();
-
+  
   SupportClasses::Visualization views(SPN_ORDER, N_GROUPS, DISPLAY_MESHES);
 
   if (DISPLAY_MESHES && HERMES_VISUALIZATION)
@@ -184,17 +183,19 @@ int main(int argc, char* argv[])
   }
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<SpaceSharedPtr<double> > spaces_;
+  Hermes::vector<SpaceSharedPtr<double> > spaces;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
-    spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
+    spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
    
-  ConstantableSpacesVector spaces(&spaces_);
-  
   // Initialize the weak formulation.
   CustomWeakForm wf(matprop, SPN_ORDER);
   
   // Get region areas for flux averaging.
-  PostProcessor pp(NEUTRONICS_SPN);      
+  PostProcessor pp(NEUTRONICS_SPN);
+  
+  NewtonSolver<double> *newton = new NewtonSolver<double>();
+  newton->set_verbose_output(true);
+  newton->set_weak_formulation(&wf);
   
   if (STRATEGY >= 0)
   { 
@@ -222,22 +223,28 @@ int main(int argc, char* argv[])
       selectors.push_back(&selector);
     
     // Adaptivity loop.
+    Hermes::vector<SpaceSharedPtr<double> > ref_spaces;
+    ref_spaces.resize(N_EQUATIONS);
     int as = 1; bool done = false;
     do 
     {
       Loggable::Static::info("---- Adaptivity step %d:", as);
       
       // Initialize the fine mesh problem.
-      ConstantableSpacesVector fine_spaces(Space<double>::construct_refined_spaces(spaces.get()));
-      int ndof_fine = Space<double>::get_num_dofs(fine_spaces.get());
+      for (unsigned int i = 0; i < N_EQUATIONS; i++)
+      {
+        Mesh::ReferenceMeshCreator ref_mesh_creator(meshes[i]);
+        MeshSharedPtr ref_mesh = ref_mesh_creator.create_ref_mesh();
+        Space<double>::ReferenceSpaceCreator ref_space_creator(spaces[i], ref_mesh);
+        SpaceSharedPtr<double> ref_space = ref_space_creator.create_ref_space();
+        ref_spaces[i] = ref_space;
+      }
+      int ndof_fine = Space<double>::get_num_dofs(ref_spaces);
     
-      report_num_dof("Solving on fine meshes, #DOF: ", fine_spaces.get());
-    
-      DiscreteProblem<double> dp(&wf, fine_spaces.get_const());
+      report_num_dof("Solving on fine meshes, #DOF: ", ref_spaces);
     
       // Perform Newton's iteration on reference mesh.
-      NewtonSolver<double> *newton = new NewtonSolver<double>(&dp);
-      newton->set_verbose_output(false);
+      newton->set_spaces(ref_spaces);
     
       try
       {
@@ -250,15 +257,12 @@ int main(int argc, char* argv[])
       }
       
       // Translate the resulting coefficient vector into instances of Solution.
-      Solution<double>::vector_to_solutions(newton->get_sln_vector(), fine_spaces.get_const(), solutions);
-      
-      // Clean up.
-      delete newton;
+      Solution<double>::vector_to_solutions(newton->get_sln_vector(), ref_spaces, solutions);
       
       // Project the fine mesh solution onto the coarse mesh.
-      report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces.get());
+      report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces);
       OGProjection<double> ogProjection;
-      ogProjection.project_global(spaces.get_const(), solutions, coarse_solutions);
+      ogProjection.project_global(spaces, solutions, coarse_solutions);
 
       // View the coarse-mesh solutions and polynomial orders.
       if (HERMES_VISUALIZATION)
@@ -268,7 +272,7 @@ int main(int argc, char* argv[])
         if (SHOW_INTERMEDIATE_SOLUTIONS)
           views.show_solutions(coarse_solutions);
         if (SHOW_INTERMEDIATE_ORDERS)
-          views.show_orders(spaces.get());
+          views.show_orders(spaces);
         cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       }   
 
@@ -279,26 +283,21 @@ int main(int argc, char* argv[])
       
       Loggable::Static::info("  --- Calculating total relative error of scalar flux approximation.");
       
-      Hermes::vector< MeshFunctionSharedPtr<double> >* coarse_scalar_fluxes = new Hermes::vector< MeshFunctionSharedPtr<double> > ();
-      Hermes::vector< MeshFunctionSharedPtr<double> >* fine_scalar_fluxes = new Hermes::vector< MeshFunctionSharedPtr<double> > ();
+      Hermes::vector< MeshFunctionSharedPtr<double> > coarse_scalar_fluxes;
+      Hermes::vector< MeshFunctionSharedPtr<double> > fine_scalar_fluxes;
       
-      MomentFilter::get_scalar_fluxes_with_derivatives(coarse_solutions, coarse_scalar_fluxes, N_GROUPS);
-      MomentFilter::get_scalar_fluxes_with_derivatives(solutions, fine_scalar_fluxes, N_GROUPS);
+      MomentFilter::get_scalar_fluxes_with_derivatives(coarse_solutions, &coarse_scalar_fluxes, N_GROUPS);
+      MomentFilter::get_scalar_fluxes_with_derivatives(solutions, &fine_scalar_fluxes, N_GROUPS);
         
-      double flux_error = Global<double>::calc_abs_error(coarse_scalar_fluxes->at(0), fine_scalar_fluxes->at(0), HERMES_H1_NORM);
-      double flux_norm = Global<double>::calc_norm(fine_scalar_fluxes->at(0), HERMES_H1_NORM);
-
-      MomentFilter::clear_scalar_fluxes(coarse_scalar_fluxes);
-      MomentFilter::clear_scalar_fluxes(fine_scalar_fluxes);
-      delete coarse_scalar_fluxes;
-      delete fine_scalar_fluxes;
+      double flux_error = Global<double>::calc_abs_errors(coarse_scalar_fluxes, fine_scalar_fluxes);
+      double flux_norm = Global<double>::calc_norms(fine_scalar_fluxes);
 
       cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       
       // Calculate error estimate for each solution component and the total error estimate.
       Loggable::Static::info("  --- Calculating total relative error of the solution approximation.");
           
-      Adapt<double> adaptivity(spaces.get());  
+      Adapt<double> adaptivity(spaces);  
       
       // Set the error estimation/normalization form.
       for (unsigned int mrow = 0; mrow < N_ODD_MOMENTS; mrow++)
@@ -335,11 +334,7 @@ int main(int argc, char* argv[])
       }
       
       if (!done)
-      {
-        for(unsigned int i = 0; i < N_EQUATIONS; i++)
-          delete fine_spaces.get()[i]->get_mesh();
-        delete &fine_spaces.get();
-        
+      { 
         // Increase the adaptivity step counter.
         as++;
       }
@@ -354,20 +349,15 @@ int main(int argc, char* argv[])
         {
           Loggable::Static::info("Visualizing final solutions.");
           views.inspect_solutions(solutions);
-          views.inspect_orders(fine_spaces.get());
+          views.inspect_orders(ref_spaces);
         }
         
         for (unsigned int i = 0; i < N_EQUATIONS; i++)
         {
           // Make the fine-mesh spaces the final spaces for further analyses.
-          delete spaces.get()[i]->get_mesh(); // Alternatively "delete meshes[i]".
-          delete spaces.get()[i];
-          spaces.get()[i] = fine_spaces.get()[i]; 
-
-          // Delete the auxiliary coarse-mesh solutions.
-          delete coarse_solutions[i];   
+          spaces[i] = ref_spaces[i];
         }
-        delete &fine_spaces.get();
+
       }
     }
     while (done == false);
@@ -378,19 +368,15 @@ int main(int argc, char* argv[])
   }
   else
   {
-    report_num_dof("Solving - #DOF: ", spaces.get());
+    report_num_dof("Solving - #DOF: ", spaces);
     
     cpu_time.tick();
         
-    DiscreteProblem<double> dp(&wf, spaces.get_const());
-  
-    // Perform Newton's iteration on reference mesh.
-    NewtonSolver<double> newton(&dp);
-    newton.set_verbose_output(true);
+    newton->set_spaces(spaces);
     
     try
     {
-      newton.solve();
+      newton->solve();
     }
     catch(Hermes::Exceptions::Exception e)
     {
@@ -399,7 +385,7 @@ int main(int argc, char* argv[])
     }
   
     // Translate the resulting coefficient vector into instances of Solution.
-    Solution<double>::vector_to_solutions(newton.get_sln_vector(), spaces.get_const(), solutions);
+    Solution<double>::vector_to_solutions(newton->get_sln_vector(), spaces, solutions);
       
     cpu_time.tick();
     total_cpu_time = cpu_time.accumulated();
@@ -410,9 +396,11 @@ int main(int argc, char* argv[])
     {
       Loggable::Static::info("Visualizing solutions.");
       views.inspect_solutions(solutions);
-      views.inspect_orders(spaces.get());
+      views.inspect_orders(spaces);
     }
   }
+  
+  delete newton;
   
   //
   // Analysis of the solution.
@@ -430,14 +418,14 @@ int main(int argc, char* argv[])
   if (VTK_VISUALIZATION)
   {
     views.save_solutions_vtk("flux", "flux", solutions);
-    views.save_orders_vtk("space", spaces.get());
+    views.save_orders_vtk("space", spaces);
   }
    
   if (SAVE_FLUX_PROFILES)
   {
-    Hermes::vector< Filter<double>* >* scalar_fluxes =  new Hermes::vector< Filter<double>* > ();
-    MomentFilter::get_scalar_fluxes(solutions, scalar_fluxes, N_GROUPS);
-    Filter<double>* scalar_flux =  scalar_fluxes->at(0);
+    Hermes::vector< MeshFunctionSharedPtr<double> > scalar_fluxes;
+    MomentFilter::get_scalar_fluxes(solutions, &scalar_fluxes, N_GROUPS);
+    MeshFunctionSharedPtr<double> scalar_flux =  scalar_fluxes[0];
 
     // Output file names.
     std::string file1 = "flux_x_1.5625-sp"+itos(SPN_ORDER)+".dat";
@@ -469,7 +457,7 @@ int main(int argc, char* argv[])
     for (int i = 0; i < npts1; i++, x+=d1)
     {
       //(std::cout << "(" << x << "," << y << ")" << std::endl).flush();
-      res[i] = scalar_flux->get_pt_value(x, y);    
+      res[i] = scalar_flux->get_pt_value(x, y)->val[0];    
     }
 
     x = x - d1/2. + d2/2.;
@@ -477,7 +465,7 @@ int main(int argc, char* argv[])
     for (int i = npts1; i < npts1 + npts2; i++, x+=d2)
     {
       //(std::cout << "(" << x << "," << y << ")" << std::endl).flush();
-      res[i] = scalar_flux->get_pt_value(x, y);    
+      res[i] = scalar_flux->get_pt_value(x, y)->val[0];    
     }
     
     x = x - d2/2. + d3/2.;
@@ -485,7 +473,7 @@ int main(int argc, char* argv[])
     for (int i = npts1 + npts2; i < npts1 + npts2 + npts3; i++, x+=d3)
     {
       //(std::cout << "(" << x << "," << y << ")" << std::endl).flush();
-      res[i] = scalar_flux->get_pt_value(x, y);    
+      res[i] = scalar_flux->get_pt_value(x, y)->val[0];    
     }
 
     x = x - d3/2. + d4/2.;
@@ -493,7 +481,7 @@ int main(int argc, char* argv[])
     for (int i = npts1 + npts2 + npts3; i < npts; i++, x+=d4)
     {
       //(std::cout << "(" << x << "," << y << ")" << std::endl).flush();
-      res[i] = scalar_flux->get_pt_value(x, y);    
+      res[i] = scalar_flux->get_pt_value(x, y)->val[0];    
     }
     
     std::copy(res, res+npts, std::ostream_iterator<double>(fs1, "\n"));
@@ -529,7 +517,7 @@ int main(int argc, char* argv[])
     for (int i = 0; i < npts1; i++, y+=d1)
     {
       //(std::cout << "(" << x << "," << y << ")" << std::endl).flush();
-      res[i] = scalar_flux->get_pt_value(x, y);    
+      res[i] = scalar_flux->get_pt_value(x, y)->val[0];    
     }
 
     y = y - d1/2. + d2/2.;
@@ -537,7 +525,7 @@ int main(int argc, char* argv[])
     for (int i = npts1; i < npts1 + npts2; i++, y+=d2)
     {
       //(std::cout << "(" << x << "," << y << ")" << std::endl).flush();
-      res[i] = scalar_flux->get_pt_value(x, y);    
+      res[i] = scalar_flux->get_pt_value(x, y)->val[0];    
     }
     
     y = y - d2/2. + d3/2.;
@@ -545,7 +533,7 @@ int main(int argc, char* argv[])
     for (int i = npts1 + npts2; i < npts1 + npts2 + npts3; i++, y+=d3)
     {
       //(std::cout << "(" << x << "," << y << ")" << std::endl).flush();
-      res[i] = scalar_flux->get_pt_value(x, y);    
+      res[i] = scalar_flux->get_pt_value(x, y)->val[0];    
     }
 
     y = y - d3/2. + d4/2.;
@@ -553,7 +541,7 @@ int main(int argc, char* argv[])
     for (int i = npts1 + npts2 + npts3; i < npts; i++, y+=d4)
     {
       //(std::cout << "(" << x << "," << y << ")" << std::endl).flush();
-      res[i] = scalar_flux->get_pt_value(x, y);    
+      res[i] = scalar_flux->get_pt_value(x, y)->val[0];    
     }
     
     std::copy(res, res+npts, std::ostream_iterator<double>(fs2, "\n"));
@@ -561,17 +549,6 @@ int main(int argc, char* argv[])
   
     fs2.close();
     delete [] res;
-    
-    MomentFilter::clear_scalar_fluxes(scalar_fluxes);
-    delete scalar_fluxes;
-  }
-
-  // Final clean up.
-  for(unsigned int i = 0; i < N_EQUATIONS; i++)
-  {
-    delete spaces.get()[i]->get_mesh();
-    delete spaces.get()[i];
-    delete solutions[i];
   }
 
   return 0;
