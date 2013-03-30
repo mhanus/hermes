@@ -44,25 +44,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           post_init();
         };
-        SourceFilter(Hermes::vector<MeshFunctionSharedPtr<double> > solutions,
-                     const MaterialProperties::MaterialPropertyMaps& matprop,
-                     GeomType geom_type = HERMES_PLANAR)
-          : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type),
-            source_regions(matprop.get_fission_regions().begin(), matprop.get_fission_regions().end())
-        {
-          // We need to setup the array 'item' manually, since 'solutions' may be a vector of
-          // freshly created Solution's, which have unset num_components.
-          for (int i = 0; i < 10; i++)
-            item[i] = H2D_FN_VAL & H2D_FN_COMPONENT_0;
-          
-          post_init();
-        };
         
         /// \brief Empty virtual destructor.
         /// Required in order to properly delete derived classes accessed through a pointer to this class.
         virtual ~SourceFilter() {}
         
-        virtual void assign_solutions(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions);
         virtual void assign_solutions(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions);
         
         virtual void set_active_element(Element* e);
@@ -249,13 +235,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           {
             if (odd_req_mom) ErrorHandling::error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
           };
-          EvenMomentVal(unsigned int angular_moment, unsigned int group, unsigned int G,
-                        const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions)
-            : Common(angular_moment, group, G), SimpleFilter<double>(solutions, Hermes::vector<int>()),
-              angular_moment(angular_moment), group(group), G(G)
-          {
-            if (odd_req_mom) ErrorHandling::error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
-          };
           
           virtual MeshFunction<double>* clone() const;
           
@@ -273,13 +252,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         public:
           EvenMomentValDxDy(unsigned int angular_moment, unsigned int group, unsigned int G, 
-                  const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions)
-            : Common(angular_moment, group, G), DXDYFilter<double>(solutions),
-              angular_moment(angular_moment), group(group), G(G)
-          {
-            if (odd_req_mom) ErrorHandling::error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
-          };
-          EvenMomentValDxDy(unsigned int angular_moment, unsigned int group, unsigned int G,
                   const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions)
             : Common(angular_moment, group, G), DXDYFilter<double>(solutions),
               angular_moment(angular_moment), group(group), G(G)
@@ -305,15 +277,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         public:
           OddMomentVal(unsigned int component, unsigned int angular_moment, unsigned int group, unsigned int G, 
-                  const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
-                  const MaterialProperties::MaterialPropertyMaps *matprop)
-            : Common(angular_moment, group, G), Filter<double>(solutions), 
-              component(component), matprop(matprop), angular_moment(angular_moment), group(group), G(G)
-          {
-            if (!odd_req_mom) ErrorHandling::error_function("MomentFilter::OddMomentVal constructor > %s", Messages::E_ODD_MOMENT_EXPECTED);
-            if (component >= 2) ErrorHandling::error_function("MomentFilter::OddMomentVal > %s", Messages::E_INVALID_COMPONENT);
-          };
-          OddMomentVal(unsigned int component, unsigned int angular_moment, unsigned int group, unsigned int G,
                   const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
                   const MaterialProperties::MaterialPropertyMaps *matprop)
             : Common(angular_moment, group, G), Filter<double>(solutions), 
@@ -378,17 +341,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           : Common::SupportClasses::SourceFilter(solutions, matprop, geom_type), 
             G(matprop.get_G()), mg(matprop.get_G())
         {};
-        SourceFilter(Hermes::vector<MeshFunctionSharedPtr<double> > solutions,
-                     const Common::MaterialProperties::MaterialPropertyMaps& matprop,
-                     GeomType geom_type = HERMES_PLANAR)
-          : Common::SupportClasses::SourceFilter(solutions, matprop, geom_type), 
-            G(matprop.get_G()), mg(matprop.get_G()) 
-        {};
                     
-        virtual void assign_solutions(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) {
-          this->num = solutions.size();
-          Common::SupportClasses::SourceFilter::assign_solutions(solutions);
-        }
         virtual void assign_solutions(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) {
           this->num = solutions.size();
           Common::SupportClasses::SourceFilter::assign_solutions(solutions);
@@ -578,12 +531,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             : Common(l, m, group, G, odata), SimpleFilter<double>(solutions, Hermes::vector<int>())
           {
           };
-          Val(unsigned int l, int m, unsigned int group, unsigned int G, 
-              const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
-              const OrdinatesData& odata)
-            : Common(l, m, group, G, odata), SimpleFilter<double>(solutions, Hermes::vector<int>())
-          {
-          };
           
           virtual MeshFunction<double>* clone() const;
           
@@ -599,12 +546,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       class ValDxDy : protected Common, public DXDYFilter<double>
       {
         public:
-          ValDxDy(unsigned int l, int m, unsigned int group, unsigned int G,
-                  const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
-                  const OrdinatesData& odata)
-            : Common(l, m, group, G, odata), DXDYFilter<double>(solutions)
-          {
-          };
           ValDxDy(unsigned int l, int m, unsigned int group, unsigned int G,
                   const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
                   const OrdinatesData& odata)
