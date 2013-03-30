@@ -126,7 +126,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         virtual ~MaterialPropertyMaps() {}
         
         Hermes::vector<std::string> get_regions(const std::string& material) const;
-        std::string get_material(int elem_marker, const Mesh *mesh) const;
+        std::string get_material(int elem_marker, MeshSharedPtr mesh) const;
         std::string get_material(const std::string& elem_marker) const;
         
         virtual void set_iso_src(const MaterialPropertyMap1& src) {
