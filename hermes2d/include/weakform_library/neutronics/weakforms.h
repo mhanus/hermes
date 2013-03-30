@@ -91,7 +91,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         virtual SupportClasses::SourceFilter* create_source_filter() = 0;
         virtual SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) = 0;
-        virtual SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) = 0;
                                       
         double get_keff() const { return keff; } 
         const Hermes::vector<MeshFunctionSharedPtr<double> >& get_scalar_flux_iterates() const { return scalar_flux_iterates; }
@@ -188,9 +187,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         Common::SupportClasses::SourceFilter* create_source_filter() {
           return new SupportClasses::SourceFilter(*matprop, geom_type);
-        }
-        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) {
-          return new SupportClasses::SourceFilter(solutions, *matprop, geom_type);
         }
         Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) {
           return new SupportClasses::SourceFilter(solutions, *matprop, geom_type);
@@ -303,9 +299,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                 
         Common::SupportClasses::SourceFilter* create_source_filter() {
           return new SupportClasses::SourceFilter(*matprop, geom_type);
-        }
-        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) {
-          return new SupportClasses::SourceFilter(solutions, *matprop, geom_type);
         }
         Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) {
           return new SupportClasses::SourceFilter(solutions, *matprop, geom_type);
