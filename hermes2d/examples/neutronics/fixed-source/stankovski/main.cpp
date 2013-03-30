@@ -201,14 +201,14 @@ int main(int argc, char* argv[])
     views.inspect_meshes(meshes);
 
   // Create pointers to final solutions (the fine mesh solutions in case of STRATEGY >= 0).
-  Hermes::vector<Solution<double>*> solutions;
+  Hermes::vector<MeshFunctionSharedPtr<double> > solutions;
   
   // Initialize all the new solution variables.
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
     solutions.push_back(new Solution<double>());
   
   // Create the approximation spaces with the default shapeset.
-  Hermes::vector<Space<double> *> spaces_, basic_spaces;
+  Hermes::vector<SpaceSharedPtr<double> > spaces_, basic_spaces;
   for (unsigned int i = 0; i < N_EQUATIONS; i++)
   {
     spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
@@ -235,7 +235,7 @@ int main(int argc, char* argv[])
     setup_convergence_graph(&graph_cpu_est, run_cases);
         
     // Create pointers to coarse mesh solutions used for error estimation.
-    Hermes::vector<Solution<double>*> coarse_solutions;
+    Hermes::vector<MeshFunctionSharedPtr<double> > coarse_solutions;
     
     // Initialize all the new solution variables.
     for (unsigned int i = 0; i < N_EQUATIONS; i++) 
@@ -318,7 +318,7 @@ int main(int argc, char* argv[])
         cpu_time2.tick();
         
         Loggable::Static::info("  --- Calculating total relative error of scalar flux approximation.");
-        Hermes::vector< MeshFunction<double>* > coarse_scalar_fluxes, fine_scalar_fluxes;
+        Hermes::vector< MeshFunctionSharedPtr<double> > coarse_scalar_fluxes, fine_scalar_fluxes;
         // If error_norm == HERMES_L2_NORM, MomentFilter::get_scalar_fluxes can be used instead (derivatives will not be needed).
         MomentFilter::get_scalar_fluxes_with_derivatives(coarse_solutions, &coarse_scalar_fluxes, N_GROUPS);
         MomentFilter::get_scalar_fluxes_with_derivatives(solutions, &fine_scalar_fluxes, N_GROUPS);
@@ -529,7 +529,7 @@ int main(int argc, char* argv[])
         delete spaces.get()[i]; // Destroy the space created by construct_refined_spaces.
         spaces_[i] = basic_spaces[i]->duplicate(meshes[i]); // Create a new space over the fresh copy of basic_mesh, duplicating the basic_space.
       }
-      delete &spaces.get(); // Destroy the Hermes::vector<H1Space<double>* > created by construct_refined_spaces.
+      delete &spaces.get(); // Destroy the Hermes::vector<H1SpaceSharedPtr<double> > created by construct_refined_spaces.
       spaces.set(&spaces_); // Set a new ConstantableSpacesVector to point to the newly created spaces.
             
       // Advance to the next run case ...

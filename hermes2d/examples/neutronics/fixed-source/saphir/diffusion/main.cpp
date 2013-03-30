@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
     Mesh::ReferenceMeshCreator ref_mesh_creator(&mesh);
     MeshSharedPtr ref_mesh = ref_mesh_creator.create_ref_mesh();
     Space<double>::ReferenceSpaceCreator ref_space_creator(&space, ref_mesh);
-    Space<double>* ref_space = ref_space_creator.create_ref_space();
+    SpaceSharedPtr<double> ref_space = ref_space_creator.create_ref_space();
 
     int ndof_ref = ref_space->get_num_dofs();
     newton.set_space(ref_space);

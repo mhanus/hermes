@@ -17,7 +17,7 @@ void StationaryPicardSolver::solve(double *coeff_vec)
   
   int num_spaces = static_cast<DiscreteProblem<double>*>(this->dp)->get_spaces().size();
   int ndof = static_cast<DiscreteProblem<double>*>(this->dp)->get_num_dofs();
-  Hermes::vector<const Space<double>* > spaces = static_cast<DiscreteProblem<double>*>(this->dp)->get_spaces();
+  Hermes::vector<SpaceSharedPtr<double> > spaces = static_cast<DiscreteProblem<double>*>(this->dp)->get_spaces();
   Hermes::vector<bool> add_dir_lift;
   for(unsigned int i = 0; i < spaces.size(); i++)
     add_dir_lift.push_back(false);
@@ -248,8 +248,8 @@ void StationaryPicardSolver::solve(double *coeff_vec)
 
 namespace Neutronics
 {
-  int keff_eigenvalue_iteration(const Hermes::vector<Solution<double> *>& solutions, 
-                                Common::WeakForms::KeffEigenvalueProblem* wf, const Hermes::vector<const Space<double> *>& spaces,
+  int keff_eigenvalue_iteration(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions, 
+                                Common::WeakForms::KeffEigenvalueProblem* wf, const Hermes::vector<SpaceSharedPtr<double> >& spaces,
                                 MatrixSolverType matrix_solver, double tol_keff, double tol_flux, bool output_matrix_and_rhs, EMatrixDumpFormat output_fmt)
   {
     // Sanity checks.
@@ -258,7 +258,7 @@ namespace Neutronics
                                   
     // The following variables will store pointers to solutions obtained at each iteration and will be needed for 
     // updating the eigenvalue. 
-    Hermes::vector<Solution<double>*> new_solutions;
+    Hermes::vector<MeshFunctionSharedPtr<double> > new_solutions;
     for (unsigned int i = 0; i < solutions.size(); i++) 
       new_solutions.push_back(new Solution<double>(spaces[i]->get_mesh()));
     

@@ -83,7 +83,7 @@ int main(int argc, char* args[])
   
   Loggable::Static::info("%d elements, %d vertices", meshes[0]->get_num_active_elements(), meshes[0]->get_num_vertex_nodes() );
   
-  Hermes::vector<Solution<double>* > slns;
+  Hermes::vector<MeshFunctionSharedPtr<double> > slns;
   for (int i = 0; i < M; i++)
     slns.push_back(new Solution<double>(MULTIMESH ? meshes[i] : meshes[0]));
  
@@ -98,7 +98,7 @@ int main(int argc, char* args[])
     bool assemble_Q = !strcmp(args[1], "Q") || !strcmp(args[1], "LQ");
     
     WeakForm<double> *wf;
-    Hermes::vector<const Space<double> *> spaces;
+    Hermes::vector<SpaceSharedPtr<double> > spaces;
     
     if (!strcmp(args[1], "S") || !strcmp(args[1], "F"))
     {
@@ -154,7 +154,7 @@ int main(int argc, char* args[])
   // Initialize the FE problem.
   
   // Approximation spaces.
-  Hermes::vector<const Space<double> *> spaces;
+  Hermes::vector<SpaceSharedPtr<double> > spaces;
   
   for (int n = 0; n < M; n++)
     spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
@@ -222,7 +222,7 @@ int main(int argc, char* args[])
   
   // View the coarse mesh scalar flux and/or save it to .vtk files.
   
-  Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+  Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes;
   SupportClasses::MomentFilter::get_scalar_fluxes(slns, &scalar_fluxes, 1, wf.get_ordinates_data());
   
   if (HERMES_SCAL_VISUALIZATION)

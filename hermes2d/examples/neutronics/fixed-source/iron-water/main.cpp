@@ -140,7 +140,7 @@ int main(int argc, char* argv[])
     Loggable::Static::info("---- Adaptivity step %d:", as);
 
     // Construct globally refined reference mesh and setup reference space.
-    Space<double>* ref_space = Space<double>::construct_refined_space(&space);
+    SpaceSharedPtr<double> ref_space = Space<double>::construct_refined_space(&space);
     int ndof_ref = ref_space->get_num_dofs();
 
     // Initialize the FE problem.
