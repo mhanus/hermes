@@ -69,11 +69,11 @@ const int MAX_ADAPT_NUM = 60;            // Adaptivity process stops when the nu
 Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  
 
 // Visualisation options.
-const bool HERMES_VISUALIZATION = false;         // Set to "true" to enable Hermes OpenGL visualization. 
+const bool HERMES_VISUALIZATION = true;         // Set to "true" to enable Hermes OpenGL visualization. 
 const bool VTK_VISUALIZATION = true;           // Set to "true" to enable VTK output.
-const bool DISPLAY_MESHES = false;              // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
+const bool DISPLAY_MESHES = true;              // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
 const bool SHOW_INTERMEDIATE_ORDERS = false;     // Set to "true" to display coarse mesh solutions during adaptivity.
-const bool SHOW_INTERMEDIATE_SOLUTIONS = false;  // Set to "true" to display solutions on intermediate meshes during adaptivity.
+const bool SHOW_INTERMEDIATE_SOLUTIONS = true;  // Set to "true" to display solutions on intermediate meshes during adaptivity.
 
 // Problem parameters:
 
@@ -175,6 +175,7 @@ int main(int argc, char* argv[])
   for (int j = 0; j < INIT_REF_NUM[0]; j++) 
     meshes[0]->refine_all_elements();
 
+  
   SupportClasses::Visualization views(SPN_ORDER, N_GROUPS, 510, 510, DISPLAY_MESHES);
   if (DISPLAY_MESHES && HERMES_VISUALIZATION)
     views.inspect_meshes(meshes);
@@ -183,7 +184,7 @@ int main(int argc, char* argv[])
   PostProcessor pp(NEUTRONICS_SPN);      
   Hermes::vector<double> areas;
   pp.get_areas(meshes[0], edit_regions, &areas);
-  
+    
   // Create pointers to the coarse and fine mesh solutions.
   Hermes::vector<MeshFunctionSharedPtr<double> > coarse_solutions, solutions;
   
@@ -351,8 +352,8 @@ int main(int argc, char* argv[])
       for (unsigned int g = 0; g < N_GROUPS; g++)
       {
         // Calculate relative error (squared) of the scalar flux approximation (linear comb. of the actual solutions) in specified norm.
-        double group_err_est = Hermes::sqr(Global<double>::calc_abs_error(coarse_scalar_fluxes[g], fine_scalar_fluxes[g], HERMES_H1_NORM));
-        double group_norm = Hermes::sqr(Global<double>::calc_norm(fine_scalar_fluxes[g], HERMES_H1_NORM));
+        double group_err_est = Hermes::sqr(Global<double>::calc_abs_error(coarse_scalar_fluxes[g].get(), fine_scalar_fluxes[g].get(), HERMES_H1_NORM));
+        double group_norm = Hermes::sqr(Global<double>::calc_norm(fine_scalar_fluxes[g].get(), HERMES_H1_NORM));
         scalar_flux_err_est_rel += group_err_est/group_norm;
         scalar_flux_norm += group_norm;
         
@@ -383,9 +384,6 @@ int main(int argc, char* argv[])
       avg_flux_err_s8_rel = sqrt(avg_flux_err_s8_rel) * 100;
       scalar_flux_norm = sqrt(scalar_flux_norm);
           
-      MomentFilter::clear_scalar_fluxes(&coarse_scalar_fluxes);
-      MomentFilter::clear_scalar_fluxes(&fine_scalar_fluxes);
-      
       cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       
       // Calculate error estimate for each solution component and the total error estimate.
@@ -432,13 +430,7 @@ int main(int argc, char* argv[])
       }
       
       if (!done)
-      {
-        for(unsigned int i = 0; i < N_EQUATIONS; i++)
-        {
-          delete ref_spaces_[i]->get_mesh();
-          delete ref_spaces_[i];
-        }
-        
+      {        
         // Increase the adaptivity step counter.
         as++;
       }
@@ -465,12 +457,7 @@ int main(int argc, char* argv[])
         for (unsigned int i = 0; i < N_EQUATIONS; i++)
         {
           // Make the fine-mesh spaces the final spaces for further analyses.
-          delete spaces.get()[i]->get_mesh(); // Alternatively "delete meshes[i]".
-          delete spaces.get()[i];
-          spaces.get()[i] = ref_spaces.get()[i]; 
-
-          // Delete the auxiliary coarse-mesh solutions.
-          delete coarse_solutions[i];   
+          spaces[i] = ref_spaces[i];   
         }
       }
     }
@@ -480,6 +467,8 @@ int main(int argc, char* argv[])
     graph_dof.save(("conv_dof_sp"+itos(SPN_ORDER)+".gp").c_str());
     graph_cpu.save(("conv_cpu_sp"+itos(SPN_ORDER)+".gp").c_str());
   }
+  
+  delete newton;
         
   //
   // Analysis of the solution.
@@ -499,14 +488,6 @@ int main(int argc, char* argv[])
     else if (SPN_ORDER == 7)
       Loggable::Static::info("\t (solution by the SP7-equivalent A4 method = %f, error w.r.t S8 = %g%%)", ref_average_fluxes_sp7[i],
            fabs(ref_average_fluxes_sp7[i] - ref_average_fluxes_s8[i])/ref_average_fluxes_s8[i] * 100);
-  }
-
-  // Final clean up.
-  for(unsigned int i = 0; i < N_EQUATIONS; i++)
-  {
-    delete spaces.get()[i]->get_mesh();
-    delete spaces.get()[i];
-    delete solutions[i];
   }
 
   return 0;
