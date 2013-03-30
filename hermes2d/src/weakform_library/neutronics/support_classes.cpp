@@ -775,11 +775,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         std::string appendix = std::string("_group_") + itos(g);
         for (unsigned int m = 0; m < n_odd_moments; m++)
         {
-          MomentFilter::EvenMomentVal mf(2*m, g, n_groups, solutions);
+          MeshFunctionSharedPtr<double> mf = new MomentFilter::EvenMomentVal(2*m, g, n_groups, solutions);
           
           std::string file = base_filename + std::string("_moment_") + itos(2*m) + appendix + std::string(".vtk");
           std::string var = base_varname + std::string("_moment_") + itos(2*m) + appendix;
-          lin.save_solution_vtk(&mf, file.c_str(), var.c_str(), mode_3D);
+          lin.save_solution_vtk(mf, file.c_str(), var.c_str(), mode_3D);
           info("SP%d moment #%d of solution in group %d saved in VTK format to file %s.", n_moments-1, 2*m, g, file.c_str());
           
           file = base_filename + std::string("_moment_") + itos(2*m+1) + appendix + std::string(".vtk");
