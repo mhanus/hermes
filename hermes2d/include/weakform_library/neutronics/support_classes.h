@@ -316,8 +316,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                     unsigned int G);
       static void get_scalar_fluxes_with_derivatives(const Hermes::vector<MeshFunctionSharedPtr<double> >& angular_fluxes,
                                                     Hermes::vector<Filter<double>*>* scalar_fluxes,
-                                                    unsigned int G);                                                    
-      static void clear_scalar_fluxes(Hermes::vector<MeshFunctionSharedPtr<double> >* scalar_fluxes);
+                                                    unsigned int G);                          
+      // DEPRECATED (not needed when shared pointers are used for scalar_fluxes)                                              
+      static void clear_scalar_fluxes(Hermes::vector< MeshFunction<double>* >* scalar_fluxes);
       static void clear_scalar_fluxes(Hermes::vector<Filter<double>*>* scalar_fluxes);
     };
     
@@ -579,8 +580,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                     unsigned int G, const OrdinatesData& odata);
       static void get_scalar_fluxes_with_derivatives(const Hermes::vector<MeshFunctionSharedPtr<double> >& angular_fluxes,
                                                     Hermes::vector<Filter<double>*>* scalar_fluxes,
-                                                    unsigned int G, const OrdinatesData& odata);                                                    
-      static void clear_scalar_fluxes(Hermes::vector<MeshFunctionSharedPtr<double> >* scalar_fluxes);
+                                                    unsigned int G, const OrdinatesData& odata);
+      
+      // DEPRECATED (not needed when shared pointers are used for scalar_fluxes) 
+      static void clear_scalar_fluxes(Hermes::vector<MeshFunction<double>* >* scalar_fluxes);
       static void clear_scalar_fluxes(Hermes::vector<Filter<double>*>* scalar_fluxes);
     };
     

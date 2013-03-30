@@ -50,18 +50,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       init();
       post_init();
     }
-
-    void SourceFilter::assign_solutions(const Hermes::vector< MeshFunctionSharedPtr<double> >& solutions)
-    {
-      if (solutions.size() != (unsigned) num)
-        ErrorHandling::error_function("SourceFilter: Number of solutions does not match the size of data.");
-      
-      free();
-      for (int i = 0; i < num; i++)
-        sln[i] = solutions[i];
-      init();
-      post_init();
-    }
     
     void SourceFilter::post_init()
     {
@@ -425,7 +413,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           order = sln[sol_idx]->get_fn_order();
     }
     
-    MeshFunctionSharedPtr<double> MomentFilter::EvenMomentVal::clone() const
+    MeshFunction<double>* MomentFilter::EvenMomentVal::clone() const
     {
       Hermes::vector<MeshFunctionSharedPtr<double> > slns;
 
@@ -464,7 +452,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           order = sln[sol_idx]->get_fn_order();
     }
     
-    MeshFunctionSharedPtr<double> MomentFilter::EvenMomentValDxDy::clone() const
+    MeshFunction<double>* MomentFilter::EvenMomentValDxDy::clone() const
     {
       Hermes::vector<MeshFunctionSharedPtr<double> > slns;
 
@@ -485,7 +473,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           order = sln[mg.pos(req_mom_idx,gfrom)]->get_fn_order();
     }
     
-    MeshFunctionSharedPtr<double> MomentFilter::OddMomentVal::clone() const
+    MeshFunction<double>* MomentFilter::OddMomentVal::clone() const
     {
       Hermes::vector<MeshFunctionSharedPtr<double> > slns;
 
@@ -577,9 +565,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         scalar_fluxes->push_back(new MomentFilter::EvenMomentValDxDy(0, g, G, angular_fluxes));
     }
     
-    void MomentFilter::clear_scalar_fluxes(Hermes::vector< MeshFunctionSharedPtr<double> >* scalar_fluxes)
+    void MomentFilter::clear_scalar_fluxes(Hermes::vector< MeshFunction<double>* >* scalar_fluxes)
     {
-      Hermes::vector< MeshFunctionSharedPtr<double> >::const_iterator it = scalar_fluxes->begin();
+      Hermes::vector< MeshFunction<double>* >::const_iterator it = scalar_fluxes->begin();
       for( ; it != scalar_fluxes->end(); ++it)
         delete *it;
       scalar_fluxes->clear();
@@ -1173,7 +1161,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           order = sln[sol_idx]->get_fn_order();
     }
     
-    MeshFunctionSharedPtr<double> MomentFilter::Val::clone() const
+    MeshFunction<double>* MomentFilter::Val::clone() const
     {
       Hermes::vector<MeshFunctionSharedPtr<double> > slns;
 
@@ -1195,7 +1183,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           order = sln[sol_idx]->get_fn_order();
     }
     
-    MeshFunctionSharedPtr<double> MomentFilter::ValDxDy::clone() const
+    MeshFunction<double>* MomentFilter::ValDxDy::clone() const
     {
       Hermes::vector<MeshFunctionSharedPtr<double> > slns;
 
@@ -1246,9 +1234,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         scalar_fluxes->push_back(new MomentFilter::ValDxDy(0, 0, g, G, angular_fluxes, odata));
     }
     
-    void MomentFilter::clear_scalar_fluxes(Hermes::vector< MeshFunctionSharedPtr<double> >* scalar_fluxes)
+    void MomentFilter::clear_scalar_fluxes(Hermes::vector< MeshFunction<double>* >* scalar_fluxes)
     {
-      Hermes::vector< MeshFunctionSharedPtr<double> >::const_iterator it = scalar_fluxes->begin();
+      Hermes::vector< MeshFunction<double>* >::const_iterator it = scalar_fluxes->begin();
       for( ; it != scalar_fluxes->end(); ++it)
         delete *it;
       scalar_fluxes->clear();
@@ -1326,7 +1314,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
      
     Hermes::vector< MeshFunctionSharedPtr<double> >::iterator sln = solutions->begin();
     for ( ; sln != solutions->end(); ++sln)
-      (*sln)->multiply(1./integrated_fission_source);
+    {
+      Solution<double>* solution = dynamic_cast<Solution<double>*>((*sln).get());
+      if (solution)
+        solution->multiply(1./integrated_fission_source);
+      else
+        //TODO
+        ;
+    }
   }
 
   void PostProcessor::normalize_to_unit_fission_source(Hermes::vector< MeshFunctionSharedPtr<double> >* solutions, 
@@ -1482,11 +1477,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       results->push_back(result);
     }
-    
+
+    // Not needed as long as Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes 
+    // is used above instead of Hermes::vector<MeshFunction<double>* > scalar_fluxes
+    /*
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
     else if (method == NEUTRONICS_SN)
       SN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    */
   }
   
   double PostProcessor::get_integrated_group_reaction_rates(ReactionType reaction, const Hermes::vector< MeshFunctionSharedPtr<double> >& solutions, 
@@ -1517,11 +1516,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     else
       result += get_integrated_group_reaction_rates_internal(reaction, scalar_fluxes[group], matprop, regions, group);
-      
+    
+    // Not needed as long as Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes 
+    // is used above instead of Hermes::vector<MeshFunction<double>* > scalar_fluxes
+    /*
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
     else if (method == NEUTRONICS_SN)
       SN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    */
     
     return result;
   }
@@ -1565,10 +1568,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       results->push_back(result);
     }
 
+    // Not needed as long as Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes 
+    // is used above instead of Hermes::vector<MeshFunction<double>* > scalar_fluxes
+    /*
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
     else if (method == NEUTRONICS_SN)
       SN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    */
   }
   
   double PostProcessor::get_integrated_reaction_rates(ReactionType reaction, const Hermes::vector< MeshFunctionSharedPtr<double> >& solutions, 
@@ -1600,10 +1607,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     for ( ; region != regions.end(); ++region)
       results->push_back(integrate(scalar_fluxes[group], *region));
     
+    // Not needed as long as Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes 
+    // is used above instead of Hermes::vector<MeshFunction<double>* > scalar_fluxes
+    /*
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
     else if (method == NEUTRONICS_SN)
       SN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    */
   }
   
   double PostProcessor::get_integrated_group_scalar_fluxes(const Hermes::vector< MeshFunctionSharedPtr<double> >& solutions, 
@@ -1622,10 +1633,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     double result = integrate(scalar_fluxes[group], regions);
     
+    // Not needed as long as Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes 
+    // is used above instead of Hermes::vector<MeshFunction<double>* > scalar_fluxes
+    /*
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
     else if (method == NEUTRONICS_SN)
       SN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    */
     
     return result;
   }
@@ -1652,10 +1667,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       results->push_back(result);
     }
     
+    // Not needed as long as Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes 
+    // is used above instead of Hermes::vector<MeshFunction<double>* > scalar_fluxes
+    /*
     if (method == NEUTRONICS_SPN)
       SPN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
     else if (method == NEUTRONICS_SN)
       SN::SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+    */
   }
 
   double PostProcessor::get_integrated_scalar_fluxes(const Hermes::vector< MeshFunctionSharedPtr<double> >& solutions, unsigned int G,

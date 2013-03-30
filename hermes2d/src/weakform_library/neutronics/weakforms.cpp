@@ -760,10 +760,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
     }
     
+    // Not needed as long as Hermes::vector<MeshFunctionSharedPtr<double> > scalar_flux_iterates
+    // is used instead of Hermes::vector<MeshFunction<double>* > scalar_flux_iterates
+    /*
     KeffEigenvalueProblem::~KeffEigenvalueProblem()
     {  
       SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_flux_iterates);
     }
+    */
     
     void KeffEigenvalueProblem::update_keff(double new_keff) 
     { 
