@@ -86,19 +86,19 @@ int main(int argc, char* argv[])
   Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
 
   // Load the mesh.
-  Mesh mesh;
+  MeshSharedPtr mesh = new Mesh();
   MeshReaderH2D mesh_reader;
-  mesh_reader.load("../domain.mesh", &mesh);
+  mesh_reader.load("../domain.mesh", mesh);
   
   // Perform initial uniform mesh refinement.
-  for (int i = 0; i < INIT_REF_NUM; i++) mesh.refine_all_elements();
+  for (int i = 0; i < INIT_REF_NUM; i++) mesh->refine_all_elements();
 
   // Set essential boundary conditions.
   DefaultEssentialBCConst<double> bc_essential(Hermes::vector<std::string>("bottom", "right", "top", "left"), 0.0);
   EssentialBCs<double> bcs(&bc_essential);
   
   // Create an H1 space with default shapeset.
-  H1Space<double> space(&mesh, &bcs, P_INIT);
+  SpaceSharedPtr<double> space = new H1Space<double>(mesh, &bcs, P_INIT);
 
   // Associate element markers (corresponding to physical regions) 
   // with material properties (diffusion coefficient, absorption 
@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
     wf(regions, D_map, Sigma_a_map, Sources_map);
 
   // Initialize coarse and reference mesh solution.
-  Solution<double> sln, ref_sln;
+  MeshFunctionSharedPtr<double> sln(new Solution<double>()), ref_sln(new Solution<double>());
   
   // Initialize refinement selector.
   H1ProjBasedSelector<double> selector(CAND_LIST, CONV_EXP, H2DRS_DEFAULT_ORDER);
@@ -133,7 +133,7 @@ int main(int argc, char* argv[])
   cpu_time.tick();
 
   // Initialize the FE problem.
-  DiscreteProblem<double> dp(&wf, &space);
+  DiscreteProblem<double> dp(&wf, space);
 
   // Create Newton's solver on reference mesh.
   NewtonSolver<double> newton(&dp);
@@ -146,9 +146,9 @@ int main(int argc, char* argv[])
     Loggable::Static::info("---- Adaptivity step %d:", as);
 
     // Construct globally refined reference mesh and setup reference space.
-    Mesh::ReferenceMeshCreator ref_mesh_creator(&mesh);
+    Mesh::ReferenceMeshCreator ref_mesh_creator(mesh);
     MeshSharedPtr ref_mesh = ref_mesh_creator.create_ref_mesh();
-    Space<double>::ReferenceSpaceCreator ref_space_creator(&space, ref_mesh);
+    Space<double>::ReferenceSpaceCreator ref_space_creator(space, ref_mesh);
     SpaceSharedPtr<double> ref_space = ref_space_creator.create_ref_space();
 
     int ndof_ref = ref_space->get_num_dofs();
@@ -165,39 +165,38 @@ int main(int argc, char* argv[])
     }
       
     // Translate the resulting coefficient vector into instances of Solution.
-    Solution<double>::vector_to_solution(newton.get_sln_vector(), ref_space, &ref_sln);
+    Solution<double>::vector_to_solution(newton.get_sln_vector(), ref_space, ref_sln);
       
     // Project the fine mesh solution onto the coarse mesh.
-    Solution<double> sln;
     Loggable::Static::info("Projecting reference solution on coarse mesh.");
     OGProjection<double> ogProjection;
-    ogProjection.project_global(&space, &ref_sln, &sln); 
+    ogProjection.project_global(space, ref_sln, sln); 
 
     // Time measurement.
     cpu_time.tick();
    
     // View the coarse mesh solution and polynomial orders.
 #ifndef NOGLUT
-    sview.show(&sln);
-    oview.show(&space);
+    sview.show(sln);
+    oview.show(space);
 #endif
     // Skip visualization time.
     cpu_time.tick(TimeMeasurable::HERMES_SKIP);
 
     // Calculate element errors and total error estimate.
     Loggable::Static::info("Calculating error estimate."); 
-    Adapt<double> adaptivity(&space);
-    double err_est_rel = adaptivity.calc_err_est(&sln, &ref_sln, true, HERMES_TOTAL_ERROR_REL | HERMES_ELEMENT_ERROR_ABS) * 100;
+    Adapt<double> adaptivity(space);
+    double err_est_rel = adaptivity.calc_err_est(sln, ref_sln, true, HERMES_TOTAL_ERROR_REL | HERMES_ELEMENT_ERROR_ABS) * 100;
 
     // Report results.
     Loggable::Static::info("ndof_coarse: %d, ndof_fine: %d, err_est_rel: %g%%", 
-         space.get_num_dofs(), ref_space->get_num_dofs(), err_est_rel);
+         space->get_num_dofs(), ref_space->get_num_dofs(), err_est_rel);
 
     // Time measurement.
     cpu_time.tick();
 
     // Add entry to DOF and CPU convergence graphs.
-    graph_dof.add_values(space.get_num_dofs(), err_est_rel);
+    graph_dof.add_values(space->get_num_dofs(), err_est_rel);
     graph_dof.save("conv_dof_est.dat");
     graph_cpu.add_values(cpu_time.accumulated(), err_est_rel);
     graph_cpu.save("conv_cpu_est.dat");
@@ -215,11 +214,7 @@ int main(int argc, char* argv[])
       // Increase the counter of performed adaptivity steps.
       if (done == false)  as++;
     }
-    if (space.get_num_dofs() >= NDOF_STOP) done = true;
-    
-    if(done == false) 
-      delete ref_mesh;
-    delete ref_space;
+    if (space->get_num_dofs() >= NDOF_STOP) done = true;
   }
   while (done == false);
   
@@ -230,7 +225,7 @@ int main(int argc, char* argv[])
   // Show the reference solution - the final result.
   sview.set_title("Fine mesh solution");
   sview.show_mesh(false);
-  sview.show(&ref_sln);
+  sview.show(ref_sln);
 
   // Wait for all views to be closed.
   Views::View::wait();
@@ -238,11 +233,11 @@ int main(int argc, char* argv[])
   // Output solution in VTK format.
   Hermes::Hermes2D::Views::Linearizer lin;
   bool mode_3D = true;
-  lin.save_solution_vtk(&ref_sln, "sln.vtk", "Neutron flux", mode_3D);
+  lin.save_solution_vtk(ref_sln, "sln.vtk", "Neutron flux", mode_3D);
 
   // Output mesh and element orders in VTK format.
   Hermes::Hermes2D::Views::Orderizer ord;
-  ord.save_orders_vtk(&space, "ord.vtk");
+  ord.save_orders_vtk(space, "ord.vtk");
 #endif
   
   return 0;
