@@ -292,7 +292,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                               GeomType geom_type = HERMES_PLANAR,
                               bool solve_by_newton = false);
         
+        // Not needed as long as Hermes::vector<MeshFunctionSharedPtr<double> > scalar_flux_iterates
+        // is used above instead of Hermes::vector<MeshFunction<double>* > scalar_flux_iterates
+        /*
         virtual ~KeffEigenvalueProblem();
+        */
         
         void update_keff(double new_keff);
         void update_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& new_solutions, bool meshes_changed);
