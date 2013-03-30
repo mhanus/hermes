@@ -288,7 +288,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           OuterIterationForm( unsigned int g, 
                               double chi_to, const rank1& nu, const rank1& Sigma_f, 
-                              const Hermes::vector<MeshFunction<double>*>& iterates,
+                              const Hermes::vector<MeshFunctionSharedPtr<double> >& iterates,
                               double keff = 1.0,
                               GeomType geom_type = HERMES_PLANAR )
             : VectorFormVol<double>(g),
@@ -305,7 +305,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           OuterIterationForm( const std::string& area, 
                               unsigned int g, 
                               double chi_to, const rank1& nu, const rank1& Sigma_f, 
-                              const Hermes::vector<MeshFunction<double>*>& iterates,
+                              const Hermes::vector<MeshFunctionSharedPtr<double> >& iterates,
                               double keff = 1.0,
                               GeomType geom_type = HERMES_PLANAR )
             : VectorFormVol<double>(g),
@@ -322,7 +322,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           OuterIterationForm( const Hermes::vector<std::string>& areas,
                               unsigned int g, 
                               double chi_to, const rank1& nu, const rank1& Sigma_f, 
-                              const Hermes::vector<MeshFunction<double>*>& iterates,
+                              const Hermes::vector<MeshFunctionSharedPtr<double> >& iterates,
                               double keff = 1.0,
                               GeomType geom_type = HERMES_PLANAR )
             : VectorFormVol<double>(g),
@@ -944,7 +944,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           OuterIterationForm( unsigned int m, unsigned int g,
                               unsigned int G, double chi_to, const rank1& nu, const rank1& Sigma_f,
-                              const Hermes::vector<MeshFunction<double>*>& iterates,
+                              const Hermes::vector<MeshFunctionSharedPtr<double> >& iterates,
                               double keff = 1.0,
                               GeomType geom_type = HERMES_PLANAR )
             : GenericForm(G, geom_type),
@@ -957,7 +957,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           OuterIterationForm( const std::string& area, 
                               unsigned int m, unsigned int g,  unsigned int G,
                               double chi_to, const rank1& nu, const rank1& Sigma_f,
-                              const Hermes::vector<MeshFunction<double>*>& iterates,
+                              const Hermes::vector<MeshFunctionSharedPtr<double> >& iterates,
                               double keff = 1.0,
                               GeomType geom_type = HERMES_PLANAR )
             : GenericForm(G, geom_type),
@@ -971,7 +971,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           OuterIterationForm( const Hermes::vector<std::string>& areas, 
                               unsigned int m, unsigned int g, unsigned int G, 
                               double chi_to, const rank1& nu, const rank1& Sigma_f,
-                              const Hermes::vector<MeshFunction<double>*>& iterates,
+                              const Hermes::vector<MeshFunctionSharedPtr<double> >& iterates,
                               double keff = 1.0,
                               GeomType geom_type = HERMES_PLANAR )
             : GenericForm(G, geom_type),

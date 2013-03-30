@@ -71,8 +71,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       protected:
         double keff;
 
-        Hermes::vector<Solution<double>*> stored_flux_solutions;
-        Hermes::vector<MeshFunction<double>*> scalar_flux_iterates;
+        Hermes::vector<MeshFunctionSharedPtr<double> > stored_flux_solutions;
+        Hermes::vector<MeshFunctionSharedPtr<double> > scalar_flux_iterates;
         
         /// \param[in] fission_regions  Strings specifiying the parts of the solution domain where fission occurs.
         KeffEigenvalueProblem(unsigned int n_eq,
@@ -87,14 +87,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         virtual void update_keff(double new_keff) = 0; //TODO: Define a common FissionYield::OuterIteration class,
                                                       // so that this method may be defined here instead of in both
                                                       // SPN and Diffusion KeffEigenvalueProblem.
-        virtual void update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed) = 0;
+        virtual void update_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& new_solutions, bool meshes_changed) = 0;
         
         virtual SupportClasses::SourceFilter* create_source_filter() = 0;
-        virtual SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<Solution<double>*>& solutions) = 0;
-        virtual SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions) = 0;
+        virtual SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) = 0;
+        virtual SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) = 0;
                                       
         double get_keff() const { return keff; } 
-        const Hermes::vector<MeshFunction<double>*>& get_scalar_flux_iterates() const { return scalar_flux_iterates; }
+        const Hermes::vector<MeshFunctionSharedPtr<double> >& get_scalar_flux_iterates() const { return scalar_flux_iterates; }
     };
     
   /* WeakForms */  
@@ -167,7 +167,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     class KeffEigenvalueProblem : public Common::WeakForms::KeffEigenvalueProblem, protected DiffusionWeakForm
     {
       protected:    
-        void init_rhs(const Hermes::vector<Solution<double>*>& iterates);
+        void init_rhs(const Hermes::vector<MeshFunctionSharedPtr<double> >& iterates);
         
         virtual void add_forms_from_homogeneous_part(bool solve_by_newton, FissionTreatment include_fission = NONE) { 
           if (solve_by_newton) 
@@ -178,21 +178,21 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
       public:                                        
         KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                              const Hermes::vector<Solution<double>*>& iterates,
+                              const Hermes::vector<MeshFunctionSharedPtr<double> >& iterates,
                               double initial_keff_guess,
                               GeomType geom_type = HERMES_PLANAR,
                               bool solve_by_newton = false);                                
                                         
         void update_keff(double new_keff);
-        void update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed);
+        void update_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& new_solutions, bool meshes_changed);
         
         Common::SupportClasses::SourceFilter* create_source_filter() {
           return new SupportClasses::SourceFilter(*matprop, geom_type);
         }
-        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<Solution<double>*>& solutions) {
+        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) {
           return new SupportClasses::SourceFilter(solutions, *matprop, geom_type);
         }
-        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions) {
+        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) {
           return new SupportClasses::SourceFilter(solutions, *matprop, geom_type);
         }
         
@@ -291,7 +291,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
       public:
         KeffEigenvalueProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                              const Hermes::vector<Solution<double>*>& iterates,
+                              const Hermes::vector<MeshFunctionSharedPtr<double> >& iterates,
                               double initial_keff_guess,
                               GeomType geom_type = HERMES_PLANAR,
                               bool solve_by_newton = false);
@@ -299,15 +299,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         virtual ~KeffEigenvalueProblem();
         
         void update_keff(double new_keff);
-        void update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed);
+        void update_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& new_solutions, bool meshes_changed);
                 
         Common::SupportClasses::SourceFilter* create_source_filter() {
           return new SupportClasses::SourceFilter(*matprop, geom_type);
         }
-        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<Solution<double>*>& solutions) {
+        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) {
           return new SupportClasses::SourceFilter(solutions, *matprop, geom_type);
         }
-        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunction<double>*>& solutions) {
+        Common::SupportClasses::SourceFilter* create_source_filter(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) {
           return new SupportClasses::SourceFilter(solutions, *matprop, geom_type);
         }
         

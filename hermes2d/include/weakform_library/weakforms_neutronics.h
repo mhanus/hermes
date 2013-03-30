@@ -15,9 +15,9 @@ namespace Hermes { namespace Hermes2D {
     public:
       StationaryPicardSolver(DiscreteProblem<double>* dp)
         : PicardSolver<double>(dp) {};
-      StationaryPicardSolver(const WeakForm<double>* wf, const Space<double>* space) 
+      StationaryPicardSolver(const WeakForm<double>* wf, SpaceSharedPtr<double> space) 
         : PicardSolver<double>(wf, space) {};
-      StationaryPicardSolver(const WeakForm<double>* wf, Hermes::vector<const Space<double>*> spaces) 
+      StationaryPicardSolver(const WeakForm<double>* wf, Hermes::vector<SpaceSharedPtr<double> > spaces) 
         : PicardSolver<double>(wf, spaces) {};
         
       virtual void solve(double *coeff_vec = NULL);
@@ -39,8 +39,8 @@ namespace Hermes { namespace Hermes2D {
     ///
     /// \return  number of iterations needed for convergence within the specified tolerance.
     ///
-    int keff_eigenvalue_iteration(const Hermes::vector<Solution<double> *>& solutions, 
-                                  Common::WeakForms::KeffEigenvalueProblem* wf, const Hermes::vector<const Space<double> *>& spaces,
+    int keff_eigenvalue_iteration(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions, 
+                                  Common::WeakForms::KeffEigenvalueProblem* wf, const Hermes::vector<SpaceSharedPtr<double> >& spaces,
                                   MatrixSolverType matrix_solver = SOLVER_UMFPACK, double tol_keff = 1e-6, double tol_flux = 0,
                                   bool output_matrix_and_rhs = false, EMatrixDumpFormat output_fmt = DF_HERMES_BIN);
     
@@ -49,7 +49,7 @@ namespace Hermes { namespace Hermes2D {
     class HERMES_API KeffEigenvalueIteration : public StationaryPicardSolver
     {
       public:
-        KeffEigenvalueIteration(const WeakForm<double>* wf, Hermes::vector<const Space<double>*> spaces)
+        KeffEigenvalueIteration(const WeakForm<double>* wf, Hermes::vector<SpaceSharedPtr<double> > spaces)
           : StationaryPicardSolver(wf, spaces), keff(1.0)
         {};
         
@@ -73,7 +73,7 @@ namespace Hermes { namespace Hermes2D {
     class HERMES_API SourceIteration : public StationaryPicardSolver
     {
       public:
-        SourceIteration(const WeakForm<double>* wf, Hermes::vector<const Space<double>*> spaces)
+        SourceIteration(const WeakForm<double>* wf, Hermes::vector<SpaceSharedPtr<double> > spaces)
           : StationaryPicardSolver(wf, spaces)
         {};
         

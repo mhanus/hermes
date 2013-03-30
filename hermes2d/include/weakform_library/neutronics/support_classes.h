@@ -31,7 +31,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         /* Immediate constructors: the vector of solutions to be filtered is given by the first argument.  */
         
-        SourceFilter(Hermes::vector<MeshFunction<double>*> solutions, 
+        SourceFilter(Hermes::vector<MeshFunctionSharedPtr<double> > solutions, 
                      const MaterialProperties::MaterialPropertyMaps& matprop,
                      GeomType geom_type = HERMES_PLANAR)
           : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type),
@@ -44,7 +44,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           post_init();
         };
-        SourceFilter(Hermes::vector<Solution<double>*> solutions,
+        SourceFilter(Hermes::vector<MeshFunctionSharedPtr<double> > solutions,
                      const MaterialProperties::MaterialPropertyMaps& matprop,
                      GeomType geom_type = HERMES_PLANAR)
           : SimpleFilter<double>(solutions, Hermes::vector<int>()), matprop(matprop), geom_type(geom_type),
@@ -62,8 +62,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         /// Required in order to properly delete derived classes accessed through a pointer to this class.
         virtual ~SourceFilter() {}
         
-        virtual void assign_solutions(const Hermes::vector<Solution<double>*>& solutions);
-        virtual void assign_solutions(const Hermes::vector<MeshFunction<double>*>& solutions);
+        virtual void assign_solutions(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions);
+        virtual void assign_solutions(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions);
         
         virtual void set_active_element(Element* e);
         
@@ -114,17 +114,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         virtual ~Visualization();
         
         virtual void show_meshes(Hermes::vector<MeshSharedPtr> meshes) = 0;
-        virtual void show_solutions(Hermes::vector< Solution<double>* > solutions) = 0;
-        virtual void show_orders(Hermes::vector<Space<double>*> spaces) = 0;
+        virtual void show_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) = 0;
+        virtual void show_orders(Hermes::vector<SpaceSharedPtr<double> > spaces) = 0;
 
 #ifndef NOGLUT
         void inspect_meshes(Hermes::vector<MeshSharedPtr> meshes);
-        void inspect_solutions(Hermes::vector< Solution<double>* > solutions);
-        void inspect_orders(Hermes::vector<Space<double>*> spaces);
+        void inspect_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions);
+        void inspect_orders(Hermes::vector<SpaceSharedPtr<double> > spaces);
 #else
         void inspect_meshes(Hermes::vector<MeshSharedPtr> meshes) {};
-        void inspect_solutions(Hermes::vector< Solution<double>* > solutions) {};
-        void inspect_orders(Hermes::vector<Space<double>*> spaces) {};
+        void inspect_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) {};
+        void inspect_orders(Hermes::vector<SpaceSharedPtr<double> > spaces) {};
 #endif
         
         Views::ScalarView** get_solution_views(unsigned int* num) { *num = n_equations; return sviews; }
@@ -163,17 +163,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
 #ifndef NOGLUT
         void show_meshes(Hermes::vector<MeshSharedPtr> meshes);
-        void show_solutions(Hermes::vector< Solution<double>* > solutions);
-        void show_orders(Hermes::vector<Space<double>*> spaces);     
+        void show_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions);
+        void show_orders(Hermes::vector<SpaceSharedPtr<double> > spaces);     
 #else
         void show_meshes(Hermes::vector<MeshSharedPtr> meshes) {};
-        void show_solutions(Hermes::vector< Solution<double>* > solutions) {};
-        void show_orders(Hermes::vector<Space<double>*> spaces) {};     
+        void show_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) {};
+        void show_orders(Hermes::vector<SpaceSharedPtr<double> > spaces) {};     
 #endif
         
         void save_solutions_vtk(const std::string& base_filename, const std::string& base_varname,
-                                Hermes::vector< Solution<double>* > solutions,  bool mode_3D = false);
-        void save_orders_vtk(const std::string& base_filename, Hermes::vector<Space<double>*> spaces);       
+                                Hermes::vector< MeshFunctionSharedPtr<double> > solutions,  bool mode_3D = false);
+        void save_orders_vtk(const std::string& base_filename, Hermes::vector<SpaceSharedPtr<double> > spaces);       
     };
     
   /* SupportClasses */
@@ -243,14 +243,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         public:       
           EvenMomentVal(unsigned int angular_moment, unsigned int group, unsigned int G, 
-                        const Hermes::vector<MeshFunction<double>*>& solutions)
+                        const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions)
             : Common(angular_moment, group, G), SimpleFilter<double>(solutions, Hermes::vector<int>()),
               angular_moment(angular_moment), group(group), G(G)
           {
             if (odd_req_mom) ErrorHandling::error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
           };
           EvenMomentVal(unsigned int angular_moment, unsigned int group, unsigned int G,
-                        const Hermes::vector<Solution<double>*>& solutions)
+                        const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions)
             : Common(angular_moment, group, G), SimpleFilter<double>(solutions, Hermes::vector<int>()),
               angular_moment(angular_moment), group(group), G(G)
           {
@@ -273,14 +273,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         public:
           EvenMomentValDxDy(unsigned int angular_moment, unsigned int group, unsigned int G, 
-                  const Hermes::vector<MeshFunction<double>*>& solutions)
+                  const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions)
             : Common(angular_moment, group, G), DXDYFilter<double>(solutions),
               angular_moment(angular_moment), group(group), G(G)
           {
             if (odd_req_mom) ErrorHandling::error_function("MomentFilter::EvenMomentVal constructor > %s", Messages::E_EVEN_MOMENT_EXPECTED);
           };
           EvenMomentValDxDy(unsigned int angular_moment, unsigned int group, unsigned int G,
-                  const Hermes::vector<Solution<double>*>& solutions)
+                  const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions)
             : Common(angular_moment, group, G), DXDYFilter<double>(solutions),
               angular_moment(angular_moment), group(group), G(G)
           {
@@ -305,7 +305,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         public:
           OddMomentVal(unsigned int component, unsigned int angular_moment, unsigned int group, unsigned int G, 
-                  const Hermes::vector<MeshFunction<double>*>& solutions,
+                  const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
                   const MaterialProperties::MaterialPropertyMaps *matprop)
             : Common(angular_moment, group, G), Filter<double>(solutions), 
               component(component), matprop(matprop), angular_moment(angular_moment), group(group), G(G)
@@ -314,7 +314,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             if (component >= 2) ErrorHandling::error_function("MomentFilter::OddMomentVal > %s", Messages::E_INVALID_COMPONENT);
           };
           OddMomentVal(unsigned int component, unsigned int angular_moment, unsigned int group, unsigned int G,
-                  const Hermes::vector<Solution<double>*>& solutions,
+                  const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
                   const MaterialProperties::MaterialPropertyMaps *matprop)
             : Common(angular_moment, group, G), Filter<double>(solutions), 
               component(component), matprop(matprop), angular_moment(angular_moment), group(group), G(G)
@@ -342,19 +342,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           unsigned int G;
       };
       
-      static void get_scalar_fluxes(const Hermes::vector<Solution<double>*>& angular_fluxes,
-                                    Hermes::vector<MeshFunction<double>*>* scalar_fluxes,
+      static void get_scalar_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& angular_fluxes,
+                                    Hermes::vector<MeshFunctionSharedPtr<double> >* scalar_fluxes,
                                     unsigned int G);               
-      static void get_scalar_fluxes(const Hermes::vector<Solution<double>*>& angular_fluxes,
+      static void get_scalar_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& angular_fluxes,
                                     Hermes::vector<Filter<double>*>* scalar_fluxes,
                                     unsigned int G);  
-      static void get_scalar_fluxes_with_derivatives(const Hermes::vector<Solution<double>*>& angular_fluxes,
-                                                    Hermes::vector<MeshFunction<double>*>* scalar_fluxes,
+      static void get_scalar_fluxes_with_derivatives(const Hermes::vector<MeshFunctionSharedPtr<double> >& angular_fluxes,
+                                                    Hermes::vector<MeshFunctionSharedPtr<double> >* scalar_fluxes,
                                                     unsigned int G);
-      static void get_scalar_fluxes_with_derivatives(const Hermes::vector<Solution<double>*>& angular_fluxes,
+      static void get_scalar_fluxes_with_derivatives(const Hermes::vector<MeshFunctionSharedPtr<double> >& angular_fluxes,
                                                     Hermes::vector<Filter<double>*>* scalar_fluxes,
                                                     unsigned int G);                                                    
-      static void clear_scalar_fluxes(Hermes::vector<MeshFunction<double>*>* scalar_fluxes);
+      static void clear_scalar_fluxes(Hermes::vector<MeshFunctionSharedPtr<double> >* scalar_fluxes);
       static void clear_scalar_fluxes(Hermes::vector<Filter<double>*>* scalar_fluxes);
     };
     
@@ -372,24 +372,24 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         /* Immediate constructors: the vector of solutions to be filtered is given by the first argument.  */
         
-        SourceFilter(Hermes::vector<MeshFunction<double>*> solutions, 
+        SourceFilter(Hermes::vector<MeshFunctionSharedPtr<double> > solutions, 
                      const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                      GeomType geom_type = HERMES_PLANAR)
           : Common::SupportClasses::SourceFilter(solutions, matprop, geom_type), 
             G(matprop.get_G()), mg(matprop.get_G())
         {};
-        SourceFilter(Hermes::vector<Solution<double>*> solutions,
+        SourceFilter(Hermes::vector<MeshFunctionSharedPtr<double> > solutions,
                      const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                      GeomType geom_type = HERMES_PLANAR)
           : Common::SupportClasses::SourceFilter(solutions, matprop, geom_type), 
             G(matprop.get_G()), mg(matprop.get_G()) 
         {};
                     
-        virtual void assign_solutions(const Hermes::vector<Solution<double>*>& solutions) {
+        virtual void assign_solutions(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) {
           this->num = solutions.size();
           Common::SupportClasses::SourceFilter::assign_solutions(solutions);
         }
-        virtual void assign_solutions(const Hermes::vector<MeshFunction<double>*>& solutions) {
+        virtual void assign_solutions(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions) {
           this->num = solutions.size();
           Common::SupportClasses::SourceFilter::assign_solutions(solutions);
         }
@@ -427,33 +427,33 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 
 #ifndef NOGLUT 
         void show_meshes(Hermes::vector<MeshSharedPtr> meshes);
-        void show_solutions(Hermes::vector< Solution<double>* > solutions);
-        void show_orders(Hermes::vector<Space<double>*> spaces);
+        void show_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions);
+        void show_orders(Hermes::vector<SpaceSharedPtr<double> > spaces);
         
-        void inspect_solutions(Hermes::vector< Solution<double>* > solutions);
+        void inspect_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions);
 
         void show_even_flux_moment(unsigned int moment, unsigned int group, Views::ScalarView* sview,
-                                   Hermes::vector< Solution<double>* > solutions);
+                                   Hermes::vector< MeshFunctionSharedPtr<double> > solutions);
         void show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView* vview,
-                                  Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
-        void show_all_flux_moments(Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
+                                  Hermes::vector< MeshFunctionSharedPtr<double> > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
+        void show_all_flux_moments(Hermes::vector< MeshFunctionSharedPtr<double> > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
 #else        
         void show_meshes(Hermes::vector<MeshSharedPtr> meshes) {};
-        void show_solutions(Hermes::vector< Solution<double>* > solutions) {};
-        void show_orders(Hermes::vector<Space<double>*> spaces) {};
+        void show_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) {};
+        void show_orders(Hermes::vector<SpaceSharedPtr<double> > spaces) {};
         
-        void inspect_solutions(Hermes::vector< Solution<double>* > solutions) {};
+        void inspect_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) {};
         
         void show_even_flux_moment(unsigned int moment, unsigned int group, Views::ScalarView* sview,
-                                   Hermes::vector< Solution<double>* > solutions) {};
+                                   Hermes::vector< MeshFunctionSharedPtr<double> > solutions) {};
         void show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView* vview,
-                                  Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop) {};
-        void show_all_flux_moments(Hermes::vector< Solution<double>* > solutions, const MaterialProperties::MaterialPropertyMaps& matprop) {};
+                                  Hermes::vector< MeshFunctionSharedPtr<double> > solutions, const MaterialProperties::MaterialPropertyMaps& matprop) {};
+        void show_all_flux_moments(Hermes::vector< MeshFunctionSharedPtr<double> > solutions, const MaterialProperties::MaterialPropertyMaps& matprop) {};
 #endif
         
         void save_solutions_vtk(const std::string& base_filename, const std::string& base_varname,
-                                Hermes::vector< Solution<double>* > solutions, bool mode_3D = false);                   
-        void save_orders_vtk(const std::string& base_filename, Hermes::vector<Space<double>*> spaces);
+                                Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D = false);                   
+        void save_orders_vtk(const std::string& base_filename, Hermes::vector<SpaceSharedPtr<double> > spaces);
     };       
     
   /* SupportClasses */
@@ -573,13 +573,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         public:       
           Val(unsigned int l, int m, unsigned int group, unsigned int G, 
-              const Hermes::vector<MeshFunction<double>*>& solutions,
+              const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
               const OrdinatesData& odata)
             : Common(l, m, group, G, odata), SimpleFilter<double>(solutions, Hermes::vector<int>())
           {
           };
           Val(unsigned int l, int m, unsigned int group, unsigned int G, 
-              const Hermes::vector<Solution<double>*>& solutions,
+              const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
               const OrdinatesData& odata)
             : Common(l, m, group, G, odata), SimpleFilter<double>(solutions, Hermes::vector<int>())
           {
@@ -600,13 +600,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       {
         public:
           ValDxDy(unsigned int l, int m, unsigned int group, unsigned int G,
-                  const Hermes::vector<MeshFunction<double>*>& solutions,
+                  const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
                   const OrdinatesData& odata)
             : Common(l, m, group, G, odata), DXDYFilter<double>(solutions)
           {
           };
           ValDxDy(unsigned int l, int m, unsigned int group, unsigned int G,
-                  const Hermes::vector<Solution<double>*>& solutions,
+                  const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
                   const OrdinatesData& odata)
             : Common(l, m, group, G, odata), DXDYFilter<double>(solutions)
           {
@@ -627,19 +627,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           };
       };
       
-      static void get_scalar_fluxes(const Hermes::vector<Solution<double>*>& angular_fluxes,
-                                    Hermes::vector<MeshFunction<double>*>* scalar_fluxes,
+      static void get_scalar_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& angular_fluxes,
+                                    Hermes::vector<MeshFunctionSharedPtr<double> >* scalar_fluxes,
                                     unsigned int G, const OrdinatesData& odata);               
-      static void get_scalar_fluxes(const Hermes::vector<Solution<double>*>& angular_fluxes,
+      static void get_scalar_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& angular_fluxes,
                                     Hermes::vector<Filter<double>*>* scalar_fluxes,
                                     unsigned int G, const OrdinatesData& odata);  
-      static void get_scalar_fluxes_with_derivatives(const Hermes::vector<Solution<double>*>& angular_fluxes,
-                                                    Hermes::vector<MeshFunction<double>*>* scalar_fluxes,
+      static void get_scalar_fluxes_with_derivatives(const Hermes::vector<MeshFunctionSharedPtr<double> >& angular_fluxes,
+                                                    Hermes::vector<MeshFunctionSharedPtr<double> >* scalar_fluxes,
                                                     unsigned int G, const OrdinatesData& odata);
-      static void get_scalar_fluxes_with_derivatives(const Hermes::vector<Solution<double>*>& angular_fluxes,
+      static void get_scalar_fluxes_with_derivatives(const Hermes::vector<MeshFunctionSharedPtr<double> >& angular_fluxes,
                                                     Hermes::vector<Filter<double>*>* scalar_fluxes,
                                                     unsigned int G, const OrdinatesData& odata);                                                    
-      static void clear_scalar_fluxes(Hermes::vector<MeshFunction<double>*>* scalar_fluxes);
+      static void clear_scalar_fluxes(Hermes::vector<MeshFunctionSharedPtr<double> >* scalar_fluxes);
       static void clear_scalar_fluxes(Hermes::vector<Filter<double>*>* scalar_fluxes);
     };
     
@@ -654,11 +654,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     GeomType geom_type;
     const SN::SupportClasses::OrdinatesData& odata;
     
-    double get_integrated_group_reaction_rates_internal(ReactionType reaction, MeshFunction<double>* solution,
+    double get_integrated_group_reaction_rates_internal(ReactionType reaction, MeshFunctionSharedPtr<double> solution,
                                                         const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                                         const Hermes::vector<std::string>& regions,
                                                         unsigned int this_group, int other_group = -1) const;
-    double get_integrated_group_reaction_rates_internal(ReactionType reaction, MeshFunction<double>* solution,
+    double get_integrated_group_reaction_rates_internal(ReactionType reaction, MeshFunctionSharedPtr<double> solution,
                                                         const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                                         const std::string& region,
                                                         unsigned int this_group, int other_group = -1) const 
@@ -672,8 +672,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       PostProcessor(NeutronicsMethod method, GeomType geom_type = HERMES_PLANAR, const SN::SupportClasses::OrdinatesData* odata = NULL)
         : method(method), geom_type(geom_type), odata(*odata) {};
       
-      double integrate(MeshFunction<double>* solution, const Hermes::vector<std::string>& areas = Hermes::vector<std::string>()) const;
-      double integrate(MeshFunction<double>* solution, const std::string& area) const 
+      double integrate(MeshFunctionSharedPtr<double> solution, const Hermes::vector<std::string>& areas = Hermes::vector<std::string>()) const;
+      double integrate(MeshFunctionSharedPtr<double> solution, const std::string& area) const 
       {
         Hermes::vector<std::string> areas; 
         areas.push_back(area);
@@ -681,51 +681,51 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
       
       
-      void normalize_to_unit_fission_source(Hermes::vector<Solution<double>*>* solutions, 
+      void normalize_to_unit_fission_source(Hermes::vector<MeshFunctionSharedPtr<double> >* solutions, 
                                             double integrated_fission_source) const;
                                             
-      void normalize_to_unit_fission_source(Hermes::vector<Solution<double>*>* solutions,
+      void normalize_to_unit_fission_source(Hermes::vector<MeshFunctionSharedPtr<double> >* solutions,
                                             const Common::MaterialProperties::MaterialPropertyMaps& matprop) const;
                                             
-      void normalize_to_unit_power(Hermes::vector<Solution<double>*>* solutions,
+      void normalize_to_unit_power(Hermes::vector<MeshFunctionSharedPtr<double> >* solutions,
                                   const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                   double power_per_fission) const;
       
                                   
                                   
       void get_integrated_group_reaction_rates( ReactionType reaction, 
-                                                const Hermes::vector<Solution<double>*>& solutions, Hermes::vector<double>* results,
+                                                const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions, Hermes::vector<double>* results,
                                                 const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                                 unsigned int group, const Hermes::vector<std::string>& regions) const;
                                                 
-      void get_integrated_group_scalar_fluxes(const Hermes::vector<Solution<double>*>& solutions, Hermes::vector<double>* results, 
+      void get_integrated_group_scalar_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions, Hermes::vector<double>* results, 
                                               unsigned int group, unsigned int G, 
                                               const Hermes::vector<std::string>& regions) const;
                                               
       void get_integrated_reaction_rates( ReactionType reaction, 
-                                          const Hermes::vector<Solution<double>*>& solutions, Hermes::vector<double>* results,
+                                          const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions, Hermes::vector<double>* results,
                                           const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                           const Hermes::vector<std::string>& regions) const;
                                           
-      void get_integrated_scalar_fluxes(const Hermes::vector<Solution<double>*>& solutions, Hermes::vector<double>* results, 
+      void get_integrated_scalar_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions, Hermes::vector<double>* results, 
                                         unsigned int G, const Hermes::vector<std::string>& regions) const;                                                                             
       
       void get_areas(MeshSharedPtr mesh, const Hermes::vector<std::string>& regions, Hermes::vector<double>* results) const;
                                         
                                         
-      double get_integrated_group_reaction_rates( ReactionType reaction, const Hermes::vector<Solution<double>*>& solutions,
+      double get_integrated_group_reaction_rates( ReactionType reaction, const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
                                                   const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                                   unsigned int group,
                                                   const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
                                                   
-      double get_integrated_group_scalar_fluxes(const Hermes::vector<Solution<double>*>& solutions, unsigned int group, unsigned int G,
+      double get_integrated_group_scalar_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions, unsigned int group, unsigned int G,
                                                 const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
                                                 
-      double get_integrated_reaction_rates( ReactionType reaction, const Hermes::vector<Solution<double>*>& solutions,
+      double get_integrated_reaction_rates( ReactionType reaction, const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
                                             const Common::MaterialProperties::MaterialPropertyMaps& matprop,
                                             const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
                                             
-      double get_integrated_scalar_fluxes(const Hermes::vector<Solution<double>*>& solutions,
+      double get_integrated_scalar_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
                                           unsigned int G, const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;
                                           
       double get_area(MeshSharedPtr mesh, const Hermes::vector<std::string>& regions = Hermes::vector<std::string>()) const;

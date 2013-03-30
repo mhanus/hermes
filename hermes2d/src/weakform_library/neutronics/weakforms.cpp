@@ -221,7 +221,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     
     KeffEigenvalueProblem::KeffEigenvalueProblem(const MaterialPropertyMaps& matprop,
-                                                const Hermes::vector<Solution<double>*>& iterates,
+                                                const Hermes::vector<MeshFunctionSharedPtr<double> >& iterates,
                                                 double initial_keff_guess, 
                                                 GeomType geom_type, bool solve_by_newton ) 
       : Common::WeakForms::KeffEigenvalueProblem(matprop.get_G(), &matprop, geom_type, initial_keff_guess)
@@ -230,7 +230,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       init_rhs(iterates);
     }
     
-    void KeffEigenvalueProblem::init_rhs(const Hermes::vector<Solution<double>*>& iterates)
+    void KeffEigenvalueProblem::init_rhs(const Hermes::vector<MeshFunctionSharedPtr<double> >& iterates)
     {
       const Diffusion::MaterialProperties::MaterialPropertyMaps *mp = static_cast<const MaterialPropertyMaps*>(matprop);
       
@@ -239,7 +239,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       for (unsigned int gto = 0; gto < G; gto++)
       { 
         stored_flux_solutions.push_back(iterates[gto]);
-        scalar_flux_iterates.push_back(static_cast<MeshFunction<double>*>(stored_flux_solutions.back()));
+        scalar_flux_iterates.push_back(static_cast<MeshFunctionSharedPtr<double> >(stored_flux_solutions.back()));
       }
       
       const Hermes::vector<std::string>& fission_materials = mp->get_fission_materials();
@@ -277,7 +277,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
     }
     
-    void KeffEigenvalueProblem::update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed)
+    void KeffEigenvalueProblem::update_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& new_solutions, bool meshes_changed)
     {
       for (unsigned int gto = 0; gto < G; gto++)
         stored_flux_solutions[gto]->copy(new_solutions[gto]);
@@ -722,7 +722,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     
     KeffEigenvalueProblem::KeffEigenvalueProblem(const MaterialPropertyMaps& matprop, unsigned int N,
-                                                 const Hermes::vector<Solution<double>*>& iterates, 
+                                                 const Hermes::vector<MeshFunctionSharedPtr<double> >& iterates, 
                                                  double initial_keff_guess, 
                                                  GeomType geom_type, bool solve_by_newton )
       : Common::WeakForms::KeffEigenvalueProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type, initial_keff_guess),
@@ -731,7 +731,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       add_forms_from_homogeneous_part(solve_by_newton);
       
       stored_flux_solutions.reserve(iterates.size());
-      for (Hermes::vector<Solution<double>*>::const_iterator it = iterates.begin(); it != iterates.end(); ++it)
+      for (Hermes::vector<MeshFunctionSharedPtr<double> >::const_iterator it = iterates.begin(); it != iterates.end(); ++it)
         stored_flux_solutions.push_back(*it);
       
       SupportClasses::MomentFilter::get_scalar_fluxes_with_derivatives(stored_flux_solutions, &scalar_flux_iterates, G);
@@ -778,10 +778,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
     }
     
-    void KeffEigenvalueProblem::update_fluxes(const Hermes::vector<Solution<double>*>& new_solutions, bool meshes_changed)
+    void KeffEigenvalueProblem::update_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& new_solutions, bool meshes_changed)
     {
-      Hermes::vector<Solution<double>*>::const_iterator new_solution = new_solutions.begin();
-      Hermes::vector<Solution<double>*>::const_iterator stored_flux_solution = stored_flux_solutions.begin();
+      Hermes::vector<MeshFunctionSharedPtr<double> >::const_iterator new_solution = new_solutions.begin();
+      Hermes::vector<MeshFunctionSharedPtr<double> >::const_iterator stored_flux_solution = stored_flux_solutions.begin();
       
       for ( ; new_solution != new_solutions.end(); ++new_solution, ++stored_flux_solution)
       {
@@ -795,7 +795,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       if (meshes_changed)
       {
-        Hermes::vector<MeshFunction<double>*>::const_iterator scalar_flux_iterate = scalar_flux_iterates.begin();
+        Hermes::vector<MeshFunctionSharedPtr<double> >::const_iterator scalar_flux_iterate = scalar_flux_iterates.begin();
         for ( ; scalar_flux_iterate != scalar_flux_iterates.end(); ++scalar_flux_iterate)
           (*scalar_flux_iterate)->reinit();
       }

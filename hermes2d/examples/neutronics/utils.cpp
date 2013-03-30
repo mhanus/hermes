@@ -2,7 +2,7 @@
 #include "utils.h"
 
 // Utility functions that simplify repeated reporting of number of DOF during adaptivity.
-void report_num_dof(const std::string& msg, const Hermes::vector< Space<double>* > spaces)
+void report_num_dof(const std::string& msg, const Hermes::vector< SpaceSharedPtr<double> > spaces)
 {
   std::stringstream ss;
   
