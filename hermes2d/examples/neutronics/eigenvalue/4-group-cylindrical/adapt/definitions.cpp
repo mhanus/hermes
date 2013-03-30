@@ -10,7 +10,7 @@ int get_num_of_neg(MeshFunction<double> *sln)
   Quad2D* quad = &g_quad_2d_std;
   sln->set_quad_2d(quad);
   Element* e;
-  const Mesh* mesh = sln->get_mesh();
+  MeshSharedPtr mesh = sln->get_mesh();
   
   int n = 0;
   

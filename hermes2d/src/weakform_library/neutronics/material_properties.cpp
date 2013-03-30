@@ -256,7 +256,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       return Hermes::vector<std::string>();
     }
         
-    std::string MaterialPropertyMaps::get_material(int elem_marker, const Mesh *mesh) const 
+    std::string MaterialPropertyMaps::get_material(int elem_marker, MeshSharedPtr mesh) const 
     { 
       std::string region;
       

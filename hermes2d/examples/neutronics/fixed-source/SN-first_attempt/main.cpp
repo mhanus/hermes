@@ -53,7 +53,7 @@ int main(int argc, char* args[])
   TimeMeasurable cpu_time;
   cpu_time.tick();
   
-  Hermes::vector<Mesh *> meshes;
+  Hermes::vector<MeshSharedPtr > meshes;
   for (int i = 0; i < M; i++)
     meshes.push_back(new Mesh());
   

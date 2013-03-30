@@ -187,7 +187,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
 
 #ifndef NOGLUT
-    void Visualization::inspect_meshes(Hermes::vector< Mesh* > meshes)
+    void Visualization::inspect_meshes(Hermes::vector< MeshSharedPtr > meshes)
     {
       if (display_meshes)
       {
@@ -256,7 +256,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         }
     }
     
-    void Visualization::show_meshes(Hermes::vector< Mesh* > meshes)
+    void Visualization::show_meshes(Hermes::vector< MeshSharedPtr > meshes)
     {
       if (display_meshes)
         for (unsigned int g = 0; g < n_groups; g++)
@@ -673,7 +673,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
 
 #ifndef NOGLUT
-    void Visualization::show_meshes(Hermes::vector< Mesh* > meshes)
+    void Visualization::show_meshes(Hermes::vector< MeshSharedPtr > meshes)
     {
       if (display_meshes)
         for (unsigned int g = 0; g < n_groups; g++)
@@ -1271,7 +1271,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   {
     Quad2D* quad = &g_quad_2d_std;
     solution->set_quad_2d(quad);
-    const Mesh* mesh = solution->get_mesh();
+    MeshSharedPtr mesh = solution->get_mesh();
     
     std::set<int> markers;
     Hermes::vector<std::string>::const_iterator it = areas.begin();
@@ -1364,7 +1364,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     Quad2D* quad = &g_quad_2d_std;
     solution->set_quad_2d(quad);
-    const Mesh* mesh = solution->get_mesh();
+    MeshSharedPtr mesh = solution->get_mesh();
     
     std::set<int> markers;
     Hermes::vector<std::string>::const_iterator it = regions.begin();
@@ -1667,7 +1667,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     return result;
   }
   
-  void PostProcessor::get_areas(Mesh *mesh, const Hermes::vector<std::string>& regions, Hermes::vector<double>* results) const
+  void PostProcessor::get_areas(MeshSharedPtr mesh, const Hermes::vector<std::string>& regions, Hermes::vector<double>* results) const
   {
     ConstantSolution<double> unity(mesh, 1.0);
     
@@ -1676,7 +1676,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       results->push_back(integrate(&unity, *region));
   }
 
-  double PostProcessor::get_area(Mesh* mesh, const Hermes::vector< std::string >& regions) const
+  double PostProcessor::get_area(MeshSharedPtr mesh, const Hermes::vector< std::string >& regions) const
   {
     ConstantSolution<double> unity(mesh, 1);
     return integrate(&unity, regions);

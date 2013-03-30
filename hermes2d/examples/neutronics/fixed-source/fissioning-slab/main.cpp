@@ -383,7 +383,7 @@ int main(int argc, char* argv[])
   std::cout << matprop;
   
   // Use multimesh, i.e. create one mesh for each energy group and pseudo-flux.
-  Hermes::vector<Mesh *> meshes;
+  Hermes::vector<MeshSharedPtr > meshes;
   for (unsigned int i = 0; i < N_EQUATIONS; i++)
     meshes.push_back(new Mesh());
   
