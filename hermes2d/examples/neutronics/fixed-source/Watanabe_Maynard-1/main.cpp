@@ -308,8 +308,6 @@ int main(int argc, char* args[])
     fs.close();
     delete [] res;
   }
-  
-  SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
-  
+    
   return 0;
 }

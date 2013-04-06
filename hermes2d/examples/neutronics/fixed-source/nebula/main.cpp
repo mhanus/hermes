@@ -154,7 +154,7 @@ int main(int argc, char* args[])
     {
       if (!strcmp(args[1], "-sln"))
       {
-        Hermes::vector<const Space<double> *> spaces;
+        Hermes::vector<SpaceSharedPtr<double> > spaces;
   
         for (int n = 0; n < M; n++)
           spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
@@ -167,12 +167,12 @@ int main(int argc, char* args[])
         read_solution_from_file(ifs, std::back_inserter(x_ext));
         ifs.close();
         
-        Hermes::vector<Solution<double>*> sol_ext;
+        Hermes::vector<MeshFunctionSharedPtr<double> > sol_ext;
         for (unsigned int i = 0; i < M; i++) 
           sol_ext.push_back(new Solution<double>()); 
         Solution<double>::vector_to_solutions(x_ext.data(), spaces, sol_ext);
         
-        Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+        Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes;
         SupportClasses::OrdinatesData odata(N, "lgvalues.txt");
         SupportClasses::MomentFilter::get_scalar_fluxes(sol_ext, &scalar_fluxes, 1, odata);
         

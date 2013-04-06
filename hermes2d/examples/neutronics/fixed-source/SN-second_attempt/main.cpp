@@ -255,8 +255,6 @@ int main(int argc, char* args[])
     }
   }
   
-  SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
-  
 
   
   
