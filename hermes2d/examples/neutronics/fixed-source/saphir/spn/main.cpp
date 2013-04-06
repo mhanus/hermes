@@ -352,8 +352,8 @@ int main(int argc, char* argv[])
       for (unsigned int g = 0; g < N_GROUPS; g++)
       {
         // Calculate relative error (squared) of the scalar flux approximation (linear comb. of the actual solutions) in specified norm.
-        double group_err_est = Hermes::sqr(Global<double>::calc_abs_error(coarse_scalar_fluxes[g].get(), fine_scalar_fluxes[g].get(), HERMES_H1_NORM));
-        double group_norm = Hermes::sqr(Global<double>::calc_norm(fine_scalar_fluxes[g].get(), HERMES_H1_NORM));
+        double group_err_est = Hermes::sqr(Global<double>::calc_abs_error(coarse_scalar_fluxes[g], fine_scalar_fluxes[g], HERMES_H1_NORM));
+        double group_norm = Hermes::sqr(Global<double>::calc_norm(fine_scalar_fluxes[g], HERMES_H1_NORM));
         scalar_flux_err_est_rel += group_err_est/group_norm;
         scalar_flux_norm += group_norm;
         
