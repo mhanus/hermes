@@ -258,9 +258,7 @@ int main(int argc, char* args[])
       lin.save_solution_vtk(scalar_fluxes[g], (std::string("scalar_flux_g_") + itos(g) + std::string(".vtk")).c_str(), "Solution", mode_3D);
     }
   }
-  
-  SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
-    
+      
   if (SAVE_SLN_VECTOR)
   {
     std::string file = "x-R"+itos(INIT_REF_NUM)+"P"+itos(P_INIT)+"-S"+itos(N)+".dat";

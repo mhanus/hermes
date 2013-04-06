@@ -53,7 +53,7 @@ int main(int argc, char* args[])
   TimeMeasurable cpu_time;
   cpu_time.tick();
   
-  Hermes::vector<Mesh *> meshes;
+  Hermes::vector<MeshSharedPtr > meshes;
   for (int i = 0; i < M; i++)
     meshes.push_back(new Mesh());
   
@@ -87,7 +87,7 @@ int main(int argc, char* args[])
   
   Loggable::Static::info("%d elements, %d vertices", meshes[0]->get_num_active_elements(), meshes[0]->get_num_vertex_nodes() );
   
-  Hermes::vector<Solution<double>* > slns;
+  Hermes::vector<MeshFunctionSharedPtr<double> > slns;
   for (int i = 0; i < M; i++)
     slns.push_back(new Solution<double>(MULTIMESH ? meshes[i] : meshes[0]));
  
@@ -132,7 +132,7 @@ int main(int argc, char* args[])
       bool assemble_Q = !strcmp(args[1], "Q") || !strcmp(args[1], "LQ");
       
       WeakForm<double> *wf;
-      Hermes::vector<const Space<double> *> spaces;
+      Hermes::vector<SpaceSharedPtr<double> > spaces;
       
       if (!strcmp(args[1], "S") || !strcmp(args[1], "F"))
       {
@@ -186,7 +186,7 @@ int main(int argc, char* args[])
     {
       if (!strcmp(args[1], "-sln"))
       {
-        Hermes::vector<const Space<double> *> spaces;
+        Hermes::vector<SpaceSharedPtr<double> > spaces;
   
         for (int n = 0; n < M; n++)
           spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
@@ -199,12 +199,12 @@ int main(int argc, char* args[])
         read_solution_from_file(ifs, std::back_inserter(x_ext));
         ifs.close();
         
-        Hermes::vector<Solution<double>*> sol_ext;
+        Hermes::vector<MeshFunctionSharedPtr<double> > sol_ext;
         for (unsigned int i = 0; i < M; i++) 
           sol_ext.push_back(new Solution<double>()); 
         Solution<double>::vector_to_solutions(x_ext.data(), spaces, sol_ext);
         
-        Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+        Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes;
         SupportClasses::OrdinatesData odata(N, "lgvalues.txt");
         SupportClasses::MomentFilter::get_scalar_fluxes(sol_ext, &scalar_fluxes, 1, odata);
         
@@ -224,8 +224,6 @@ int main(int argc, char* args[])
           bool mode_3D = false;
           lin.save_solution_vtk(scalar_fluxes[0], "scalar_flux.vtk", "Solution", mode_3D);
         }
-
-        SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
       }
       
       return 0;
@@ -237,7 +235,7 @@ int main(int argc, char* args[])
   // Initialize the FE problem.
   
   // Approximation spaces.
-  Hermes::vector<const Space<double> *> spaces;
+  Hermes::vector<SpaceSharedPtr<double> > spaces;
   
   for (int n = 0; n < M; n++)
     spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
@@ -305,7 +303,7 @@ int main(int argc, char* args[])
   
   // View the coarse mesh scalar flux and/or save it to .vtk files.
   
-  Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+  Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes;
   SupportClasses::MomentFilter::get_scalar_fluxes(slns, &scalar_fluxes, 1, wf.get_ordinates_data());
   
   if (HERMES_SCAL_VISUALIZATION)
@@ -325,8 +323,6 @@ int main(int argc, char* args[])
     lin.save_solution_vtk(scalar_fluxes[0], "scalar_flux.vtk", "Solution", mode_3D);
   }
 
-  SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
-    
   if (SAVE_SLN_VECTOR)
   {
     std::string file = "x-R"+itos(INIT_REF_NUM)+"P"+itos(P_INIT)+"-S"+itos(N)+".dat";
