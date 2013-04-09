@@ -53,6 +53,7 @@ SNWeakForm::SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropert
     bool assemble_all = strlen(out_tensor) == 0;    
     bool assemble_L = !strcmp(out_tensor, "L");
     bool assemble_Q = !strcmp(out_tensor, "Q");
+    bool assemble_R = !strcmp(out_tensor, "R");
 
     if (!assemble_all && !strcmp(out_tensor, "LQ"))
     {
@@ -67,12 +68,12 @@ SNWeakForm::SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropert
         if (assemble_all || assemble_L)
         {
           add_matrix_form_DG(new InterfaceStreamingMF(n, gto, G));
-          if (!reflective_boundaries.empty())
-          {
-            add_matrix_form_surf(new SpecularReflectionMF_X(odata, n, gto, G, reflective_boundaries));
-            add_matrix_form_surf(new SpecularReflectionMF_Y(odata, n, gto, G, reflective_boundaries));
-          }
           add_matrix_form_surf(new BoundaryStreamingMF(n, gto, G));
+        }
+        if (!reflective_boundaries.empty() && (assemble_all || assemble_R))
+        {
+          add_matrix_form_surf(new SpecularReflectionMF_X(odata, n, gto, G, reflective_boundaries));
+          add_matrix_form_surf(new SpecularReflectionMF_Y(odata, n, gto, G, reflective_boundaries));
         }
         if (!inflow_boundaries.empty() && (assemble_all || assemble_Q))
           add_vector_form_surf(new BoundaryStreamingVF(n, gto, G, inflow_boundaries));
