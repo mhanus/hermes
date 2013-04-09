@@ -5,7 +5,7 @@
 #include "weakforms_neutronics.h"
 
 #include <iterator>
-const bool SAVE_FLUX_PROFILE = true;
+const bool SAVE_FLUX_PROFILE = false;
 const bool SAVE_SLN_VECTOR = false;
 
 const bool HERMES_ANG_VISUALIZATION = false;
@@ -16,12 +16,12 @@ const bool HERMES_MESH_VISUALIZATION = false;
 
 const bool MULTIMESH = false;
 // Number of initial uniform mesh refinements.
-const int INIT_REF_NUM = 5;
+const int INIT_REF_NUM = 0;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
 const int P_INIT = 0;
 
 const unsigned int N_GROUPS = 1;    // Monoenergetic (single group) problem.
-const int N = 12;                    
+const int N = 8;                    
 const int M = N_GROUPS * N*(N+2)/2;
 
 //
@@ -34,7 +34,7 @@ const int PICARD_NUM_LAST_ITER_USED = 3;
 // 0 <= beta <= 1... parameter for the Anderson acceleration.
 const double PICARD_ANDERSON_BETA = 0;
 // Stopping criterion for the Picard's method.
-const double PICARD_TOL = 1e-6;
+const double PICARD_TOL = 1e-3;
 // Maximum allowed number of Picard iterations.
 const int PICARD_MAX_ITER = 1000; 
 // Value for constant initial condition.
@@ -59,6 +59,7 @@ int main(int argc, char* args[])
   
   MeshReaderH2D mloader;
   mloader.load(mesh_file.c_str(), meshes[0]);
+  meshes[0]->rescale(0.01, 0.01);   // dimensions in centimeters (200 by 200)
   
   if (MULTIMESH)
   {  
@@ -89,7 +90,8 @@ int main(int argc, char* args[])
     slns.push_back(new ConstantSolution<double>(MULTIMESH ? meshes[i] : meshes[0], INIT_COND_CONST));
   
     // Load material data.
-  MaterialProperties::MaterialPropertyMaps matprop(N_GROUPS, std::set<std::string>(materials.begin(), materials.end()));
+  //MaterialProperties::MaterialPropertyMaps matprop(N_GROUPS, std::set<std::string>(materials.begin(), materials.end()));
+  MaterialProperties::MaterialPropertyMaps matprop(N_GROUPS, rm_map);
   matprop.set_Sigma_t(St);
   matprop.set_Sigma_sn(Ssn);
   matprop.set_iso_src(src);
@@ -99,68 +101,145 @@ int main(int argc, char* args[])
   std::cout << matprop;
 
   // Initialize the weak formulation.
-  Hermes::vector<std::string> reflective_boundaries(1);
-  reflective_boundaries.push_back("reflective");
-  Hermes::vector<std::string> vacuum_boundaries(1);
-  vacuum_boundaries.push_back("vacuum");
   
-  if (argc > 1)
+  switch (argc)
   {
-    bool assemble_matrix = strcmp(args[1], "Q");
-    bool assemble_Q = !strcmp(args[1], "Q") || !strcmp(args[1], "LQ");
-    
-    WeakForm<double> *wf;
-    Hermes::vector<const Space<double> *> spaces;
-    
-    if (!strcmp(args[1], "S") || !strcmp(args[1], "F"))
+    case 2:
     {
-      wf = new IsotropicScatteringAndFissionMatrixForms(matprop, args[1]);
-      SupportClasses::AngleGroupFlattener ag(N_GROUPS);
-      for (int g = 0; g < N_GROUPS; g++)
-        spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[ag(0,g)] : meshes[0], P_INIT));
+      bool assemble_matrix = strcmp(args[1], "Q");
+      bool assemble_Q = !strcmp(args[1], "Q") || !strcmp(args[1], "LQ");
+      
+      WeakForm<double> *wf;
+      Hermes::vector<const Space<double> *> spaces;
+      
+      if (!strcmp(args[1], "S") || !strcmp(args[1], "F"))
+      {
+        wf = new IsotropicScatteringAndFissionMatrixForms(matprop, args[1]);
+        SupportClasses::AngleGroupFlattener ag(N_GROUPS);
+        for (int g = 0; g < N_GROUPS; g++)
+          spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[ag(0,g)] : meshes[0], P_INIT));
+      }
+      else
+      {
+        wf = new SNWeakForm(N, matprop, reflective_boundaries, vacuum_boundaries, args[1]);  
+        for (int n = 0; n < M; n++)
+          spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+      }
+      
+      Loggable::Static::info("Saving %s. NDOF = %d", args[1], Space<double>::get_num_dofs(spaces));
+      
+      DiscreteProblem<double> dp(wf, spaces);
+      if (P_INIT == 0) dp.set_fvm();
+      SourceIteration solver(&dp);
+      
+      // Perform the source iteration (by Picard's method with Anderson acceleration).
+      solver.set_picard_max_iter(1);
+      
+      if (assemble_Q)  
+      {
+        solver.output_rhs(1);
+        solver.set_rhs_E_matrix_dump_format(DF_HERMES_BIN);;
+        solver.set_rhs_filename("Q");
+        solver.set_rhs_number_format("%1.15f");
+        solver.set_rhs_varname("Q");
+      }
+      if (assemble_matrix)
+      {
+        solver.output_matrix(1);
+        solver.set_matrix_E_matrix_dump_format(DF_HERMES_BIN);
+        solver.set_matrix_filename(!strcmp(args[1], "LQ") ? "L" : args[1]);
+        solver.set_matrix_number_format("%1.15f");
+        solver.set_matrix_varname(!strcmp(args[1], "LQ") ? "L" : args[1]);
+      }
+      
+      try 
+      { 
+        solver.solve(); 
+      } 
+      catch(std::exception& e) { }
+      
+      delete wf;
+      
+      return 0;
     }
-    else
+    case 3:
     {
-      wf = new SNWeakForm(N, matprop, reflective_boundaries, vacuum_boundaries, args[1]);  
-      for (int n = 0; n < M; n++)
-        spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+      if (!strcmp(args[1], "-sln"))
+      {
+        Hermes::vector<const Space<double> *> spaces;
+  
+        for (int n = 0; n < M; n++)
+          spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+        
+        int ndof =  Space<double>::get_num_dofs(spaces);
+    
+        std::vector<double> x_ext;
+        x_ext.reserve(ndof);
+        std::ifstream ifs( args[2] , std::ifstream::in );
+        read_solution_from_file(ifs, std::back_inserter(x_ext));
+        ifs.close();
+        
+        Hermes::vector<Solution<double>*> sol_ext;
+        for (unsigned int i = 0; i < M; i++) 
+          sol_ext.push_back(new Solution<double>()); 
+        Solution<double>::vector_to_solutions(x_ext.data(), spaces, sol_ext);
+        
+        Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+        SupportClasses::OrdinatesData odata(N, "lgvalues.txt");
+        SupportClasses::MomentFilter::get_scalar_fluxes(sol_ext, &scalar_fluxes, 1, odata);
+        
+        // View the coarse mesh solution and/or save it to .vtk files.
+        for (int n = 0; n < M; n++)
+        {
+          if(HERMES_ANG_VISUALIZATION)
+          {
+            ScalarView view("Solution", new WinGeom(0+450*n, 400, 450, 350));
+            view.fix_scale_width(60);
+            view.show(sol_ext[n]);
+            Views::View::wait();
+          }
+          
+          // VTK output.
+          if(VTK_ANG_VISUALIZATION)
+          {
+            // Output solution in VTK format.
+            Linearizer lin;
+            bool mode_3D = false;
+            lin.save_solution_vtk(sol_ext[n], (std::string("sln_") + itos(n) + std::string(".vtk")).c_str(), "Solution", mode_3D);
+          }
+        }
+  
+        if (HERMES_SCAL_VISUALIZATION)
+        {
+          ScalarView view("Scalar flux", new WinGeom(0, 0, 450, 350));
+          view.fix_scale_width(60);
+          view.show(scalar_fluxes[0]);
+          Views::View::wait();
+        }
+        
+        // VTK output.
+        if(VTK_SCAL_VISUALIZATION)
+        {
+          // Output solution in VTK format.
+          Linearizer lin;
+          bool mode_3D = false;
+          lin.save_solution_vtk(scalar_fluxes[0], "scalar_flux.vtk", "Solution", mode_3D);
+        }
+        
+        PostProcessor pp(NEUTRONICS_SN, HERMES_PLANAR, &odata);
+        
+        Hermes::vector<double> integrated_fluxes, areas;
+        pp.get_integrated_scalar_fluxes(sol_ext, &integrated_fluxes, N_GROUPS, edit_regions);
+        pp.get_areas(meshes[0], edit_regions, &areas); // Areas of the edit regions.
+        
+        for (int i = 0; i < edit_regions.size(); i++)
+          Loggable::Static::info("Scalar flux integrated over %s (area = %1.4f cm^2): %1.8f", edit_regions[i].c_str(), areas[i], integrated_fluxes[i]);
+        
+        SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+      }
+      
+      return 0;
     }
-    
-    Loggable::Static::info("Saving %s. NDOF = %d", args[1], Space<double>::get_num_dofs(spaces));
-    
-    DiscreteProblem<double> dp(wf, spaces);
-    if (P_INIT == 0) dp.set_fvm();
-    SourceIteration solver(&dp);
-    
-    // Perform the source iteration (by Picard's method with Anderson acceleration).
-    solver.set_picard_max_iter(1);
-    
-    if (assemble_Q)  
-    {
-      solver.output_rhs(1);
-      solver.set_rhs_E_matrix_dump_format(DF_HERMES_BIN);;
-      solver.set_rhs_filename("Q");
-      solver.set_rhs_number_format("%1.15f");
-      solver.set_rhs_varname("Q");
-    }
-    if (assemble_matrix)
-    {
-      solver.output_matrix(1);
-      solver.set_matrix_E_matrix_dump_format(DF_HERMES_BIN);
-      solver.set_matrix_filename(!strcmp(args[1], "LQ") ? "L" : args[1]);
-      solver.set_matrix_number_format("%1.15f");
-      solver.set_matrix_varname(!strcmp(args[1], "LQ") ? "L" : args[1]);
-    }
-    
-    try 
-    { 
-      solver.solve(); 
-    } 
-    catch(std::exception& e) { }
-    
-    delete wf;
-    
-    return 0;
   }
   
   SNWeakForm wf(N, matprop, reflective_boundaries, vacuum_boundaries);
@@ -274,19 +353,19 @@ int main(int argc, char* args[])
   
   if (SAVE_FLUX_PROFILE)
   {
-    std::string file = "flux_9.84375_y-R"+itos(INIT_REF_NUM)+"P"+itos(P_INIT)+"-S"+itos(N)+".dat";
+    std::string file = "flux_50_y-R"+itos(INIT_REF_NUM)+"P"+itos(P_INIT)+"-S"+itos(N)+".dat";
 
-    double x = 9.84375;
+    double x = 50;
     
-    int nintervals = 100;
-    double a = 10.;
+    int nintervals = 2000;
+    double a = 200;
     double dy = a / nintervals; // advance by 1 mm
     int npts = nintervals + 1;
     
     double *res = new double [(npts)*N_GROUPS];
         
     std::ofstream fs(file.c_str());
-    Loggable::Static::info("Saving the scalar flux profile at x=9.84375cm to %s", file.c_str());
+    Loggable::Static::info("Saving the scalar flux profile at x=50cm to %s", file.c_str());
     
     fs << std::setprecision(16);
     
@@ -310,6 +389,15 @@ int main(int argc, char* args[])
   }
   
   SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
+  
+  PostProcessor pp(NEUTRONICS_SN, HERMES_PLANAR, &wf.get_ordinates_data());
+    
+  Hermes::vector<double> integrated_fluxes, areas;
+  pp.get_integrated_scalar_fluxes(slns, &integrated_fluxes, N_GROUPS, edit_regions);
+  pp.get_areas(meshes[0], edit_regions, &areas); // Areas of the edit regions.
+  
+  for (int i = 0; i < edit_regions.size(); i++)
+    Loggable::Static::info("Scalar flux integrated over %s (area = %1.4f m^2): %1.8f", edit_regions[i], areas[i], integrated_fluxes[i]);
   
   return 0;
 }
