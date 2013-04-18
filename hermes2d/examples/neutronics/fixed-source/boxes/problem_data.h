@@ -53,7 +53,7 @@ const MaterialPropertyMap1 St = material_property_map<rank1>
 )(
   "detector", row(1.0)
 )(
-  "strong_pure_absorber", row(2.0)
+  "strong_pure_absorber", row(3.0)
 )(
   "weak_pure_absorber", row(0.5)
 )(
