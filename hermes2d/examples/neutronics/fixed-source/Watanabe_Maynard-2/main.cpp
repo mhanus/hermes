@@ -16,9 +16,9 @@ const bool HERMES_MESH_VISUALIZATION = false;
 
 const bool MULTIMESH = false;
 // Number of initial uniform mesh refinements.
-const int INIT_REF_NUM = 2;
+const int INIT_REF_NUM = 3;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
-const int P_INIT = 1;
+const int P_INIT = 0;
 
 const unsigned int N_GROUPS = 1;    // Monoenergetic (single group) problem.
 const int N = 16;                    
@@ -30,11 +30,11 @@ const int M = N_GROUPS * N*(N+2)/2;
 // Number of last iterations used.
 // 1... standard fixed point.
 // >1... Anderson acceleration.
-const int PICARD_NUM_LAST_ITER_USED = 3;
+const int PICARD_NUM_LAST_ITER_USED = 1;
 // 0 <= beta <= 1... parameter for the Anderson acceleration.
 const double PICARD_ANDERSON_BETA = 0;
 // Stopping criterion for the Picard's method.
-const double PICARD_TOL = 1e-9;
+const double PICARD_TOL = 1e-7;
 // Maximum allowed number of Picard iterations.
 const int PICARD_MAX_ITER = 1000; 
 // Value for constant initial condition.
@@ -254,7 +254,7 @@ int main(int argc, char* args[])
     {
       // Output solution in VTK format.
       Linearizer lin;
-      bool mode_3D = true;
+      bool mode_3D = false;
       lin.save_solution_vtk(scalar_fluxes[g], (std::string("scalar_flux_g_") + itos(g) + std::string(".vtk")).c_str(), "Solution", mode_3D);
     }
   }
