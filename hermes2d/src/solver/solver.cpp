@@ -48,7 +48,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    Solver<Scalar>::Solver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces, bool force_use_direct_solver) :  dp(new DiscreteProblem<Scalar>(wf, spaces)), own_dp(true)
+    Solver<Scalar>::Solver(WeakForm<Scalar>* wf, const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces, bool force_use_direct_solver) :  dp(new DiscreteProblem<Scalar>(wf, spaces)), own_dp(true)
     {
       this->init(force_use_direct_solver);
     }

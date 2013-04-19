@@ -46,7 +46,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    PicardSolver<Scalar>::PicardSolver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces) : Solver<Scalar>(wf, spaces), PicardMatrixSolver<Scalar>()
+    PicardSolver<Scalar>::PicardSolver(WeakForm<Scalar>* wf, const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces) : Solver<Scalar>(wf, spaces), PicardMatrixSolver<Scalar>()
     {
       this->init();
     }

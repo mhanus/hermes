@@ -48,7 +48,7 @@ namespace Hermes
       Solver(bool force_use_direct_solver = false);
       Solver(DiscreteProblem<Scalar>* dp, bool force_use_direct_solver = false);
       Solver(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space, bool force_use_direct_solver = false);
-      Solver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces, bool force_use_direct_solver = false);
+      Solver(WeakForm<Scalar>* wf, const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces, bool force_use_direct_solver = false);
       virtual ~Solver();
 
       /// Basic solve method.
@@ -74,7 +74,7 @@ namespace Hermes
       virtual void set_time_step(double time_step);
 
       /// SettableSpaces helper.
-      virtual void set_spaces(Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
+      virtual void set_spaces(const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
       virtual Hermes::vector<SpaceSharedPtr<Scalar> >& get_spaces();
 
       /// DiscreteProblemWeakForm helper.
