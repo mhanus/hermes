@@ -100,38 +100,49 @@ namespace Hermes
       for(unsigned int i = 0; i < otherWf->forms.size(); i++)
       {
         if(dynamic_cast<MatrixFormVol<Scalar>*>(otherWf->forms[i]) != NULL)
+        {
           this->forms.push_back((dynamic_cast<MatrixFormVol<Scalar>*>(otherWf->forms[i]))->clone());
-        if(dynamic_cast<MatrixFormSurf<Scalar>*>(otherWf->forms[i]) != NULL)
-          this->forms.push_back((dynamic_cast<MatrixFormSurf<Scalar>*>(otherWf->forms[i]))->clone());
-        if(dynamic_cast<MatrixFormDG<Scalar>*>(otherWf->forms[i]) != NULL)
-          this->forms.push_back((dynamic_cast<MatrixFormDG<Scalar>*>(otherWf->forms[i]))->clone());
-
+          this->mfvol.push_back(dynamic_cast<MatrixFormVol<Scalar>*>(this->forms.back()));
+          continue;
+        }
         if(dynamic_cast<VectorFormVol<Scalar>*>(otherWf->forms[i]) != NULL)
+        {
           this->forms.push_back((dynamic_cast<VectorFormVol<Scalar>*>(otherWf->forms[i]))->clone());
+          this->vfvol.push_back(dynamic_cast<VectorFormVol<Scalar>*>(this->forms.back()));
+          continue;
+        }
+        if(dynamic_cast<MatrixFormSurf<Scalar>*>(otherWf->forms[i]) != NULL)
+        {
+          this->forms.push_back((dynamic_cast<MatrixFormSurf<Scalar>*>(otherWf->forms[i]))->clone());
+          this->mfsurf.push_back(dynamic_cast<MatrixFormSurf<Scalar>*>(this->forms.back()));
+          continue;
+        }
         if(dynamic_cast<VectorFormSurf<Scalar>*>(otherWf->forms[i]) != NULL)
+        {
           this->forms.push_back((dynamic_cast<VectorFormSurf<Scalar>*>(otherWf->forms[i]))->clone());
+          this->vfsurf.push_back(dynamic_cast<VectorFormSurf<Scalar>*>(this->forms.back()));
+          continue;
+        }
+        if(dynamic_cast<MatrixFormDG<Scalar>*>(otherWf->forms[i]) != NULL)
+        {
+          this->forms.push_back((dynamic_cast<MatrixFormDG<Scalar>*>(otherWf->forms[i]))->clone());
+          this->mfDG.push_back(dynamic_cast<MatrixFormDG<Scalar>*>(this->forms.back()));
+          continue;
+        }
         if(dynamic_cast<VectorFormDG<Scalar>*>(otherWf->forms[i]) != NULL)
+        {
           this->forms.push_back((dynamic_cast<VectorFormDG<Scalar>*>(otherWf->forms[i]))->clone());
-
+          this->vfDG.push_back(dynamic_cast<VectorFormDG<Scalar>*>(this->forms.back()));
+          continue;
+        }
+      }
+      for(unsigned int i = 0; i < otherWf->forms.size(); i++)
+      {
         Hermes::vector<MeshFunctionSharedPtr<Scalar> > newExt;
         for(unsigned int ext_i = 0; ext_i < otherWf->forms[i]->ext.size(); ext_i++)
           newExt.push_back(MeshFunctionSharedPtr<Scalar>(otherWf->forms[i]->ext[ext_i]->clone()));
-        this->forms.back()->set_ext(newExt);
-        this->forms.back()->wf = this;
-
-        if(dynamic_cast<MatrixFormVol<Scalar>*>(otherWf->forms[i]) != NULL)
-          this->mfvol.push_back(dynamic_cast<MatrixFormVol<Scalar>*>(this->forms.back()));
-        if(dynamic_cast<MatrixFormSurf<Scalar>*>(otherWf->forms[i]) != NULL)
-          this->mfsurf.push_back(dynamic_cast<MatrixFormSurf<Scalar>*>(this->forms.back()));
-        if(dynamic_cast<MatrixFormDG<Scalar>*>(otherWf->forms[i]) != NULL)
-          this->mfDG.push_back(dynamic_cast<MatrixFormDG<Scalar>*>(this->forms.back()));
-
-        if(dynamic_cast<VectorFormVol<Scalar>*>(otherWf->forms[i]) != NULL)
-          this->vfvol.push_back(dynamic_cast<VectorFormVol<Scalar>*>(this->forms.back()));
-        if(dynamic_cast<VectorFormSurf<Scalar>*>(otherWf->forms[i]) != NULL)
-          this->vfsurf.push_back(dynamic_cast<VectorFormSurf<Scalar>*>(this->forms.back()));
-        if(dynamic_cast<VectorFormDG<Scalar>*>(otherWf->forms[i]) != NULL)
-          this->vfDG.push_back(dynamic_cast<VectorFormDG<Scalar>*>(this->forms.back()));
+        this->forms[i]->set_ext(newExt);
+        this->forms[i]->wf = this;
       }
       for(unsigned int i = 0; i < otherWf->ext.size(); i++)
       {
@@ -179,11 +190,10 @@ namespace Hermes
     {
       this->ext = ext;
     }
-
     
     template<typename Scalar>
     template<typename FormType>
-    void WeakForm<Scalar>::processFormMarkers(Hermes::vector<SpaceSharedPtr<Scalar> >& spaces, bool surface, Hermes::vector<FormType> forms_to_process)
+    void WeakForm<Scalar>::processFormMarkers(const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces, bool surface, Hermes::vector<FormType> forms_to_process)
     {
       for(int form_i = 0; form_i < forms_to_process.size(); form_i++)
       {
@@ -213,12 +223,20 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    void WeakForm<Scalar>::processFormMarkers(Hermes::vector<SpaceSharedPtr<Scalar> > spaces)
+    void WeakForm<Scalar>::processFormMarkers(const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces)
     {
       processFormMarkers(spaces, false, this->mfvol);
       processFormMarkers(spaces, false, this->vfvol);
       processFormMarkers(spaces, true, this->mfsurf);
       processFormMarkers(spaces, true, this->vfsurf);
+    }
+
+    template<typename Scalar>
+    bool WeakForm<Scalar>::is_DG() const
+    {
+      if(this->mfDG.empty() && this->vfDG.empty())
+        return false;
+      return true;
     }
 
     template<typename Scalar>

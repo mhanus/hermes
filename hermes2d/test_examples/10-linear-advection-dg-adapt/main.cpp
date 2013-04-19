@@ -59,13 +59,15 @@ const char* preconditioner = "jacobi";
 
 int main(int argc, char* args[])
 {
+  Hermes2DApi.set_integral_param_value(numThreads, 1);
   // Load the mesh.
   MeshSharedPtr mesh(new Mesh);
   MeshReaderH2D mloader;
   mloader.load("square.mesh", mesh);
 
   // Perform initial mesh refinement.
-  for (int i=0; i<INIT_REF; i++) mesh->refine_all_elements();
+  for (int i=0; i<INIT_REF; i++)
+    mesh->refine_all_elements();
 
   // Create an L2 space->
   SpaceSharedPtr<double> space(new L2Space<double>(mesh, P_INIT));

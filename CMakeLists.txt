@@ -39,7 +39,7 @@ project(hermes)
 	#  This number has to be smaller than 21.
 	set(H2D_MAX_HANGING_NODES_LEVEL 15)
 	#  Use second derivatives (that are turned off by default).
-	set(H2D_USE_SECOND_DERIVATIVES YES)
+	set(H2D_USE_SECOND_DERIVATIVES NO)
 
   # Installation path:
     set(TARGET_ROOT             /usr/local) #default installation path for the library will be /usr/local/lib,
@@ -270,6 +270,10 @@ project(hermes)
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     find_package(PTHREAD REQUIRED)
+    
+    find_package(TCMALLOC REQUIRED)
+    include_directories(${TCMALLOC_INCLUDE_DIR})
+
     find_package(XSD REQUIRED)
     find_package(XERCES REQUIRED)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -419,7 +423,6 @@ project(hermes)
   message("Hermes common library:")
   message("\tBuild Debug version: ${HERMES_COMMON_DEBUG}")
   message("\tBuild Release version: ${HERMES_COMMON_RELEASE}")
-  message("\tBuild with tests: ${HERMES_COMMON_WITH_TESTS}")
 
   message("Build Hermes2D: ${WITH_H2D}")
   if(WITH_H2D)
@@ -429,6 +432,5 @@ project(hermes)
     message("\tBuild Hermes2D with test examples: ${H2D_WITH_TEST_EXAMPLES}")
   message("---------------------")
     message("\tBuild Hermes2D with GLUT: ${H2D_WITH_GLUT}")
-    message("\tBuild Hermes2D with VIEWER_GUI: ${H2D_WITH_VIEWER_GUI}")
   endif(WITH_H2D)
   message("\n")

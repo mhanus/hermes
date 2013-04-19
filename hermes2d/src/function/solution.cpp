@@ -15,12 +15,9 @@
 
 #include "exact_solution.h"
 #include "forms.h"
-
 #include "solution_h2d_xml.h"
 #include "ogprojection.h"
 #include "api2d.h"
-
-#include <iostream>
 #include <algorithm>
 
 namespace Hermes
@@ -87,20 +84,15 @@ namespace Hermes
     template<typename Scalar>
     bool Solution<Scalar>::static_verbose_output = false;
 
-    template<>
-    void Solution<double>::init()
+    template<typename Scalar>
+    void Solution<Scalar>::init()
     {
-      memset(tables, 0, sizeof(tables));
       memset(elems,  0, sizeof(elems));
       memset(oldest, 0, sizeof(oldest));
       transform = true;
       sln_type = HERMES_UNDEF;
       this->num_components = 0;
       e_last = NULL;
-
-      for(int i = 0; i < 4; i++)
-        for(int j = 0; j < 4; j++)
-          tables[i][j] = new std::map<uint64_t, LightArray<struct Function<double>::Node*>*>;
 
       mono_coeffs = NULL;
       elem_coeffs[0] = elem_coeffs[1] = NULL;
@@ -112,34 +104,9 @@ namespace Hermes
       this->set_quad_2d(&g_quad_2d_std);
     }
 
-		template<>
-		void Solution<std::complex<double> >::init()
-		{
-			memset(tables, 0, sizeof(tables));
-			memset(elems,  0, sizeof(elems));
-			memset(oldest, 0, sizeof(oldest));
-			transform = true;
-			sln_type = HERMES_UNDEF;
-			this->num_components = 0;
-			e_last = NULL;
-
-			for(int i = 0; i < 4; i++)
-				for(int j = 0; j < 4; j++)
-					tables[i][j] = new std::map<uint64_t, LightArray<struct Function<std::complex<double> >::Node*>*>;
-
-			mono_coeffs = NULL;
-			elem_coeffs[0] = elem_coeffs[1] = NULL;
-			elem_orders = NULL;
-			dxdy_buffer = NULL;
-			num_coeffs = num_elems = 0;
-			num_dofs = -1;
-
-			this->set_quad_2d(&g_quad_2d_std);
-		}
-
     template<>
     Solution<double>::Solution()
-        : MeshFunction<double>()
+      : MeshFunction<double>()
     {
       space_type = HERMES_INVALID_SPACE;
       this->init();
@@ -147,7 +114,7 @@ namespace Hermes
 
     template<>
     Solution<std::complex<double> >::Solution()
-        : MeshFunction<std::complex<double> >()
+      : MeshFunction<std::complex<double> >()
     {
       space_type = HERMES_INVALID_SPACE;
       this->init();
@@ -259,26 +226,17 @@ namespace Hermes
     template<typename Scalar>
     void Solution<Scalar>::free_tables()
     {
-      for (int i = 0; i < 4; i++)
-        for (int j = 0; j < 4; j++)
-          if(tables[i][j] != NULL)
-          {
-            for(typename std::map<uint64_t, LightArray<struct Function<Scalar>::Node*>*>::iterator it = tables[i][j]->begin(); it != tables[i][j]->end(); it++)
-            {
-              for(unsigned int l = 0; l < it->second->get_size(); l++)
-                if(it->second->present(l))
-                  ::free(it->second->get(l));
-              delete it->second;
-            }
-            tables[i][j]->clear();
-            delete tables[i][j];
-            tables[i][j] = NULL;
-            elems[i][j] = NULL;
-          }
+      for (int i = 0; i < H2D_MAX_QUADRATURES; i++)
+        for (int j = 0; j < H2D_SOLUTION_ELEMENT_CACHE_SIZE; j++)
+        {
+          tables[i][j].run_for_all(Function<Scalar>::Node::DeallocationFunction);
+          tables[i][j].clear();
+          elems[i][j] = NULL;
+        }
     }
 
-    template<>
-    void Solution<double>::free()
+    template<typename Scalar>
+    void Solution<Scalar>::free()
     {
       if(mono_coeffs  != NULL) { delete [] mono_coeffs;   mono_coeffs = NULL;  }
       if(elem_orders != NULL) { delete [] elem_orders;  elem_orders = NULL; }
@@ -293,37 +251,14 @@ namespace Hermes
         free_tables();
     }
 
-		template<>
-		void Solution<std::complex<double> >::free()
-		{
-			if(mono_coeffs  != NULL) { delete [] mono_coeffs;   mono_coeffs = NULL;  }
-			if(elem_orders != NULL) { delete [] elem_orders;  elem_orders = NULL; }
-			if(dxdy_buffer != NULL) { delete [] dxdy_buffer;  dxdy_buffer = NULL; }
-
-			for (int i = 0; i < this->num_components; i++)
-				if(elem_coeffs[i] != NULL)
-				{ delete [] elem_coeffs[i];  elem_coeffs[i] = NULL; }
-
-				e_last = NULL;
-
-				free_tables();
-		}
-
-		template<>
-    Solution<double>::~Solution()
+    template<typename Scalar>
+    Solution<Scalar>::~Solution()
     {
       free();
       space_type = HERMES_INVALID_SPACE;
     }
 
-    template<>
-    Solution<std::complex<double> >::~Solution()
-    {
-      free();
-      space_type = HERMES_INVALID_SPACE;
-    }
-
-    static struct mono_lu_init
+    static class mono_lu_init
     {
     public:
 
@@ -379,7 +314,7 @@ namespace Hermes
 
     template<typename Scalar>
     void Solution<Scalar>::set_coeff_vector(SpaceSharedPtr<Scalar> space, const Vector<Scalar>* vec,
-        bool add_dir_lift, int start_index)
+      bool add_dir_lift, int start_index)
     {
       // Sanity check.
       if(vec == NULL) throw Exceptions::NullException(2);
@@ -393,7 +328,7 @@ namespace Hermes
 
     template<typename Scalar>
     void Solution<Scalar>::set_coeff_vector(SpaceSharedPtr<Scalar> space, const Scalar* coeffs,
-        bool add_dir_lift, int start_index)
+      bool add_dir_lift, int start_index)
     {
       // Initialize precalc shapeset using the space's shapeset.
       Shapeset *shapeset = space->shapeset;
@@ -407,7 +342,7 @@ namespace Hermes
 
     template<typename Scalar>
     void Solution<Scalar>::set_coeff_vector(SpaceSharedPtr<Scalar> space, PrecalcShapeset* pss,
-        const Scalar* coeff_vec, bool add_dir_lift, int start_index)
+      const Scalar* coeff_vec, bool add_dir_lift, int start_index)
     {
       int o;
       if(Solution<Scalar>::static_verbose_output)
@@ -527,8 +462,8 @@ namespace Hermes
 
     template<typename Scalar>
     void Solution<Scalar>::vector_to_solutions(const Scalar* solution_vector,
-        Hermes::vector<SpaceSharedPtr<Scalar> > spaces, Hermes::vector<MeshFunctionSharedPtr<Scalar> > solutions,
-        Hermes::vector<bool> add_dir_lift, Hermes::vector<int> start_indices)
+      Hermes::vector<SpaceSharedPtr<Scalar> > spaces, Hermes::vector<MeshFunctionSharedPtr<Scalar> > solutions,
+      Hermes::vector<bool> add_dir_lift, Hermes::vector<int> start_indices)
     {
       if(solution_vector == NULL) 
         throw Exceptions::NullException(1);
@@ -555,49 +490,38 @@ namespace Hermes
         }
       }
 
-      for(unsigned int i = 0; i < solutions.size(); i++)
+#pragma omp parallel num_threads(solutions.size())
       {
+        int thread_number = omp_get_thread_num();
         if(Solution<Scalar>::static_verbose_output)
-        {
-          if(i == 0)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-th solution", i);
-          if(i == 1)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-st solution", i);
-          if(i == 2)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-nd solution", i);
-          if(i == 3)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-rd solution", i);
-          if(i > 3)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-th solution", i);
-        }
-        if(add_dir_lift == Hermes::vector<bool>())
-          Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], true, start_indices_new[i]);
-        else
-          Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], add_dir_lift[i], start_indices_new[i]);
-      }
+          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", thread_number);
 
-      return;
+        if(add_dir_lift == Hermes::vector<bool>())
+          Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], true, start_indices_new[thread_number]);
+        else
+          Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], add_dir_lift[thread_number], start_indices_new[thread_number]);
+      }
     }
 
     template<typename Scalar>
     void Solution<Scalar>::vector_to_solution(const Scalar* solution_vector, SpaceSharedPtr<Scalar> space,
-        Solution<Scalar>* solution, bool add_dir_lift, int start_index)
+      Solution<Scalar>* solution, bool add_dir_lift, int start_index)
     {
       // Sanity checks.
       if(solution_vector == NULL) 
         throw Exceptions::NullException(1);
-      
+
       solution->set_coeff_vector(space, solution_vector, add_dir_lift, start_index);
     }
 
     template<typename Scalar>
     void Solution<Scalar>::vector_to_solution(const Scalar* solution_vector, SpaceSharedPtr<Scalar> space,
-        MeshFunctionSharedPtr<Scalar> solution, bool add_dir_lift, int start_index)
+      MeshFunctionSharedPtr<Scalar> solution, bool add_dir_lift, int start_index)
     {
       // Sanity checks.
       if(solution_vector == NULL) 
         throw Exceptions::NullException(1);
-      
+
       Solution<Scalar>* sln = dynamic_cast<Solution<Scalar>*>(solution.get());
       if(sln == NULL)
         throw Exceptions::Exception("Passed solution is in fact not a Solution instance in vector_to_solution().");
@@ -634,28 +558,17 @@ namespace Hermes
         }
       }
 
-      for(unsigned int i = 0; i < solutions.size(); i++)
+#pragma omp parallel num_threads(solutions.size())
       {
+        int thread_number = omp_get_thread_num();
         if(Solution<Scalar>::static_verbose_output)
-        {
-          if(i == 0)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-th solution", i);
-          if(i == 1)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-st solution", i);
-          if(i == 2)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-nd solution", i);
-          if(i == 3)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-rd solution", i);
-          if(i > 3)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-th solution", i);
-        }
-        if(add_dir_lift == Hermes::vector<bool>())
-          Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], true, start_indices_new[i]);
-        else
-          Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], add_dir_lift[i], start_indices_new[i]);
-      }
+          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", thread_number);
 
-      return;
+        if(add_dir_lift == Hermes::vector<bool>())
+          Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], true, start_indices_new[thread_number]);
+        else
+          Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], add_dir_lift[thread_number], start_indices_new[thread_number]);
+      }
     }
 
     template<typename Scalar>
@@ -675,11 +588,15 @@ namespace Hermes
         start_indices_new.push_back(counter);
         counter += spaces[i]->get_num_dofs();
       }
-      
-      for(unsigned int i = 0; i < solutions.size(); i++)
-        Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], add_dir_lift, start_indices_new[i]);
 
-      return;
+#pragma omp parallel num_threads(solutions.size())
+      {
+        int thread_number = omp_get_thread_num();
+        if(Solution<Scalar>::static_verbose_output)
+          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", thread_number);
+
+        Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], add_dir_lift, start_indices_new[thread_number]);
+      }
     }
 
     template<typename Scalar>
@@ -699,21 +616,25 @@ namespace Hermes
         start_indices_new.push_back(counter);
         counter += spaces[i]->get_num_dofs();
       }
-      
-      for(unsigned int i = 0; i < solutions.size(); i++)
-        Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], add_dir_lift, start_indices_new[i]);
 
-      return;
+#pragma omp parallel num_threads(solutions.size())
+      {
+        int thread_number = omp_get_thread_num();
+        if(Solution<Scalar>::static_verbose_output)
+          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", thread_number);
+
+        Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], add_dir_lift, start_indices_new[thread_number]);
+      }
     }
 
     template<typename Scalar>
     void Solution<Scalar>::vector_to_solution(const Vector<Scalar>* solution_vector, SpaceSharedPtr<Scalar> space,
-        MeshFunctionSharedPtr<Scalar> solution, bool add_dir_lift, int start_index)
+      MeshFunctionSharedPtr<Scalar> solution, bool add_dir_lift, int start_index)
     {
       // Sanity checks.
       if(solution_vector == NULL) 
         throw Exceptions::NullException(1);
-      
+
       Solution<Scalar>* sln = dynamic_cast<Solution<Scalar>*>(solution.get());
       if(sln == NULL)
         throw Exceptions::Exception("Passed solution is in fact not a Solution instance in vector_to_solution().");
@@ -723,8 +644,8 @@ namespace Hermes
 
     template<typename Scalar>
     void Solution<Scalar>::vector_to_solutions(const Scalar* solution_vector, Hermes::vector<SpaceSharedPtr<Scalar> > spaces,
-        Hermes::vector<MeshFunctionSharedPtr<Scalar> > solutions, Hermes::vector<PrecalcShapeset *> pss,
-        Hermes::vector<bool> add_dir_lift, Hermes::vector<int> start_indices)
+      Hermes::vector<MeshFunctionSharedPtr<Scalar> > solutions, Hermes::vector<PrecalcShapeset *> pss,
+      Hermes::vector<bool> add_dir_lift, Hermes::vector<int> start_indices)
     {
       if(solution_vector==NULL) 
         throw Exceptions::NullException(1);
@@ -752,33 +673,22 @@ namespace Hermes
         }
       }
 
-      for(unsigned int i = 0; i < solutions.size(); i++)
+#pragma omp parallel num_threads(solutions.size())
       {
+        int thread_number = omp_get_thread_num();
         if(Solution<Scalar>::static_verbose_output)
-        {
-          if(i == 0)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-th solution", i);
-          if(i == 1)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-st solution", i);
-          if(i == 2)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-nd solution", i);
-          if(i == 3)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-rd solution", i);
-          if(i > 3)
-            Hermes::Mixins::Loggable::Static::info("Solution: %d-th solution", i);
-        }
-        if(add_dir_lift == Hermes::vector<bool>())
-          Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], true, start_indices_new[i]);
-        else
-          Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], add_dir_lift[i], start_indices_new[i]);
-      }
+          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", thread_number);
 
-      return;
+        if(add_dir_lift == Hermes::vector<bool>())
+          Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], true, start_indices_new[thread_number]);
+        else
+          Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], add_dir_lift[thread_number], start_indices_new[thread_number]);
+      }
     }
 
     template<typename Scalar>
     void Solution<Scalar>::vector_to_solution(const Scalar* solution_vector, SpaceSharedPtr<Scalar> space, MeshFunctionSharedPtr<Scalar> solution,
-        PrecalcShapeset* pss, bool add_dir_lift, int start_index)
+      PrecalcShapeset* pss, bool add_dir_lift, int start_index)
     {
       if(solution_vector == NULL) 
         throw Exceptions::NullException(1);
@@ -808,7 +718,8 @@ namespace Hermes
     template<typename Scalar>
     void Solution<Scalar>::enable_transform(bool enable)
     {
-      if(transform != enable) free_tables();
+      if(transform != enable)
+        free_tables();
       transform = enable;
     }
 
@@ -878,35 +789,23 @@ namespace Hermes
 
       if(!e->active) 
         throw Hermes::Exceptions::Exception("Cannot select inactive element. Wrong mesh?");
-      
+
       MeshFunction<Scalar>::set_active_element(e);
 
       // try finding an existing table for e
-      for (cur_elem = 0; cur_elem < 4; cur_elem++)
+      for (cur_elem = 0; cur_elem < H2D_SOLUTION_ELEMENT_CACHE_SIZE; cur_elem++)
         if(elems[this->cur_quad][cur_elem] == e)
           break;
 
       // if not found, free the oldest one and use its slot
-      if(cur_elem >= 4)
+      if(cur_elem >= H2D_SOLUTION_ELEMENT_CACHE_SIZE)
       {
-        if(tables[this->cur_quad][oldest[this->cur_quad]] != NULL)
-        {
-          for(typename std::map<uint64_t, LightArray<struct Function<Scalar>::Node*>*>::iterator it = tables[this->cur_quad][oldest[this->cur_quad]]->begin(); it != tables[this->cur_quad][oldest[this->cur_quad]]->end(); it++)
-          {
-            for(unsigned int l = 0; l < it->second->get_size(); l++)
-              if(it->second->present(l))
-                ::free(it->second->get(l));
-            delete it->second;
-          }
-          delete tables[this->cur_quad][oldest[this->cur_quad]];
-          tables[this->cur_quad][oldest[this->cur_quad]] = NULL;
-          elems[this->cur_quad][oldest[this->cur_quad]] = NULL;
-        }
-
-        tables[this->cur_quad][oldest[this->cur_quad]] = new std::map<uint64_t, LightArray<struct Function<Scalar>::Node*>*>;
+        tables[this->cur_quad][oldest[this->cur_quad]].run_for_all(Function<Scalar>::Node::DeallocationFunction);
+        tables[this->cur_quad][oldest[this->cur_quad]].clear();
+        elems[this->cur_quad][oldest[this->cur_quad]] = NULL;
 
         cur_elem = oldest[this->cur_quad];
-        if(++oldest[this->cur_quad] >= 4)
+        if(++oldest[this->cur_quad] >= H2D_SOLUTION_ELEMENT_CACHE_SIZE)
           oldest[this->cur_quad] = 0;
 
         elems[this->cur_quad][cur_elem] = e;
@@ -936,7 +835,7 @@ namespace Hermes
       else
         throw Hermes::Exceptions::Exception("Uninitialized solution.");
 
-      this->sub_tables = tables[this->cur_quad][cur_elem];
+      this->sub_tables = &tables[this->cur_quad][cur_elem];
 
       this->update_nodes_ptr();
     }
@@ -970,7 +869,6 @@ namespace Hermes
     void Solution<Scalar>::transform_values(int order, struct Function<Scalar>::Node* node, int newmask, int oldmask, int np)
     {
       double2x2 *mat, *m;
-      double3x2 *mat2, *mm;
       int i, mstep = 0;
 
       // H1 space
@@ -981,7 +879,7 @@ namespace Hermes
         {
           this->update_refmap();
           mat = this->refmap->get_inv_ref_map(order);
-          mat2 = this->refmap->get_second_ref_map(order);
+          double3x2 *mm, *mat2 = this->refmap->get_second_ref_map(order);
           for (i = 0, m = mat, mm = mat2; i < np; i++, m++, mm++)
           {
             Scalar vx = node->values[0][1][i];
@@ -1235,18 +1133,18 @@ namespace Hermes
         XMLSolution::solution xmlsolution(this->num_components, this->num_elems, this->num_coeffs, 0, 0);
         switch(this->get_space_type())
         {
-          case HERMES_H1_SPACE:
-            xmlsolution.space().set("h1");
-            break;
-          case HERMES_HCURL_SPACE:
-            xmlsolution.space().set("hcurl");
-            break;
-          case HERMES_HDIV_SPACE:
-            xmlsolution.space().set("hdiv");
-            break;
-          case HERMES_L2_SPACE:
-            xmlsolution.space().set("l2");
-            break;
+        case HERMES_H1_SPACE:
+          xmlsolution.space().set("h1");
+          break;
+        case HERMES_HCURL_SPACE:
+          xmlsolution.space().set("hcurl");
+          break;
+        case HERMES_HDIV_SPACE:
+          xmlsolution.space().set("hdiv");
+          break;
+        case HERMES_L2_SPACE:
+          xmlsolution.space().set("l2");
+          break;
         }
 
         for(unsigned int coeffs_i = 0; coeffs_i < this->num_coeffs; coeffs_i++)
@@ -1281,7 +1179,6 @@ namespace Hermes
       {
         throw Hermes::Exceptions::SolutionSaveFailureException(e.what());
       }
-      return;
     }
 
     template<>
@@ -1296,18 +1193,18 @@ namespace Hermes
 
         switch(this->get_space_type())
         {
-          case HERMES_H1_SPACE:
-            xmlsolution.space().set("h1");
-            break;
-          case HERMES_HCURL_SPACE:
-            xmlsolution.space().set("hcurl");
-            break;
-          case HERMES_HDIV_SPACE:
-            xmlsolution.space().set("hdiv");
-            break;
-          case HERMES_L2_SPACE:
-            xmlsolution.space().set("l2");
-            break;
+        case HERMES_H1_SPACE:
+          xmlsolution.space().set("h1");
+          break;
+        case HERMES_HCURL_SPACE:
+          xmlsolution.space().set("hcurl");
+          break;
+        case HERMES_HDIV_SPACE:
+          xmlsolution.space().set("hdiv");
+          break;
+        case HERMES_L2_SPACE:
+          xmlsolution.space().set("l2");
+          break;
         }
 
         for(unsigned int coeffs_i = 0; coeffs_i < this->num_coeffs; coeffs_i++)
@@ -1335,7 +1232,7 @@ namespace Hermes
         namespace_info_map.insert(std::pair<std::basic_string<char>, xml_schema::namespace_info>("solution", namespace_info_solution));
 
         std::ofstream out(filename);
-        
+
         ::xml_schema::flags parsing_flags = ::xml_schema::flags::dont_pretty_print;
 
         XMLSolution::solution_(out, xmlsolution, namespace_info_map, "UTF-8", parsing_flags);
@@ -1345,7 +1242,6 @@ namespace Hermes
       {
         throw Hermes::Exceptions::SolutionSaveFailureException(e.what());
       }
-      return;
     }
 
     template<>
@@ -1355,7 +1251,7 @@ namespace Hermes
       this->mesh = space->get_mesh();
       this->space_type = space->get_type();
 
-			try
+      try
       {
         ::xml_schema::flags parsing_flags = 0;
         if(!this->validate)
@@ -1363,7 +1259,7 @@ namespace Hermes
 
         std::auto_ptr<XMLSolution::solution> parsed_xml_solution(XMLSolution::solution_(filename, parsing_flags));
         sln_type = parsed_xml_solution->exact() == 0 ? HERMES_SLN : HERMES_EXACT;
-  
+
         if(sln_type == HERMES_EXACT)
         {
           switch(parsed_xml_solution->ncmp())
@@ -1435,15 +1331,14 @@ namespace Hermes
           for (unsigned int component_i = 0; component_i < this->num_components; component_i++)
             for (unsigned int elems_i = 0; elems_i < num_elems; elems_i++)
               this->elem_coeffs[component_i][parsed_xml_solution->component().at(component_i).elem_coeffs().at(elems_i).id()] = parsed_xml_solution->component().at(component_i).elem_coeffs().at(elems_i).c();
-        
+
         }
-          init_dxdy_buffer();
+        init_dxdy_buffer();
       }
       catch (const xml_schema::exception& e)
       {
         throw Hermes::Exceptions::SolutionLoadFailureException(e.what());
       }
-      return;
     }
 
     template<>
@@ -1453,7 +1348,7 @@ namespace Hermes
       sln_type = HERMES_SLN;
       this->mesh = space->get_mesh();
       this->space_type = space->get_type();
-      
+
       try
       {
         ::xml_schema::flags parsing_flags = 0;
@@ -1462,7 +1357,7 @@ namespace Hermes
 
         std::auto_ptr<XMLSolution::solution> parsed_xml_solution(XMLSolution::solution_(filename, parsing_flags));
         sln_type = parsed_xml_solution->exact() == 0 ? HERMES_SLN : HERMES_EXACT;
-        
+
         if(sln_type == HERMES_EXACT)
         {
           switch(parsed_xml_solution->ncmp())
@@ -1542,13 +1437,12 @@ namespace Hermes
               this->elem_coeffs[component_i][parsed_xml_solution->component().at(component_i).elem_coeffs().at(elems_i).id()] = parsed_xml_solution->component().at(component_i).elem_coeffs().at(elems_i).c();
         }
 
-          init_dxdy_buffer();
+        init_dxdy_buffer();
       }
       catch (const xml_schema::exception& e)
       {
         throw Hermes::Exceptions::SolutionLoadFailureException(e.what());
       }
-      return;
     }
 
     template<typename Scalar>
@@ -1689,7 +1583,7 @@ namespace Hermes
       else // vector solution
       {
         toReturn[0] = new Scalar[1];
-        
+
         Scalar vx = get_ref_value(e, x_ref, y_ref, 0, 0);
         Scalar vy = get_ref_value(e, x_ref, y_ref, 1, 0);
         toReturn[0][0] = mat[0][0]*vx + mat[0][1]*vy;
@@ -1773,7 +1667,7 @@ namespace Hermes
             Scalar dy = get_ref_value(e, xi1, xi2, 0, 2);
             toReturn->dx[0] = m[0][0]*dx + m[0][1]*dy;
             toReturn->dy[0] = m[1][0]*dx + m[1][1]*dy;
-    
+
 #ifdef H2D_USE_SECOND_DERIVATIVES
             toReturn->laplace = new Scalar[1];
             double2x2 mat;

@@ -12,6 +12,8 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Hermes2D.  If not, see <http://www.gnu.org/licenses/>.
+
+/*
 #include "kelly_type_adapt.h"
 
 namespace Hermes
@@ -168,7 +170,7 @@ namespace Hermes
       bool bnd[H2D_MAX_NUMBER_EDGES];
       SurfPos surf_pos[H2D_MAX_NUMBER_EDGES];
       Traverse::State *ee;
-      Traverse trav(true);
+      Traverse trav(this->num);
 
       // Reset the e->visited status of each element of each mesh (most likely it will be set to true from
       // the latest assembling procedure).
@@ -337,8 +339,8 @@ namespace Hermes
                   for(unsigned int fns_i = 0; fns_i < this->num; fns_i++)
                   {
                     NeighborSearch<Scalar> *ns = neighbor_searches.get(meshes[fns_i]->get_seq() - min_dg_mesh_seq);
-                    if(ns->central_transformations.present(neighbor))
-                      ns->central_transformations.get(neighbor)->apply_on(fns[fns_i]);
+                    if(ns->central_transformations[neighbor])
+                      ns->central_transformations[neighbor]->apply_on(fns[fns_i]);
                   }
 
                   // END COPY FROM DISCRETE_PROBLEM.CPP
@@ -804,3 +806,4 @@ namespace Hermes
     template HERMES_API class BasicKellyAdapt<std::complex<double> >;
   }
 }
+*/

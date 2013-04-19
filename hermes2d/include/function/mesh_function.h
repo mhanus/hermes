@@ -100,6 +100,9 @@ namespace Hermes
         throw Hermes::Exceptions::Exception("You need to implement MeshFunctionSharedPtr::clone() to be able to use paralellization");
         return NULL;
       }
+      
+      /// Multiplies the function represented by this class by the given coefficient.
+      virtual void multiply(Scalar coef);
 
       /// Return the approximate maximum value of this instance.
       virtual Scalar get_approx_max_value(int item = H2D_FN_VAL_0);
@@ -128,11 +131,6 @@ namespace Hermes
       /// Set the active element.
       /// Internal.
       virtual void set_active_element(Element* e);
-
-      /// Virtual function handling overflows. Has to be virtual, because
-      /// the necessary iterators in the templated class do not work with GCC.
-      /// Internal.
-      virtual void handle_overflow_idx();
 
       /// See Transformable::push_transform.
       /// Internal.
@@ -173,7 +171,6 @@ namespace Hermes
 
       template<typename T> friend class DiscontinuousFunc;
       template<typename T> friend class DiscreteProblem;
-      template<typename T> friend class DiscreteProblemLinear;
       template<typename T> friend class NeighborSearch;
     };
   }

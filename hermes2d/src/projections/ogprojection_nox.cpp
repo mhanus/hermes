@@ -18,7 +18,7 @@
 #include "projections/ogprojection_nox.h"
 #include "space.h"
 #include "discrete_problem.h"
-#include "newton_solver_nox.h"
+#include "solver/nox_solver.h"
 #if(defined HAVE_NOX && defined HAVE_EPETRA && defined HAVE_TEUCHOS)
 
 namespace Hermes
@@ -149,6 +149,15 @@ namespace Hermes
 
       // Clean up.
       delete proj_wf;
+    }
+    
+    template<typename Scalar>
+    void OGProjectionNOX<Scalar>::project_global(SpaceSharedPtr<Scalar> space,
+      MeshFunctionSharedPtr<Scalar> source_meshfn, Scalar* target_vec,
+      ProjNormType proj_norm,
+      double newton_tol, int newton_max_iter)
+    {
+      project_global(space, source_meshfn.get(), target_vec, proj_norm, newton_tol, newton_max_iter);
     }
 
     template<typename Scalar>

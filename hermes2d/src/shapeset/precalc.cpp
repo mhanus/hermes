@@ -21,25 +21,13 @@ namespace Hermes
 {
   namespace Hermes2D
   {
-    PrecalcShapeset::PrecalcShapeset(Shapeset* shapeset) : Function<double>()
+    PrecalcShapeset::PrecalcShapeset(Shapeset* shapeset) : Function<double>(), tables(6, 64)
     {
       if(shapeset == NULL)
         throw Exceptions::NullException(0);
       this->shapeset = shapeset;
-      master_pss = NULL;
       num_components = shapeset->get_num_components();
       assert(num_components == 1 || num_components == 2);
-      update_max_index();
-      set_quad_2d(&g_quad_2d_std);
-    }
-
-    PrecalcShapeset::PrecalcShapeset(PrecalcShapeset* pss) : Function<double>()
-    {
-      while (pss->is_slave())
-        pss = pss->master_pss;
-      master_pss = pss;
-      shapeset = pss->shapeset;
-      num_components = pss->num_components;
       update_max_index();
       set_quad_2d(&g_quad_2d_std);
     }
@@ -55,36 +43,14 @@ namespace Hermes
       Function<double>::set_quad_2d(quad_2d);
     }
 
-    void PrecalcShapeset::handle_overflow_idx()
-    {
-      if(overflow_nodes != NULL)
-      {
-        for(unsigned int i = 0; i < overflow_nodes->get_size(); i++)
-          if(overflow_nodes->present(i))
-            ::free(overflow_nodes->get(i));
-        delete overflow_nodes;
-      }
-      nodes = new LightArray<Node *>;
-      overflow_nodes = nodes;
-    }
-
     void PrecalcShapeset::set_active_shape(int index)
     {
       // Key creation.
       unsigned key = cur_quad | (element->get_mode() << 3) | ((unsigned) (max_index[element->get_mode()] - index) << 4);
 
-      if(master_pss == NULL)
-      {
-        if(!tables.present(key))
-          tables.add(new std::map<uint64_t, LightArray<Node*>*>, key);
-        sub_tables = tables.get(key);
-      }
-      else
-      {
-        if(!master_pss->tables.present(key))
-          master_pss->tables.add(new std::map<uint64_t, LightArray<Node*>*>, key);
-        sub_tables = master_pss->tables.get(key);
-      }
+      if(!tables.present(key))
+        tables.add(new SubElementMap<LightArray<Node*> >, key);
+      sub_tables = tables.get(key);
 
       // Update the Node table.
       update_nodes_ptr();
@@ -132,34 +98,20 @@ namespace Hermes
         assert(nodes->get(order) == cur_node);
         ::free(nodes->get(order));
       }
+
       nodes->add(node, order);
       cur_node = node;
     }
 
     void PrecalcShapeset::free()
     {
-      if(master_pss != NULL) return;
-
       for(unsigned int i = 0; i < tables.get_size(); i++)
         if(tables.present(i))
         {
-          for(std::map<uint64_t, LightArray<Node*>*>::iterator it = tables.get(i)->begin(); it != tables.get(i)->end(); it++)
-          {
-            for(unsigned int k = 0; k < it->second->get_size(); k++)
-              if(it->second->present(k))
-                ::free(it->second->get(k));
-            delete it->second;
-          }
+          tables.get(i)->run_for_all(Node::DeallocationFunction);
           delete tables.get(i);
         }
 
-        if(overflow_nodes != NULL)
-        {
-          for(unsigned int i = 0; i < overflow_nodes->get_size(); i++)
-            if(overflow_nodes->present(i))
-              ::free(overflow_nodes->get(i));
-          delete overflow_nodes;
-        }
     }
 
     extern PrecalcShapeset ref_map_pss;
@@ -198,23 +150,9 @@ namespace Hermes
       return shapeset->get_space_type();
     }
 
-    void PrecalcShapeset::set_master_transform()
-    {
-      assert(master_pss != NULL);
-      sub_idx = master_pss->sub_idx;
-      top = master_pss->top;
-      stack[top] = *(master_pss->ctm);
-      ctm = stack + top;
-    }
-
     int PrecalcShapeset::get_edge_fn_order(int edge)
     {
       return H2D_MAKE_EDGE_ORDER(element->get_mode(), edge, shapeset->get_order(index, element->get_mode()));
-    }
-
-    bool PrecalcShapeset::is_slave() const
-    {
-      return master_pss != NULL;
     }
 
     void PrecalcShapeset::force_transform(uint64_t sub_idx, Trf* ctm)

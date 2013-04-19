@@ -163,7 +163,6 @@ int main(int argc, char* argv[])
   do
   { 
     Hermes::Mixins::Loggable::Static::info("Time step %d, time %3.5f", ts, current_time);
-    Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads,1);  
 
     // Periodic global derefinement. 
     if ((ts > 1 && ts % UNREF_FREQ == 0)||(space->get_num_dofs() >= NDOF_STOP)) 
@@ -267,7 +266,7 @@ int main(int argc, char* argv[])
 
 
       dp_mass.assemble(mass_matrix); 										//M_c/tau
-      dp_convection.assemble(conv_matrix, NULL,true);		//K
+      dp_convection.assemble(conv_matrix, NULL);		//K
 
       //----------------------MassLumping  & Artificial Diffusion --------------------------------------------------------------------	
       UMFPackMatrix<double>* lumped_matrix = fluxCorrection.massLumping(mass_matrix); // M_L/tau

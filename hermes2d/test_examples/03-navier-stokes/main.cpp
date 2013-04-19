@@ -43,7 +43,7 @@ using namespace Hermes::Hermes2D;
 // tutorial for comparisons.
 const bool STOKES = false;
 
-const bool HERMES_VISUALIZATION = true;
+const bool HERMES_VISUALIZATION = false;
 
 #define PRESSURE_IN_L2
 
@@ -66,9 +66,9 @@ const double VEL_INLET = 1.0;
 const double STARTUP_TIME = 1.0;
 
 const double TAU = 0.1;                           // Time step.
-const double T_FINAL = 3000.;                   // Time interval length.
+const double T_FINAL = 0.5;                   // Time interval length.
 const double NEWTON_TOL = 1e-3;                   // Stopping criterion for the Newton's method.
-const int NEWTON_MAX_ITER = 10;                   // Maximum allowed number of Newton iterations.
+const int max_allowed_iterations = 10;                   // Maximum allowed number of Newton iterations.
 const double H = 5;                               // Domain height (necessary to define the parabolic
 // velocity profile at inlet).
 
@@ -91,17 +91,17 @@ double current_time = 0;
 
 int main(int argc, char* argv[])
 {
-  Hermes2DApi.set_integral_param_value(numThreads,1);
-
   // Load the mesh.
   MeshSharedPtr mesh(new Mesh);
   MeshReaderH2D mloader;
   mloader.load("domain.mesh", mesh);
 
   // Initial mesh refinements.
-  mesh->refine_towards_boundary(BDY_OBSTACLE, 1, false);
-  mesh->refine_towards_boundary(BDY_TOP, 1, true);     // '4' is the number of levels,
-  mesh->refine_towards_boundary(BDY_BOTTOM, 1, true);  // 'true' stands for anisotropic refinements.
+  mesh->refine_towards_boundary(BDY_OBSTACLE, 2, false);
+  mesh->refine_towards_boundary(BDY_TOP, 2, true);     // '4' is the number of levels,
+  mesh->refine_towards_boundary(BDY_BOTTOM, 2, true);  // 'true' stands for anisotropic refinements.
+  mesh->refine_all_elements();
+  mesh->refine_all_elements();
 
   // Initialize boundary conditions.
   EssentialBCNonConst bc_left_vel_x(BDY_LEFT, VEL_INLET, H, STARTUP_TIME);
@@ -144,7 +144,8 @@ int main(int argc, char* argv[])
   // Initialize the Newton solver.
   Hermes::Hermes2D::NewtonSolver<double> newton;
 	newton.set_weak_formulation(&wf);
-	newton.set_spaces(Hermes::vector<SpaceSharedPtr<double> >(xvel_space, yvel_space, p_space));
+  Hermes::vector<SpaceSharedPtr<double> > spaces(xvel_space, yvel_space, p_space);
+	newton.set_spaces(spaces);
 
   // Initialize views.
   Views::VectorView vview("velocity[m/s]", new Views::WinGeom(0, 0, 750, 240));
@@ -165,15 +166,16 @@ if(HERMES_VISUALIZATION)
     Hermes::vector<MeshFunctionSharedPtr<double> >(xvel_prev_time, yvel_prev_time, p_prev_time),
     coeff_vec, Hermes::vector<ProjNormType>(vel_proj_norm, vel_proj_norm, p_proj_norm));
 
-  newton.set_newton_max_iter(NEWTON_MAX_ITER);
-  newton.set_newton_tol(NEWTON_TOL);
+  newton.set_max_allowed_iterations(max_allowed_iterations);
+  newton.set_tolerance(NEWTON_TOL);
+  //newton.keep_element_values(1, WeakForm<double>::FormVol, WeakForm<double>::MatrixForm);
+  newton.set_sufficient_improvement_factor_jacobian(1e-2);
 
   // Time-stepping loop:
   char title[100];
   int num_time_steps = T_FINAL / TAU;
   for (int ts = 1; ts <= num_time_steps; ts++)
   {
-    std::cout << ts << std::endl;
     current_time += TAU;
 
     // Update time-dependent essential BCs.
@@ -183,7 +185,7 @@ if(HERMES_VISUALIZATION)
     // Perform Newton's iteration and translate the resulting coefficient vector into previous time level solutions.
     try
     {
-      newton.solve_keep_jacobian(coeff_vec);
+      newton.solve(coeff_vec);
     }
     catch(Hermes::Exceptions::Exception& e)
     {

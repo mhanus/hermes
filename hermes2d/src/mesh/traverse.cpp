@@ -22,7 +22,7 @@ namespace Hermes
   namespace Hermes2D
   {
     static const Rect H2D_UNITY = { 0, 0, ONE, ONE };
-    Traverse::Traverse(bool master) : master(master)
+    Traverse::Traverse(int spaces_size) : spaces_size(spaces_size)
     {
     }
 
@@ -113,7 +113,7 @@ namespace Hermes
         else if(s->cr.b >= vmid) son = 5;
         else assert(0);
 
-        s->push_transform(son, i, s->rep->is_triangle());
+        s->push_transform(son, i, s->is_triangle());
         move_to_son(&r, &r, son);
       }
     }
@@ -129,6 +129,7 @@ namespace Hermes
       isurf = -1;
     }
 
+    /*
     void Traverse::State::operator=(const State * other)
     {
       // Delete part.
@@ -150,11 +151,11 @@ namespace Hermes
       this->isurf = other->isurf;
       this->isBnd = other->isBnd;
     }
-
+    */
     Traverse::State* Traverse::State::clone(const Traverse::State * other)
     {
       State* state = new State();
-      
+
       state->num = other->num;
 
       state->e = new Element*[state->num];
@@ -164,6 +165,8 @@ namespace Hermes
       memcpy(state->bnd, other->bnd, 4 * sizeof(bool));
 
       state->rep = other->rep;
+      state->rep_subidx = other->rep_subidx;
+      state->rep_i = other->rep_i;
       state->visited = other->visited;
       state->isurf = other->isurf;
       state->isBnd = other->isBnd;
@@ -247,7 +250,7 @@ namespace Hermes
       for (int i = 0; i < num; i++)
         if((e = s->e[i]) != NULL) break;
 
-      if(s->rep->is_triangle())
+      if(e->is_triangle())
       {
         for (int i = 0; i < 3; i++)
           (s->bnd[i] = (s->bnd[i] && e->en[i]->bnd));
@@ -261,6 +264,21 @@ namespace Hermes
         s->bnd[3] = s->bnd[3] && (s->cr.l == 0)   && e->en[3]->bnd;
         s->isBnd = s->bnd[0] || s->bnd[1] || s->bnd[2] || s->bnd[3] || e->vn[0]->bnd || e->vn[1]->bnd || e->vn[2]->bnd || e->vn[3]->bnd;
       }
+    }
+
+    bool Traverse::State::is_triangle()
+    {
+      bool is_triangle = false;
+      for(int j = 0; j < this->num; j++)
+      {
+        if(this->e[j] != NULL)
+        {
+          if(this->e[j]->is_triangle())
+            is_triangle = true;
+          break;
+        }
+      }
+      return is_triangle;
     }
 
     Traverse::State** Traverse::get_states(Hermes::vector<MeshSharedPtr> meshes, int& states_count)
@@ -282,7 +300,6 @@ namespace Hermes
         // If the top state was visited already, we are returning through it:
         // undo all its transformations, pop it and continue with a non-visited one
         State* s;
-
         while (top > 0 && (s = stack + top-1)->visited)
           (top)--;
 
@@ -318,7 +335,11 @@ namespace Hermes
                 continue;
               }
               else
+              {
                 s->rep = s->e[i];
+                s->rep_subidx = 0;
+                s->rep_i = 0;
+              }
               s->er[i] = H2D_UNITY;
               nused++;
             }
@@ -331,7 +352,7 @@ namespace Hermes
 
           (id)++;
 
-          if(s->rep->is_triangle())
+          if(s->is_triangle())
             for (i = 0; i < 3; i++)
               s->bnd[i] = true;
         }
@@ -343,7 +364,7 @@ namespace Hermes
           // ..where the element is used ..
           if(s->e[i] != NULL)
             if(s->sub_idx[i] == 0 && s->e[i]->active)
-              if(!s->rep->is_triangle())
+              if(!s->e[i]->is_triangle())
                 init_transforms(s, i);
         }
 
@@ -369,13 +390,26 @@ namespace Hermes
           }
 
           set_boundary_info(s);
-
-          states[count++] = State::clone(s);
+          s->rep = NULL;
+          // EXTREMELY IMPORTANT.
+          // The for loop here is NOT through all meshes, but only
+          // through the spaces.
+          // The reason is not to include states that only have elements
+          // on meshes that are not a part of the weak form.
+          for(int j = 0; j < this->spaces_size; j++)
+            if(s->e[j] != NULL)
+            {
+              s->rep = s->e[j];
+              s->rep_subidx = s->sub_idx[j];
+              s->rep_i = j;
+            }
+          if(s->rep)
+            states[count++] = State::clone(s);
           continue;
         }
 
         // Triangle: push son states
-        if(s->rep->is_triangle())
+        if(s->is_triangle())
         {
           // Triangle always has 4 sons.
           for (son = 0; son <= 3; son++)
@@ -391,7 +425,6 @@ namespace Hermes
               }
               else if(s->e[i]->active)
               {
-                ns->rep = s->e[i];
                 ns->e[i] = s->e[i];
                 ns->sub_idx[i] = s->sub_idx[i];
                 ns->push_transform(son, i, true);
@@ -403,8 +436,6 @@ namespace Hermes
                 // If the son's element is active.
                 if(ns->e[i]->active)
                   ns->sub_idx[i] = 0;
-                if(ns->e[i] != NULL)
-                  ns->rep = ns->e[i];
               }
             }
 
@@ -467,8 +498,6 @@ namespace Hermes
                     if(ns->e[i]->active)
                       ns->sub_idx[i] = 0;
                   }
-                  if(ns->e[i] != NULL)
-                    ns->rep = ns->e[i];
                 }
               }
             }
@@ -506,8 +535,6 @@ namespace Hermes
                     if(ns->e[i]->active)
                       ns->sub_idx[i] = 0;
                   }
-                  if(ns->e[i] != NULL)
-                    ns->rep = ns->e[i];
                 }
               }
             }
@@ -536,8 +563,6 @@ namespace Hermes
                 move_to_son(ns->er + i, s->er + i, current_sons[i][0]);
                 if(ns->e[i]->active)
                   ns->sub_idx[i] = 0;
-                if(ns->e[i] != NULL)
-                  ns->rep = ns->e[i];
               }
             }
           }
@@ -827,7 +852,7 @@ namespace Hermes
       this->fn = fn;
 
       size = 256;
-      if(master)
+      
       {
         stack = new State[size];
         memset(stack, 0, size * sizeof(State));
@@ -883,7 +908,7 @@ namespace Hermes
                 this->info("counter = %d, area_1 = %g, area_2 = %g.\n", counter, areas[counter], e->get_area());
                 throw Hermes::Exceptions::Exception("Meshes not compatible in Traverse::begin().");
               }
-            counter++;
+              counter++;
           }
         }
         delete [] areas;
@@ -900,7 +925,6 @@ namespace Hermes
 
     void Traverse::finish()
     {
-      if(master)
       {
         delete [] subs;
         delete [] sons;

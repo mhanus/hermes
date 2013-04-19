@@ -84,7 +84,7 @@ MatrixSolverType matrix_solver = SOLVER_UMFPACK;
 // Stopping criterion for Newton on fine mesh->
 const double NEWTON_TOL = 1e-5;                   
 // Maximum allowed number of Newton iterations.
-const int NEWTON_MAX_ITER = 20;                   
+const int max_allowed_iterations = 20;                   
 
 // Choose one of the following time-integration methods, or define your own Butcher's table. The last number
 // in the name of each method is its order. The one before last, if present, is the number of stages.
@@ -110,8 +110,6 @@ const double heat_src = 1.0;
 
 int main(int argc, char* argv[])
 {
-  Hermes2DApi.set_integral_param_value(numThreads,1);
-
   // Choose a Butcher's table or define your own.
   ButcherTable bt(butcher_table_type);
   if (bt.is_explicit()) Hermes::Mixins::Loggable::Static::info("Using a %d-stage explicit R-K method.", bt.get_size());
@@ -207,7 +205,7 @@ int main(int argc, char* argv[])
         runge_kutta.set_verbose_output(true);
         runge_kutta.set_time(current_time);
         runge_kutta.set_time_step(time_step);
-        runge_kutta.set_newton_tol(NEWTON_TOL);
+        runge_kutta.set_tolerance(NEWTON_TOL);
         runge_kutta.rk_time_step_newton(sln_time_prev, sln_time_new);
       }
       catch(Exceptions::Exception& e)

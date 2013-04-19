@@ -125,7 +125,7 @@ namespace Hermes
       virtual Func<Scalar>* get_pt_value(double x, double y, Element* e = NULL);
 
       /// Multiplies the function represented by this class by the given coefficient.
-      void multiply(Scalar coef);
+      virtual void multiply(Scalar coef);
 
       /// Returns solution type.
       inline SolutionType get_type() const { return sln_type; };
@@ -212,7 +212,7 @@ namespace Hermes
       /// a table from the lowest layer.
       /// The highest layer (in contrast to the PrecalcShapeset class) is represented
       /// here only by this array.
-      std::map<uint64_t, LightArray<struct Function<Scalar>::Node*>*>* tables[H2D_MAX_QUADRATURES][H2D_SOLUTION_ELEMENT_CACHE_SIZE];
+      SubElementMap<LightArray<struct Function<Scalar>::Node*> > tables[H2D_MAX_QUADRATURES][H2D_SOLUTION_ELEMENT_CACHE_SIZE];
 
       Element* elems[H2D_MAX_QUADRATURES][H2D_SOLUTION_ELEMENT_CACHE_SIZE];
       int cur_elem, oldest[H2D_SOLUTION_ELEMENT_CACHE_SIZE];
@@ -251,7 +251,7 @@ namespace Hermes
       template<typename T> friend class Func;
       template<typename T> friend class DiscontinuousFunc;
       template<typename T> friend class DiscreteProblem;
-      template<typename T> friend class DiscreteProblemLinear;
+      template<typename T> friend class DiscreteProblemIntegrationOrderCalculator;
       template<typename T> friend class NeighborSearch;
       template<typename T> friend HERMES_API Func<T>* init_fn(Solution<T>*fu, const int order);
       template<typename T> friend class RefinementSelectors::ProjBasedSelector;

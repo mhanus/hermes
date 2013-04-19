@@ -924,7 +924,9 @@ namespace Hermes
       if(toplevel)
         for (int i = 0; i < 4; i++)
           if(nurbs[i] != NULL)
+          {
             nurbs[i]->unref();
+          }
     }
   }
 }

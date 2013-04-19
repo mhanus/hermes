@@ -71,16 +71,22 @@ namespace Hermes
     /// @ingroup userSolvingAPI
     /// Runge-Kutta methods implementation for time-dependent problems.
     template<typename Scalar>
-    class HERMES_API RungeKutta : public Hermes::Mixins::Loggable, public Hermes::Mixins::TimeMeasurable, public Hermes::Mixins::IntegrableWithGlobalOrder, public Hermes::Mixins::SettableComputationTime, public Hermes::Hermes2D::Mixins::SettableSpaces<Scalar>, public Hermes::Hermes2D::Mixins::MatrixRhsOutput<Scalar>
+    class HERMES_API RungeKutta : 
+      public Hermes::Mixins::Loggable,
+      public Hermes::Mixins::TimeMeasurable,
+      public Hermes::Mixins::IntegrableWithGlobalOrder,
+      public Hermes::Mixins::SettableComputationTime,
+      public Hermes::Hermes2D::Mixins::SettableSpaces<Scalar>,
+      public Hermes::Hermes2D::Mixins::MatrixRhsOutput<Scalar>
     {
     public:
       /// Constructor.
       /// Parameter start_from_zero_K_vector: if set to true, the last K_vector will NOT be used
       /// as an initial guess for the Newton's method, instead zero vector will be used.
-      RungeKutta(const WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> > spaces, ButcherTable* bt);
+      RungeKutta(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> > spaces, ButcherTable* bt);
 
       /// Constructor for one equation.
-      RungeKutta(const WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar> space, ButcherTable* bt);
+      RungeKutta(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar> space, ButcherTable* bt);
 
       /// Projections will be local (projection-based).
       void use_local_projections();
@@ -112,14 +118,14 @@ namespace Hermes
       void rk_time_step_newton(MeshFunctionSharedPtr<Scalar> sln_time_prev, MeshFunctionSharedPtr<Scalar> sln_time_new);
 
       void set_freeze_jacobian();
-      void set_newton_tol(double newton_tol);
-      void set_newton_max_iter(int newton_max_iter);
+      void set_tolerance(double newton_tol);
+      void set_max_allowed_iterations  (int newton_max_iter);
       void set_newton_damping_coeff(double newton_damping_coeff);
       void set_newton_max_allowed_residual_norm(double newton_max_allowed_residual_norm);
 
-      virtual void set_spaces(Hermes::vector<SpaceSharedPtr<Scalar> > spaces);
-      virtual void set_space(SpaceSharedPtr<Scalar> space);
-      virtual Hermes::vector<SpaceSharedPtr<Scalar> > get_spaces() const;
+      virtual void set_spaces(Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
+      virtual void set_space(SpaceSharedPtr<Scalar>& space);
+      virtual Hermes::vector<SpaceSharedPtr<Scalar> >& get_spaces();
 
       /**
        \fn  void RungeKutta::set_filters_to_reinit(Hermes::vector<Filter<Scalar>*> filters_to_reinit);

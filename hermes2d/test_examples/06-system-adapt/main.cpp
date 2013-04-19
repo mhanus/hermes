@@ -73,13 +73,13 @@ const int MESH_REGULARITY = -1;
 // candidates in hp-adaptivity. Default value is 1.0.
 const double CONV_EXP = 1;
 // Stopping criterion for adaptivity.
-const double ERR_STOP = 1.0;
+const double ERR_STOP = 15.0;
 // Adaptivity process stops when the number of degrees of freedom grows over
 // this limit. This is mainly to prevent h-adaptivity to go on forever.
 const int NDOF_STOP = 60000;
 // Newton's method.
 double NEWTON_TOL_FINE = 1e-0;
-int NEWTON_MAX_ITER = 10;
+int max_allowed_iterations = 10;
 // Matrix solver: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
 // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
 MatrixSolverType matrix_solver = SOLVER_UMFPACK;
@@ -97,8 +97,6 @@ int main(int argc, char* argv[])
   // Time measurement.
   Hermes::Mixins::TimeMeasurable cpu_time;
   cpu_time.tick();
-
-  Hermes2DApi.set_integral_param_value(numThreads,1);
 
   // Load the mesh.
   MeshSharedPtr u_mesh(new Mesh), v_mesh(new Mesh);
@@ -153,6 +151,10 @@ int main(int argc, char* argv[])
 
   NewtonSolver<double> newton;
 
+  newton.set_weak_formulation(&wf);
+
+  newton.set_tolerance(1e-1);
+
   // Adaptivity loop:
   int as = 1;
   bool done = false;
@@ -172,6 +174,8 @@ int main(int argc, char* argv[])
 
     Hermes::vector<SpaceSharedPtr<double> > ref_spaces_const(u_ref_space, v_ref_space);
 
+    newton.set_spaces(ref_spaces_const);
+
     int ndof_ref = Space<double>::get_num_dofs(ref_spaces_const);
 
     // Initialize reference problem.
@@ -183,12 +187,6 @@ int main(int argc, char* argv[])
     // Perform Newton's iteration.
     try
     {
-      newton.set_spaces(ref_spaces_const);
-
-      newton.set_weak_formulation(&wf);
-
-      newton.set_newton_tol(1e-1);
-
       newton.solve();
     }
     catch(Hermes::Exceptions::Exception& e)
@@ -284,6 +282,6 @@ int main(int argc, char* argv[])
   Hermes::Mixins::Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
 
   // Wait for all views to be closed.
-  Views::View::wait();
+  // Views::View::wait();
   return 0;
 }

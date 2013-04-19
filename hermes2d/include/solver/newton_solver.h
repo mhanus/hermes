@@ -24,6 +24,8 @@
 
 #include "global.h"
 #include "discrete_problem.h"
+#include "nonlinear_solver.h"
+#include "newton_solver_convergence_measurement.h"
 #include "exceptions.h"
 
 namespace Hermes
@@ -38,8 +40,8 @@ namespace Hermes
     /// Hermes::Hermes2D::NewtonSolver<double> newton_solver(&wf, &space);<br>
     /// Set a whole bunch of parameters according to your liking.<br>
     /// See the class documentation for all possible parameters.<br>
-    /// newton_solver.set_newton_tol(1e-6);<br>
-    /// newton_solver.set_newton_max_iter(15);<br>
+    /// newton_solver.set_tolerance(1e-6);<br>
+    /// newton_solver.set_max_allowed_iterations(15);<br>
     /// newton_solver.set_max_allowed_residual_norm(1e6);<br>
     /// newton_solver.set_min_allowed_damping_coeff(1e-3);<br>
     /// <br>
@@ -68,58 +70,28 @@ namespace Hermes
     ///&nbsp;return -1;<br>
     /// }<br>
     template<typename Scalar>
-    class HERMES_API NewtonSolver : public NonlinearSolver<Scalar>, public Hermes::Hermes2D::Mixins::SettableSpaces<Scalar>, public Hermes::Mixins::OutputAttachable, public Hermes::Hermes2D::Mixins::MatrixRhsOutput<Scalar>, public Hermes::Hermes2D::Mixins::StateQueryable
+    class HERMES_API NewtonSolver : public Hermes::Hermes2D::NonlinearSolver<Scalar>
     {
     public:
       NewtonSolver();
       NewtonSolver(DiscreteProblem<Scalar>* dp);
-      NewtonSolver(const WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar> space);
-      NewtonSolver(const WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> > spaces);
-      void init_linear_solver();
+      NewtonSolver(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space);
+      NewtonSolver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
+      virtual ~NewtonSolver();
 
-      ~NewtonSolver();
-
-      /// State querying helpers.
-      virtual bool isOkay() const;
-      inline std::string getClassName() const { return "NewtonSolver"; }
-
+      // See the base class for details, the following serves only for avoiding C++ name-hiding.
+      using NonlinearSolver<Scalar>::solve;
       /// Solve.
-      /// \param[in] coeff_vec Ceofficient vector to start from.
-      void solve(Scalar* coeff_vec = NULL);
+      /// \param[in] coeff_vec initiall guess as a vector of coefficients wrt. basis functions.
+      virtual void solve(Scalar* coeff_vec = NULL);
 
-      /// Solve.
-      /// \param[in] initial_guess Solution to start from (which is projected to obtain the initial coefficient vector.
-      void solve(MeshFunctionSharedPtr<Scalar> initial_guess);
-
-      /// Solve.
-      /// \param[in] initial_guess Solutions to start from (which is projected to obtain the initial coefficient vector.
-      void solve(Hermes::vector<MeshFunctionSharedPtr<Scalar> > initial_guess);
-
-      /// Solve which keeps jacobian.
-      /// A solve() method where the jacobian is reused.
-      void solve_keep_jacobian(Scalar* coeff_vec = NULL);
-      
-      /// Solve which keeps jacobian.
-      /// \param[in] initial_guess Solution to start from (which is projected to obtain the initial coefficient vector.
-      void solve_keep_jacobian(MeshFunctionSharedPtr<Scalar> initial_guess);
-      
-      /// Solve which keeps jacobian.
-      /// \param[in] initial_guess Solutions to start from (which is projected to obtain the initial coefficient vector.
-      void solve_keep_jacobian(Hermes::vector<MeshFunctionSharedPtr<Scalar> > initial_guess);
+      /// Sets the current convergence measurement.
+      /// Default: AbsoluteNorm
+      void set_convergence_measurement(NewtonSolverConvergenceMeasurement measurement);
 
       /// Sets the maximum allowed norm of the residual during the calculation.
       /// Default: 1E9
       void set_max_allowed_residual_norm(double max_allowed_residual_norm_to_set);
-
-      /// Sets minimum damping coefficient.
-      /// Default: 1E-4
-      void set_min_allowed_damping_coeff(double min_allowed_damping_coeff_to_set);
-
-      /// Call NonlinearSolver::set_iterative_method() and set the method to the linear solver (if applicable).
-      virtual void set_iterative_method(const char* iterative_method_name);
-
-      /// Call NonlinearSolver::set_preconditioner() and set the method to the linear solver (if applicable).
-      virtual void set_preconditioner(const char* preconditioner_name);
 
       /// Interpret the residual as a function.
       /// Translate the residual vector into a residual function (or multiple functions)
@@ -132,21 +104,12 @@ namespace Hermes
 
       /// Set the residual norm tolerance for ending the Newton's loop.
       /// Default: 1E-8.
-      void set_newton_tol(double newton_tol, bool relative = false);
+      void set_tolerance(double newton_tol);
 
-      /// Set the maximum number of Newton's iterations.
-      /// Default: 15
-      void set_newton_max_iter(int newton_max_iter);
-
-      /// Set time information for time-dependent problems.
-      /// See the class Hermes::Mixins::TimeMeasurable.
-      virtual void set_time(double time);
-      virtual void set_time_step(double time_step);
-
-      /// See the class Hermes::Hermes2D::Mixins::SettableSpaces.
-      virtual void set_spaces(Hermes::vector<SpaceSharedPtr<Scalar> > spaces);
-      virtual void set_space(SpaceSharedPtr<Scalar> space);
-      virtual Hermes::vector<SpaceSharedPtr<Scalar> > get_spaces() const;
+#pragma region damping-public
+      /// Sets minimum damping coefficient.
+      /// Default: 1E-4
+      void set_min_allowed_damping_coeff(double min_allowed_damping_coeff_to_set);
 
       /// Turn on or off manual damping (default is the automatic) and optionally sets manual damping coefficient.
       /// Default: default is the automatic damping, default coefficient if manual damping used is set by this method.
@@ -181,44 +144,84 @@ namespace Hermes
       /// Default: 1
       /// \param[in] steps Number of steps.
       void set_necessary_successful_steps_to_increase(unsigned int steps);
+#pragma endregion
 
-      /// Set the weak forms.
-      void set_weak_formulation(const WeakForm<Scalar>* wf);
+#pragma region jacobian_recalculation-public
+      /// Set the ratio of the current residual norm and the previous residual norm necessary to deem a step 'successful'.
+      /// IMPORTANT: it is truly a FACTOR, i.e. the two successive residual norms are put in a fraction and this number is
+      /// then compared to the ratio set by this method.
+      void set_sufficient_improvement_factor_jacobian(double ratio);
+
+      /// Set maximum number of steps (Newton iterations) that a jacobian can be reused if it is deemed a 'successful' reusal
+      /// with respect to the improvement factor.
+      void set_max_steps_with_reused_jacobian(unsigned int steps);
+#pragma endregion
+      
+#pragma region ConvergenceState      
+      /// Convergence state.
+      enum ConvergenceState
+      {
+        Converged,
+        NotConverged,
+        BelowMinDampingCoeff,
+        AboveMaxAllowedResidualNorm,
+        AboveMaxIterations,
+        Error
+      };
+
+      class NewtonException : public Hermes::Exceptions::Exception
+      {
+      public:
+        NewtonException(ConvergenceState convergenceState);
+
+        ConvergenceState get_exception_state();
+
+      protected:
+        ConvergenceState convergenceState;
+      };
+
+      /// Find out the state.
+      typename NewtonSolver<Scalar>::ConvergenceState get_convergence_state();
+#pragma endregion
 
     protected:
-      /// This instance owns its DP.
-      const bool own_dp;
+      /// State querying helpers.
+      virtual bool isOkay() const;
+      inline std::string getClassName() const { return "NewtonSolver"; }
 
-      /// Used by method solve_keep_jacobian().
-      SparseMatrix<Scalar>* kept_jacobian;
+      void init_solving(int ndof, Scalar*& coeff_vec, Scalar*& coeff_vec_back);
+      void finalize_solving(Scalar* coeff_vec, Scalar*& coeff_vec_back);
+      void deinit_solving(Scalar* coeff_vec, Scalar*& coeff_vec_back);
 
+      /// Calculates the residual norm.
+      double calculate_residual_norm();
+
+      /// Calculates the new damping coefficient.
+      double calculate_damping_coefficient(bool& damping_coefficient_drop, unsigned int& successful_steps);
+
+      NewtonSolverConvergenceMeasurement current_convergence_measurement;
+      
       /// Internal setting of default values (see individual set methods).
-      void init_attributes();
+      void init_newton();
 
-      /// Jacobian.
-      SparseMatrix<Scalar>* jacobian;
-
-      /// Residual.
-      Vector<Scalar>* residual;
-
-      /// Linear solver.
-      LinearMatrixSolver<Scalar>* linear_solver;
-
-      double newton_tol;
-      bool newton_tol_relative;
-      int newton_max_iter;
-      bool residual_as_function;
+      double newton_tolerance;
 
       /// Maximum allowed residual norm. If this number is exceeded, the methods solve() return 'false'.
       /// By default set to 1E6.
       /// Possible to change via method set_max_allowed_residual_norm().
       double max_allowed_residual_norm;
-      double min_allowed_damping_coeff;
 
-      double currentDampingCofficient;
+      bool residual_as_function;
       
+
+#pragma region damping-private
       /// Manual / auto.
       bool manual_damping;
+
+      /// Manual.
+      double manual_damping_coefficient;
+
+      /// Auto.
       /// The ratio between two damping coeffs when changing.
       double auto_damping_ratio;
       /// The initial (and maximum) damping coefficient
@@ -227,6 +230,43 @@ namespace Hermes
       double sufficient_improvement_factor;
       /// necessary number of steps to increase back the damping coeff.
       unsigned int necessary_successful_steps_to_increase;
+      /// Minimum allowed damping coeff.
+      double min_allowed_damping_coeff;      
+#pragma endregion
+
+#pragma region jacobian_recalculation-private
+      /// For deciding if the jacobian is constant at this point.
+      bool force_reuse_jacobian_values(unsigned int& successful_steps_with_constant_jacobian);
+
+      double sufficient_improvement_factor_jacobian;
+      unsigned int max_steps_with_reused_jacobian;
+#pragma endregion
+
+#pragma region OutputAttachable
+      // For derived classes - read-only access.
+      const OutputParameterDoubleVector& residual_norms() const { return this->p_residual_norms; };
+      const OutputParameterDoubleVector& solution_norms() const { return this->p_solution_norms; };
+      const OutputParameterDouble& solution_change_norm() const { return this->p_solution_change_norm; };
+      const OutputParameterUnsignedInt& successful_steps_damping() const { return this->p_successful_steps_damping; };
+      const OutputParameterUnsignedInt& successful_steps_jacobian() const { return this->p_successful_steps_jacobian; };
+      
+      const OutputParameterDouble& current_damping_coefficient() const { return this->p_current_damping_coefficient; };
+      const OutputParameterBool& residual_norm_drop() const { return this->p_residual_norm_drop; };
+      const OutputParameterUnsignedInt& iteration() const { return this->p_iteration; };
+
+    private:
+      // Parameters for OutputAttachable mixin.
+      OutputParameterDoubleVector p_residual_norms;
+      OutputParameterDoubleVector p_solution_norms;
+      OutputParameterDouble p_solution_change_norm;
+      OutputParameterUnsignedInt p_successful_steps_damping;
+      OutputParameterUnsignedInt p_successful_steps_jacobian;
+      OutputParameterDouble p_current_damping_coefficient;
+      OutputParameterBool p_residual_norm_drop;
+      OutputParameterUnsignedInt p_iteration;
+#pragma endregion
+
+      friend bool newtonConverged<Scalar>(NewtonSolver<Scalar>*);
     };
   }
 }

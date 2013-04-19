@@ -40,15 +40,6 @@ namespace Hermes
       /// \param shapeset[in] Pointer to the shapeset to be precalculated.
       PrecalcShapeset(Shapeset* shapeset);
 
-      /// \brief Constructs a slave precalculated shapeset class.
-      /// \details The slave instance does not hold any precalculated tables.
-      /// Instead, it refers to those contained in the master instance. However,
-      /// the slave can have different shape function active, different transform
-      /// selected, etc. Slave pss's are used for test functions when calling
-      /// bilinear forms, inside Solution so as not to disrupt user's pss, etc.
-      /// \param master_pss[in] Master precalculated shapeset pointer.
-      PrecalcShapeset(PrecalcShapeset* master_pss);
-
       /// Destructor.
       virtual ~PrecalcShapeset();
 
@@ -68,19 +59,11 @@ namespace Hermes
       /// \brief Frees all precalculated tables.
       virtual void free();
 
-      /// Virtual function handling overflows. Has to be virtual, because
-      /// the necessary iterators in the templated class do not work with GCC.
-      virtual void handle_overflow_idx();
-
-
       /// Returns the index of the active shape (can be negative if the shape is constrained).
       int get_active_shape() const;
 
       /// Returns a pointer to the shapeset which is being precalculated.
       Shapeset* get_shapeset() const;
-
-      /// For internal use only.
-      void set_master_transform();
 
       /// Returns the polynomial order of the active shape function on given edge.
       virtual int get_edge_fn_order(int edge);
@@ -101,16 +84,11 @@ namespace Hermes
       /// The highest and most complicated one maps a key formed by
       /// quadrature table selector (0-7), mode of the shape function (triangle/quad),
       /// and shape function index to a table from the middle layer.
-      LightArray<std::map<uint64_t, LightArray<Node*>*>*> tables;
+      LightArray<SubElementMap<LightArray<Node*> >*> tables;
 
       int index;
 
       int max_index[H2D_NUM_MODES];
-
-      PrecalcShapeset* master_pss;
-
-      /// Returns true iff this is a precalculated shapeset for test functions.
-      bool is_slave() const;
 
       virtual void precalculate(int order, int mask);
 
@@ -127,6 +105,8 @@ namespace Hermes
       template<typename T> friend class Solution;
       template<typename T> friend class DiscontinuousFunc;
       template<typename T> friend class DiscreteProblem;
+      template<typename T> friend class DiscreteProblemDGAssembler;
+      template<typename T> friend class DiscreteProblemThreadAssembler;
       template<typename T> friend class NeighborSearch;
       friend class CurvMap;
     };

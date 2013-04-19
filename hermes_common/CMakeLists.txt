@@ -24,10 +24,7 @@ project(hermes_common)
     src/ord.cpp
     src/hermes_function.cpp
     src/exceptions.cpp
-    src/solvers/dp_interface.cpp
     src/solvers/linear_matrix_solver.cpp
-    src/solvers/nonlinear_solver.cpp
-    src/solvers/newton_solver_nox.cpp
     src/solvers/epetra.cpp
     src/solvers/aztecoo_solver.cpp
     src/solvers/amesos_solver.cpp
@@ -55,10 +52,7 @@ project(hermes_common)
     include/hermes_function.h
     include/exceptions.h
     include/vector.h
-    include/solvers/dp_interface.h
     include/solvers/linear_matrix_solver.h
-    include/solvers/nonlinear_solver.h
-    include/solvers/newton_solver_nox.h
     include/solvers/epetra.h
     include/solvers/aztecoo_solver.h
     include/solvers/amesos_solver.h
@@ -106,7 +100,7 @@ project(hermes_common)
       ${SUPERLU_LIBRARY}
       ${LAPACK_LIBRARIES}
       ${STACK_WALKER_LIBRARY}
-      ${PTHREAD_LIBRARY} ${MPI_LIBRARIES} ${SCALAPACK_LIBRARIES}
+      ${PTHREAD_LIBRARY} ${TCMALLOC_LIBRARY} ${MPI_LIBRARIES} ${SCALAPACK_LIBRARIES}
       ${CLAPACK_LIBRARY} ${BLAS_LIBRARY} ${F2C_LIBRARY}
       ${ADDITIONAL_LIBS}
     )

@@ -33,9 +33,10 @@
 
 /// Internal.
 #define H2D_NUM_MODES 2 ///< A number of modes, see enum ElementMode2D.
-#define H2D_SOLUTION_ELEMENT_CACHE_SIZE 2 ///< A maximum number of vertices of an element.
+#define H2D_SOLUTION_ELEMENT_CACHE_SIZE 4 ///< An internal parameter.
 #define H2D_MAX_NODE_ID 10000000
 #define H2D_MAX_SOLUTION_COMPONENTS 2
+static const std::string H2D_DG_INNER_EDGE = "-1234567";
 
 #define HERMES_ONE NULL
 #define HERMES_DEFAULT_FUNCTION NULL
@@ -150,6 +151,7 @@ namespace Hermes
       static double norm_fn_hdiv(MeshFunction<Scalar>* sln, RefMap* ru);
 
       static double get_l2_norm(Vector<Scalar>* vec);
+      static double get_l2_norm(Scalar* vec, int count);
     };
 
     /// Projection norms.

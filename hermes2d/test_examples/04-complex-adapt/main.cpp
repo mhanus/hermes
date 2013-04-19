@@ -67,7 +67,6 @@ const double OMEGA = 2 * M_PI * FREQ;
 int main(int argc, char* argv[])
 {
   Hermes::Mixins::TimeMeasurable m;
-  Hermes2DApi.set_integral_param_value(numThreads, 1);
   m.tick();
 
   // Load the mesh.
@@ -138,7 +137,7 @@ int main(int argc, char* argv[])
     }
     try
     {
-      newton.solve_keep_jacobian(coeff_vec);
+      newton.solve(coeff_vec);
     }
     catch(Hermes::Exceptions::Exception& e)
     {

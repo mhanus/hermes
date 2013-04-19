@@ -101,14 +101,16 @@ project(hermes2d)
   # Source files for the Hermes2d library.
   #
   set(SRC
-    src/forms.cpp
+    src/api2d.cpp
     src/asmlist.cpp
-    src/newton_solver.cpp
-    src/picard_solver.cpp
-    src/linear_solver.cpp
-    
     src/calculation_continuity.cpp
-
+    src/forms.cpp
+    src/mixins2d.cpp
+    src/neighbor.cpp
+    src/graph.cpp
+    src/global.cpp
+    src/spline.cpp
+    
     src/adapt/adapt.cpp
     src/adapt/kelly_type_adapt.cpp
 
@@ -122,9 +124,6 @@ project(hermes2d)
     src/function/mesh_function.cpp
     src/function/solution_h2d_xml.cpp
 
-    src/api2d.cpp
-    src/mixins2d.cpp
-    
     src/mesh/refmap.cpp
     src/mesh/curved.cpp
     src/mesh/refinement_type.cpp
@@ -185,15 +184,7 @@ project(hermes2d)
     src/views/vectorizer.cpp
 
     src/weakform/weakform.cpp
-
-    src/neighbor.cpp
-    src/graph.cpp
-    src/global.cpp
-    src/discrete_problem.cpp
-    src/discrete_problem_linear.cpp
-    src/runge_kutta.cpp
-    src/spline.cpp
-
+  
     src/projections/ogprojection.cpp
     src/projections/ogprojection_nox.cpp
     src/projections/localprojection.cpp
@@ -203,16 +194,65 @@ project(hermes2d)
     src/weakform_library/weakforms_hcurl.cpp
     src/weakform_library/weakforms_maxwell.cpp
     src/weakform_library/weakforms_neutronics.cpp
+    
+    src/discrete_problem.cpp
+    src/discrete_problem/discrete_problem_helpers.cpp
+    src/discrete_problem/discrete_problem_cache.cpp
+    src/discrete_problem/discrete_problem_selective_assembler.cpp
+    src/discrete_problem/discrete_problem_thread_assembler.cpp
+    src/discrete_problem/discrete_problem_integration_order_calculator.cpp
+    src/discrete_problem/dg/discrete_problem_dg_assembler.cpp
+    src/discrete_problem/dg/multimesh_dg_neighbor_tree.cpp
+    src/discrete_problem/dg/multimesh_dg_neighbor_tree_node.cpp
+    
+    src/solver/solver.cpp
+    src/solver/linear_solver.cpp
+    src/solver/nonlinear_solver.cpp
+    
+    src/solver/nox_solver.cpp
+    src/solver/newton_solver.cpp
+    src/solver/newton_solver_convergence_measurement.cpp
+    src/solver/picard_solver.cpp
+    src/solver/runge_kutta.cpp
+  )
+  
+  SOURCE_GROUP(
+    "Source Files\\Solvers" FILES
+    src/solver/solver.cpp
+    src/solver/linear_solver.cpp
+    src/solver/nonlinear_solver.cpp
+    
+    src/solver/nox_solver.cpp
+    src/solver/newton_solver_convergence_measurement.cpp
+    src/solver/newton_solver.cpp
+    src/solver/picard_solver.cpp
+    src/solver/runge_kutta.cpp
+  )
+  
+  SOURCE_GROUP(
+    "Source Files\\Discrete Problem" FILES 
+    src/discrete_problem.cpp
+    src/discrete_problem/discrete_problem_helpers.cpp
+    src/discrete_problem/discrete_problem_cache.cpp
+    src/discrete_problem/discrete_problem_selective_assembler.cpp
+    src/discrete_problem/discrete_problem_thread_assembler.cpp
+    src/discrete_problem/discrete_problem_integration_order_calculator.cpp
+    src/discrete_problem/dg/discrete_problem_dg_assembler.cpp
+    src/discrete_problem/dg/multimesh_dg_neighbor_tree.cpp
+    src/discrete_problem/dg/multimesh_dg_neighbor_tree_node.cpp
   )
   
   set(HEADERS
-    include/forms.h
+    include/api2d.h
     include/asmlist.h
-    include/newton_solver.h
-    include/picard_solver.h
-    include/linear_solver.h
-
     include/calculation_continuity.h
+    include/forms.h
+    include/mixins2d.h
+    include/neighbor.h
+    include/sub_element_map.h
+    include/graph.h
+    include/global.h
+    include/spline.h
 
     include/adapt/adapt.h
     include/adapt/kelly_type_adapt.h
@@ -231,9 +271,6 @@ project(hermes2d)
     include/integrals/h1.h
     include/integrals/hdiv.h
     include/integrals/hcurl.h
-    
-    include/api2d.h
-    include/mixins2d.h
     
     include/mesh/refmap.h
     include/mesh/curved.h
@@ -294,14 +331,7 @@ project(hermes2d)
 
     include/weakform/weakform.h
 
-    include/neighbor.h
-    include/graph.h
-    include/global.h
-    include/discrete_problem.h
-    include/discrete_problem_linear.h
-    include/runge_kutta.h
-    include/spline.h
-
+    
     include/projections/ogprojection.h
     include/projections/ogprojection_nox.h
     include/projections/localprojection.h
@@ -311,6 +341,52 @@ project(hermes2d)
     include/weakform_library/weakforms_hcurl.h
     include/weakform_library/weakforms_maxwell.h
     include/weakform_library/weakforms_neutronics.h
+    
+    include/discrete_problem.h
+    include/discrete_problem/discrete_problem_helpers.h
+    include/discrete_problem/discrete_problem_cache.h
+    include/discrete_problem/discrete_problem_selective_assembler.h
+    include/discrete_problem/discrete_problem_thread_assembler.h
+    include/discrete_problem/discrete_problem_integration_order_calculator.h
+    include/discrete_problem/dg/discrete_problem_dg_assembler.h
+    include/discrete_problem/dg/multimesh_dg_neighbor_tree.h
+    include/discrete_problem/dg/multimesh_dg_neighbor_tree_node.h
+    
+    include/solver/solver.h
+    include/solver/linear_solver.h
+    include/solver/nonlinear_solver.h
+    
+    include/solver/nox_solver.h
+    include/solver/newton_solver_convergence_measurement.h
+    include/solver/newton_solver.h
+    include/solver/picard_solver.h
+    include/solver/runge_kutta.h
+  )
+    
+    SOURCE_GROUP(
+    "Header Files\\Solvers" FILES 
+    include/solver/solver.h
+    include/solver/linear_solver.h
+    include/solver/nonlinear_solver.h
+    
+    include/solver/nox_solver.h
+    include/solver/newton_solver.h
+    include/solver/newton_solver_convergence_measurement.h
+    include/solver/picard_solver.h
+    include/solver/runge_kutta.h
+  )
+  
+  SOURCE_GROUP(
+    "Header Files\\Discrete Problem" FILES 
+    include/discrete_problem.h
+    include/discrete_problem/discrete_problem_helpers.h
+    include/discrete_problem/discrete_problem_cache.h
+    include/discrete_problem/discrete_problem_selective_assembler.h
+    include/discrete_problem/discrete_problem_thread_assembler.h
+    include/discrete_problem/discrete_problem_integration_order_calculator.h
+    include/discrete_problem/dg/discrete_problem_dg_assembler.h
+    include/discrete_problem/dg/multimesh_dg_neighbor_tree.h
+    include/discrete_problem/dg/multimesh_dg_neighbor_tree_node.h
   )
     
   #
@@ -365,6 +441,9 @@ project(hermes2d)
   # Install header files.
 
   file(GLOB INC            "include/*.h")
+  file(GLOB INC_SOLVER          "include/solver/*.h")
+  file(GLOB INC_DP          "include/discrete_problem/*.h")
+  file(GLOB INC_DP_DG       "include/discrete_problem/dg/*.h")
   file(GLOB INC_FORM       "include/form/*.h")
   file(GLOB INC_SPACE      "include/space/*.h")
   file(GLOB INC_MESH       "include/mesh/*.h")
@@ -384,6 +463,9 @@ project(hermes2d)
   file(GLOB INC_WEAKFORM_LIBRARY "include/weakform_library/*.h")
   
   install(FILES ${INC}           DESTINATION ${TARGET_ROOT}/include/hermes2d)
+  install(FILES ${INC_SOLVER}           DESTINATION ${TARGET_ROOT}/include/hermes2d/solver)
+  install(FILES ${INC_DP}           DESTINATION ${TARGET_ROOT}/include/hermes2d/discrete_problem)
+  install(FILES ${INC_DP_DG}           DESTINATION ${TARGET_ROOT}/include/hermes2d/discrete_problem/dg)
   install(FILES ${INC_SPACE}     DESTINATION ${TARGET_ROOT}/include/hermes2d/space)
   install(FILES ${INC_MESH}      DESTINATION ${TARGET_ROOT}/include/hermes2d/mesh)
   install(FILES ${XSD}           DESTINATION ${TARGET_ROOT}/include/hermes2d/xml_schemas)
