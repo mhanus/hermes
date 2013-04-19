@@ -91,7 +91,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    void RungeKutta<Scalar>::set_spaces(Hermes::vector<SpaceSharedPtr<Scalar> >& spaces)
+    void RungeKutta<Scalar>::set_spaces(const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces)
     {
       bool delete_K_vector = false;
       for(unsigned int i = 0; i < spaces.size(); i++)
