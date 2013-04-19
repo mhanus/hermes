@@ -20,11 +20,15 @@
 \brief NOX (nonliner) solver interface.
 */
 #ifndef __H2D_NEWTON_SOLVER_NOX_H_
-#define __H2D_COMMON_NEWTON_SOLVER_NOX_H_
+#define __H2D_NEWTON_SOLVER_NOX_H_
 
 #include "linear_matrix_solver.h"
 #include "nonlinear_solver.h"
 #include "epetra.h"
+
+//FIXME
+#undef HAVE_NOX
+
 #if(defined HAVE_NOX && defined HAVE_EPETRA && defined HAVE_TEUCHOS)
 #include <NOX.H>
 #ifdef _POSIX_C_SOURCE
@@ -44,13 +48,13 @@ namespace Hermes
     /// Implents interfaces needed by NOX Epetra
     template <typename Scalar>
     class HERMES_API DiscreteProblemNOX :
-      public Hermes::Hermes2D::DiscreteProblem<Scalar>,
+      public DiscreteProblem<Scalar>,
       public NOX::Epetra::Interface::Required,
       public NOX::Epetra::Interface::Jacobian,
       public NOX::Epetra::Interface::Preconditioner
     {
     public:
-      DiscreteProblemNOX();
+      DiscreteProblemNOX(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space);
 
       /// \brief Setter for preconditioner.
       void set_precond(Teuchos::RCP<Precond<Scalar> > &pc);
@@ -86,9 +90,10 @@ namespace Hermes
     {
     private:
       Teuchos::RCP<Teuchos::ParameterList> nl_pars;
+      DiscreteProblemNOX<Scalar>* ndp;
     public:
       /// Constructor.
-      NewtonSolverNOX(DiscreteProblemNOX<Scalar> *problem);
+      NewtonSolverNOX(DiscreteProblemNOX<Scalar>* problem);
 
       virtual ~NewtonSolverNOX();
 
@@ -213,6 +218,8 @@ namespace Hermes
         unsigned wrms:1;
         unsigned update:1;
       } conv_flag;
+      
+      virtual std::string getClassName() const { return "NewtonSolverNOX"; }
     };
   }
 }
