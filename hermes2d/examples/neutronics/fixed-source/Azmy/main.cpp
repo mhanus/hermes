@@ -129,7 +129,6 @@ int main(int argc, char* args[])
     Loggable::Static::info("Saving %s. NDOF = %d", args[1], Space<double>::get_num_dofs(spaces));
     
     DiscreteProblem<double> dp(wf, spaces);
-    if (P_INIT == 0) dp.set_fvm();
     SourceIteration solver(&dp);
     
     // Perform the source iteration (by Picard's method with Anderson acceleration).
@@ -183,7 +182,6 @@ int main(int argc, char* args[])
 
   // Discrete formulation.
   DiscreteProblem<double> dp(&wf, spaces);
-  if (P_INIT == 0) dp.set_fvm();
   
   // Algebraic solver.
   SourceIteration solver(&dp);
