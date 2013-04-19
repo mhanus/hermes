@@ -25,16 +25,16 @@
 
 namespace Hermes
 {
-  namespace Solvers
+  namespace Hermes2D
   {
     static Epetra_SerialComm seq_comm;
 
     template<typename Scalar>
-    DiscreteProblemNOX<Scalar>::DiscreteProblemNOX(DiscreteProblemInterface<Scalar>* problem) : dp(problem)
+    DiscreteProblemNOX<Scalar>::DiscreteProblemNOX(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space) : DiscreteProblem<Scalar>(wf, space)
     {
       this->precond = Teuchos::null;
-      if(!this->dp->is_matrix_free())
-        this->dp->create_sparse_structure(&jacobian);
+      if(!this->wf->is_matrix_free())
+        this->create_sparse_structure(&jacobian);
     }
 
     template<typename Scalar>
@@ -47,7 +47,7 @@ namespace Hermes
 
       Scalar* coeff_vec = new Scalar[xx.length()];
       xx.extract(coeff_vec);
-      this->dp->assemble(coeff_vec, NULL, &rhs); // NULL is for the global matrix.
+      this->assemble(coeff_vec, NULL, &rhs); // NULL is for the global matrix.
       delete [] coeff_vec;
 
       return true;
@@ -66,7 +66,7 @@ namespace Hermes
 
       Scalar* coeff_vec = new Scalar[xx.length()];
       xx.extract(coeff_vec);
-      this->dp->assemble(coeff_vec, &jacob, NULL); // NULL is for the right-hand side.
+      this->assemble(coeff_vec, &jacob, NULL); // NULL is for the right-hand side.
       delete [] coeff_vec;
       //jacob.finish();
 
@@ -108,7 +108,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    NewtonSolverNOX<Scalar>::NewtonSolverNOX(DiscreteProblemInterface<Scalar>* problem) : NonlinearSolver<Scalar>(problem), ndp(problem)
+    NewtonSolverNOX<Scalar>::NewtonSolverNOX(DiscreteProblemNOX<Scalar>* problem) : Hermes::Hermes2D::NonlinearSolver<Scalar>(problem), ndp(problem)
     {
       // default values
       // convergence test
