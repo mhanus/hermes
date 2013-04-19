@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
   report_num_dof("Coarse mesh power iteration, NDOF: ", spaces);
   
   Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
-  keff_eigenvalue_iteration.set_picard_tol(TOL_PIT_CM);
+  keff_eigenvalue_iteration.set_tolerance(TOL_PIT_CM);
   keff_eigenvalue_iteration.solve();    
   Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), spaces, power_iterates);
   
@@ -157,7 +157,7 @@ int main(int argc, char* argv[])
     for (unsigned int i = 0; i < N_EQUATIONS; i++)
       selectors.push_back(&selector);
     
-    keff_eigenvalue_iteration.set_picard_tol(TOL_PIT_FM);
+    keff_eigenvalue_iteration.set_tolerance(TOL_PIT_FM);
     
     // Adaptivity loop:
     int as = 1; bool done = false; 
@@ -184,13 +184,7 @@ int main(int argc, char* argv[])
       keff_eigenvalue_iteration.set_spaces(ref_spaces);
       keff_eigenvalue_iteration.solve(power_iterates);
       Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), ref_spaces, power_iterates);
-      
-      // Delete meshes dynamically created in previous adaptivity iteration (they are needed to project previous power_iterates 
-      // to current reference meshes during the above call of keff_eigenvalue_iteration.solve(power_iterates) ).
-      if (as > 1)
-        for(unsigned int i = 0; i < N_EQUATIONS; i++)
-          delete old_meshes[i];
-            
+                  
       report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces);
       OGProjection<double> ogProjection;
       ogProjection.project_global(spaces, power_iterates, coarse_solutions);
@@ -246,17 +240,8 @@ int main(int argc, char* argv[])
           done = true;
       }
       
-      if (!done)
-      {
-        for(unsigned int i = 0; i < N_EQUATIONS; i++)
-        {
-          old_meshes[i] = ref_spaces[i]->get_mesh();
-          delete ref_spaces[i];
-        }
-        
-        // Increase counter.
-        as++;
-      }
+      // Increase counter.
+      if (!done) as++;
     }
     while (!done);
   }

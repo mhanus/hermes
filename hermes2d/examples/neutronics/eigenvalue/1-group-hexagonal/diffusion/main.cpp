@@ -57,8 +57,8 @@ const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse
 const bool USE_TRANSPORT_CORRECTED_CROSS_SECTIONS = false;
 
 // Power iteration control.
-double TOL_PIT_CM = 1e-7;   // Tolerance for eigenvalue convergence on the coarse mesh.
-double TOL_PIT_FM = 1e-8;   // Tolerance for eigenvalue convergence on the fine mesh.
+double TOL_PIT_CM = 1e-3;   // Tolerance for eigenvalue convergence on the coarse mesh.
+double TOL_PIT_FM = 1e-4;   // Tolerance for eigenvalue convergence on the fine mesh.
 
 int main(int argc, char* argv[])
 {  
@@ -135,10 +135,10 @@ int main(int argc, char* argv[])
 
   // Create pointers to solutions from the latest power iteration and approximation spaces with default shapeset.
   Hermes::vector<MeshFunctionSharedPtr<double> > power_iterates;  
-  Hermes::vector<SpaceSharedPtr<double> > spaces_;
+  Hermes::vector<SpaceSharedPtr<double> > spaces;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
   {
-    spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
+    spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
     power_iterates.push_back(new Solution<double>());
   }
     
@@ -146,8 +146,8 @@ int main(int argc, char* argv[])
   report_num_dof("Coarse mesh power iteration, NDOF: ", spaces);
   
   Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
-  keff_eigenvalue_iteration.set_picard_tol(TOL_PIT_CM);
-  //keff_eigenvalue_iteration.set_picard_max_iter(100);
+  keff_eigenvalue_iteration.set_tolerance(TOL_PIT_CM);
+  keff_eigenvalue_iteration.set_max_allowed_iterations(1000);
   //keff_eigenvalue_iteration.output_matrix();
   //keff_eigenvalue_iteration.output_rhs();
   //keff_eigenvalue_iteration.set_matrix_number_format("%1.16f");
@@ -187,12 +187,12 @@ int main(int argc, char* argv[])
     for (unsigned int i = 0; i < N_EQUATIONS; i++)
       selectors.push_back(&selector);
     
-    keff_eigenvalue_iteration.set_picard_tol(TOL_PIT_FM);
+    keff_eigenvalue_iteration.set_tolerance(TOL_PIT_FM);
     
     // Adaptivity loop:
     int as = 1; bool done = false; 
-    Hermes::vector<SpaceSharedPtr<double> > ref_spaces_;    
-    ref_spaces_.resize(N_EQUATIONS);
+    Hermes::vector<SpaceSharedPtr<double> > ref_spaces;    
+    ref_spaces.resize(N_EQUATIONS);
     std::vector<MeshSharedPtr> old_meshes(N_EQUATIONS);
     do 
     {
@@ -206,7 +206,7 @@ int main(int argc, char* argv[])
         MeshSharedPtr ref_mesh = ref_mesh_creator.create_ref_mesh();
         Space<double>::ReferenceSpaceCreator ref_space_creator(spaces[i], ref_mesh);
         SpaceSharedPtr<double> ref_space = ref_space_creator.create_ref_space();
-        ref_spaces_[i] = ref_space;
+        ref_spaces[i] = ref_space;
       }
       
       // Solve the fine mesh problem.
@@ -214,13 +214,7 @@ int main(int argc, char* argv[])
       keff_eigenvalue_iteration.set_spaces(ref_spaces);
       keff_eigenvalue_iteration.solve(power_iterates);
       Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), ref_spaces, power_iterates);
-      
-      // Delete meshes dynamically created in previous adaptivity iteration (they are needed to project previous power_iterates 
-      // to current reference meshes during the above call of keff_eigenvalue_iteration.solve(power_iterates) ).
-      if (as > 1)
-        for(unsigned int i = 0; i < N_EQUATIONS; i++)
-          delete old_meshes[i];
-        
+              
       report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces);
       OGProjection<double> ogProjection;
       ogProjection.project_global(spaces, power_iterates, coarse_solutions);
@@ -274,16 +268,8 @@ int main(int argc, char* argv[])
           done = true;
       }
       
-      if (!done)
-      {
-        for(unsigned int i = 0; i < N_EQUATIONS; i++)
-        {
-          old_meshes[i] = ref_spaces_[i]->get_mesh();
-          delete ref_spaces_[i];
-        }
-        // Increase counter.
-        as++;
-      }
+       // Increase counter.
+      if (!done) as++;
     }
     while (!done);
   }
