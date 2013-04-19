@@ -160,7 +160,6 @@ namespace Hermes
       const OutputParameterUnsignedInt& iteration() const { return this->p_iteration; };
       const OutputParameterUnsignedInt& vec_in_memory() const { return this->p_vec_in_memory; };
 
-    private:
       // Parameters for OutputAttachable mixin.
       OutputParameterUnsignedInt p_iteration;
       OutputParameterUnsignedInt p_vec_in_memory;
