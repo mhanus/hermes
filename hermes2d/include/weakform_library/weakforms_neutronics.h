@@ -6,7 +6,7 @@
 #include "neutronics/support_classes.h"
 #include "neutronics/weakform_parts_implementation.h"
 #include "neutronics/weakforms.h"
-#include "picard_solver.h"
+#include "solver/picard_solver.h"
 
 namespace Hermes { namespace Hermes2D {
     
@@ -15,9 +15,9 @@ namespace Hermes { namespace Hermes2D {
     public:
       StationaryPicardSolver(DiscreteProblem<double>* dp)
         : PicardSolver<double>(dp) {};
-      StationaryPicardSolver(const WeakForm<double>* wf, SpaceSharedPtr<double> space) 
+      StationaryPicardSolver(WeakForm<double>* wf, SpaceSharedPtr<double>& space) 
         : PicardSolver<double>(wf, space) {};
-      StationaryPicardSolver(const WeakForm<double>* wf, Hermes::vector<SpaceSharedPtr<double> > spaces) 
+      StationaryPicardSolver(WeakForm<double>* wf, const Hermes::vector<SpaceSharedPtr<double> >& spaces) 
         : PicardSolver<double>(wf, spaces) {};
         
       virtual void solve(double *coeff_vec = NULL);
@@ -49,23 +49,26 @@ namespace Hermes { namespace Hermes2D {
     class HERMES_API KeffEigenvalueIteration : public StationaryPicardSolver
     {
       public:
-        KeffEigenvalueIteration(const WeakForm<double>* wf, Hermes::vector<SpaceSharedPtr<double> > spaces)
-          : StationaryPicardSolver(wf, spaces), keff(1.0)
+        KeffEigenvalueIteration(WeakForm<double>* wf, const Hermes::vector<SpaceSharedPtr<double> >& spaces)
+          : StationaryPicardSolver(wf, spaces), keff(1.0), keff_tol(0.0)
         {};
         
         KeffEigenvalueIteration(DiscreteProblem<double>* dp)
-          : StationaryPicardSolver(dp), keff(1.0)
+          : StationaryPicardSolver(dp), keff(1.0), keff_tol(0.0)
         {};
         
-        void on_initialization();
-        void on_step_begin();
-        void on_step_end();
+        bool on_initialization();
+        bool on_step_begin();
+        bool on_step_end();
         
         double get_keff() const { return keff; }
-              
+        
+        void set_keff_tol(double tol) { keff_tol = tol; }
+        
       private:
         double keff;
         double old_keff;
+        double keff_tol;
         
         void update();
     };
@@ -73,7 +76,7 @@ namespace Hermes { namespace Hermes2D {
     class HERMES_API SourceIteration : public StationaryPicardSolver
     {
       public:
-        SourceIteration(const WeakForm<double>* wf, Hermes::vector<SpaceSharedPtr<double> > spaces)
+        SourceIteration(WeakForm<double>* wf, const Hermes::vector<SpaceSharedPtr<double> >& spaces)
           : StationaryPicardSolver(wf, spaces)
         {};
         
