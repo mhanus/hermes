@@ -50,7 +50,7 @@ namespace Hermes
       NonlinearSolver();
       NonlinearSolver(DiscreteProblem<Scalar>* dp);
       NonlinearSolver(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space);
-      NonlinearSolver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
+      NonlinearSolver(WeakForm<Scalar>* wf, const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
       virtual ~NonlinearSolver();
 
       /// Set the name of the iterative method employed by AztecOO (ignored

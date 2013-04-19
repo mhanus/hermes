@@ -49,7 +49,7 @@ namespace Hermes
     {
     public:
       /// Constructor for multiple components / equations.
-      DiscreteProblem(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
+      DiscreteProblem(WeakForm<Scalar>* wf, const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
       /// Constructor for one equation.
       DiscreteProblem(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space);
       /// Non-parameterized constructor.
@@ -85,7 +85,7 @@ namespace Hermes
       void set_time_step(double time_step);
 
       /// Sets new spaces for the instance.
-      void set_spaces(Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
+      void set_spaces(const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
       void set_space(SpaceSharedPtr<Scalar>& space);
 
       /// Set the weak forms.

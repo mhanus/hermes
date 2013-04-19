@@ -120,7 +120,7 @@ namespace Hermes
       void set_newton_damping_coeff(double newton_damping_coeff);
       void set_newton_max_allowed_residual_norm(double newton_max_allowed_residual_norm);
 
-      virtual void set_spaces(Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
+      virtual void set_spaces(const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
       virtual void set_space(SpaceSharedPtr<Scalar>& space);
       virtual Hermes::vector<SpaceSharedPtr<Scalar> >& get_spaces();
 

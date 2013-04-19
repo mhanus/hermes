@@ -29,7 +29,7 @@ namespace Hermes
   namespace Hermes2D
   {
     template<typename Scalar>
-    DiscreteProblem<Scalar>::DiscreteProblem(WeakForm<Scalar>* wf_, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces)
+    DiscreteProblem<Scalar>::DiscreteProblem(WeakForm<Scalar>* wf_, const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces)
     {
       init();
       this->set_spaces(spaces);
@@ -182,7 +182,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    void DiscreteProblem<Scalar>::set_spaces(Hermes::vector<SpaceSharedPtr<Scalar> >& spacesToSet)
+    void DiscreteProblem<Scalar>::set_spaces(const Hermes::vector<SpaceSharedPtr<Scalar> >& spacesToSet)
     {
       if(this->spaces_size != spacesToSet.size() && this->spaces_size > 0)
         throw Hermes::Exceptions::LengthException(0, spacesToSet.size(), this->spaces_size);

@@ -269,7 +269,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    void DiscreteProblemSelectiveAssembler<Scalar>::set_spaces(Hermes::vector<SpaceSharedPtr<Scalar> >& spacesToSet)
+    void DiscreteProblemSelectiveAssembler<Scalar>::set_spaces(const Hermes::vector<SpaceSharedPtr<Scalar> >& spacesToSet)
     {
       if(!sp_seq)
       {

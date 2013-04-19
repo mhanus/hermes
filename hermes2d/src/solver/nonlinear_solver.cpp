@@ -47,7 +47,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    NonlinearSolver<Scalar>::NonlinearSolver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces) : Solver<Scalar>(wf, spaces)
+    NonlinearSolver<Scalar>::NonlinearSolver(WeakForm<Scalar>* wf, const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces) : Solver<Scalar>(wf, spaces)
     {
       this->init_nonlinear();
     }
