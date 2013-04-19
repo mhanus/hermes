@@ -80,9 +80,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             
             if (do_include_fission && chi_nnz[gto])
             {
-              wf->add_matrix_form( new FissionYield::Jacobian(regions, gto, gfrom, 
-                                                              chi[gto], nu[gfrom], Sigma_f[gfrom], 
-                                                              geom_type) );
+              if (include_fission == IMPLICIT)
+                wf->add_matrix_form( new FissionYield::Jacobian(regions, gto, gfrom, 
+                                                                chi[gto], nu[gfrom], Sigma_f[gfrom], 
+                                                                geom_type) );
               wf->add_vector_form( new FissionYield::Residual(regions, gto, gfrom, 
                                                               chi[gto], nu[gfrom], Sigma_f[gfrom],
                                                               geom_type) );
@@ -421,7 +422,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
               {
                 unsigned int j = mg.pos(n, gfrom);
                 
-                if (do_include_fission && chi_nnz[gto]) {
+                if (do_include_fission && chi_nnz[gto] && include_fission == IMPLICIT) {
                   wf->add_matrix_form( new FissionYield::Jacobian(regions, m, n, gto, gfrom, G, 
                                                                   chi[gto], nu[gfrom], Sigma_f[gfrom], geom_type) );// fyJ++;
                 }
