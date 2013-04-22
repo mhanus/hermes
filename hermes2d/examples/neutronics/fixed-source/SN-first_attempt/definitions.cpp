@@ -205,14 +205,14 @@ Ord SNWeakForm::BoundaryStreamingMF::ord(int n, double *wt, Func<Ord> *u_ext[], 
   return u->val[0]*v->val[0];
 }
 
-double SNWeakForm::InterfaceStreamingMF::value(int n, double *wt, DiscontinuousFunc<double> *u, DiscontinuousFunc<double> *v,
-                                                        Geom<double> *e, DiscontinuousFunc<double> **ext) const
+double SNWeakForm::InterfaceStreamingMF::value(int n, double *wt, DiscontinuousFunc<double> **u_ext, DiscontinuousFunc<double> *u, DiscontinuousFunc<double> *v,
+                                               Geom<double> *e, DiscontinuousFunc<double> **ext) const
 {
   double result = 0.0;
 
   for (int i = 0; i < n; i++) 
   {
-    double a_dot_n = static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, e->x[i], e->y[i], e->nx[i], e->ny[i]);
+    double a_dot_n = static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, e->nx[i], e->ny[i]);
     double jump_v = (v->fn_central == NULL ? -v->val_neighbor[i] : v->val[i]);
     if(u->fn_central == NULL)
       result += wt[i] * static_cast<SNWeakForm*>(wf)->upwind_flux(0.0, u->val_neighbor[i], a_dot_n) * jump_v;
@@ -225,8 +225,8 @@ double SNWeakForm::InterfaceStreamingMF::value(int n, double *wt, DiscontinuousF
   return result;
 }
 
-Ord SNWeakForm::InterfaceStreamingMF::ord(int n, double *wt, DiscontinuousFunc<Ord> *u, DiscontinuousFunc<Ord> *v,
-                                                      Geom<Ord> *e, DiscontinuousFunc<Ord> **ext) const
+Ord SNWeakForm::InterfaceStreamingMF::ord(int n, double *wt, DiscontinuousFunc<Ord> **u_ext, DiscontinuousFunc<Ord> *u, DiscontinuousFunc<Ord> *v,
+                                          Geom<Ord> *e, DiscontinuousFunc<Ord> **ext) const
 { 
   Ord jump_v = (v->fn_central == NULL ? v->val_neighbor[0] : v->val[0]);
   if(u->fn_central == NULL)
