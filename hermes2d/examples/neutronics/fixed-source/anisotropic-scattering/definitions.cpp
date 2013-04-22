@@ -4,9 +4,9 @@
 // Fixed source problem with void conditions on all boundaries.
 CustomWeakForm::CustomWeakForm(const MaterialProperties::MaterialPropertyMaps& matprop, unsigned int N)
 #ifdef USE_SPN
-  : WeakForms::FixedSourceProblem(matprop, N)
+  : WeakForms::FixedSourceProblem(matprop, N, HERMES_PLANAR, true)
 #else // DIFFUSION
-  : WeakForms::FixedSourceProblem(matprop)
+  : WeakForms::FixedSourceProblem(matprop, HERMES_PLANAR, true)
 #endif
 {
   for (unsigned int g = 0; g < G; g++)
