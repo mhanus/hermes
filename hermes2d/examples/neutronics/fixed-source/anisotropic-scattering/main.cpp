@@ -285,6 +285,9 @@ int main(int argc, char* argv[])
   
   // Initialize the weak formulation.
   CustomWeakForm wf(matprop, SPN_ORDER);
+  
+  NewtonSolver<double> *newton = new NewtonSolver<double>(&wf, spaces);
+  newton->set_verbose_output(false);
 
   if (STRATEGY >= 0)
   {
@@ -323,22 +326,30 @@ int main(int argc, char* argv[])
     
     // Adaptivity loop.
     int as = 1; bool done = false;
+    Hermes::vector<SpaceSharedPtr<double> > ref_spaces;
+    ref_spaces.resize(N_EQUATIONS);
     do 
     {
       Loggable::Static::info("---- Adaptivity step %d:", as);
       
       // Initialize the fine mesh problem.
-      int order_increase = 1;          // FIXME: This should be increase in the x-direction only.
-      Hermes::vector<SpaceSharedPtr<double> > fine_spaces = Space<double>::construct_refined_spaces(spaces, order_increase);
-      int ndof_fine = Space<double>::get_num_dofs(fine_spaces);
-          
-      report_num_dof("Solving on fine meshes, #DOF: ", fine_spaces);
-    
-      DiscreteProblem<double> dp(&wf, fine_spaces);
-    
+      
+      for (unsigned int i = 0; i < N_EQUATIONS; i++)
+      {
+        const int refine_horizontally = 1;
+        Mesh::ReferenceMeshCreator ref_mesh_creator(meshes[i], refine_horizontally);
+        MeshSharedPtr ref_mesh = ref_mesh_creator.create_ref_mesh();
+        Space<double>::ReferenceSpaceCreator ref_space_creator(spaces[i], ref_mesh);
+        SpaceSharedPtr<double> ref_space = ref_space_creator.create_ref_space();
+        ref_spaces[i] = ref_space;
+      }
+      
+      int ndof_fine = Space<double>::get_num_dofs(ref_spaces);
+      
+      report_num_dof("Solving on fine meshes, #DOF: ", ref_spaces);
+
       // Perform Newton's iteration on reference mesh.
-      NewtonSolver<double> *newton = new NewtonSolver<double>(&dp);
-      newton->set_verbose_output(false);
+      newton->set_spaces(ref_spaces);
     
       try
       {
@@ -351,10 +362,7 @@ int main(int argc, char* argv[])
       }
       
       // Translate the resulting coefficient vector into instances of Solution.
-      Solution<double>::vector_to_solutions(newton->get_sln_vector(), fine_spaces, solutions);
-      
-      // Clean up.
-      delete newton;
+      Solution<double>::vector_to_solutions(newton->get_sln_vector(), ref_spaces, solutions);
       
       // Project the fine mesh solution onto the coarse mesh.
       report_num_dof("Projecting fine-mesh solutions onto coarse meshes, #DOF: ", spaces);
@@ -390,7 +398,7 @@ int main(int argc, char* argv[])
       double pointwise_flux_err_ref = 0.0;
       for (unsigned int g = 0; g < N_GROUPS; g++)
         for (unsigned int i = 0; i < points_of_interest.size(); i++)
-          pointwise_flux_err_ref += Hermes::sqr((scalar_fluxes->at(g)->get_pt_value(points_of_interest[i], 0) - ref_solutions[g][i]) / ref_solutions[g][i]);
+          pointwise_flux_err_ref += Hermes::sqr((scalar_fluxes->at(g)->get_pt_value(points_of_interest[i], 0)->val[0] - ref_solutions[g][i]) / ref_solutions[g][i]);
       
       double pointwise_flux_rel_err_ref = sqrt(pointwise_flux_err_ref) * 100;
 
@@ -448,11 +456,14 @@ int main(int argc, char* argv[])
         Loggable::Static::info("Total running time: %g s", total_cpu_time);
         cpu_time.reset();
         
+        // Clean up.
+        delete newton;
+        
         if (HERMES_VISUALIZATION)
         {
           Loggable::Static::info("Visualizing final solutions.");
           views.inspect_solutions(solutions);
-          views.inspect_orders(fine_spaces);
+          views.inspect_orders(ref_spaces);
         }
       }
     }
@@ -477,16 +488,10 @@ int main(int argc, char* argv[])
     cpu_time.tick();
     
     int ndof = Space<double>::get_num_dofs(spaces);
-    
-    DiscreteProblem<double> dp(&wf, spaces);
-
-    // Perform Newton's iteration on reference mesh.
-    NewtonSolver<double> newton(&dp);
-    newton.set_verbose_output(true);
   
     try
     {
-      newton.solve();
+      newton->solve();
     }
     catch(Hermes::Exceptions::Exception e)
     {
@@ -495,7 +500,10 @@ int main(int argc, char* argv[])
     }
     
     // Translate the resulting coefficient vector into instances of Solution.
-    Solution<double>::vector_to_solutions(newton.get_sln_vector(), spaces, solutions);
+    Solution<double>::vector_to_solutions(newton->get_sln_vector(), spaces, solutions);
+    
+    // Clean up.
+    delete newton;
     
     cpu_time.tick();
     total_cpu_time = cpu_time.accumulated();
@@ -572,7 +580,7 @@ int main(int argc, char* argv[])
     
     for (int i = 0; i < points_of_interest.size(); i++)
     {
-      double pt_flux = scalar_fluxes->at(g)->get_pt_value(points_of_interest[i], 0);
+      double pt_flux = scalar_fluxes->at(g)->get_pt_value(points_of_interest[i], 0)->val[0];
       Loggable::Static::info("\t x = %.3f : %g (error w.r.t ANISN = %g%%)", points_of_interest[i], pt_flux, fabs(pt_flux - ref_solutions[g][i])/ref_solutions[g][i] * 100);
       fprintf(fp, "\t x = %.3f : %g (error w.r.t ANISN = %g%%)\n", points_of_interest[i], pt_flux, fabs(pt_flux - ref_solutions[g][i])/ref_solutions[g][i] * 100);
       fprintf(fp_err, "%g\n", fabs(pt_flux - ref_solutions[g][i])/ref_solutions[g][i] * 100);
