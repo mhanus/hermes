@@ -46,7 +46,7 @@ template <typename Scalar>
 class H1AxisymProjectionResidual : public VectorFormVol<Scalar>
 {
 public:
-  H1AxisymProjectionResidual(Solution<Scalar>* ext) : VectorFormVol<Scalar>(0)
+  H1AxisymProjectionResidual(const MeshFunctionSharedPtr<Scalar>& ext) : VectorFormVol<Scalar>(0)
   {
     this->ext.push_back(ext);
   }
