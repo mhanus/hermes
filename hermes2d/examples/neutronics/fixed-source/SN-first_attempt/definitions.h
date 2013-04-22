@@ -277,7 +277,7 @@ private:
     }
   };
     
-  double calculate_a_dot_v(int n, double x, double y, double vx, double vy) const;
+  double calculate_a_dot_v(int n, double vx, double vy) const;
   
   double upwind_flux(double u_cent, double u_neib, double a_dot_n) const;
   Ord upwind_flux(Ord u_cent, Ord u_neib) const;

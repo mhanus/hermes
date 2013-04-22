@@ -52,7 +52,7 @@ double SNWeakForm::VolumetricStreamingAndReactionsMF::value(int n, double *wt, F
 {
   double result = 0.0;
   for (int i = 0; i < n; i++)
-    result += wt[i] * u->val[i] * ( -static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, e->x[i], e->y[i], v->dx[i], v->dy[i]) +
+    result += wt[i] * u->val[i] * ( -static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, v->dx[i], v->dy[i]) +
                                     Sigma_t * v->val[i] );
   
   //std::cout << "VolumetricStreamingAndReactionsMF :: " << result << std::endl;
@@ -188,7 +188,7 @@ double SNWeakForm::BoundaryStreamingMF::value(int n, double *wt, Func<double> *u
   for (int i = 0; i < n; i++)
   {
     double x = e->x[i], y = e->y[i];
-    double a_dot_n = static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, x, y, e->nx[i], e->ny[i]);
+    double a_dot_n = static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, e->nx[i], e->ny[i]);
     
     if (a_dot_n >= 0)
       result += wt[i] * u->val[i] * a_dot_n * v->val[i];
@@ -242,7 +242,7 @@ double SNWeakForm::BoundaryStreamingVF::value(int n, double *wt, Func<double> *u
   for (int quad_pt = 0; quad_pt < n; quad_pt++) 
   {
     double x = e->x[quad_pt], y = e->y[quad_pt];
-    double a_dot_n = static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, x, y, e->nx[quad_pt], e->ny[quad_pt]);
+    double a_dot_n = static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, e->nx[quad_pt], e->ny[quad_pt]);
     
     if (a_dot_n < 0)
     {
@@ -267,7 +267,7 @@ double SNWeakForm::SpecularReflectionVF::value(int n, double *wt, Func<double> *
   for (int quad_pt = 0; quad_pt < n; quad_pt++) 
   {
     double x = e->x[quad_pt], y = e->y[quad_pt];
-    double a_dot_n = static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, x, y, e->nx[quad_pt], e->ny[quad_pt]);
+    double a_dot_n = static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, e->nx[quad_pt], e->ny[quad_pt]);
    
     if (a_dot_n < 0)
     {
@@ -295,7 +295,7 @@ Ord SNWeakForm::SpecularReflectionVF::ord(int n, double *wt, Func<Ord> *u_ext[],
   return static_cast<SNWeakForm*>(wf)->upwind_flux(Ord(0), Ord(refl_ord)) * v->val[0];
 }
 
-double SNWeakForm::calculate_a_dot_v(int n, double x, double y, double vx, double vy) const
+double SNWeakForm::calculate_a_dot_v(int n, double vx, double vy) const
 {
   //return std::cos((n+1)*M_PI/(2.1*N))*vx + std::sin((n+1)*M_PI/(2.1*N))*vy;
   return odata.xi[n]*vx + odata.eta[n]*vy;
