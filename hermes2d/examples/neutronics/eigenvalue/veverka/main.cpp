@@ -10,7 +10,7 @@ const unsigned int N_GROUPS = 2;
 const unsigned int N_EQUATIONS = N_GROUPS;
 
 const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
-  5, 5
+  1, 1
 };
 const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
   1, 1
@@ -21,7 +21,7 @@ const int SELECTIVE_REF_NUM[N_EQUATIONS] = {
         
 const double THRESHOLD = 0.6;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
-const int STRATEGY = -1;                  // Adaptive strategy:
+const int STRATEGY = 1;                  // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
                                          //   error is processed. If more elements have similar errors, refine
                                          //   all to keep the mesh symmetric.
@@ -151,8 +151,8 @@ int main(int argc, char* argv[])
   report_num_dof("Coarse mesh power iteration, NDOF: ", spaces);
   
   Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
-  keff_eigenvalue_iteration.set_picard_tol(TOL_PIT_CM);
-  keff_eigenvalue_iteration.set_picard_max_iter(1000);
+  keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_CM);
+  keff_eigenvalue_iteration.set_max_allowed_iterations(1000);
   //keff_eigenvalue_iteration.set_matrix_E_matrix_dump_format(Hermes::Algebra::DF_HERMES_BIN);
   //keff_eigenvalue_iteration.set_matrix_filename("A");
   //keff_eigenvalue_iteration.set_matrix_number_format("%1.15f");
@@ -192,7 +192,7 @@ int main(int argc, char* argv[])
     for (unsigned int i = 0; i < N_EQUATIONS; i++)
       selectors.push_back(&selector);
     
-    keff_eigenvalue_iteration.set_picard_tol(TOL_PIT_FM);
+    keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_FM);
     
     // Adaptivity loop:
     int as = 1; bool done = false; 
@@ -219,13 +219,7 @@ int main(int argc, char* argv[])
       keff_eigenvalue_iteration.set_spaces(ref_spaces);
       keff_eigenvalue_iteration.solve(power_iterates);
       Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), ref_spaces, power_iterates);
-      
-      // Delete meshes dynamically created in previous adaptivity iteration (they are needed to project previous power_iterates 
-      // to current reference meshes during the above call of keff_eigenvalue_iteration.solve(power_iterates) ).
-      if (as > 1)
-        for(unsigned int i = 0; i < N_EQUATIONS; i++)
-          delete old_meshes[i];
-        
+              
       report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces);
       OGProjection<double> ogProjection;
       ogProjection.project_global(spaces, power_iterates, coarse_solutions);
@@ -281,16 +275,8 @@ int main(int argc, char* argv[])
           done = true;
       }
       
-      if (!done)
-      {
-        for(unsigned int i = 0; i < N_EQUATIONS; i++)
-        {
-          old_meshes[i] = ref_spaces[i]->get_mesh();
-          delete ref_spaces[i];
-        }
-        // Increase counter.
+      if (!done) // Increase counter.
         as++;
-      }
     }
     while (!done);
   }
