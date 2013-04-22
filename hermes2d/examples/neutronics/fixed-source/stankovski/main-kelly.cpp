@@ -499,10 +499,7 @@ int main(int argc, char* argv[])
           
           err_scalar_flux += group_err;
         }
-        
-        MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
-        MomentFilter::clear_scalar_fluxes(&ref_scalar_fluxes);
-        
+                
   #else // DIFFUSION
   
         for (unsigned int g = 0; g < N_GROUPS; g++)

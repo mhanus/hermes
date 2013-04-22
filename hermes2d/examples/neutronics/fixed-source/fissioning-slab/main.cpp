@@ -594,8 +594,6 @@ int main(int argc, char* argv[])
       diag_flux_err_dragon_rel = sqrt(diag_flux_err_dragon_rel) * 100;        
 
   #ifdef USE_SPN    
-      MomentFilter::clear_scalar_fluxes(coarse_scalar_fluxes);
-      MomentFilter::clear_scalar_fluxes(fine_scalar_fluxes);
       delete coarse_scalar_fluxes;
       delete fine_scalar_fluxes;
   #endif
@@ -648,15 +646,8 @@ int main(int argc, char* argv[])
         done = adaptivity.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);
       }
       
-      if (!done)
-      {
-        for(unsigned int i = 0; i < N_EQUATIONS; i++)
-          delete fine_spaces[i]->get_mesh();
-        delete &fine_spaces;
-        
-        // Increase the adaptivity step counter.
+      if (!done) // Increase the adaptivity step counter.
         as++;
-      }
       else
       {
         cpu_time.tick();
@@ -670,18 +661,6 @@ int main(int argc, char* argv[])
           views.inspect_solutions(solutions);
           views.inspect_orders(fine_spaces);
         }
-        
-        for (unsigned int i = 0; i < N_EQUATIONS; i++)
-        {
-          // Make the fine-mesh spaces the final spaces for further analyses.
-          delete spaces[i]->get_mesh(); // Alternatively "delete meshes[i]".
-          delete spaces[i];
-          spaces[i] = fine_spaces[i]; 
-
-          // Delete the auxiliary coarse-mesh solutions.
-          delete coarse_solutions[i];   
-        }
-        delete &fine_spaces; 
       }
     }
     while (done == false);
@@ -839,17 +818,8 @@ int main(int argc, char* argv[])
     delete [] err;
 
 #ifdef USE_SPN
-    MomentFilter::clear_scalar_fluxes(scalar_fluxes);
     delete scalar_fluxes;
 #endif    
-  }
-
-  // Final clean up.
-  for(unsigned int i = 0; i < N_EQUATIONS; i++)
-  {
-    delete spaces[i]->get_mesh();
-    delete spaces[i];
-    delete solutions[i];
   }
 
   return 0;

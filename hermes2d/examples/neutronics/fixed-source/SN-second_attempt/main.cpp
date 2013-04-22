@@ -202,8 +202,6 @@ int main(int argc, char* args[])
           bool mode_3D = false;
           lin.save_solution_vtk(scalar_fluxes[0], "scalar_flux.vtk", "Solution", mode_3D);
         }
-
-        SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
       }
       
       return 0;
