@@ -39,11 +39,11 @@
 //
 //  The following parameters can be changed:
 
-const int INIT_REF_NUM = 2;                       // Number of initial uniform mesh refinements.
+const int INIT_REF_NUM = 4;                       // Number of initial uniform mesh refinements.
 const int P_INIT_1 = 1,                           // Initial polynomial degree for approximation of group 1 fluxes.
           P_INIT_2 = 1,                           // Initial polynomial degree for approximation of group 2 fluxes.
-          P_INIT_3 = 2,                           // Initial polynomial degree for approximation of group 3 fluxes.
-          P_INIT_4 = 2;                           // Initial polynomial degree for approximation of group 4 fluxes.
+          P_INIT_3 = 1,                           // Initial polynomial degree for approximation of group 3 fluxes.
+          P_INIT_4 = 1;                           // Initial polynomial degree for approximation of group 4 fluxes.
 const double ERROR_STOP = 1e-5;                   // Tolerance for the eigenvalue.
 Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
@@ -63,35 +63,29 @@ int main(int argc, char* argv[])
 {  
   // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 0);
-  Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
+  Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 2);
 
   // Load the mesh.
-  Mesh mesh;
+  MeshSharedPtr mesh = new Mesh();
   MeshReaderH2D mesh_reader;
-  mesh_reader.load((std::string("../") + mesh_file).c_str(), &mesh);
+  mesh_reader.load((std::string("../") + mesh_file).c_str(), mesh);
 
   // Perform initial mesh refinements.
-  for (int i = 0; i < INIT_REF_NUM; i++) mesh.refine_all_elements();
+  for (int i = 0; i < INIT_REF_NUM; i++) mesh->refine_all_elements();
 
   // Solution variables.
-  Solution<double> sln1, sln2, sln3, sln4;
-  Hermes::vector<MeshFunctionSharedPtr<double> > solutions(&sln1, &sln2, &sln3, &sln4);
+  MeshFunctionSharedPtr<double> sln1 = new Solution<double>();
+  MeshFunctionSharedPtr<double> sln2 = new Solution<double>();
+  MeshFunctionSharedPtr<double> sln3 = new Solution<double>();
+  MeshFunctionSharedPtr<double> sln4 = new Solution<double>();
+  Hermes::vector<MeshFunctionSharedPtr<double> > solutions(sln1, sln2, sln3, sln4);
   
-  // Define initial conditions.
-  Loggable::Static::info("Setting initial conditions.");
-  ConstantSolution<double> iter1(&mesh, 1.0), 
-                           iter2(&mesh, 1.0), 
-                           iter3(&mesh, 1.0), 
-                           iter4(&mesh, 1.0);
-  Hermes::vector<MeshFunctionSharedPtr<double> > iterates(&iter1, &iter2, &iter3, &iter4);
-
   // Create H1 spaces with default shapesets.
-  H1Space<double> space1(&mesh, P_INIT_1);
-  H1Space<double> space2(&mesh, P_INIT_2);
-  H1Space<double> space3(&mesh, P_INIT_3);
-  H1Space<double> space4(&mesh, P_INIT_4);
-  Hermes::vector<SpaceSharedPtr<double> > spaces(&space1, &space2, &space3, &space4);
-  Hermes::vector<SpaceSharedPtr<double> > c_spaces(&space1, &space2, &space3, &space4);
+  SpaceSharedPtr<double> space1 = new H1Space<double>(mesh, P_INIT_1);
+  SpaceSharedPtr<double> space2 = new H1Space<double>(mesh, P_INIT_1);
+  SpaceSharedPtr<double> space3 = new H1Space<double>(mesh, P_INIT_1);
+  SpaceSharedPtr<double> space4 = new H1Space<double>(mesh, P_INIT_1);
+  Hermes::vector<SpaceSharedPtr<double> > spaces(space1, space2, space3, space4);
   
   int ndof = Space<double>::get_num_dofs(spaces);
   Loggable::Static::info("ndof = %d.", ndof);
@@ -117,6 +111,7 @@ int main(int argc, char* argv[])
   matprop.set_Sigma_f(Sf);
   matprop.set_nu(nu);
   matprop.set_chi(chi);
+  matprop.set_fission_materials(fission_regions);
   matprop.validate();
   
   std::cout << matprop;
@@ -126,95 +121,33 @@ int main(int argc, char* argv[])
   cpu_time.tick(); 
   
   // Initialize the weak formulation.
-  CustomWeakForm wf(matprop, iterates, fission_regions, k_eff, bdy_vacuum);
+  CustomWeakForm wf(matprop, bdy_vacuum);
 
   // Initialize the FE problem.
-  DiscreteProblem<double> dp(&wf, c_spaces);
+  DiscreteProblem<double> dp(&wf, spaces);
   
-  NewtonSolver<double> solver(&dp);
-  solver.set_verbose_output(false);
-  
-  if (matrix_solver == Hermes::SOLVER_AZTECOO) 
-  {
-    solver.set_iterative_method(iterative_method);
-    solver.set_preconditioner(preconditioner);
-  }
-  
-  // Main power iteration loop:
-  int it = 1; bool done = false;
-  do
-  {
-    solver_time.tick();
-    
-    Loggable::Static::info("------------ Power iteration %d:", it);
-    
-    Loggable::Static::info("Newton's method.");
-    
-    // The matrix doesn't change within the power iteration loop, so we don't have to reassemble the Jacobian again.
-    try
-    {
-      solver.solve_keep_jacobian();
-    }
-    catch(Hermes::Exceptions::Exception e)
-    {
-      e.print_msg();
-      ErrorHandling::error_function("Newton's iteration failed.");
-    }
-    
-    // Convert coefficients vector into a set of Solution pointers.
-    Solution<double>::vector_to_solutions(solver.get_sln_vector(), c_spaces, solutions);
-    
-    solver_time.tick();
-    cpu_time.tick();
-    
-    // Show intermediate solutions.
-    view1.show(&sln1);    
-    view2.show(&sln2);
-    view3.show(&sln3);    
-    view4.show(&sln4);
-    
-    solver_time.tick(TimeMeasurable::HERMES_SKIP);
-    cpu_time.tick(TimeMeasurable::HERMES_SKIP);
-    
-    // Compute eigenvalue.    
-    SupportClasses::SourceFilter source(solutions, matprop, fission_regions, HERMES_AXISYM_Y);
-    SupportClasses::SourceFilter source_prev(iterates, matprop, fission_regions, HERMES_AXISYM_Y);
-    
-    double k_new = k_eff * (source.integrate() / source_prev.integrate());
-    Loggable::Static::info("Largest eigenvalue: %.8g, rel. difference from previous it.: %g", k_new, fabs((k_eff - k_new) / k_new));
-    
-    // Stopping criterion.
-    if (fabs((k_eff - k_new) / k_new) < ERROR_STOP) done = true;
+  Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
+  keff_eigenvalue_iteration.set_keff_tol(ERROR_STOP);
+  keff_eigenvalue_iteration.set_max_allowed_iterations(100);
 
-    // Update eigenvalue.
-    k_eff = k_new;
-    wf.update_keff(k_eff);
-    
-    if (!done)
-    {
-      // Save solutions for the next iteration.
-      iter1.copy(&sln1);    
-      iter2.copy(&sln2);
-      iter3.copy(&sln3);    
-      iter4.copy(&sln4);
-      
-      it++;
-    }
-  }
-  while (!done);
+  keff_eigenvalue_iteration.output_matrix(1);
+  keff_eigenvalue_iteration.set_matrix_E_matrix_dump_format(DF_HERMES_BIN);
+  keff_eigenvalue_iteration.set_matrix_number_format("%1.15f");
+  
+  keff_eigenvalue_iteration.solve();
+  
+  Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), spaces, solutions);
   
   // Time measurement.
   cpu_time.tick();
   solver_time.tick(TimeMeasurable::HERMES_SKIP);
   
-  // Print timing information.
-  Loggable::Static::info("Average solver time for one power iteration: %g s", solver_time.accumulated() / it);
-  
+   
   // Show solutions.
-  view1.show(&sln1);
-  view2.show(&sln2);
-  view3.show(&sln3);    
-  view4.show(&sln4);
+  view1.show(sln1);
+  view2.show(sln2);
+  view3.show(sln3);    
+  view4.show(sln4);
   
   // Skip visualization time.
   cpu_time.tick(TimeMeasurable::HERMES_SKIP);
