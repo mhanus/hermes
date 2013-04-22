@@ -182,7 +182,6 @@ int main(int argc, char* args[])
 
   // Discrete formulation.
   DiscreteProblem<double> dp(&wf, spaces);
-  if (P_INIT == 0) dp.set_fvm();
   
   // Algebraic solver.
   SourceIteration solver(&dp);
