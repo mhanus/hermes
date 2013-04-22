@@ -12,7 +12,7 @@ void StationaryPicardSolver::solve(double *coeff_vec)
   
   if(coeff_vec == NULL)
   {
-    coeff_vec = new double [ndof];
+    coeff_vec = (double*) malloc(ndof * sizeof(double));
     
     for (int i = 0; i < ndof; i++)
       coeff_vec[i] = 1.0;
@@ -20,11 +20,11 @@ void StationaryPicardSolver::solve(double *coeff_vec)
     _delete_coeff_vec = true;
   }
   
-  this->init_solving(ndof, coeff_vec);
+  this->init_solving(coeff_vec);
   
   this->delete_coeff_vec = _delete_coeff_vec;
 
-  this->init_anderson(ndof);
+  this->init_anderson();
 
   unsigned int it = 1;
   unsigned int vec_in_memory = 1;   // There is already one vector in the memory.
@@ -50,12 +50,13 @@ void StationaryPicardSolver::solve(double *coeff_vec)
     if (!this->on_step_end())
     {
       this->deinit_solving(coeff_vec);
+      this->deinit_anderson();
       return;
     }
 
-    this->handle_previous_vectors(ndof, vec_in_memory);
+    this->handle_previous_vectors(vec_in_memory);
 
-    double rel_error = this->calculate_relative_error(ndof, coeff_vec);
+    double rel_error = this->calculate_relative_error(coeff_vec);
     
     // Output for the user.
     this->info("\tPicard: iteration %d, nDOFs %d, relative error %g%%", it, ndof, rel_error * 100);
@@ -67,18 +68,21 @@ void StationaryPicardSolver::solve(double *coeff_vec)
     {
     case Converged:
       this->deinit_solving(coeff_vec);
+      this->deinit_anderson();
       return;
       break;
 
     case AboveMaxIterations:
       throw Exceptions::ValueException("iterations", it, this->max_allowed_iterations);
       this->deinit_solving(coeff_vec);
+      this->deinit_anderson();
       return;
       break;
 
     case Error:
       throw Exceptions::Exception("Unknown exception in PicardSolver.");
       this->deinit_solving(coeff_vec);
+      this->deinit_anderson();
       return;
       break;
 
@@ -90,6 +94,7 @@ void StationaryPicardSolver::solve(double *coeff_vec)
     if(this->anderson_is_on && !this->on_step_end())
     {
       this->deinit_solving(coeff_vec);
+      this->deinit_anderson();
       return;
     }
 
