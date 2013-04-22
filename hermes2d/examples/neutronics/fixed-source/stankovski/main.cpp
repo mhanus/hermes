@@ -338,10 +338,7 @@ int main(int argc, char* argv[])
         double abs_rate_coarse = pp.get_integrated_reaction_rates(ABSORPTION, coarse_solutions, matprop, edit_regions);
         double abs_rate_fine = pp.get_integrated_reaction_rates(ABSORPTION, solutions, matprop, edit_regions);
         double absorb_rate_err_est_rel = fabs((abs_rate_coarse - abs_rate_fine)/abs_rate_fine) * 100;
-        
-        MomentFilter::clear_scalar_fluxes(&coarse_scalar_fluxes);
-        MomentFilter::clear_scalar_fluxes(&fine_scalar_fluxes);
-        
+                
         cpu_time2.tick();
         Loggable::Static::info("  ------- Time taken (not included in the total running time): %g s", cpu_time2.last());
         cpu_time.tick(TimeMeasurable::HERMES_SKIP);
@@ -532,10 +529,6 @@ int main(int argc, char* argv[])
             
       // Advance to the next run case ...
     }
-    
-    // Delete the auxiliary coarse-mesh solutions.
-    for(unsigned int i = 0; i < N_EQUATIONS; i++)
-      delete coarse_solutions[i];
   }
   else  // Do not use adaptivity.
   { 
