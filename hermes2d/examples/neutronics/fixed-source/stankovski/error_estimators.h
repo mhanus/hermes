@@ -34,7 +34,7 @@ class ErrorFormSPN : public Adapt<Scalar>::MatrixFormVolError
 };
 
 //////////////////// ADAPTIVITY BASED ON JUMPS OF SOLUTION 
-
+/*
 class InterfaceEstimatorSPN : public KellyTypeAdapt<double>::ErrorEstimatorForm
 {
   
@@ -347,3 +347,4 @@ private:
     unsigned int gto;
     const Diffusion::MaterialProperties::MaterialPropertyMaps& matprop;
 };
+*/
