@@ -117,11 +117,10 @@ int main(int argc, char* args[])
       Loggable::Static::info("Saving %s. NDOF = %d", args[1], Space<double>::get_num_dofs(spaces));
       
       DiscreteProblem<double> dp(wf, spaces);
-      //if (P_INIT == 0) dp.set_fvm();
       SourceIteration solver(&dp);
       
       // Perform the source iteration (by Picard's method with Anderson acceleration).
-      solver.set_picard_max_iter(1);
+      solver.set_max_allowed_iterations(1);
       
       if (assemble_Q)  
       {
@@ -220,14 +219,13 @@ int main(int argc, char* args[])
 
   // Discrete formulation.
   DiscreteProblem<double> dp(&wf, spaces);
-  //if (P_INIT == 0) dp.set_fvm();
   
   // Algebraic solver.
   SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);
-  solver.set_picard_tol(PICARD_TOL);
-  solver.set_picard_max_iter(PICARD_MAX_ITER);
+  solver.set_tolerance(PICARD_TOL);
+  solver.set_max_allowed_iterations(PICARD_MAX_ITER);
   solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);
   solver.set_verbose_output(true);

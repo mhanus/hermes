@@ -53,7 +53,7 @@ int main(int argc, char* args[])
   TimeMeasurable cpu_time;
   cpu_time.tick();
   
-  Hermes::vector<Mesh *> meshes;
+  Hermes::vector<MeshSharedPtr > meshes;
   for (int i = 0; i < M; i++)
     meshes.push_back(new Mesh());
   
@@ -85,7 +85,7 @@ int main(int argc, char* args[])
   
   Loggable::Static::info("%d elements, %d vertices", meshes[0]->get_num_active_elements(), meshes[0]->get_num_vertex_nodes() );
   
-  Hermes::vector<Solution<double>* > slns;
+  Hermes::vector<MeshFunctionSharedPtr<double> > slns;
   for (int i = 0; i < M; i++)
     slns.push_back(new ConstantSolution<double>(MULTIMESH ? meshes[i] : meshes[0], INIT_COND_CONST));
   
@@ -110,7 +110,7 @@ int main(int argc, char* args[])
       bool assemble_Q = !strcmp(args[1], "Q") || !strcmp(args[1], "LQ");
       
       WeakForm<double> *wf;
-      Hermes::vector<const Space<double> *> spaces;
+      Hermes::vector<SpaceSharedPtr<double> > spaces;
       
       if (!strcmp(args[1], "S") || !strcmp(args[1], "F"))
       {
@@ -129,7 +129,6 @@ int main(int argc, char* args[])
       Loggable::Static::info("Saving %s. NDOF = %d", args[1], Space<double>::get_num_dofs(spaces));
       
       DiscreteProblem<double> dp(wf, spaces);
-      if (P_INIT == 0) dp.set_fvm();
       SourceIteration solver(&dp);
       
       // Perform the source iteration (by Picard's method with Anderson acceleration).
@@ -166,7 +165,7 @@ int main(int argc, char* args[])
     {
       if (!strcmp(args[1], "-sln"))
       {
-        Hermes::vector<const Space<double> *> spaces;
+        Hermes::vector<SpaceSharedPtr<double> > spaces;
   
         for (int n = 0; n < M; n++)
           spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
@@ -179,12 +178,12 @@ int main(int argc, char* args[])
         read_solution_from_file(ifs, std::back_inserter(x_ext));
         ifs.close();
         
-        Hermes::vector<Solution<double>*> sol_ext;
+        Hermes::vector<MeshFunctionSharedPtr<double> > sol_ext;
         for (unsigned int i = 0; i < M; i++) 
           sol_ext.push_back(new Solution<double>()); 
         Solution<double>::vector_to_solutions(x_ext.data(), spaces, sol_ext);
         
-        Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+        Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes;
         SupportClasses::OrdinatesData odata(N, "lgvalues.txt");
         SupportClasses::MomentFilter::get_scalar_fluxes(sol_ext, &scalar_fluxes, 1, odata);
         
@@ -247,7 +246,7 @@ int main(int argc, char* args[])
   // Initialize the FE problem.
   
   // Approximation spaces.
-  Hermes::vector<const Space<double> *> spaces;
+  Hermes::vector<SpaceSharedPtr<double> > spaces;
   
   for (int n = 0; n < M; n++)
     spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
@@ -262,14 +261,13 @@ int main(int argc, char* args[])
 
   // Discrete formulation.
   DiscreteProblem<double> dp(&wf, spaces);
-  if (P_INIT == 0) dp.set_fvm();
   
   // Algebraic solver.
   SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);
-  solver.set_picard_tol(PICARD_TOL);
-  solver.set_picard_max_iter(PICARD_MAX_ITER);
+  solver.set_tolerance(PICARD_TOL);
+  solver.set_max_allowed_iterations(PICARD_MAX_ITER);
   solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);
   solver.set_verbose_output(true);
@@ -315,7 +313,7 @@ int main(int argc, char* args[])
   
   // View the coarse mesh scalar flux and/or save it to .vtk files.
   
-  Hermes::vector<MeshFunction<double>*> scalar_fluxes;
+  Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes;
   SupportClasses::MomentFilter::get_scalar_fluxes(slns, &scalar_fluxes, N_GROUPS, wf.get_ordinates_data());
   
   for (unsigned int g = 0; g < N_GROUPS; g++)
