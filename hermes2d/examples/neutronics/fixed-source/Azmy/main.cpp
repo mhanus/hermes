@@ -16,7 +16,7 @@ const bool HERMES_MESH_VISUALIZATION = false;
 
 const bool MULTIMESH = false;
 // Number of initial uniform mesh refinements.
-const int INIT_REF_NUM = 5;
+const int INIT_REF_NUM = 3;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
 const int P_INIT = 0;
 
@@ -132,7 +132,7 @@ int main(int argc, char* args[])
     SourceIteration solver(&dp);
     
     // Perform the source iteration (by Picard's method with Anderson acceleration).
-    solver.set_picard_max_iter(1);
+    solver.set_max_allowed_iterations(1);
     
     if (assemble_Q)  
     {
@@ -187,8 +187,8 @@ int main(int argc, char* args[])
   SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);
-  solver.set_picard_tol(PICARD_TOL);
-  solver.set_picard_max_iter(PICARD_MAX_ITER);
+  solver.set_tolerance(PICARD_TOL);
+  solver.set_max_allowed_iterations(PICARD_MAX_ITER);
   solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);
   solver.set_verbose_output(true);
