@@ -132,7 +132,7 @@ int main(int argc, char* args[])
       SourceIteration solver(&dp);
       
       // Perform the source iteration (by Picard's method with Anderson acceleration).
-      solver.set_picard_max_iter(1);
+      solver.set_max_allowed_iterations(1);
       
       if (assemble_Q)  
       {
@@ -233,8 +233,6 @@ int main(int argc, char* args[])
         
         for (int i = 0; i < edit_regions.size(); i++)
           Loggable::Static::info("Scalar flux integrated over %s (area = %1.4f cm^2): %1.8f", edit_regions[i].c_str(), areas[i], integrated_fluxes[i]);
-        
-        SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
       }
       
       return 0;
@@ -384,10 +382,7 @@ int main(int argc, char* args[])
     
     fs.close();
     delete [] res;
-  }
-  
-  SupportClasses::MomentFilter::clear_scalar_fluxes(&scalar_fluxes);
-  
+  }  
   PostProcessor pp(NEUTRONICS_SN, HERMES_PLANAR, &wf.get_ordinates_data());
     
   Hermes::vector<double> integrated_fluxes, areas;
