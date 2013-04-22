@@ -80,7 +80,6 @@ Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibiliti
 
 // Power iteration control.
 
-double k_eff = 1.0;         // Initial eigenvalue approximation.
 double TOL_PIT_CM = 5e-5;   // Tolerance for eigenvalue convergence on the coarse mesh.
 double TOL_PIT_RM = 5e-6;   // Tolerance for eigenvalue convergence on the fine mesh.
 
@@ -88,7 +87,7 @@ int main(int argc, char* argv[])
 {
   // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 0);
-  Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
+  //Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
 
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -105,6 +104,7 @@ int main(int argc, char* argv[])
   matprop.set_Sigma_f(Sf);
   matprop.set_nu(nu);
   matprop.set_chi(chi);
+  matprop.set_fission_materials(fission_regions);
   matprop.validate();
   
   std::cout << matprop;
@@ -130,14 +130,13 @@ int main(int argc, char* argv[])
     meshes[0]->refine_all_elements();
   
   // Create pointers to solutions on coarse and fine meshes and from the latest power iteration, respectively.
-  Hermes::vector<MeshFunctionSharedPtr<double> > coarse_solutions, fine_solutions, power_iterates;
+  Hermes::vector<MeshFunctionSharedPtr<double> > coarse_solutions, power_iterates;
 
   // Initialize all the new solution variables.
   for (unsigned int g = 0; g < matprop.get_G(); g++) 
   {
     coarse_solutions.push_back(new Solution<double>());
-    fine_solutions.push_back(new Solution<double>());
-    power_iterates.push_back(new ConstantSolution<double>(meshes[g], 1.0));   
+    power_iterates.push_back(new Solution<double>());   
   }
   
   // Create the approximation spaces with the default shapeset.
@@ -204,46 +203,50 @@ int main(int argc, char* argv[])
   }
   
   // Initialize the weak formulation.
-  CustomWeakForm wf(matprop, power_iterates, fission_regions, k_eff, bdy_vacuum);
+  CustomWeakForm wf(matprop, bdy_vacuum);
   
   // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
-  report_num_dof("Coarse mesh power iteration, ", spaces);
-  Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, spaces, matrix_solver, TOL_PIT_CM);
+  report_num_dof("Coarse mesh power iteration, NDOF: ", spaces);
+  
+  Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
+  keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_CM);
+  keff_eigenvalue_iteration.set_max_allowed_iterations(1000);
+  //keff_eigenvalue_iteration.set_matrix_E_matrix_dump_format(Hermes::Algebra::DF_HERMES_BIN);
+  //keff_eigenvalue_iteration.set_matrix_filename("A");
+  //keff_eigenvalue_iteration.set_matrix_number_format("%1.15f");
+  //keff_eigenvalue_iteration.output_matrix(1);
+  keff_eigenvalue_iteration.solve();
+  Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), spaces, power_iterates);
   
   // Adaptivity loop:
-  int as = 1; bool done = false; std::vector<MeshSharedPtr> old_meshes(power_iterates.size());
+  int as = 1; bool done = false; 
+  Hermes::vector<SpaceSharedPtr<double> > ref_spaces;    
+  ref_spaces.resize(N_GROUPS);
+  std::vector<MeshSharedPtr> old_meshes(N_GROUPS);
   do 
   {
     Loggable::Static::info("---- Adaptivity step %d:", as);
-        
-    // Construct globally refined meshes and setup reference spaces on them.
-    Hermes::vector<SpaceSharedPtr<double> > ref_spaces = Space<double>::construct_refined_spaces(spaces);
-
-#ifdef WITH_PETSC    
-    // PETSc assembling is currently slow for larger matrices, so we switch to 
-    // UMFPACK when matrices of order >8000 start to appear.
-    if (Space<double>::get_num_dofs(ref_spaces) > 8000 && matrix_solver == Hermes::SOLVER_PETSC)
-      matrix_solver = Hermes::SOLVER_UMFPACK;
-#endif    
-
+    
+    Loggable::Static::info("Solving on fine meshes.");
+    
+    for (unsigned int i = 0; i < N_GROUPS; i++)
+    {
+      Mesh::ReferenceMeshCreator ref_mesh_creator(meshes[i]);
+      MeshSharedPtr ref_mesh = ref_mesh_creator.create_ref_mesh();
+      Space<double>::ReferenceSpaceCreator ref_space_creator(spaces[i], ref_mesh);
+      SpaceSharedPtr<double> ref_space = ref_space_creator.create_ref_space();
+      ref_spaces[i] = ref_space;
+    }
+    
     // Solve the fine mesh problem.
-    report_num_dof("Fine mesh power iteration, ", ref_spaces);
-    Neutronics::keff_eigenvalue_iteration(power_iterates, &wf, ref_spaces, matrix_solver, TOL_PIT_RM);
-    
-    // Delete meshes dynamically created in 'construct_refined_spaces' in previous adaptativity iteration
-    // (they are still needed in current 'keff_eigenvalue_iteration', but pointers to them get replaced 
-    // in this function by pointers to 'ref_spaces', so we have to keep track of them via 'old_meshes').
-    if (as > 1)
-      for(unsigned int i = 0; i < power_iterates.size(); i++)
-        delete old_meshes[i];
-    
-    // Store the results.
-    for (unsigned int g = 0; g < matprop.get_G(); g++) 
-      fine_solutions[g]->copy(power_iterates[g]);
-
-    Loggable::Static::info("Projecting fine mesh solutions on coarse meshes.");
+    report_num_dof("Fine mesh power iteration, NDOF: ", ref_spaces);     
+    keff_eigenvalue_iteration.set_spaces(ref_spaces);
+    keff_eigenvalue_iteration.solve(power_iterates);
+    Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), ref_spaces, power_iterates);
+            
+    report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces);
     OGProjection<double> ogProjection;
-    ogProjection.project_global(spaces, 
+    ogProjection.project_global(spaces,
                                 projection_jacobian, projection_residual,
                                 coarse_solutions);
 
@@ -274,8 +277,8 @@ int main(int argc, char* argv[])
     // Calculate element errors and error estimates in H1 and L2 norms. Use the H1 estimate to drive adaptivity.
     Loggable::Static::info("Calculating errors.");
     Hermes::vector<double> h1_group_errors, l2_group_errors;
-    double h1_err_est = adapt_h1.calc_err_est(coarse_solutions, fine_solutions, &h1_group_errors) * 100;
-    double l2_err_est = adapt_l2.calc_err_est(coarse_solutions, fine_solutions, &l2_group_errors, false) * 100;
+    double h1_err_est = adapt_h1.calc_err_est(coarse_solutions, power_iterates, &h1_group_errors) * 100;
+    double l2_err_est = adapt_l2.calc_err_est(coarse_solutions, power_iterates, &l2_group_errors, false) * 100;
 
     // Time measurement.
     cpu_time.tick();
@@ -285,7 +288,7 @@ int main(int argc, char* argv[])
     report_num_dof("Coarse ndof: ", spaces);
 
     // Millipercent eigenvalue error w.r.t. the reference value (see physical_parameters.cpp). 
-    double keff_err = 1e5*fabs(wf.get_keff() - REF_K_EFF)/REF_K_EFF;
+    double keff_err = 1e5*fabs(keff_eigenvalue_iteration.get_keff() - REF_K_EFF)/REF_K_EFF;
 
     report_errors("per-group err_est_coarse (H1): ", h1_group_errors);
     report_errors("per-group err_est_coarse (L2): ", l2_group_errors);
@@ -321,27 +324,12 @@ int main(int argc, char* argv[])
         done = true;
     }
 
-    if (!done)
-    {
-      for(unsigned int i = 0; i < power_iterates.size(); i++)
-        old_meshes[i] = const_cast<MeshSharedPtr>(power_iterates[i]->get_mesh());
-      
-      delete &ref_spaces;
-      
-      // Increase counter.
-      as++;
-    }
+    if (!done) as++;
   }
   while(!done);
 
   cpu_time.tick();
   Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
-  
-  for (unsigned int g = 0; g < matprop.get_G(); g++) 
-  {
-    delete spaces[g]; delete meshes[g];
-    delete coarse_solutions[g], delete fine_solutions[g]; delete power_iterates[g];
-  }
 
   graph_dof.save("conv_dof.gp");
   graph_cpu.save("conv_cpu.gp");

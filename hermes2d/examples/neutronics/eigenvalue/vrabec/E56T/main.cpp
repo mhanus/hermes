@@ -117,21 +117,19 @@ int main(int argc, char* argv[])
 
   // Create pointers to solutions from the latest power iteration and approximation spaces with default shapeset.
   Hermes::vector<MeshFunctionSharedPtr<double> > power_iterates;  
-  Hermes::vector<SpaceSharedPtr<double> > spaces_;
+  Hermes::vector<SpaceSharedPtr<double> > spaces;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
   {
-    spaces_.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
+    spaces.push_back(new H1Space<double>(meshes[i], P_INIT[i]));
     power_iterates.push_back(new Solution<double>());
   }
-  
-  ConstantableSpacesVector spaces(&spaces_);
     
   // Initial power iteration to obtain a coarse estimate of the eigenvalue and the fission source.
   report_num_dof("Coarse mesh power iteration, NDOF: ", spaces);
   
   Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
-  keff_eigenvalue_iteration.set_picard_tol(TOL_PIT_CM);
-  keff_eigenvalue_iteration.set_picard_max_iter(1000);
+  keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_CM);
+  keff_eigenvalue_iteration.set_max_allowed_iterations(1000);
   //keff_eigenvalue_iteration.set_matrix_E_matrix_dump_format(Hermes::Algebra::DF_HERMES_BIN);
   //keff_eigenvalue_iteration.set_matrix_filename("A");
   //keff_eigenvalue_iteration.set_matrix_number_format("%1.15f");
@@ -173,9 +171,8 @@ int main(int argc, char* argv[])
     
     // Adaptivity loop:
     int as = 1; bool done = false; 
-    Hermes::vector<SpaceSharedPtr<double> > ref_spaces_;    
-    ref_spaces_.resize(N_EQUATIONS);
-    std::vector<MeshSharedPtr> old_meshes(N_EQUATIONS);
+    Hermes::vector<SpaceSharedPtr<double> > ref_spaces;    
+    ref_spaces.resize(N_EQUATIONS);
     do 
     {
       Loggable::Static::info("---- Adaptivity step %d:", as);
@@ -188,23 +185,15 @@ int main(int argc, char* argv[])
         MeshSharedPtr ref_mesh = ref_mesh_creator.create_ref_mesh();
         Space<double>::ReferenceSpaceCreator ref_space_creator(spaces[i], ref_mesh);
         SpaceSharedPtr<double> ref_space = ref_space_creator.create_ref_space();
-        ref_spaces_[i] = ref_space;
+        ref_spaces[i] = ref_space;
       }
-      
-      ConstantableSpacesVector ref_spaces(&ref_spaces_);
       
       // Solve the fine mesh problem.
       report_num_dof("Fine mesh power iteration, NDOF: ", ref_spaces);     
       keff_eigenvalue_iteration.set_spaces(ref_spaces);
       keff_eigenvalue_iteration.solve(power_iterates);
       Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), ref_spaces, power_iterates);
-      
-      // Delete meshes dynamically created in previous adaptivity iteration (they are needed to project previous power_iterates 
-      // to current reference meshes during the above call of keff_eigenvalue_iteration.solve(power_iterates) ).
-      if (as > 1)
-        for(unsigned int i = 0; i < N_EQUATIONS; i++)
-          delete old_meshes[i];
-        
+              
       report_num_dof("Projecting fine mesh solutions on coarse meshes, NDOF: ", spaces);
       OGProjection<double> ogProjection;
       ogProjection.project_global(spaces, power_iterates, coarse_solutions);
@@ -260,16 +249,7 @@ int main(int argc, char* argv[])
           done = true;
       }
       
-      if (!done)
-      {
-        for(unsigned int i = 0; i < N_EQUATIONS; i++)
-        {
-          old_meshes[i] = ref_spaces_[i]->get_mesh();
-          delete ref_spaces_[i];
-        }
-        // Increase counter.
-        as++;
-      }
+      if (!done) as++;
     }
     while (!done);
   }
