@@ -58,8 +58,6 @@ namespace Hermes
       this->nonlinear = true;
       this->add_dirichlet_lift = false;
 
-      this->do_not_use_cache = false;
-
       // Local number of threads - to avoid calling it over and over again, and against faults caused by the
       // value being changed while assembling.
       num_threads_used = Hermes2DApi.get_integral_param_value(Hermes::Hermes2D::numThreads);
