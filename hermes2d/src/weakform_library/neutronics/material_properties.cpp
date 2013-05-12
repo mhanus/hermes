@@ -778,11 +778,31 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       return map3;
     }
     
+    MaterialPropertyMap2 MaterialPropertyMaps::extract_isotropic_part(const MaterialPropertyMap3& arg) const
+    {
+      MaterialPropertyMap2 map2;
+      
+      MaterialPropertyMap3::const_iterator it = arg.begin();
+      for ( ; it != arg.end(); ++it)
+        map2[it->first] = it->second[0];
+      
+      return map2;
+    }
+    
     void MaterialPropertyMaps::fill_with(double c, MaterialPropertyMap3 *mmmrmg_map)
     {
       std::set<std::string>::const_iterator it;
       for (it = materials_list.begin(); it != materials_list.end(); ++it)
         (*mmmrmg_map)[*it].assign(N+1, rank2(G, rank1(G, c)));
+    }
+    
+    void MaterialPropertyMaps::set_Sigma_s(const MaterialPropertyMap2& Ss)
+    {
+      fill_with(0.0, &Sigma_sn);
+      
+      std::set<std::string>::const_iterator it;
+      for (it = materials_list.begin(); it != materials_list.end(); ++it)
+        Sigma_sn[*it][0] = Ss.at(*it);
     }
             
     void MaterialPropertyMaps::invert_odd_Sigma_rn()
@@ -799,7 +819,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         bool1::const_iterator moment_matrix_is_diagonal = Sigma_rn_is_diagonal[mat].begin()+1;
         for (unsigned int num_visited = 0; num_visited < N_odd; num_visited++, 
               odd_moment_matrix += 2, ++inverted_moment_matrix, moment_matrix_is_diagonal += 2)
-        {              
+        {
+          if (num_visited == 0 && !D.empty())
+          {
+            for (unsigned int g = 0; g < G; g++)
+              (*inverted_moment_matrix)[g][g] = 3*D[mat][g];
+            continue;
+          }
+            
           if (*moment_matrix_is_diagonal)
           {
             for (unsigned int g = 0; g < G; g++)
@@ -817,11 +844,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             double *dgetri_workspace = new double [sz_dgetri_workspace];
             double *dgecon_double_workspace = new double [4*n];
             int *dgecon_int_workspace = new int [n];
+           
+            // A must be stored column-major for LAPACK routines.
+            unsigned int c = 0;
+            for (unsigned int gto = 0; gto < G; gto++)
+              for (unsigned int gfrom = 0; gfrom < G; gfrom++)
+                A[c++] = (*odd_moment_matrix)[gfrom][gto];
             
-            rank2::const_iterator row = odd_moment_matrix->begin();  int gto = 0;
-            for ( ; row != odd_moment_matrix->end(); ++row, ++gto)
-              std::copy(row->begin(), row->end(), &A[gto*G]);
-          
             double anorm = dlange_("1", &n, &n, A, &lda, NULL); // array in the last argument is not referenced for "1"-norm
             
             dgetrf_(&n, &n, A, &lda, ipiv, &info);
@@ -839,11 +868,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             dgetri_(&n, A, &lda, ipiv, dgetri_workspace, &sz_dgetri_workspace, &info);
             if (info != 0)
               ErrorHandling::error_function(Messages::E_LAPACK_ERROR);
-                            
-            rank2::iterator inv_mtx_row = inverted_moment_matrix->begin(); gto = 0;
-            for ( ; inv_mtx_row != inverted_moment_matrix->end(); ++inv_mtx_row, ++gto)
-              std::copy(&A[gto*G], &A[(gto+1)*G], inv_mtx_row->begin());
             
+            c = 0;
+            for (unsigned int gfrom = 0; gfrom < G; gfrom++)
+              for (unsigned int gto = 0; gto < G; gto++)
+                (*inverted_moment_matrix)[gto][gfrom] = A[c++];
+                          
             delete [] ipiv;
             delete [] dgetri_workspace;
             delete [] dgecon_double_workspace;
@@ -857,7 +887,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void MaterialPropertyMaps::validate()
     {
       if (Sigma_tn.empty())
-        ErrorHandling::error_function(Messages::E_SIGMA_T_REQUIRED);
+      {
+        if (!Sigma_a.empty() && !Sigma_sn.empty())
+        {
+          MaterialPropertyMap2 Sigma_s = extract_isotropic_part(Sigma_sn);
+          MaterialPropertyMap1 Sigma_t = NDArrayMapOp::add<rank1>(Sigma_a, sum_map2_columns(Sigma_s));
+          set_Sigma_tn(Sigma_t);
+        }
+        else
+          ErrorHandling::error_function(Messages::E_SIGMA_T_REQUIRED);
+      }
       
       Common::MaterialProperties::MaterialPropertyMaps::validate();
                 
@@ -888,7 +927,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         if (Ssn.size() == N+1)
         {
           Sigma_rn[mat] = NDArrayMapOp::subtract<rank3>(Stn, Ssn);
-          
+                 
           rank3 moment_matrices = Sigma_rn[mat];
           rank3::const_iterator moment_matrix = moment_matrices.begin();
           bool1::iterator moment_matrix_is_diagonal = Sigma_rn_is_diagonal[mat].begin();
