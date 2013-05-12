@@ -388,11 +388,14 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         MaterialPropertyMap3 Sigma_sn;
         MaterialPropertyMap3 Sigma_tn;
         
+        MaterialPropertyMap1 D;
+        
         std::map<std::string, bool1> Sigma_rn_is_diagonal;
         
         void extend_to_rank3(const MaterialPropertyMap2& src, MaterialPropertyMap3* dest);
         void extend_to_rank3(const MaterialPropertyMap1& src, MaterialPropertyMap3* dest);
         MaterialPropertyMap3 create_map3_by_diagonals(const MaterialPropertyMap2& diags) const;
+        MaterialPropertyMap2 extract_isotropic_part(const MaterialPropertyMap3& arg) const;
         void fill_with(double c, MaterialPropertyMap3 *mmmrmg_map);
         void invert_odd_Sigma_rn();
         
@@ -415,6 +418,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         }
                                 
         virtual void validate();
+        
+        virtual void set_D(const MaterialPropertyMap1& D) {
+          this->D = D;
+        }
                     
         virtual void set_Sigma_rn(const MaterialPropertyMap3& Sr) {
           this->Sigma_rn = Sr;
@@ -423,6 +430,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         virtual void set_Sigma_sn(const MaterialPropertyMap3& Ss) {
           this->Sigma_sn = Ss;
         }
+        
+        virtual void set_Sigma_s(const MaterialPropertyMap2& Ss);
         
         virtual void set_Sigma_tn(const MaterialPropertyMap3& St) {
           this->Sigma_tn = St;
