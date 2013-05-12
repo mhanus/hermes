@@ -1,24 +1,39 @@
 #define HERMES_REPORT_ALL
-#include "problem_data.h"
+#include "../problem_data.h"
 #include "definitions.h"
-#include "../../../utils.h"
+#include "../../../../utils.h"
 
 using namespace RefinementSelectors;
 
 const unsigned int N_GROUPS = 2;  // Monoenergetic (single group) problem.
+const unsigned int SPN_ORDER = 3; // SP3 approximation
 
-const unsigned int N_EQUATIONS = N_GROUPS;
+const unsigned int N_MOMENTS = SPN_ORDER+1;
+const unsigned int N_ODD_MOMENTS = (N_MOMENTS+1)/2;
+const unsigned int N_EQUATIONS = N_GROUPS * N_ODD_MOMENTS;
 
-const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
-  0,0
-};
-const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
-  1,1
-}; 
+const int INIT_REF_NUM[N_EQUATIONS] = {
+  /* g1 g2 */
+  /*-------*/
+    0,  0,     // SP1
+    0,  0,     // SP3
+//     1,  1,     // SP5
+//     2,  2,     // SP7
+//     2,  2      // SP9
+  };
+  const int P_INIT[N_EQUATIONS] = {
+  /* g1 g2 */
+  /*-------*/
+    1,  1,     // SP1
+    1,  1,     // SP3
+//     1,  1,     // SP5
+//     2,  2,     // SP7
+//     2,  2      // SP9
+  };
         
 const double THRESHOLD = 0.2;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
-const int STRATEGY = 1;                  // Adaptive strategy:
+const int STRATEGY = 0;                  // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
                                          //   error is processed. If more elements have similar errors, refine
                                          //   all to keep the mesh symmetric.
@@ -49,9 +64,9 @@ Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibiliti
                                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
                                                   
                                                   
-const bool HERMES_VISUALIZATION = false;  // Set to "true" to enable Hermes OpenGL visualization. 
+const bool HERMES_VISUALIZATION = true;  // Set to "true" to enable Hermes OpenGL visualization. 
 const bool VTK_VISUALIZATION = true;     // Set to "true" to enable VTK output.
-const bool DISPLAY_MESHES = true;       // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
+const bool DISPLAY_MESHES = false;       // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
 const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
 
 // Power iteration control.
@@ -62,7 +77,7 @@ int main(int argc, char* argv[])
 {  
     // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 0);
-  //Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
+  Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 2);
   
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -70,7 +85,7 @@ int main(int argc, char* argv[])
   
   MaterialProperties::MaterialPropertyMaps *matprop;
   
-  matprop = new MaterialProperties::MaterialPropertyMaps(N_GROUPS, rm_map);
+  matprop = new MaterialProperties::MaterialPropertyMaps(N_GROUPS, SPN_ORDER, rm_map);
     
   matprop->set_D(D);
   matprop->set_Sigma_f(Sf);
@@ -90,7 +105,7 @@ int main(int argc, char* argv[])
   
   // Load the mesh on which the 1st solution component (1st group, 0th moment) will be approximated.
   MeshReaderH2D mesh_reader;
-  mesh_reader.load(mesh_file.c_str(), meshes[0]);
+  mesh_reader.load((std::string("../") + mesh_file).c_str(), meshes[0]);
   
   // Convert the mesh so that it has one type of elements (optional). 
   //meshes[0]->convert_quads_to_triangles();
@@ -108,12 +123,13 @@ int main(int argc, char* argv[])
   for (int j = 0; j < INIT_REF_NUM[0]; j++) 
     meshes[0]->refine_all_elements();
   
-  SupportClasses::Visualization views(N_GROUPS, DISPLAY_MESHES);
+  SupportClasses::Visualization views(SPN_ORDER, N_GROUPS, DISPLAY_MESHES);
   if (DISPLAY_MESHES && HERMES_VISUALIZATION)
     views.inspect_meshes(meshes);
   
   // Initialize the weak formulation.
-  CustomWeakForm wf(*matprop, HermesMultiArray<std::string>(bdy_vacuum));
+  // CustomWeakForm wf(*matprop, SPN_ORDER, HermesMultiArray<std::string>(bdy_vacuum));
+  CustomWeakForm wf(*matprop, SPN_ORDER, Hermes::vector<std::string>());
 
   // Create pointers to solutions from the latest power iteration and approximation spaces with default shapeset.
   Hermes::vector<MeshFunctionSharedPtr<double> > power_iterates;  
@@ -278,7 +294,7 @@ int main(int argc, char* argv[])
     Views::View::wait(Views::HERMES_WAIT_KEYPRESS);
   
   // Test the unit source normalization.
-  Neutronics::PostProcessor pp(NEUTRONICS_DIFFUSION);
+  Neutronics::PostProcessor pp(NEUTRONICS_SPN);
   pp.normalize_to_unit_fission_source(&power_iterates, *matprop);
   
   SupportClasses::SourceFilter sf(power_iterates, *matprop);
@@ -288,7 +304,7 @@ int main(int argc, char* argv[])
   
   if (HERMES_VISUALIZATION)
   {
-    views.show_solutions(power_iterates);
+    views.show_all_flux_moments(power_iterates, *matprop);
     Views::View::wait();
   }
   if (VTK_VISUALIZATION)
