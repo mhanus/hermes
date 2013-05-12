@@ -572,7 +572,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             
             for (unsigned int gfrom = 0; gfrom < G; gfrom++)
             {
-              if (gfrom != gto) {
+              if (gfrom != gto && !diagonal_moments[2*m+1]) {
                 double D = -Coeffs::D(m) * odd_Sigma_rn_inv[m][gto][gfrom];
                 wf->add_matrix_form(new OffDiagonalStreaming::Jacobian(regions, m, gto, gfrom, G, D, geom_type));// odsJ++;
               }
@@ -592,7 +592,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                 {
                   if (present[i][j]) {
                     double Sigma_rn_local = 0.;
-                    for (unsigned int k = 0; k < m; k++)
+                    for (unsigned int k = 0; k <= m; k++)
                       Sigma_rn_local += Coeffs::system_matrix(m, n, k) * Sigma_rn[2*k][gto][gfrom];
       
                     wf->add_matrix_form( new OffDiagonalReactions::Jacobian(regions, m, n, gto, gfrom, G, 
