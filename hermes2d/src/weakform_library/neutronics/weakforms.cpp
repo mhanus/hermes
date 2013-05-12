@@ -492,7 +492,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                 
                 if (!present[j][i])
                 {
-                  if (j < (n+1)*G && diagonal_moments[2*m+1])
+                  if (j < (n+1)*G && diagonal_moments[2*m+1]) // TODO: check whether !diagonal_moments should be here
                   {
                     present[j][i] = present[i][j] = true;
                   }
@@ -509,7 +509,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
       
       bool1 chi_nnz = mp->get_fission_nonzero_structure();
-/* DEBUG      
+/* DEBUG     
       std::cout << std::endl;
       for (unsigned int gto = 0; gto < G; gto++)
       {
@@ -530,14 +530,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         }
       }
       std::cout << std::endl;
-*/    
-      //int dssrJ = 0, dssrR = 0, fyJ = 0, fyR = 0, odsJ = 0, odsR = 0, odrJ = 0, odrR = 0; // DEBUG
-      
+
+      int dssrJ = 0, dssrR = 0, fyJ = 0, fyR = 0, odsJ = 0, odsR = 0, odrJ = 0, odrR = 0; // DEBUG
+*/      
       
       const Hermes::vector<std::string>& fission_materials = mp->get_fission_materials();
       std::set<std::string>::const_iterator material = mp->get_materials_list().begin();
       for ( ; material != mp->get_materials_list().end(); ++material)
       {
+        // cout << endl << "          " << *material << endl;
         bool do_include_fission = (include_fission != NONE);
         
         if (do_include_fission && !fission_materials.empty()) 
@@ -554,6 +555,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         for (unsigned int gto = 0; gto < G; gto++)
         {
+          // cout << "gto=" << gto << endl;
           for (unsigned int m = 0; m < N_odd; m++)
           {
             unsigned int i = mg.pos(m, gto);
@@ -563,17 +565,22 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
               Sigma_r += Coeffs::system_matrix(m, m, k) * Sigma_rn[2*k][gto][gto];
 
             double D = -Coeffs::D(m) * odd_Sigma_rn_inv[m][gto][gto];
+            // cout << "  D: " << D << endl;
+            // cout << "  Sr: " << Sigma_r << endl;
       
             wf->add_matrix_form(new DiagonalStreamingAndReactions::Jacobian(regions, m, gto, G, D, Sigma_r, geom_type));// dssrJ++;
             
             if (do_include_fission && chi_nnz[gto] && include_fission == EXPLICIT) {
+              // cout << "  nSf: " << nu[gto]*Sigma_f[gto] << endl;
               wf->add_vector_form(new FissionYield::Residual(regions, m, N_odd, gto, G, -chi[gto], nu, Sigma_f, geom_type));// fyR++;
             }
             
             for (unsigned int gfrom = 0; gfrom < G; gfrom++)
             {
+              // cout << "  gfrom=" << gfrom << endl;
               if (gfrom != gto && !diagonal_moments[2*m+1]) {
                 double D = -Coeffs::D(m) * odd_Sigma_rn_inv[m][gto][gfrom];
+                // cout << "    D: " << D << endl;
                 wf->add_matrix_form(new OffDiagonalStreaming::Jacobian(regions, m, gto, gfrom, G, D, geom_type));// odsJ++;
               }
               
@@ -586,7 +593,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                                   chi[gto], nu[gfrom], Sigma_f[gfrom], geom_type) );// fyJ++;
                 }
                 
-                //// cout << "(" << i << "," << j << ") : P" << present[i][j] << " S" << sym[i][j] << endl;
+                // cout << "(" << i << "," << j << ") : P" << present[i][j] << " S" << sym[i][j] << endl;
                 
                 if (i != j)
                 {
@@ -595,6 +602,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                     for (unsigned int k = 0; k <= m; k++)
                       Sigma_rn_local += Coeffs::system_matrix(m, n, k) * Sigma_rn[2*k][gto][gfrom];
       
+                    // cout << "    Srnl: " << Sigma_rn_local << endl;
                     wf->add_matrix_form( new OffDiagonalReactions::Jacobian(regions, m, n, gto, gfrom, G, 
                                                                             Sigma_rn_local, geom_type, 
                                                                             sym[i][j] ? HERMES_SYM : HERMES_NONSYM) );// odrJ++;
@@ -605,7 +613,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           }
         }
       }
-/* DEBUG       
+/* DEBUG      
+      std::cout << std::endl;
       std::cout << "DiagonalStreamingAndReactions::Jacobian: " << dssrJ << std::endl;
       std::cout << "DiagonalStreamingAndReactions::Residual: " << dssrR << std::endl;
       std::cout << "FissionYield::Jacobian: "  << fyJ << std::endl;
@@ -614,9 +623,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       std::cout << "OffDiagonalStreaming::Residual: " << odsR << std::endl;
       std::cout << "OffDiagonalReactions::Jacobian: " << odrJ << std::endl;
       std::cout << "OffDiagonalReactions::Residual: " << odrR << std::endl;
-*/      
+*/       
     }
-   
+  
     FixedSourceProblem::FixedSourceProblem(const MaterialPropertyMaps& matprop, unsigned int N,
                                            GeomType geom_type, bool solve_by_newton) 
       : NeutronicsProblem(matprop.get_G()*(N+1)/2, &matprop, geom_type),
