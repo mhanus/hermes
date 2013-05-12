@@ -433,6 +433,14 @@ project(hermes2d)
     include/weakform_library/weakforms_hcurl.h
     include/weakform_library/weakforms_maxwell.h
     include/weakform_library/weakforms_neutronics.h
+
+    include/weakform_library/neutronics/common_definitions.h
+    include/weakform_library/neutronics/material_properties.h
+    include/weakform_library/neutronics/support_classes.h
+    include/weakform_library/neutronics/weakform_parts.h
+    include/weakform_library/neutronics/weakform_parts_implementation.h
+    include/weakform_library/neutronics/weakforms.h
+
     
     include/discrete_problem.h
     include/discrete_problem/discrete_problem_helpers.h
