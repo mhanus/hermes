@@ -23,7 +23,6 @@
 #define __H2D_SOLVER_NEWTON_H_
 
 #include "global.h"
-#include "discrete_problem.h"
 #include "nonlinear_solver.h"
 #include "newton_solver_convergence_measurement.h"
 #include "exceptions.h"
@@ -87,7 +86,7 @@ namespace Hermes
 
       /// Sets the current convergence measurement.
       /// Default: AbsoluteNorm
-      void set_convergence_measurement(NewtonSolverConvergenceMeasurement measurement);
+      void set_convergence_measurement(NewtonSolverConvergenceMeasurementType measurement);
 
       /// Sets the maximum allowed norm of the residual during the calculation.
       /// Default: 1E9
@@ -115,7 +114,7 @@ namespace Hermes
       /// Default: default is the automatic damping, default coefficient if manual damping used is set by this method.
       /// \param[in] onOff on(true)-manual damping, off(false)-automatic damping.
       /// \param[in] coeff The (perpetual) damping coefficient in the case of manual damping. Ignored in the case of automatic damping.
-      void set_manual_damping_coeff(bool onOff, double coeff = 1.0);
+      void set_manual_damping_coeff(bool onOff, double coeff);
       
       /// Make the automatic damping start with this coefficient.
       /// This will also be the top bound for the coefficient.
@@ -181,17 +180,27 @@ namespace Hermes
       };
 
       /// Find out the state.
-      bool test_convergence(Scalar* coeff_vec);
+      typename NewtonSolver<Scalar>::ConvergenceState get_convergence_state();
+
+      /// Act upon the state.
+      /// \return If the main loop in solve() should finalize after this.
+      bool handle_convergence_state_return_finished(typename NewtonSolver<Scalar>::ConvergenceState state, Scalar* coeff_vec);
+
 #pragma endregion
 
     protected:
+      /// \return Whether or not should the processing continue.
+      virtual void on_damping_factor_updated();
+      /// \return Whether or not should the processing continue.
+      virtual void on_reused_jacobian_step_begin();
+
       /// State querying helpers.
       virtual bool isOkay() const;
       inline std::string getClassName() const { return "NewtonSolver"; }
 
       void init_solving(Scalar*& coeff_vec);
 
-      void do_initial_step(Scalar* coeff_vec);
+      bool do_initial_step_return_finished(Scalar* coeff_vec);
       void assemble_residual(Scalar* coeff_vec);
       void solve_linear_system(Scalar* coeff_vec);
 
@@ -202,9 +211,9 @@ namespace Hermes
       double calculate_residual_norm();
 
       /// Calculates the new damping coefficient.
-      double calculate_damping_coefficient(bool& damping_coefficient_drop, unsigned int& successful_steps);
+      bool calculate_damping_coefficient(unsigned int& successful_steps);
 
-      NewtonSolverConvergenceMeasurement current_convergence_measurement;
+      NewtonSolverConvergenceMeasurementType current_convergence_measurement;
       
       /// Internal setting of default values (see individual set methods).
       void init_newton();
@@ -254,7 +263,7 @@ namespace Hermes
       const OutputParameterUnsignedInt& successful_steps_damping() const { return this->p_successful_steps_damping; };
       const OutputParameterUnsignedInt& successful_steps_jacobian() const { return this->p_successful_steps_jacobian; };
       
-      const OutputParameterDouble& current_damping_coefficient() const { return this->p_current_damping_coefficient; };
+      const OutputParameterDoubleVector& damping_coefficients() const { return this->p_damping_coefficients; };
       const OutputParameterBool& residual_norm_drop() const { return this->p_residual_norm_drop; };
       const OutputParameterUnsignedInt& iteration() const { return this->p_iteration; };
 
@@ -265,7 +274,7 @@ namespace Hermes
       OutputParameterDouble p_solution_change_norm;
       OutputParameterUnsignedInt p_successful_steps_damping;
       OutputParameterUnsignedInt p_successful_steps_jacobian;
-      OutputParameterDouble p_current_damping_coefficient;
+      OutputParameterDoubleVector p_damping_coefficients;
       OutputParameterBool p_residual_norm_drop;
       OutputParameterUnsignedInt p_iteration;
 #pragma endregion
@@ -274,7 +283,7 @@ namespace Hermes
       Scalar* coeff_vec_back;
       int ndof;
 
-      friend bool newtonConverged<Scalar>(NewtonSolver<Scalar>*);
+      friend class NewtonSolverConvergenceMeasurement<Scalar>;
     };
   }
 }
