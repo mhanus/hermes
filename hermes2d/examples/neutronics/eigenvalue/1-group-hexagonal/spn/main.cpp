@@ -50,7 +50,7 @@ const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the nu
 Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
                                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
                                                   
-const bool HERMES_VISUALIZATION = false;  // Set to "true" to enable Hermes OpenGL visualization. 
+const bool HERMES_VISUALIZATION = true;  // Set to "true" to enable Hermes OpenGL visualization. 
 const bool VTK_VISUALIZATION = false;     // Set to "true" to enable VTK output.
 const bool DISPLAY_MESHES = false;       // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
 const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
@@ -278,7 +278,7 @@ int main(int argc, char* argv[])
     
   if (HERMES_VISUALIZATION)
   {
-    views.show_solutions(power_iterates);
+    views.show_all_flux_moments(power_iterates, matprop);
     Views::View::wait();
   }
   if (VTK_VISUALIZATION)
