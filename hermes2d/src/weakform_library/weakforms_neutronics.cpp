@@ -280,9 +280,10 @@ namespace Neutronics
       lambda += sqr(this->sln_vector[i]);
     
     keff = sqrt(lambda);
+    double inv = 1./keff;
     
     for (int i = 0; i < ndof; i++) 
-      this->sln_vector[i] /= keff;
+      this->sln_vector[i] *= inv;
   }
     
 /* Neutronics */
