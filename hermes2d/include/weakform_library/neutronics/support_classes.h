@@ -101,6 +101,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         virtual void show_meshes(Hermes::vector<MeshSharedPtr> meshes) = 0;
         virtual void show_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) = 0;
+        virtual void show_scalar_fluxes(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) = 0;
         virtual void show_orders(Hermes::vector<SpaceSharedPtr<double> > spaces) = 0;
 
 #ifndef NOGLUT
@@ -112,6 +113,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         void inspect_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) {};
         void inspect_orders(Hermes::vector<SpaceSharedPtr<double> > spaces) {};
 #endif
+
+        virtual void save_solutions_vtk(const std::string& base_filename, const std::string& base_varname,
+                                Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D = false) = 0;
+        virtual void save_scalar_fluxes_vtk(const std::string& base_filename, const std::string& base_varname,
+                                Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D = false) = 0;                                
+        virtual void save_orders_vtk(const std::string& base_filename, Hermes::vector<SpaceSharedPtr<double> > spaces) = 0;
         
         Views::ScalarView** get_solution_views(unsigned int* num) { *num = n_equations; return sviews; }
         Views::OrderView** get_order_views(unsigned int* num)     { *num = n_equations; return oviews; }
@@ -150,15 +157,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 #ifndef NOGLUT
         void show_meshes(Hermes::vector<MeshSharedPtr> meshes);
         void show_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions);
+        void show_scalar_fluxes(Hermes::vector< MeshFunctionSharedPtr<double> > solutions);
         void show_orders(Hermes::vector<SpaceSharedPtr<double> > spaces);     
 #else
         void show_meshes(Hermes::vector<MeshSharedPtr> meshes) {};
         void show_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) {};
+        void show_scalar_fluxes(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) {};
         void show_orders(Hermes::vector<SpaceSharedPtr<double> > spaces) {};     
 #endif
         
         void save_solutions_vtk(const std::string& base_filename, const std::string& base_varname,
-                                Hermes::vector< MeshFunctionSharedPtr<double> > solutions,  bool mode_3D = false);
+                                Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D = false);
+        void save_scalar_fluxes_vtk(const std::string& base_filename, const std::string& base_varname,
+                                Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D = false);                                
         void save_orders_vtk(const std::string& base_filename, Hermes::vector<SpaceSharedPtr<double> > spaces);       
     };
     
@@ -382,18 +393,23 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 #ifndef NOGLUT 
         void show_meshes(Hermes::vector<MeshSharedPtr> meshes);
         void show_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions);
+        void show_scalar_fluxes(Hermes::vector< MeshFunctionSharedPtr<double> > solutions);
         void show_orders(Hermes::vector<SpaceSharedPtr<double> > spaces);
         
         void inspect_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions);
 
-        void show_even_flux_moment(unsigned int moment, unsigned int group, Views::ScalarView* sview,
-                                   Hermes::vector< MeshFunctionSharedPtr<double> > solutions);
-        void show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView* vview,
-                                  Hermes::vector< MeshFunctionSharedPtr<double> > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
+        void show_even_flux_moment(unsigned int moment, unsigned int group,
+                                   Hermes::vector< MeshFunctionSharedPtr<double> > solutions,
+                                   Views::ScalarView* sview = NULL);
+        void show_odd_flux_moment(unsigned int moment, unsigned int group,
+                                  Hermes::vector< MeshFunctionSharedPtr<double> > solutions, 
+                                  const MaterialProperties::MaterialPropertyMaps& matprop,
+                                  Views::VectorView* vview = NULL);
         void show_all_flux_moments(Hermes::vector< MeshFunctionSharedPtr<double> > solutions, const MaterialProperties::MaterialPropertyMaps& matprop);
 #else        
         void show_meshes(Hermes::vector<MeshSharedPtr> meshes) {};
         void show_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) {};
+        void show_scalar_fluxes(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) {};
         void show_orders(Hermes::vector<SpaceSharedPtr<double> > spaces) {};
         
         void inspect_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) {};
@@ -406,7 +422,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 #endif
         
         void save_solutions_vtk(const std::string& base_filename, const std::string& base_varname,
-                                Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D = false);                   
+                                Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D = false);
+        void save_scalar_fluxes_vtk(const std::string& base_filename, const std::string& base_varname,
+                                Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D = false);                                
         void save_orders_vtk(const std::string& base_filename, Hermes::vector<SpaceSharedPtr<double> > spaces);
     };       
     
@@ -585,6 +603,52 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       // DEPRECATED (not needed when shared pointers are used for scalar_fluxes) 
       static void clear_scalar_fluxes(Hermes::vector<MeshFunction<double>* >* scalar_fluxes);
       static void clear_scalar_fluxes(Hermes::vector<Filter<double>*>* scalar_fluxes);
+    };
+    
+    class Visualization : public Common::SupportClasses::Visualization
+    {
+        unsigned int M;
+        AngleGroupFlattener ag;
+        OrdinatesData odata;
+        Views::ScalarView** sviews_app;
+      
+      protected:
+#ifndef NOGLUT
+        void init(unsigned int width, unsigned int height, bool display_meshes);
+#else
+        void init(unsigned int width, unsigned int height, bool display_meshes) {};
+#endif
+      public:
+        Visualization(unsigned int G, unsigned int N, const OrdinatesData& odata, bool display_meshes = false)
+          : Common::SupportClasses::Visualization(N*(N+2)/2*G, G, 450, 450, display_meshes), M(N*(N+2)/2), ag(G), sviews_app(NULL), odata(odata)
+        {
+          init(450, 450, display_meshes); 
+        }
+        Visualization(unsigned int G, unsigned int N, const OrdinatesData& odata, unsigned int width, unsigned int height, bool display_meshes = false)
+          : Common::SupportClasses::Visualization(N*(N+2)/2*G, G, width, height, display_meshes), M(N*(N+2)/2), ag(G), sviews_app(NULL), odata(odata)
+        {
+          init(width, height, display_meshes); 
+        }
+        
+        virtual ~Visualization();
+        
+#ifndef NOGLUT
+        void show_meshes(Hermes::vector<MeshSharedPtr> meshes);
+        void show_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions);
+        void show_orders(Hermes::vector<SpaceSharedPtr<double> > spaces);     
+        void show_scalar_fluxes(Hermes::vector< MeshFunctionSharedPtr<double> > solutions);
+#else
+        void show_meshes(Hermes::vector<MeshSharedPtr> meshes) {};
+        void show_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) {};
+        void show_orders(Hermes::vector<SpaceSharedPtr<double> > spaces) {};     
+        void show_scalar_fluxes(Hermes::vector< MeshFunctionSharedPtr<double> > solutions) {};
+#endif
+        
+        void save_solutions_vtk(const std::string& base_filename, const std::string& base_varname,
+                                Hermes::vector< MeshFunctionSharedPtr<double> > solutions,  bool mode_3D = false);
+        void save_scalar_fluxes_vtk(const std::string& base_filename, const std::string& base_varname,
+                                Hermes::vector< MeshFunctionSharedPtr<double> > solutions,  bool mode_3D = false);                                
+        void save_orders_vtk(const std::string& base_filename, Hermes::vector<SpaceSharedPtr<double> > spaces);       
     };
     
   /* SupportClasses */
