@@ -677,8 +677,8 @@ int main(int argc, char* argv[])
     
     // Save the convergence graphs.
   #ifdef USE_SPN  
-    graph_dof.save(("conv_dof_sp"+itos(SPN_ORDER)+".gp").c_str());
-    graph_cpu.save(("conv_cpu_sp"+itos(SPN_ORDER)+".gp").c_str());
+    graph_dof.save(("conv_dof_sp"+tostr(SPN_ORDER)+".gp").c_str());
+    graph_cpu.save(("conv_cpu_sp"+tostr(SPN_ORDER)+".gp").c_str());
   #elif defined(USE_DIFFUSION_WITH_TRANSPORT_CORRECTION)
     graph_dof.save("conv_dof_diffusion_trc.gp");
     graph_cpu.save("conv_cpu_diffusion_trc.gp");
@@ -744,7 +744,7 @@ int main(int argc, char* argv[])
   
   // Output file names.
 #ifdef USE_SPN  
-  std::string file = "integrated_flux-sp"+itos(SPN_ORDER)+".dat";
+  std::string file = "integrated_flux-sp"+tostr(SPN_ORDER)+".dat";
 #elif defined(USE_DIFFUSION_WITH_TRANSPORT_CORRECTION)
   std::string file = "integrated_flux-diffusion_trc.dat";
 #else // SIMPLE DIFFUSION
@@ -782,14 +782,14 @@ int main(int argc, char* argv[])
 
     // Output file names.
 #ifdef USE_SPN  
-    file = "diagonal_flux-sp"+itos(SPN_ORDER)+".dat";
-    std::string file_err = "diagonal_flux-sp"+itos(SPN_ORDER)+".err";
+    file = "diagonal_flux-sp"+tostr(SPN_ORDER)+".dat";
+    std::string file_err = "diagonal_flux-sp"+tostr(SPN_ORDER)+".err";
 #elif defined(USE_DIFFUSION_WITH_TRANSPORT_CORRECTION)
     file = "diagonal_flux-diffusion_trc.dat";
-    std::string file_err = "diagonal_flux-sp"+itos(SPN_ORDER)+".err";
+    std::string file_err = "diagonal_flux-sp"+tostr(SPN_ORDER)+".err";
 #else // SIMPLE DIFFUSION
     file = "diagonal_flux-diffusion.dat";
-    std::string file_err = "diagonal_flux-sp"+itos(SPN_ORDER)+".err";
+    std::string file_err = "diagonal_flux-sp"+tostr(SPN_ORDER)+".err";
 #endif
    
     double *res = new double [n_diag_pts*N_GROUPS];

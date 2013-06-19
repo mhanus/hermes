@@ -363,8 +363,8 @@ int main(int argc, char* argv[])
     while (done == false);
     
     // Save the convergence graphs.
-    graph_dof.save(("conv_dof_sp"+itos(SPN_ORDER)+".m").c_str());
-    graph_cpu.save(("conv_cpu_sp"+itos(SPN_ORDER)+".m").c_str());
+    graph_dof.save(("conv_dof_sp"+tostr(SPN_ORDER)+".m").c_str());
+    graph_cpu.save(("conv_cpu_sp"+tostr(SPN_ORDER)+".m").c_str());
   }
   else
   {
@@ -428,8 +428,8 @@ int main(int argc, char* argv[])
     MeshFunctionSharedPtr<double> scalar_flux =  scalar_fluxes[0];
 
     // Output file names.
-    std::string file1 = "flux_x_1.5625-sp"+itos(SPN_ORDER)+".dat";
-    std::string file2 = "flux_65.5_y-sp"+itos(SPN_ORDER)+".dat";
+    std::string file1 = "flux_x_1.5625-sp"+tostr(SPN_ORDER)+".dat";
+    std::string file2 = "flux_65.5_y-sp"+tostr(SPN_ORDER)+".dat";
 
     double y = 1.5625;
     
