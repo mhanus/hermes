@@ -10,18 +10,18 @@ const unsigned int N_GROUPS = 2;
 const unsigned int N_EQUATIONS = N_GROUPS;
 
 const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for the individual solution components.
-  1, 1
+  2, 2
 };
 const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
-  1, 1
+  2, 1
 }; 
 const int SELECTIVE_REF_NUM[N_EQUATIONS] = {
-  0, 0
+  2, 3
 };
         
 const double THRESHOLD = 0.6;            // This is a quantitative parameter of the adapt(...) function and
                                          // it has different meanings for various adaptive strategies (see below).
-const int STRATEGY = 1;                  // Adaptive strategy:
+const int STRATEGY = -1;                  // Adaptive strategy:
                                          // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
                                          //   error is processed. If more elements have similar errors, refine
                                          //   all to keep the mesh symmetric.
@@ -52,19 +52,38 @@ Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibiliti
                                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
                                                   
                                                   
-const bool HERMES_VISUALIZATION = false;  // Set to "true" to enable Hermes OpenGL visualization. 
-const bool VTK_VISUALIZATION = true;     // Set to "true" to enable VTK output.
+const bool HERMES_VISUALIZATION = true;  // Set to "true" to enable Hermes OpenGL visualization. 
+const bool VTK_VISUALIZATION = false;     // Set to "true" to enable VTK output.
 const bool DISPLAY_MESHES = true;       // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
 const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
 
-// Power iteration control.
-double TOL_PIT_CM = 1e-5;   // Tolerance for eigenvalue convergence on the coarse mesh.
-double TOL_PIT_FM = 1e-5;   // Tolerance for eigenvalue convergence on the fine mesh.
+const bool SAVE_MATRICES = true; // Save algebraic representation of individual parts comprising the weak formulation.
+
+//
+// Eigenvalue iteration control.
+//
+double TOL_PIT_CM = 1e-5;   // Tolerance for convergence on the coarse mesh.
+double TOL_PIT_FM = 1e-9;   // Tolerance for convergence on the fine mesh.
+const int MAX_PIT = 1000;   // Maximal number of iterations.
+const bool MEASURE_CONVERGENCE_BY_RESIDUAL = true;  // When 'false', eigenvalue difference will be used to monitor convergence. 
+
+const bool USE_RAYLEIGH_QUOTIENT = false; // Use Rayleigh quotient to estimate the eigenvalue in each iteration. 
+                                          // When 'false', the reciprocal norm of current eigenvector iterate will be used.
+
+// Shifting strategy for the inverse iteration.
+const KeffEigenvalueIteration::ShiftStrategies SHIFT_STRATEGY = KeffEigenvalueIteration::NO_SHIFT;
+const double FIXED_SHIFT = 0.98;
+const bool MODIFY_SHIFT_DURING_ADAPTIVITY = true;
 
 int ref_fn(Element* e)
 {
   if ( e->marker == 1 || 
+       e->marker == 2 ||
+       e->marker == 6 || 
        e->marker == 7 || 
+       e->marker == 8 || 
+       e->marker == 16 || 
+       e->marker == 17 || 
       e->marker == 11 ||
       e->marker == 20 ||
       e->marker == 21 ||
@@ -85,7 +104,7 @@ int main(int argc, char* argv[])
 {  
   // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 1);
-  //Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 2);
+  Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 2);
 
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -151,15 +170,49 @@ int main(int argc, char* argv[])
   report_num_dof("Coarse mesh power iteration, NDOF: ", spaces);
   
   Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
-  keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_CM);
-  keff_eigenvalue_iteration.set_max_allowed_iterations(1000);
-  //keff_eigenvalue_iteration.set_matrix_E_matrix_dump_format(Hermes::Algebra::DF_HERMES_BIN);
-  //keff_eigenvalue_iteration.set_matrix_filename("A");
-  //keff_eigenvalue_iteration.set_matrix_number_format("%1.15f");
-  //keff_eigenvalue_iteration.output_matrix(1);
+  keff_eigenvalue_iteration.set_max_allowed_iterations(MAX_PIT);  
+  keff_eigenvalue_iteration.measure_convergence_by_residual(MEASURE_CONVERGENCE_BY_RESIDUAL);
+  
+  if (MEASURE_CONVERGENCE_BY_RESIDUAL)
+    keff_eigenvalue_iteration.set_tolerance(STRATEGY >= 0 ? TOL_PIT_CM : TOL_PIT_FM);
+  else
+    keff_eigenvalue_iteration.set_keff_tol(STRATEGY >= 0 ? TOL_PIT_CM : TOL_PIT_FM);
+  
+  WeakForm<double> prod_wf(wf.get_neq());
+  if (USE_RAYLEIGH_QUOTIENT || SHIFT_STRATEGY || SAVE_MATRICES)
+    wf.get_fission_yield_part(&prod_wf);
+  if (USE_RAYLEIGH_QUOTIENT || SHIFT_STRATEGY)
+    keff_eigenvalue_iteration.set_production_weakform(&prod_wf);
+  
+  if (SAVE_MATRICES)
+  {
+    WeakForm<double> diff_wf(wf.get_neq());
+    WeakForm<double> scat_wf(wf.get_neq());
+    wf.get_diffusion_reaction_part(&diff_wf, HermesMultiArray<std::string>(bdy_vacuum));
+    wf.get_scattering_part(&scat_wf);
+    
+    // NOTE: If called after a call to 'solve', a 'false' argument could be added to prevent reassigning dofs
+    
+    save_algebraic_representation(&diff_wf, spaces, "A");
+    save_algebraic_representation(&prod_wf, spaces, "B");
+    save_algebraic_representation(&scat_wf, spaces, "S");
+  }
+/*  
+  keff_eigenvalue_iteration.set_matrix_E_matrix_dump_format(Hermes::Algebra::DF_HERMES_BIN);
+  keff_eigenvalue_iteration.set_matrix_filename("A");
+  keff_eigenvalue_iteration.set_matrix_number_format("%1.15f");
+  keff_eigenvalue_iteration.output_matrix(1);
+  keff_eigenvalue_iteration.set_rhs_E_matrix_dump_format(Hermes::Algebra::DF_HERMES_BIN);
+  keff_eigenvalue_iteration.set_rhs_filename("b");
+  keff_eigenvalue_iteration.set_rhs_number_format("%1.15f");
+  keff_eigenvalue_iteration.output_rhs(1);
+*/    
+  keff_eigenvalue_iteration.use_rayleigh_quotient(USE_RAYLEIGH_QUOTIENT);  
+  keff_eigenvalue_iteration.set_spectral_shift_strategy(SHIFT_STRATEGY, FIXED_SHIFT);
+  
   keff_eigenvalue_iteration.solve();
   Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), spaces, power_iterates);
-  
+
   if (STRATEGY >= 0)
   {
     // DOF and CPU convergence graphs
@@ -192,7 +245,10 @@ int main(int argc, char* argv[])
     for (unsigned int i = 0; i < N_EQUATIONS; i++)
       selectors.push_back(&selector);
     
-    keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_FM);
+    if (MEASURE_CONVERGENCE_BY_RESIDUAL)
+      keff_eigenvalue_iteration.set_tolerance(TOL_PIT_FM);
+    else
+      keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_FM);
     
     // Adaptivity loop:
     int as = 1; bool done = false; 
@@ -217,6 +273,10 @@ int main(int argc, char* argv[])
       // Solve the fine mesh problem.
       report_num_dof("Fine mesh power iteration, NDOF: ", ref_spaces);     
       keff_eigenvalue_iteration.set_spaces(ref_spaces);
+      
+      if (SHIFT_STRATEGY == KeffEigenvalueIteration::FIXED_SHIFT && MODIFY_SHIFT_DURING_ADAPTIVITY)
+        keff_eigenvalue_iteration.set_fixed_spectral_shift(1./keff_eigenvalue_iteration.get_keff()); 
+      
       keff_eigenvalue_iteration.solve(power_iterates);
       Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), ref_spaces, power_iterates);
               
