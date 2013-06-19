@@ -169,6 +169,11 @@ namespace Hermes
       /// Duplicates a matrix (including allocation).
       virtual SparseMatrix<Scalar>* duplicate() const;
 
+      /// Add matrix.
+      /// @param[in] mat matrix to be added
+      virtual void add_matrix(CSMatrix<Scalar>* mat);
+      virtual void add_sparse_matrix(SparseMatrix<Scalar>* mat);
+
       /// Important - normal SparseMatrix has the pages structure suitable for CSC matrix, so we need
       /// to override the structure creation here.
       /// add indices of nonzero matrix element
