@@ -312,7 +312,7 @@ int main(int argc, char* argv[])
   for (std::set<int>::const_iterator run = run_cases.begin(); run != run_cases.end(); ++run, ++run_number)
   {
     Loggable::Static::info("_______________________________________________________________________________________________");
-    Loggable::Static::info(("____________________________________________"+itos(*run)+"__________________________________________________").c_str());
+    Loggable::Static::info(("____________________________________________"+tostr(*run)+"__________________________________________________").c_str());
 
     // Norm in which to calculate errors.
     ProjNormType error_norm;
@@ -564,8 +564,8 @@ int main(int argc, char* argv[])
     }
     while (done == false);
     
-    graph_dof_est.save(("conv_dof_est_sp"+itos(SPN_ORDER)+".gp").c_str());
-    graph_cpu_est.save(("conv_cpu_est_sp"+itos(SPN_ORDER)+".gp").c_str());
+    graph_dof_est.save(("conv_dof_est_sp"+tostr(SPN_ORDER)+".gp").c_str());
+    graph_cpu_est.save(("conv_cpu_est_sp"+tostr(SPN_ORDER)+".gp").c_str());
           
     cpu_time.tick();
     Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());

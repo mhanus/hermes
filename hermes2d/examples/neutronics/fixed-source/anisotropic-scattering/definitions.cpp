@@ -15,7 +15,7 @@ CustomWeakForm::CustomWeakForm(const MaterialProperties::MaterialPropertyMaps& m
     for (unsigned int m = 0; m < N_odd; m++)
     {
       add_vector_form_surf(new WeakFormParts::VacuumBoundaryCondition::Residual("Vacuum", m, N, g, G));
-      for (unsigned int n = 0; n < N_odd; n++)
+      for (unsigned int n = m; n < N_odd; n++)
         add_matrix_form_surf(new WeakFormParts::VacuumBoundaryCondition::Jacobian("Vacuum", m, n, g, G));    
     }
 #else // DIFFUSION

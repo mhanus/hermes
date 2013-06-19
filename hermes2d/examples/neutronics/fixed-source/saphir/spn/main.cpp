@@ -464,8 +464,8 @@ int main(int argc, char* argv[])
     while (done == false);
     
     // Save the convergence graphs.
-    graph_dof.save(("conv_dof_sp"+itos(SPN_ORDER)+".gp").c_str());
-    graph_cpu.save(("conv_cpu_sp"+itos(SPN_ORDER)+".gp").c_str());
+    graph_dof.save(("conv_dof_sp"+tostr(SPN_ORDER)+".gp").c_str());
+    graph_cpu.save(("conv_cpu_sp"+tostr(SPN_ORDER)+".gp").c_str());
   }
   
   delete newton;

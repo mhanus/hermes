@@ -493,8 +493,8 @@ int main(int argc, char* argv[])
     
     // Save the convergence graphs.
   #ifdef USE_SPN  
-    graph_dof.save(("conv_dof_sp"+itos(SPN_ORDER)+".gp").c_str());
-    graph_cpu.save(("conv_cpu_sp"+itos(SPN_ORDER)+".gp").c_str());
+    graph_dof.save(("conv_dof_sp"+tostr(SPN_ORDER)+".gp").c_str());
+    graph_cpu.save(("conv_cpu_sp"+tostr(SPN_ORDER)+".gp").c_str());
   #elif defined(USE_DIFFUSION_WITH_TRANSPORT_CORRECTION)
     graph_dof.save("conv_dof_diffusion_trc.gp");
     graph_cpu.save("conv_cpu_diffusion_trc.gp");
@@ -564,7 +564,7 @@ int main(int argc, char* argv[])
   
   // Output file names.
 #ifdef USE_SPN  
-  std::string file = "integrated_flux-sp"+itos(SPN_ORDER)+".dat";
+  std::string file = "integrated_flux-sp"+tostr(SPN_ORDER)+".dat";
 #elif defined(USE_DIFFUSION_WITH_TRANSPORT_CORRECTION)
   std::string file = "integrated_flux-diffusion_trc.dat";
 #else // SIMPLE DIFFUSION
@@ -607,8 +607,8 @@ int main(int argc, char* argv[])
 
     // Output file names.
 #ifdef USE_SPN  
-    std::string file1 = "flux_x_1.5625-sp"+itos(SPN_ORDER)+".dat";
-    std::string file2 = "flux_65.5_y-sp"+itos(SPN_ORDER)+".dat";
+    std::string file1 = "flux_x_1.5625-sp"+tostr(SPN_ORDER)+".dat";
+    std::string file2 = "flux_65.5_y-sp"+tostr(SPN_ORDER)+".dat";
 #elif defined(USE_DIFFUSION_WITH_TRANSPORT_CORRECTION)
     std::string file1 = "flux_x_1.5625-diffusion_trc.dat";
     std::string file2 = "flux_65.5_y-diffusion_trc.dat";
