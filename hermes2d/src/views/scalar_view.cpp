@@ -224,7 +224,7 @@ namespace Hermes
         double vert_max = lin->get_max_value();
         // Special case: constant function; offset the lower limit of range so that the domain is drawn under the
         // function and also the scale is drawn correctly.
-        if((vert_max - vert_min) < 1e-8)
+        if((vert_max - vert_min) < Hermes::Epsilon)
         {
           is_constant = true;
           vert_min -= 0.5;
@@ -236,7 +236,7 @@ namespace Hermes
           range_max = vert_max;
         }
 
-        if(fabs(range_max - range_min) < 1e-8)
+        if(fabs(range_max - range_min) < Hermes::Epsilon)
           value_irange = 1.0;
         else
           value_irange = 1.0 / (range_max - range_min);
@@ -605,6 +605,7 @@ namespace Hermes
 
       void ScalarView::draw_tri_contours(double3* vert, int3* tri)
       {
+
         // sort the vertices by their value, keep track of the permutation sign
         int i, idx[3], perm = 0;
         memcpy(idx, tri, sizeof(idx));
@@ -1329,7 +1330,7 @@ namespace Hermes
       void ScalarView::set_min_max_range(double min, double max)
       {
         /// \todo allow settin min = max, in which case draw the corresponding contour.
-        if(fabs(max-min) < 1e-8)
+        if(fabs(max-min) < Hermes::Epsilon)
         {
           this->warn("Range (%f, %f) is too narrow: adjusted to (%f, %f)", min, max, min-0.5, max);
           min -= 0.5;
@@ -1407,6 +1408,8 @@ namespace Hermes
 
           case 'k':
             contours = !contours;
+            if(contours)
+              this->cont_step = (this->range_max - this->range_min) / 50.;
             refresh();
             break;
 

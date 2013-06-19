@@ -39,8 +39,6 @@ const int INIT_REF_NUM_BDY = 1;                   // Number of initial uniform m
 double time_step = 3e+2;                    // Time step in seconds.
 const double NEWTON_TOL = 1e-5;                   // Stopping criterion for the Newton's method.
 const int max_allowed_iterations = 100;                  // Maximum allowed number of Newton iterations.
-MatrixSolverType matrix_solver_type = SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
-// SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
 
 // Choose one of the following time-integration methods, or define your own Butcher's table. The last number
 // in the name of each method is its order. The one before last, if present, is the number of stages.
@@ -139,12 +137,11 @@ int main(int argc, char* argv[])
 
 	// Initialize Runge-Kutta time stepping.
 	RungeKutta<double> runge_kutta(&wf, space, &bt);
-
+  runge_kutta.set_tolerance(NEWTON_TOL);
 	runge_kutta.set_verbose_output(true);
 	runge_kutta.output_matrix(1);
 	runge_kutta.set_matrix_number_format("%a");
 	runge_kutta.output_rhs(2);
-	runge_kutta.set_global_integration_order(10);
 
 	// Iteration number.
 	int iteration = 0;

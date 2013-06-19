@@ -28,25 +28,25 @@ namespace Hermes
   namespace Hermes2D
   {
     template<typename Scalar>
-    LinearSolver<Scalar>::LinearSolver() : Solver<Scalar>()
+    LinearSolver<Scalar>::LinearSolver(bool force_use_direct_solver) : Solver<Scalar>(force_use_direct_solver)
     {
       this->init_linear();
     }
 
     template<typename Scalar>
-    LinearSolver<Scalar>::LinearSolver(DiscreteProblem<Scalar>* dp) : Solver<Scalar>(dp)
+    LinearSolver<Scalar>::LinearSolver(DiscreteProblem<Scalar>* dp, bool force_use_direct_solver) : Solver<Scalar>(dp, force_use_direct_solver)
     {
       this->init_linear();
     }
 
     template<typename Scalar>
-    LinearSolver<Scalar>::LinearSolver(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space) : Solver<Scalar>(wf, space)
+    LinearSolver<Scalar>::LinearSolver(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space, bool force_use_direct_solver) : Solver<Scalar>(wf, space, force_use_direct_solver)
     {
       this->init_linear();
     }
 
     template<typename Scalar>
-    LinearSolver<Scalar>::LinearSolver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces) : Solver<Scalar>(wf, spaces)
+    LinearSolver<Scalar>::LinearSolver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces, bool force_use_direct_solver) : Solver<Scalar>(wf, spaces, force_use_direct_solver)
     {
       this->init_linear();
     }
@@ -69,7 +69,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    void LinearSolver<Scalar>::solve()
+    void LinearSolver<Scalar>::solve(Scalar* coeff_vec)
     {
       this->check();
 
@@ -81,24 +81,49 @@ namespace Hermes
       if(this->report_cache_hits_and_misses)
         this->zero_cache_hits_and_misses();
 
+      this->info("\tLinear: assembling...");
       Space<Scalar>::assign_dofs(this->dp->get_spaces());
 
       // Assemble the residual always and the jacobian when necessary (nonconstant jacobian, not reusable, ...).
       this->conditionally_assemble();
       if(this->report_cache_hits_and_misses)
-          this->add_cache_hits_and_misses(this->dp);
+        this->add_cache_hits_and_misses(this->dp);
 
       this->process_matrix_output(this->jacobian, 1);
       this->process_vector_output(this->residual, 1);
 
-      this->matrix_solver->solve();
+      this->info("\tLinear: assembling done. Solving...");
+      // If the solver is iterative, give him the initial guess.
+      Hermes::Solvers::IterSolver<Scalar>* iter_solver = dynamic_cast<Hermes::Solvers::IterSolver<Scalar>*>(this->matrix_solver);
+      bool solved = iter_solver ? iter_solver->solve(coeff_vec) : this->matrix_solver->solve();
+      if(solved)
+      {
+        if(this->do_UMFPACK_reporting)
+        {
+          UMFPackLinearMatrixSolver<Scalar>* umfpack_matrix_solver = (UMFPackLinearMatrixSolver<Scalar>*)this->matrix_solver;
+          if(this->matrix_solver->get_used_factorization_scheme() != HERMES_REUSE_FACTORIZATION_COMPLETELY)
+          {
+            this->UMFPACK_reporting_data[this->FactorizationSize] = umfpack_matrix_solver->Info[UMFPACK_NUMERIC_SIZE] * umfpack_matrix_solver->Info[UMFPACK_SIZE_OF_UNIT];
+            this->UMFPACK_reporting_data[this->PeakMemoryUsage] = umfpack_matrix_solver->Info[UMFPACK_PEAK_MEMORY] * umfpack_matrix_solver->Info[UMFPACK_SIZE_OF_UNIT];
+            this->UMFPACK_reporting_data[this->Flops] = umfpack_matrix_solver->Info[UMFPACK_FLOPS];
+          }
+          else
+            memset(this->UMFPACK_reporting_data, 0, 3 * sizeof(double));
+        }
+      }
+      else
+      {
+        this->on_finish();
+        throw Exceptions::LinearMatrixSolverException();
+      }
 
       this->sln_vector = this->matrix_solver->get_sln_vector();
 
       this->on_finish();
-      
+
       this->tick();
-      this->info("\tLinear solver solution duration: %f s.\n", this->last());
+      this->info("\tLinear: done.");
+      this->info("\tLinear: solution duration: %f s.", this->last());
     }
 
     template class HERMES_API LinearSolver<double>;

@@ -1,4 +1,3 @@
-set(CMAKE_USER_MAKE_RULES_OVERRIDE_CXX ${CMAKE_HOME_DIRECTORY}/cmake/cxx_flag_overrides.cmake)
 project(hermes)
   cmake_minimum_required(VERSION 2.8)
 
@@ -14,7 +13,13 @@ project(hermes)
   # Global
     # Optional stacktrace
     set(WITH_STACKTRACE NO)
-  
+    # For Win64
+    if(${CMAKE_CL_64})
+      set(WIN64 YES)
+    else(${CMAKE_CL_64})
+      set(WIN64 NO)
+    endif(${CMAKE_CL_64})
+    
   # HermesCommon
     set(HERMES_COMMON_DEBUG     YES)
     set(HERMES_COMMON_RELEASE   YES)
@@ -40,6 +45,8 @@ project(hermes)
 	set(H2D_MAX_HANGING_NODES_LEVEL 15)
 	#  Use second derivatives (that are turned off by default).
 	set(H2D_USE_SECOND_DERIVATIVES NO)
+  
+  set(WITH_TC_MALLOC YES)
 
   # Installation path:
     set(TARGET_ROOT             /usr/local) #default installation path for the library will be /usr/local/lib,
@@ -48,6 +55,8 @@ project(hermes)
   # Standard UMFPACK
     # UMFPACK is chosen by default.
     set(WITH_UMFPACK YES)
+    # PARALUTION is chosen by default.
+    set(WITH_PARALUTION YES)
     
   ################################## CURRENTLY NOT SUPPORTED ###################################
   #  \/   \/   \/   \/   \/   \/   \/   \/   \/   \/   \/   \/   \/   \/   \/   \/   \/   \/
@@ -206,9 +215,7 @@ project(hermes)
       if(MSVC)
         # In MSVC, Release/Debug is distinguished in a special way
         # (see hermes_common/cmake/BuildAndInstallScripts.cmake)
-        set(HERMES_COMMON_DEBUG YES)
         set(HERMES_COMMON_LIB_DEBUG ${HERMES_COMMON_LIB}-debug)
-        set(HERMES_COMMON_RELEASE YES)
         set(HERMES_COMMON_LIB_RELEASE ${HERMES_COMMON_LIB})
       else(MSVC)
         if(${HXD}_DEBUG)
@@ -242,23 +249,32 @@ project(hermes)
 
   # Enabling multiprocessor build on MSVC
   if(MSVC)
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP /openmp")
-    SET(FLAGS "${FLAGS} /openmp")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+    if(WITH_OPENMP)
+      SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /openmp")
+    endif(WITH_OPENMP)
   endif(MSVC)
 
   # This overrides CXX flags for MSVC
   if(MSVC)
-    set(MSVC_DEFINES "/DWIN32 /D_WINDOWS /Dpopen=_popen /Dpclose=_pclose /D__value=_value /Dfinite=_finite /Dhypot=_hypot /Disatty=_isatty /Dfileno=_fileno /D_CRT_SECURE_NO_WARNINGS /DYY_NO_UNISTD_H /D_USE_MATH_DEFINES /DIMPLEMENT_C99 /wd4275 /wd4251")
+    if(WIN64)
+      set(MSVC_DEFINES "/DWIN64 /D_WINDOWS /Dpopen=_popen /Dpclose=_pclose /D__value=_value /Dfinite=_finite /Dhypot=_hypot /Disatty=_isatty /Dfileno=_fileno /D_CRT_SECURE_NO_WARNINGS /DYY_NO_UNISTD_H /D_USE_MATH_DEFINES /DIMPLEMENT_C99 /wd4275 /wd4251")
+    else(WIN64)
+      set(MSVC_DEFINES "/DWIN32 /D_WINDOWS /Dpopen=_popen /Dpclose=_pclose /D__value=_value /Dfinite=_finite /Dhypot=_hypot /Disatty=_isatty /Dfileno=_fileno /D_CRT_SECURE_NO_WARNINGS /DYY_NO_UNISTD_H /D_USE_MATH_DEFINES /DIMPLEMENT_C99 /wd4275 /wd4251")
+    endif(WIN64)
     set(CMAKE_CXX_FLAGS_DEBUG_INIT          "/D_DEBUG /Od /Ob2 /MDd /Zi /RTC1 ${MSVC_DEFINES}")
     set(DEBUG_FLAGS ${DEBUG_FLAGS} "${CMAKE_CXX_FLAGS_DEBUG_INIT}")
     set(CMAKE_CXX_FLAGS_MINSIZEREL_INIT     "/O2 /Ob2 /MD ${MSVC_DEFINES}")
     set(CMAKE_CXX_FLAGS_RELEASE_INIT        "/DNDEBUG /O2 /Ob2 /MD ${MSVC_DEFINES}")
     set(RELEASE_FLAGS ${RELEASE_FLAGS} "${CMAKE_CXX_FLAGS_RELEASE_INIT}")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO_INIT "/DNDEBUG /O2 /Ob2 /MD /Zi ${MSVC_DEFINES}")
+    
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SAFESEH:NO")
+    set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /SAFESEH:NO")
+    set (CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /SAFESEH:NO")
   else(MSVC)
     set(CMAKE_CXX_FLAGS_DEBUG_INIT          "${CMAKE_CXX_FLAGS_DEBUG_INIT} -D_DEBUG")
   endif(MSVC)
-
 
   if(H2D_WITH_TESTS OR HERMES_COMMON_WITH_TESTS)
     enable_testing()
@@ -271,8 +287,10 @@ project(hermes)
 
     find_package(PTHREAD REQUIRED)
     
-    find_package(TCMALLOC REQUIRED)
-    include_directories(${TCMALLOC_INCLUDE_DIR})
+    if(WITH_TC_MALLOC)
+      find_package(TCMALLOC REQUIRED)
+      include_directories(${TCMALLOC_INCLUDE_DIR})
+    endif(WITH_TC_MALLOC)
 
     find_package(XSD REQUIRED)
     find_package(XERCES REQUIRED)
@@ -287,7 +305,12 @@ project(hermes)
       find_package(UMFPACK REQUIRED)
       include_directories(${UMFPACK_INCLUDE_DIRS})
     endif(WITH_UMFPACK)
-
+    
+    if(WITH_PARALUTION)
+      find_package(PARALUTION REQUIRED)
+      include_directories(${PARALUTION_INCLUDE_DIR})
+    endif(WITH_PARALUTION)
+    
     if(MSVC)
       if(WITH_PETSC OR WITH_MUMPS OR WITH_TRILINOS OR WITH_SUPERLU)
           # The search for CLAPACK and associated libraries will be performed
@@ -411,12 +434,16 @@ project(hermes)
   message("\nConfiguration results")
   message("---------------------")
   message("Build with UMFPACK: ${WITH_UMFPACK}")
+  message("Build with PARALUTION: ${WITH_PARALUTION}")
+  if(WIN32)
+    message("Build with WIN64: ${WIN64}")
+  endif(WIN32)
+  message("Build with OPENMP: ${WITH_OPENMP}")
   message("Build with PETSC: ${WITH_PETSC}")
   message("Build with MUMPS: ${WITH_MUMPS}")
   message("Build with SUPERLU${MT}: ${WITH_SUPERLU}")
   message("Build with TRILINOS: ${WITH_TRILINOS}")
   message("Build with MPI: ${WITH_MPI}")
-  message("Build with OPENMP: ${WITH_OPENMP}")
   message("Build with EXODUSII: ${WITH_EXODUSII}")
   
   message("---------------------")
@@ -428,9 +455,9 @@ project(hermes)
   if(WITH_H2D)
     message("\tBuild Hermes2D Debug version: ${H2D_DEBUG}")
     message("\tBuild Hermes2D Release version: ${H2D_RELEASE}")
-  message("---------------------")
+    message("---------------------")
     message("\tBuild Hermes2D with test examples: ${H2D_WITH_TEST_EXAMPLES}")
-  message("---------------------")
+    message("---------------------")
     message("\tBuild Hermes2D with GLUT: ${H2D_WITH_GLUT}")
   endif(WITH_H2D)
   message("\n")

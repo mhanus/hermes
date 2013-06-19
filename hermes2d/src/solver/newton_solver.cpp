@@ -263,12 +263,14 @@ namespace Hermes
         Solution<Scalar>::vector_to_solutions(this->residual, this->dp->get_spaces(), solutions, dir_lift_false);
 
         // Calculate the norm.
-        return Global<Scalar>::calc_norms(solutionsPtrs);
+
+        DefaultNormCalculator<Scalar, HERMES_L2_NORM> normCalculator(solutions.size());
+        return normCalculator.calculate_norms(solutions);
       }
       else
       {
         // Calculate the l2-norm of residual vector, this is the traditional way.
-        return Global<Scalar>::get_l2_norm(this->residual);
+        return get_l2_norm(this->residual);
       }
     }
 
@@ -283,9 +285,8 @@ namespace Hermes
         return true;
       }
 
-      int iteration = this->get_parameter_value(p_iteration);
-      double residual_norm = this->get_parameter_value(p_residual_norms)[iteration - 1];
-      double previous_residual_norm = this->get_parameter_value(p_residual_norms)[iteration - 2];
+      double residual_norm = *(this->get_parameter_value(p_residual_norms).end() - 1);
+      double previous_residual_norm = *(this->get_parameter_value(p_residual_norms).end() - 2);
 
       if(residual_norm < previous_residual_norm * this->sufficient_improvement_factor)
       {
@@ -359,6 +360,10 @@ namespace Hermes
       // Optionally zero cache hits and misses.
       if(this->report_cache_hits_and_misses)
         this->zero_cache_hits_and_misses();
+
+      // UMFPACK reporting.
+      if(this->do_UMFPACK_reporting)
+        memset(this->UMFPACK_reporting_data, 0, 3 * sizeof(double));
     }
 
     template<typename Scalar>
@@ -386,19 +391,7 @@ namespace Hermes
     template<typename Scalar>
     bool NewtonSolver<Scalar>::force_reuse_jacobian_values(unsigned int& successful_steps_with_reused_jacobian)
     {
-      int iteration = this->get_parameter_value(p_iteration);
-      if(iteration == 1)
-        return false;
-
-      double residual_norm = this->get_parameter_value(p_residual_norms)[iteration - 1];
-      double previous_residual_norm = this->get_parameter_value(p_residual_norms)[iteration - 2];
-
       if(successful_steps_with_reused_jacobian >= this->max_steps_with_reused_jacobian)
-      {
-        successful_steps_with_reused_jacobian = 0;
-        return false;
-      }
-      if((residual_norm / previous_residual_norm) > this->sufficient_improvement_factor_jacobian)
       {
         successful_steps_with_reused_jacobian = 0;
         return false;
@@ -422,15 +415,17 @@ namespace Hermes
     bool NewtonSolver<Scalar>::do_initial_step_return_finished(Scalar* coeff_vec)
     {
       // Store the initial norm.
-      this->get_parameter_value(p_solution_norms).push_back(Global<Scalar>::get_l2_norm(coeff_vec, this->ndof));
+      this->get_parameter_value(p_solution_norms).push_back(get_l2_norm(coeff_vec, this->ndof));
 
       // Assemble the system.
       if(this->jacobian_reusable && this->reuse_jacobian_values())
       {
+        this->matrix_solver->set_factorization_scheme(HERMES_REUSE_FACTORIZATION_COMPLETELY);
         this->dp->assemble(coeff_vec, this->residual);
       }
       else
       {
+        this->matrix_solver->set_factorization_scheme(HERMES_FACTORIZE_FROM_SCRATCH);
         this->dp->assemble(coeff_vec, this->jacobian, this->residual);
         this->jacobian_reusable = true;
       }
@@ -483,25 +478,42 @@ namespace Hermes
     template<typename Scalar>
     void NewtonSolver<Scalar>::solve_linear_system(Scalar* coeff_vec)
     {
-      if(this->matrix_solver->solve())
+      // store the previous coeff_vec to coeff_vec_back.
+      memcpy(coeff_vec_back, coeff_vec, sizeof(Scalar)*ndof);
+
+      // If the solver is iterative, give him the initial guess.
+      Hermes::Solvers::IterSolver<Scalar>* iter_solver = dynamic_cast<Hermes::Solvers::IterSolver<Scalar>*>(this->matrix_solver);
+      bool solved = iter_solver ? iter_solver->solve(coeff_vec) : this->matrix_solver->solve();
+
+      if(solved)
       {
-        // store the previous coeff_vec to coeff_vec_back.
-        memcpy(coeff_vec_back, coeff_vec, sizeof(Scalar)*ndof);
+        if(this->do_UMFPACK_reporting)
+        {
+          UMFPackLinearMatrixSolver<Scalar>* umfpack_matrix_solver = (UMFPackLinearMatrixSolver<Scalar>*)this->matrix_solver;
+          if(this->matrix_solver->get_used_factorization_scheme() != HERMES_REUSE_FACTORIZATION_COMPLETELY)
+          {
+            this->UMFPACK_reporting_data[this->FactorizationSize] = std::max(this->UMFPACK_reporting_data[this->FactorizationSize], umfpack_matrix_solver->Info[UMFPACK_NUMERIC_SIZE] / umfpack_matrix_solver->Info[UMFPACK_SIZE_OF_UNIT]);
+            this->UMFPACK_reporting_data[this->PeakMemoryUsage] += umfpack_matrix_solver->Info[UMFPACK_PEAK_MEMORY] / umfpack_matrix_solver->Info[UMFPACK_SIZE_OF_UNIT];
+            this->UMFPACK_reporting_data[this->Flops] += umfpack_matrix_solver->Info[UMFPACK_FLOPS];
+          }
+        }
 
-        // obtain the solution increment.
-        Scalar* sln_vector_local = this->matrix_solver->get_sln_vector();
-
+        // Get current damping factor.
         double current_damping_coefficient = this->get_parameter_value(this->p_damping_coefficients).back();
 
         // store the solution norm change.
-        this->get_parameter_value(p_solution_change_norm) = current_damping_coefficient * Global<Scalar>::get_l2_norm(sln_vector_local, ndof);
+        // obtain the solution increment.
+        Scalar* sln_vector_local = this->matrix_solver->get_sln_vector();
 
-        // add the increment to the solution.
+        // 1. store the solution.
         for (int i = 0; i < ndof; i++)
           coeff_vec[i] += current_damping_coefficient * sln_vector_local[i];
 
-        // store the solution norm.
-        this->get_parameter_value(p_solution_norms).push_back(Global<Scalar>::get_l2_norm(coeff_vec, this->ndof));
+        // 2. store the solution change.
+        this->get_parameter_value(p_solution_change_norm) = current_damping_coefficient * get_l2_norm(sln_vector_local, ndof);
+
+        // 3. store the solution norm.
+        this->get_parameter_value(p_solution_norms).push_back(get_l2_norm(coeff_vec, this->ndof));
       }
       else
       {
@@ -594,7 +606,7 @@ namespace Hermes
               coeff_vec[i] = coeff_vec_back[i] + factor * (coeff_vec[i] - coeff_vec_back[i]);
 
             // Add new solution norm.
-            solution_norms.push_back(Global<Scalar>::get_l2_norm(coeff_vec, this->ndof));
+            solution_norms.push_back(get_l2_norm(coeff_vec, this->ndof));
           }
         }
         while (!residual_norm_drop);
@@ -615,20 +627,28 @@ namespace Hermes
           // Solve the system.
           this->matrix_solver->set_factorization_scheme(HERMES_REUSE_FACTORIZATION_COMPLETELY);
           this->solve_linear_system(coeff_vec);
+          // Assemble next residual for both reusage and convergence test.
+          this->assemble_residual(coeff_vec);
+          // Test whether it was okay to reuse the jacobian.
+          if(!this->jacobian_reused_okay(successful_steps_jacobian))
+          {
+            this->info("\tNewton: Reused Jacobian brought residual norm increase - will be recalculated.");
+            this->get_parameter_value(p_residual_norms).pop_back();
+            this->get_parameter_value(p_solution_norms).pop_back();
+            break;
+          }
+
+          // Increase the iteration count.
+          it++;
 
           // Handle the event of end of a step.
+          this->on_reused_jacobian_step_end();
           if(!this->on_step_end())
           {
             this->info("\tNewton: aborted.");
             this->finalize_solving(coeff_vec);
             return;
           }
-
-          // Increase the iteration count.
-          it++;
-
-          // Assemble next residual for convergence test.
-          this->assemble_residual(coeff_vec);
 
           // Test convergence - if in this loop we found a solution.
           if(this->handle_convergence_state_return_finished(this->get_convergence_state(), coeff_vec))
@@ -666,12 +686,32 @@ namespace Hermes
     }
 
     template<typename Scalar>
+    bool NewtonSolver<Scalar>::jacobian_reused_okay(unsigned int& successful_steps_with_reused_jacobian)
+    {
+      double residual_norm = *(this->get_parameter_value(p_residual_norms).end() - 1);
+      double previous_residual_norm = *(this->get_parameter_value(p_residual_norms).end() - 2);
+      
+      if((residual_norm / previous_residual_norm) > this->sufficient_improvement_factor_jacobian)
+      {
+        successful_steps_with_reused_jacobian = 0;
+        return false;
+      }
+      else
+        return true;
+    }
+
+    template<typename Scalar>
     void NewtonSolver<Scalar>::on_damping_factor_updated()
     {
     }
 
     template<typename Scalar>
     void NewtonSolver<Scalar>::on_reused_jacobian_step_begin()
+    {
+    }
+
+    template<typename Scalar>
+    void NewtonSolver<Scalar>::on_reused_jacobian_step_end()
     {
     }
 

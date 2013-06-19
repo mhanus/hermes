@@ -26,7 +26,9 @@ project(hermes2d)
     set(HERMES2D "hermes2d")              # Base name of the library.
     set(HERMES2D_RELEASE ${HERMES2D})     # Name of the release version.
     set(HERMES2D_DEBUG ${HERMES2D}-debug) # Name of the debug version.
-      
+    if(H2D_DEBUG)
+      set(HERMES2D ${HERMES2D_DEBUG})
+    endif(H2D_DEBUG)
   else(MSVC)
     if(H2D_DEBUG)
       set(HERMES2D_DEBUG "hermes2d-debug")
@@ -56,11 +58,6 @@ project(hermes2d)
     add_definitions(-DNOGLUT)
   endif(H2D_WITH_GLUT)
 
-  if(H2D_WITH_VIEWER_GUI)
-    find_package(ANTTWEAKBAR REQUIRED)
-    include_directories(${ANTTWEAKBAR_INCLUDE_DIR})
-  endif(H2D_WITH_VIEWER_GUI)
-  
   # Mesh format.
   if(WITH_HDF5)
     find_package(HDF5 REQUIRED)
@@ -101,20 +98,22 @@ project(hermes2d)
   # Source files for the Hermes2d library.
   #
   set(SRC
-    src/api2d.cpp
-    src/asmlist.cpp
-    src/calculation_continuity.cpp
-    src/forms.cpp
-    src/mixins2d.cpp
-    src/neighbor.cpp
-    src/graph.cpp
-    src/global.cpp
-    src/spline.cpp
-    
-    src/adapt/adapt.cpp
-    src/adapt/kelly_type_adapt.cpp
-
     src/boundary_conditions/essential_boundary_conditions.cpp
+    src/api2d.cpp
+    src/calculation_continuity.cpp
+    src/graph.cpp
+    src/mixins2d.cpp
+    src/weakform/weakform.cpp
+  
+    src/neighbor_search.cpp
+    src/norm_form.cpp
+    src/spline.cpp
+    src/forms.cpp
+    src/asmlist.cpp
+    src/projections/ogprojection.cpp
+    src/projections/ogprojection_nox.cpp
+    src/quadrature/limit_order.cpp
+    src/quadrature/quad_std.cpp
 
     src/function/transformable.cpp
     src/function/function.cpp
@@ -126,8 +125,6 @@ project(hermes2d)
 
     src/mesh/refmap.cpp
     src/mesh/curved.cpp
-    src/mesh/refinement_type.cpp
-    src/mesh/element_to_refine.cpp
     src/mesh/mesh_reader_exodusii.cpp
     src/mesh/hash.cpp
     src/mesh/mesh_reader_h2d.cpp
@@ -136,20 +133,11 @@ project(hermes2d)
     src/mesh/mesh_h2d_xml.cpp
     src/mesh/mesh_h1d_xml.cpp
     src/mesh/subdomains_h2d_xml.cpp
+    src/mesh/element.cpp
     src/mesh/mesh.cpp
+    src/mesh/mesh_util.cpp
     src/mesh/traverse.cpp
     src/mesh/mesh_data.cpp
-
-    src/quadrature/limit_order.cpp
-    src/quadrature/quad_std.cpp
-
-    src/refinement_selectors/selector.cpp
-    src/refinement_selectors/order_permutator.cpp
-    src/refinement_selectors/optimum_selector.cpp
-    src/refinement_selectors/proj_based_selector.cpp
-    src/refinement_selectors/l2_proj_based_selector.cpp
-    src/refinement_selectors/h1_proj_based_selector.cpp
-    src/refinement_selectors/hcurl_proj_based_selector.cpp
 
     src/shapeset/shapeset.cpp
     src/shapeset/shapeset_h1_ortho.cpp
@@ -182,12 +170,6 @@ project(hermes2d)
     src/views/linearizer_base.cpp
     src/views/orderizer.cpp
     src/views/vectorizer.cpp
-
-    src/weakform/weakform.cpp
-  
-    src/projections/ogprojection.cpp
-    src/projections/ogprojection_nox.cpp
-    src/projections/localprojection.cpp
     
     src/weakform_library/weakforms_elasticity.cpp
     src/weakform_library/weakforms_h1.cpp
@@ -214,6 +196,111 @@ project(hermes2d)
     src/solver/newton_solver_convergence_measurement.cpp
     src/solver/picard_solver.cpp
     src/solver/runge_kutta.cpp
+    
+    src/adapt/adapt.cpp
+    src/adapt/kelly_type_adapt.cpp
+    src/adapt/error_calculator.cpp
+    src/adapt/error_thread_calculator.cpp
+    
+    src/refinement_selectors/candidates.cpp
+    src/refinement_selectors/element_to_refine.cpp
+    src/refinement_selectors/selector.cpp
+    src/refinement_selectors/order_permutator.cpp
+    src/refinement_selectors/optimum_selector.cpp
+    src/refinement_selectors/proj_based_selector.cpp
+    src/refinement_selectors/l2_proj_based_selector.cpp
+    src/refinement_selectors/h1_proj_based_selector.cpp
+    src/refinement_selectors/hcurl_proj_based_selector.cpp
+  )
+  
+  SOURCE_GROUP(
+    "Source Files\\Internal" FILES 
+    src/neighbor_search.cpp
+    src/norm_form.cpp
+    src/spline.cpp
+    src/forms.cpp
+    src/asmlist.cpp
+    src/projections/ogprojection.cpp
+    src/projections/ogprojection_nox.cpp
+    src/quadrature/limit_order.cpp
+    src/quadrature/quad_std.cpp
+  )
+  
+  SOURCE_GROUP(
+    "Source Files\\Weakform Library" FILES 
+    src/weakform_library/weakforms_elasticity.cpp
+    src/weakform_library/weakforms_h1.cpp
+    src/weakform_library/weakforms_hcurl.cpp
+    src/weakform_library/weakforms_maxwell.cpp
+    src/weakform_library/weakforms_neutronics.cpp
+  )
+  
+  SOURCE_GROUP(
+    "Source Files\\Mesh Functions" FILES 
+    src/function/transformable.cpp
+    src/function/function.cpp
+    src/function/exact_solution.cpp
+    src/function/solution.cpp
+    src/function/filter.cpp
+    src/function/mesh_function.cpp
+    src/function/solution_h2d_xml.cpp 
+  )
+  
+  SOURCE_GROUP(
+    "Source Files\\Mesh" FILES 
+    src/mesh/refmap.cpp
+    src/mesh/curved.cpp
+    src/mesh/mesh_reader_exodusii.cpp
+    src/mesh/hash.cpp
+    src/mesh/mesh_reader_h2d.cpp
+    src/mesh/mesh_reader_h2d_xml.cpp
+    src/mesh/mesh_reader_h1d_xml.cpp
+    src/mesh/mesh_h2d_xml.cpp
+    src/mesh/mesh_h1d_xml.cpp
+    src/mesh/subdomains_h2d_xml.cpp
+    src/mesh/element.cpp
+    src/mesh/mesh.cpp
+    src/mesh/mesh_util.cpp
+    src/mesh/traverse.cpp
+    src/mesh/mesh_data.cpp
+  )
+  
+  SOURCE_GROUP(
+    "Source Files\\Views" FILES 
+    src/views/base_view.cpp
+    src/views/mesh_view.cpp
+    src/views/order_view.cpp
+    src/views/scalar_view.cpp
+    src/views/stream_view.cpp
+    src/views/vector_base_view.cpp
+    src/views/vector_view.cpp
+    src/views/view.cpp
+    src/views/view_data.cpp
+    src/views/view_support.cpp
+    src/views/linearizer.cpp
+    src/views/linearizer_base.cpp
+    src/views/orderizer.cpp
+    src/views/vectorizer.cpp
+  )
+  
+  SOURCE_GROUP(
+    "Source Files\\Space" FILES 
+    src/shapeset/shapeset.cpp
+    src/shapeset/shapeset_h1_ortho.cpp
+    src/shapeset/shapeset_h1_jacobi.cpp
+    src/shapeset/shapeset_h1_quad.cpp
+    src/shapeset/shapeset_hc_legendre.cpp
+    src/shapeset/shapeset_hc_gradleg.cpp
+    src/shapeset/shapeset_hd_legendre.cpp
+    src/shapeset/shapeset_l2_legendre.cpp
+    src/shapeset/precalc.cpp
+
+    src/space/space.cpp
+    src/space/space_h1.cpp
+    src/space/space_hcurl.cpp
+    src/space/space_l2.cpp
+    src/space/space_hdiv.cpp
+    src/space/space_h2d_xml.cpp
   )
   
   SOURCE_GROUP(
@@ -242,22 +329,47 @@ project(hermes2d)
     src/discrete_problem/dg/multimesh_dg_neighbor_tree_node.cpp
   )
   
+  SOURCE_GROUP(
+    "Source Files\\Adaptivity" FILES 
+    src/adapt/adapt.cpp
+    src/adapt/kelly_type_adapt.cpp
+    src/adapt/error_calculator.cpp
+    src/adapt/error_thread_calculator.cpp
+  )
+
+  SOURCE_GROUP(
+    "Source Files\\Adaptivity\\Refinement Selectors" FILES 
+    src/refinement_selectors/candidates.cpp
+    src/refinement_selectors/element_to_refine.cpp
+    src/refinement_selectors/selector.cpp
+    src/refinement_selectors/order_permutator.cpp
+    src/refinement_selectors/optimum_selector.cpp
+    src/refinement_selectors/proj_based_selector.cpp
+    src/refinement_selectors/l2_proj_based_selector.cpp
+    src/refinement_selectors/h1_proj_based_selector.cpp
+    src/refinement_selectors/hcurl_proj_based_selector.cpp
+  )
+  
   set(HEADERS
     include/api2d.h
-    include/asmlist.h
-    include/calculation_continuity.h
-    include/forms.h
-    include/mixins2d.h
-    include/neighbor.h
-    include/sub_element_map.h
-    include/graph.h
-    include/global.h
-    include/spline.h
-
-    include/adapt/adapt.h
-    include/adapt/kelly_type_adapt.h
-
     include/boundary_conditions/essential_boundary_conditions.h
+    include/calculation_continuity.h
+    include/mixins2d.h
+    include/graph.h
+    include/weakform/weakform.h
+    
+    include/projections/ogprojection.h
+    include/projections/ogprojection_nox.h
+    include/global.h
+    include/asmlist.h
+    include/forms.h
+    include/neighbor_search.h
+    include/sub_element_map.h
+    include/norm_form.h
+    include/spline.h
+    include/quadrature/limit_order.h
+    include/quadrature/quad.h
+    include/quadrature/quad_all.h
 
     include/function/transformable.h
     include/function/function.h
@@ -267,15 +379,8 @@ project(hermes2d)
     include/function/mesh_function.h
     include/function/solution_h2d_xml.h
 
-    include/integrals/l2.h
-    include/integrals/h1.h
-    include/integrals/hdiv.h
-    include/integrals/hcurl.h
-    
     include/mesh/refmap.h
     include/mesh/curved.h
-    include/mesh/refinement_type.h
-    include/mesh/element_to_refine.h
     include/mesh/mesh_reader_exodusii.h
     include/mesh/hash.h
     include/mesh/mesh_reader_h2d.h
@@ -284,21 +389,11 @@ project(hermes2d)
     include/mesh/mesh_h2d_xml.h
     include/mesh/mesh_h1d_xml.h
     include/mesh/subdomains_h2d_xml.h
+    include/mesh/element.h
     include/mesh/mesh.h
+    include/mesh/mesh_util.h
     include/mesh/traverse.h
     include/mesh/mesh_data.h
-
-    include/quadrature/limit_order.h
-    include/quadrature/quad.h
-    include/quadrature/quad_all.h
-
-    include/refinement_selectors/selector.h
-    include/refinement_selectors/order_permutator.h
-    include/refinement_selectors/optimum_selector.h
-    include/refinement_selectors/proj_based_selector.h
-    include/refinement_selectors/l2_proj_based_selector.h
-    include/refinement_selectors/h1_proj_based_selector.h
-    include/refinement_selectors/hcurl_proj_based_selector.h
 
     include/shapeset/shapeset.h
     include/shapeset/shapeset_h1_all.h
@@ -329,15 +424,9 @@ project(hermes2d)
     include/views/orderizer.h
     include/views/vectorizer.h
 
-    include/weakform/weakform.h
-
-    
-    include/projections/ogprojection.h
-    include/projections/ogprojection_nox.h
-    include/projections/localprojection.h
-
     include/weakform_library/weakforms_elasticity.h
     include/weakform_library/weakforms_h1.h
+    include/weakform_library/integrals_h1.h
     include/weakform_library/weakforms_hcurl.h
     include/weakform_library/weakforms_maxwell.h
     include/weakform_library/weakforms_neutronics.h
@@ -355,15 +444,120 @@ project(hermes2d)
     include/solver/solver.h
     include/solver/linear_solver.h
     include/solver/nonlinear_solver.h
-    
     include/solver/nox_solver.h
     include/solver/newton_solver_convergence_measurement.h
     include/solver/newton_solver.h
     include/solver/picard_solver.h
     include/solver/runge_kutta.h
+    
+    include/adapt/adapt.h
+    include/adapt/kelly_type_adapt.h
+    include/adapt/error_calculator.h
+    include/adapt/error_thread_calculator.h
+    
+    include/refinement_selectors/element_to_refine.h
+    include/refinement_selectors/candidates.h
+    include/refinement_selectors/selector.h
+    include/refinement_selectors/order_permutator.h
+    include/refinement_selectors/optimum_selector.h
+    include/refinement_selectors/proj_based_selector.h
+    include/refinement_selectors/l2_proj_based_selector.h
+    include/refinement_selectors/h1_proj_based_selector.h
+    include/refinement_selectors/hcurl_proj_based_selector.h
+  )
+  
+  SOURCE_GROUP(
+    "Header Files\\Internal" FILES 
+    include/projections/ogprojection.h
+    include/projections/ogprojection_nox.h
+    include/global.h
+    include/asmlist.h
+    include/forms.h
+    include/neighbor_search.h
+    include/sub_element_map.h
+    include/norm_form.h
+    include/spline.h
+    include/quadrature/limit_order.h
+    include/quadrature/quad.h
+    include/quadrature/quad_all.h
+  )
+  
+  SOURCE_GROUP(
+    "Header Files\\Weakform Library" FILES 
+    include/weakform_library/weakforms_elasticity.h
+    include/weakform_library/weakforms_h1.h
+    include/weakform_library/integrals_h1.h
+    include/weakform_library/weakforms_hcurl.h
+    include/weakform_library/weakforms_maxwell.h
+    include/weakform_library/weakforms_neutronics.h
+  )
+  
+  SOURCE_GROUP(
+    "Header Files\\Mesh Functions" FILES 
+    include/function/transformable.h
+    include/function/function.h
+    include/function/exact_solution.h
+    include/function/solution.h
+    include/function/filter.h
+    include/function/mesh_function.h
+    include/function/solution_h2d_xml.h
   )
     
-    SOURCE_GROUP(
+  SOURCE_GROUP(
+    "Header Files\\Mesh" FILES 
+    include/mesh/refmap.h
+    include/mesh/curved.h
+    include/mesh/mesh_reader_exodusii.h
+    include/mesh/hash.h
+    include/mesh/mesh_reader_h2d.h
+    include/mesh/mesh_reader_h2d_xml.h
+    include/mesh/mesh_reader_h1d_xml.h
+    include/mesh/mesh_h2d_xml.h
+    include/mesh/mesh_h1d_xml.h
+    include/mesh/subdomains_h2d_xml.h
+    include/mesh/element.h
+    include/mesh/mesh.h
+    include/mesh/mesh_util.h
+    include/mesh/traverse.h
+    include/mesh/mesh_data.h
+  )
+  
+  SOURCE_GROUP(
+    "Header Files\\Views" FILES 
+    include/views/base_view.h
+    include/views/mesh_view.h
+    include/views/order_view.h
+    include/views/scalar_view.h
+    include/views/stream_view.h
+    include/views/vector_base_view.h
+    include/views/vector_view.h
+    include/views/view.h
+    include/views/view_support.h
+    include/views/linearizer.h
+    include/views/linearizer_base.h
+    include/views/orderizer.h
+    include/views/vectorizer.h
+  )
+  
+  SOURCE_GROUP(
+    "Header Files\\Space" FILES 
+    include/shapeset/shapeset.h
+    include/shapeset/shapeset_h1_all.h
+    include/shapeset/shapeset_h1_quad.h
+    include/shapeset/shapeset_hc_all.h
+    include/shapeset/shapeset_hd_all.h
+    include/shapeset/shapeset_l2_all.h
+    include/shapeset/precalc.h
+
+    include/space/space.h
+    include/space/space_h1.h
+    include/space/space_hcurl.h
+    include/space/space_l2.h
+    include/space/space_hdiv.h
+    include/space/space_h2d_xml.h
+  )
+  
+  SOURCE_GROUP(
     "Header Files\\Solvers" FILES 
     include/solver/solver.h
     include/solver/linear_solver.h
@@ -387,6 +581,27 @@ project(hermes2d)
     include/discrete_problem/dg/discrete_problem_dg_assembler.h
     include/discrete_problem/dg/multimesh_dg_neighbor_tree.h
     include/discrete_problem/dg/multimesh_dg_neighbor_tree_node.h
+  )
+  
+  SOURCE_GROUP(
+    "Header Files\\Adaptivity" FILES 
+    include/adapt/adapt.h
+    include/adapt/kelly_type_adapt.h
+    include/adapt/error_calculator.h
+    include/adapt/error_thread_calculator.h
+    )
+    
+  SOURCE_GROUP(
+    "Header Files\\Adaptivity\\Refinement Selectors" FILES
+    include/refinement_selectors/candidates.h
+    include/refinement_selectors/element_to_refine.h
+    include/refinement_selectors/selector.h
+    include/refinement_selectors/order_permutator.h
+    include/refinement_selectors/optimum_selector.h
+    include/refinement_selectors/proj_based_selector.h
+    include/refinement_selectors/l2_proj_based_selector.h
+    include/refinement_selectors/h1_proj_based_selector.h
+    include/refinement_selectors/hcurl_proj_based_selector.h
   )
     
   #
@@ -420,13 +635,16 @@ project(hermes2d)
   if(MSVC)
     if(H2D_DEBUG)
       set(FLAGS "${DEBUG_FLAGS}")
-    elseif(H2D_DEBUG)
-      set(FLAGS "${RELEASE_FLAGS}")
+      BUILD_2D_LIB(${HERMES2D_DEBUG} ${HERMES_COMMON_LIB_DEBUG} ${FLAGS})
+      ADD_MSVC_BUILD_FLAGS(${HERMES2D_DEBUG} ${HERMES2D_DEBUG} ${HERMES2D_RELEASE})
+      INSTALL_LIB(${HERMES2D_DEBUG})
     endif(H2D_DEBUG)
-
-    BUILD_2D_LIB(${HERMES2D} ${HERMES_COMMON_LIB} ${FLAGS})
-    ADD_MSVC_BUILD_FLAGS(${HERMES2D} ${HERMES2D_DEBUG} ${HERMES2D_RELEASE})
-    INSTALL_LIB(${HERMES2D})
+    if(H2D_RELEASE)
+      set(FLAGS "${RELEASE_FLAGS}")
+      BUILD_2D_LIB(${HERMES2D_RELEASE} ${HERMES_COMMON_LIB_RELEASE} ${FLAGS})
+      ADD_MSVC_BUILD_FLAGS(${HERMES2D_RELEASE} ${HERMES2D_DEBUG} ${HERMES2D_RELEASE})
+      INSTALL_LIB(${HERMES2D_RELEASE})
+    endif(H2D_RELEASE)
   else(MSVC)
     if(H2D_DEBUG)
       BUILD_2D_LIB(${HERMES2D_DEBUG} ${HERMES_COMMON_LIB_DEBUG} ${DEBUG_FLAGS})
@@ -451,7 +669,6 @@ project(hermes2d)
   file(GLOB INC_BC         "include/boundary_conditions/*.h")
   file(GLOB INC_SHAPESET   "include/shapeset/*.h")
   file(GLOB INC_FUNCTION   "include/function/*.h")
-  file(GLOB INC_INTEGRALS  "include/integrals/*.h")
   file(GLOB INC_LINEARIZER "include/linearizer/*.h")
   file(GLOB INC_ADAPT      "include/adapt/*.h")
   file(GLOB INC_PROJECTIONS "include/projections/*.h")

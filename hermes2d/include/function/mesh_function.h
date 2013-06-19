@@ -43,8 +43,7 @@ public:
 
   void operator=(const MeshFunctionSharedPtr<Scalar>& other);
 
-  virtual ~MeshFunctionSharedPtr();
-
+  ~MeshFunctionSharedPtr();
 };
 
 
@@ -91,7 +90,7 @@ namespace Hermes
       RefMap* get_refmap(bool update = true);
 
       /// Return the value at the coordinates x,y.
-      virtual Func<Scalar>* get_pt_value(double x, double y, Element* e = NULL) = 0;
+      virtual Func<Scalar>* get_pt_value(double x, double y, bool use_MeshHashGrid = false, Element* e = NULL) = 0;
 
       /// Cloning function - for parallel OpenMP blocks.
       /// Designed to return an identical clone of this instance.
@@ -146,10 +145,7 @@ namespace Hermes
 
       /// Returns the order of the edge number edge of the current active element.
       virtual int get_edge_fn_order(int edge);
-
-      static unsigned int get_instance_count();
     protected:
-      static unsigned int instance_count;
       ElementMode2D mode;
       MeshSharedPtr mesh;
       RefMap* refmap;

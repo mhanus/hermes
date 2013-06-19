@@ -171,7 +171,7 @@ namespace Hermes
           SB[1] = B[1] - S[1];
           double R = sqrt(sqr(SA[0]) + sqr(SA[1]));
           double R2 = sqrt(sqr(SB[0]) + sqr(SB[1]));
-          if(std::abs(R - R2) > 1e-6)
+          if(std::abs(R - R2) > Hermes::Epsilon)
             throw Hermes::Exceptions::Exception("Internal error in nurbs_edge() - bad radius R.");
 
           // Normal vectors to circular arc at edge end points A, B.
@@ -690,7 +690,6 @@ namespace Hermes
     }
 
     //// bubble part of projection based interpolation /////////////////////////////////////////////////
-
     void CurvMap::old_projection(Element* e, int order, double2* proj, double* old[2], H1ShapesetJacobi* ref_map_shapeset, PrecalcShapeset* ref_map_pss)
     {
       int mo2 = quad2d.get_max_order(e->get_mode());
@@ -796,7 +795,6 @@ namespace Hermes
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-
     void CurvMap::ref_map_projection(Element* e, Nurbs** nurbs, int order, double2* proj, H1ShapesetJacobi* ref_map_shapeset, PrecalcShapeset* ref_map_pss)
     {
       // vertex part
@@ -896,7 +894,9 @@ namespace Hermes
       if(!--ref) // fixme: possible leak, we need ~Nurbs too
       {
         delete [] pt;
+        pt = NULL;
         delete [] kv;
+        kv = NULL;
         delete this;
       }
     }

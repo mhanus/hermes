@@ -20,6 +20,7 @@
 \brief General solver functionality.
 */
 #include "solver/solver.h"
+#include "projections/ogprojection.h"
 
 using namespace Hermes::Algebra;
 
@@ -28,27 +29,27 @@ namespace Hermes
   namespace Hermes2D
   {
     template<typename Scalar>
-    Solver<Scalar>::Solver() : dp(new DiscreteProblem<Scalar>()), own_dp(true)
+    Solver<Scalar>::Solver(bool force_use_direct_solver) : dp(new DiscreteProblem<Scalar>()), own_dp(true)
     {
-      this->init();
+      this->init(force_use_direct_solver);
     }
 
     template<typename Scalar>
-    Solver<Scalar>::Solver(DiscreteProblem<Scalar>* dp) : dp(dp), own_dp(false)
+    Solver<Scalar>::Solver(DiscreteProblem<Scalar>* dp, bool force_use_direct_solver) : dp(dp), own_dp(false)
     {
-      this->init();
+      this->init(force_use_direct_solver);
     }
 
     template<typename Scalar>
-    Solver<Scalar>::Solver(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space) : dp(new DiscreteProblem<Scalar>(wf, space)), own_dp(true)
+    Solver<Scalar>::Solver(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space, bool force_use_direct_solver) : dp(new DiscreteProblem<Scalar>(wf, space)), own_dp(true)
     {
-      this->init();
+      this->init(force_use_direct_solver);
     }
 
     template<typename Scalar>
-    Solver<Scalar>::Solver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces) : dp(new DiscreteProblem<Scalar>(wf, spaces)), own_dp(true)
+    Solver<Scalar>::Solver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces, bool force_use_direct_solver) : dp(new DiscreteProblem<Scalar>(wf, spaces)), own_dp(true)
     {
-      this->init();
+      this->init(force_use_direct_solver);
     }
     
     template<typename Scalar>
@@ -67,16 +68,75 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    void Solver<Scalar>::init()
+    void Solver<Scalar>::init(bool force_use_direct_solver)
     {
-      this->jacobian = create_matrix<Scalar>();
-      this->residual = create_vector<Scalar>();
-      this->matrix_solver = create_linear_solver<Scalar>(this->jacobian, this->residual);
+      this->jacobian = create_matrix<Scalar>(force_use_direct_solver);
+      this->residual = create_vector<Scalar>(force_use_direct_solver);
+      this->matrix_solver = create_linear_solver<Scalar>(this->jacobian, this->residual, force_use_direct_solver);
+
       this->set_verbose_output(true);
       this->sln_vector = NULL;
 
       this->jacobian_reusable = false;
       this->constant_jacobian = false;
+
+      this->do_UMFPACK_reporting = false;
+    }
+
+    template<typename Scalar>
+    void Solver<Scalar>::solve()
+    {
+      this->solve(NULL);
+    }
+
+    template<typename Scalar>
+    void Solver<Scalar>::solve(MeshFunctionSharedPtr<Scalar>& initial_guess)
+    {
+      if(this->dp->get_spaces().size() != 1)
+        throw Hermes::Exceptions::ValueException("dp->get_spaces().size()", this->dp->get_spaces().size(), 1);
+      Scalar* coeff_vec = new Scalar[Space<Scalar>::get_num_dofs(this->dp->get_spaces())];
+      OGProjection<Scalar>::project_global(this->dp->get_spaces()[0], initial_guess, coeff_vec);
+      this->solve(coeff_vec);
+      delete [] coeff_vec;
+    }
+
+    template<typename Scalar>
+    void Solver<Scalar>::solve(Hermes::vector<MeshFunctionSharedPtr<Scalar> >& initial_guess)
+    {
+      Scalar* coeff_vec = new Scalar[Space<Scalar>::get_num_dofs(this->dp->get_spaces())];
+      OGProjection<Scalar>::project_global(this->dp->get_spaces(), initial_guess, coeff_vec);
+      this->solve(coeff_vec);
+      delete [] coeff_vec;
+    }
+
+    template<typename Scalar>
+    double Solver<Scalar>::get_UMFPACK_reporting_data(UMFPACK_reporting_data_value data_value)
+    {
+      return this->UMFPACK_reporting_data[data_value];
+    }
+
+    template<typename Scalar>
+     void Solver<Scalar>::set_UMFPACK_output(bool to_set, bool with_output)
+    {
+      if(!dynamic_cast<UMFPackLinearMatrixSolver<Scalar>*>(this->matrix_solver))
+      {
+        this->warn("A different solver than UMFPACK is used, ignoring the call to set_UMFPACK_reporting().");
+        return;
+      }
+
+      if(with_output)
+        ((UMFPackLinearMatrixSolver<Scalar>*)this->matrix_solver)->set_output_level(2);
+      else
+        ((UMFPackLinearMatrixSolver<Scalar>*)this->matrix_solver)->set_output_level(0);
+
+      this->do_UMFPACK_reporting = to_set;
+    }
+
+    template<typename Scalar>
+     void Solver<Scalar>::set_verbose_output(bool to_set)
+    {
+      Loggable::set_verbose_output(to_set);
+      this->matrix_solver->set_verbose_output(to_set);
     }
 
     template<typename Scalar>
@@ -150,6 +210,12 @@ namespace Hermes
     }
 
     template<typename Scalar>
+    LinearMatrixSolver<Scalar>* Solver<Scalar>::get_linear_solver()
+    {
+      return this->matrix_solver;
+    }
+
+    template<typename Scalar>
     void Solver<Scalar>::set_spaces(Hermes::vector<SpaceSharedPtr<Scalar> >& spaces)
     {
       this->dp->set_spaces(spaces);
@@ -190,12 +256,14 @@ namespace Hermes
       {
         if(this->reuse_jacobian_values() || force_reuse_jacobian_values)
         {
+          this->info("\tSolver: reusing Jacobian.");
           if(assemble_residual)
             this->dp->assemble(coeff_vec, this->residual);
           this->matrix_solver->set_factorization_scheme(HERMES_REUSE_FACTORIZATION_COMPLETELY);
         }
         else
         {
+          this->info("\tSolver: recalculating a reusable Jacobian.");
           this->matrix_solver->set_factorization_scheme(HERMES_REUSE_MATRIX_REORDERING_AND_SCALING);
           if(assemble_residual)
             this->dp->assemble(coeff_vec, this->jacobian, this->residual);
@@ -205,6 +273,7 @@ namespace Hermes
       }
       else
       {
+        this->info("\tSolver: Calculating Jacobian.");
         if(assemble_residual)
           this->dp->assemble(coeff_vec, this->jacobian, this->residual);
         else

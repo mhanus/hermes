@@ -43,7 +43,7 @@ using namespace Hermes::Hermes2D;
 // tutorial for comparisons.
 const bool STOKES = false;
 
-const bool HERMES_VISUALIZATION = false;
+const bool HERMES_VISUALIZATION = true;
 
 #define PRESSURE_IN_L2
 
@@ -66,15 +66,11 @@ const double VEL_INLET = 1.0;
 const double STARTUP_TIME = 1.0;
 
 const double TAU = 0.1;                           // Time step.
-const double T_FINAL = 0.5;                   // Time interval length.
+const double T_FINAL = 50.0;                      // Time interval length.
 const double NEWTON_TOL = 1e-3;                   // Stopping criterion for the Newton's method.
-const int max_allowed_iterations = 10;                   // Maximum allowed number of Newton iterations.
+const int max_allowed_iterations = 10;            // Maximum allowed number of Newton iterations.
 const double H = 5;                               // Domain height (necessary to define the parabolic
 // velocity profile at inlet).
-
-// Possibilities: Hermes::SOLVER_AMESOS, Hermes::SOLVER_AZTECOO, Hermes::SOLVER_MUMPS,
-// Hermes::SOLVER_PETSC, Hermes::SOLVER_SUPERLU, Hermes::SOLVER_UMFPACK.
-Hermes::MatrixSolverType matrix_solver_type = Hermes::SOLVER_UMFPACK;
 
 // Boundary markers.
 const std::string BDY_BOTTOM = "1";
@@ -101,7 +97,6 @@ int main(int argc, char* argv[])
   mesh->refine_towards_boundary(BDY_TOP, 2, true);     // '4' is the number of levels,
   mesh->refine_towards_boundary(BDY_BOTTOM, 2, true);  // 'true' stands for anisotropic refinements.
   mesh->refine_all_elements();
-  mesh->refine_all_elements();
 
   // Initialize boundary conditions.
   EssentialBCNonConst bc_left_vel_x(BDY_LEFT, VEL_INLET, H, STARTUP_TIME);
@@ -124,11 +119,11 @@ int main(int argc, char* argv[])
   int ndof = Space<double>::get_num_dofs(Hermes::vector<SpaceSharedPtr<double> >(xvel_space, yvel_space, p_space));
 
   // Define projection norms.
-  ProjNormType vel_proj_norm = HERMES_H1_NORM;
+  NormType vel_proj_norm = HERMES_H1_NORM;
 #ifdef PRESSURE_IN_L2
-  ProjNormType p_proj_norm = HERMES_L2_NORM;
+  NormType p_proj_norm = HERMES_L2_NORM;
 #else
-  ProjNormType p_proj_norm = HERMES_H1_NORM;
+  NormType p_proj_norm = HERMES_H1_NORM;
 #endif
 
   // Solutions for the Newton's iteration and time stepping.
@@ -164,13 +159,12 @@ if(HERMES_VISUALIZATION)
 
   ogProjection.project_global(Hermes::vector<SpaceSharedPtr<double> >(xvel_space, yvel_space, p_space),
     Hermes::vector<MeshFunctionSharedPtr<double> >(xvel_prev_time, yvel_prev_time, p_prev_time),
-    coeff_vec, Hermes::vector<ProjNormType>(vel_proj_norm, vel_proj_norm, p_proj_norm));
+    coeff_vec, Hermes::vector<NormType>(vel_proj_norm, vel_proj_norm, p_proj_norm));
 
   newton.set_max_allowed_iterations(max_allowed_iterations);
   newton.set_tolerance(NEWTON_TOL);
-  //newton.keep_element_values(1, WeakForm<double>::FormVol, WeakForm<double>::MatrixForm);
   newton.set_sufficient_improvement_factor_jacobian(1e-2);
-  newton.set_jacobian_constant();
+  //newton.set_jacobian_constant();
 
   // Time-stepping loop:
   char title[100];
@@ -178,10 +172,10 @@ if(HERMES_VISUALIZATION)
   for (int ts = 1; ts <= num_time_steps; ts++)
   {
     current_time += TAU;
+    Hermes::Mixins::Loggable::Static::info("Time step %i, time %f.", ts, current_time);
 
     // Update time-dependent essential BCs.
-    if(current_time <= STARTUP_TIME)
-      newton.set_time(current_time);
+    newton.set_time(current_time);
 
     // Perform Newton's iteration and translate the resulting coefficient vector into previous time level solutions.
     try

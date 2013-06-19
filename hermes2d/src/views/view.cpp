@@ -18,7 +18,7 @@
 #include <sstream>
 #include <GL/glew.h>
 #include <GL/freeglut.h>
-#ifndef WIN32
+#ifndef _WINDOWS
 # include <sys/time.h>
 #endif
 
@@ -153,19 +153,19 @@ namespace Hermes
       {
         //prepare message
         std::stringstream str;
-        str << "  << ";
         if(text != NULL)
           str << text;
         else
         {
+          str << "  << ";
           switch(wait_event)
           {
-          case HERMES_WAIT_CLOSE: str << HERMES_WAIT_CLOSE_MSG; break;
-          case HERMES_WAIT_KEYPRESS: str << HERMES_WAIT_KEYPRESS_MSG; break;
-          default: throw Hermes::Exceptions::Exception("Unknown wait event"); break;
+            case HERMES_WAIT_CLOSE: str << HERMES_WAIT_CLOSE_MSG; break;
+            case HERMES_WAIT_KEYPRESS: str << HERMES_WAIT_KEYPRESS_MSG; break;
+            default: throw Hermes::Exceptions::Exception("Unknown wait event"); break;
           }
+          str << " >>" << std::endl;
         }
-        str << " >>" << std::endl;
 
         //do something
         switch(wait_event)
@@ -559,7 +559,7 @@ namespace Hermes
 
       double View::get_tick_count()
       {
-#ifdef WIN32
+#ifdef _WINDOWS
         LARGE_INTEGER freq, ticks;
         QueryPerformanceFrequency(&freq);
         QueryPerformanceCounter(&ticks);
@@ -569,6 +569,11 @@ namespace Hermes
         gettimeofday(&tv, NULL);
         return (double) tv.tv_sec * 1000 + (double) tv.tv_usec / 1000;
 #endif
+      }
+
+      const char* View::get_title() const
+      {
+        return this->title.c_str();
       }
 
       void View::set_title(const char* title)
@@ -929,7 +934,7 @@ namespace Hermes
         for (int i = 0; i <= scale_numticks + 1; i++)
         {
           double value = range_min + (double) i * (range_max - range_min) / (scale_numticks + 1);
-          if(fabs(value) < 1e-8) value = 0.0;
+          if(fabs(value) < Hermes::Epsilon) value = 0.0;
           char text[50];
           sprintf(text, scale_fmt, value);
           int w = get_text_width(text);
@@ -1018,7 +1023,7 @@ namespace Hermes
         for (i = 0; i <= scale_numticks + 1; i++)
         {
           double value = range_min + (double) i * (range_max - range_min) / (scale_numticks + 1);
-          if(fabs(value) < 1e-8) value = 0.0;
+          if(fabs(value) < Hermes::Epsilon) value = 0.0;
           char text[50];
           sprintf(text, scale_fmt, value);
           y0 = scale_y + scale_height - (double) i * scale_height / (scale_numticks + 1);

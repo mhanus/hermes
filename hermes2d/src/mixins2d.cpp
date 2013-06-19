@@ -142,6 +142,10 @@ namespace Hermes
         this->rhs_number_format = number_format;
       }
 
+      Parallel::Parallel() : num_threads_used(HermesCommonApi.get_integral_param_value(numThreads))
+      {
+      }
+
       template HERMES_API class MatrixRhsOutput<double>;
       template HERMES_API class MatrixRhsOutput<std::complex<double> >;
     }

@@ -68,17 +68,7 @@ namespace Hermes
 {
   namespace Hermes2D
   {
-    
-    template<typename Scalar>
-    unsigned int Space<Scalar>::instance_count = 0;
-
     unsigned g_space_seq = 0;
-
-    template<typename Scalar>
-    unsigned int Space<Scalar>::get_instance_count()
-    {
-      return instance_count;
-    }
 
 		template<>
 		void Space<double>::init()
@@ -106,7 +96,6 @@ namespace Hermes
 					}
 
 					own_shapeset = (shapeset == NULL);
-      instance_count++;
 		}
 
 		template<>
@@ -135,7 +124,6 @@ namespace Hermes
 					}
 
 					own_shapeset = (shapeset == NULL);
-      instance_count++;
 		}
 
 		template<>
@@ -197,6 +185,10 @@ namespace Hermes
 
       if(ndata == NULL || edata == NULL || !nsize || !esize)
         return false;
+
+      if(ndof == 0)
+        return false;
+
       if(seq < 0)
         return false;
       if(this->mesh == NULL)
@@ -228,7 +220,6 @@ namespace Hermes
         delete [] this->proj_mat;
       if(this->chol_p != NULL)
         delete [] this->chol_p;
-      this->instance_count--;
     }
 
     template<>
@@ -240,7 +231,6 @@ namespace Hermes
         delete [] this->proj_mat;
       if(this->chol_p != NULL)
         delete [] this->chol_p;
-      this->instance_count--;
     }
 
 		template<typename Scalar>
@@ -294,7 +284,6 @@ namespace Hermes
     void Space<Scalar>::copy(SpaceSharedPtr<Scalar> space, MeshSharedPtr new_mesh)
     {
       this->free();
-      this->instance_count++;
       this->vertex_functions_count = this->edge_functions_count = this->bubble_functions_count = 0;
 
       this->essential_bcs = space->essential_bcs;
@@ -375,7 +364,7 @@ namespace Hermes
 
       resize_tables();
 
-      if(mesh->get_element(id)->is_quad() && get_type() != HERMES_L2_SPACE && H2D_GET_V_ORDER(order) == 0)
+      if(mesh->get_element(id)->is_quad() && get_type() != HERMES_L2_SPACE && get_type() != HERMES_UTILITY_L2_SPACES && H2D_GET_V_ORDER(order) == 0)
         order = H2D_MAKE_QUAD_ORDER(order, order);
 
       edata[id].order = order;
@@ -658,6 +647,11 @@ namespace Hermes
     }
 
     template<typename Scalar>
+    Space<Scalar>::ReferenceSpaceCreator::ReferenceSpaceCreator(unsigned int order_increase) : order_increase(order_increase)
+    {
+    }
+
+    template<typename Scalar>
     Space<Scalar>::ReferenceSpaceCreator::ReferenceSpaceCreator(SpaceSharedPtr<Scalar> coarse_space, MeshSharedPtr ref_mesh, unsigned int order_increase) : coarse_space(coarse_space), ref_mesh(ref_mesh), order_increase(order_increase)
     {
     }
@@ -707,6 +701,14 @@ namespace Hermes
       }
     }
     
+    template<typename Scalar>
+    SpaceSharedPtr<Scalar> Space<Scalar>::ReferenceSpaceCreator::create_ref_space(SpaceSharedPtr<Scalar> coarse_space, MeshSharedPtr ref_mesh, bool assign_dofs)
+    {
+      this->coarse_space = coarse_space;
+      this->ref_mesh = ref_mesh;
+      return this->create_ref_space(assign_dofs);
+    }
+
     template<typename Scalar>
     SpaceSharedPtr<Scalar> Space<Scalar>::ReferenceSpaceCreator::create_ref_space(bool assign_dofs)
     {
@@ -800,7 +802,7 @@ namespace Hermes
     {
       // Adjust wrt. max and min possible orders.
       int mo = shapeset->get_max_order();
-      int lower_limit = (get_type() == HERMES_L2_SPACE || get_type() == HERMES_HCURL_SPACE) ? 0 : 1; // L2 and Hcurl may use zero orders.
+      int lower_limit = (get_type() == HERMES_L2_SPACE || get_type() == HERMES_UTILITY_L2_SPACES || get_type() == HERMES_HCURL_SPACE) ? 0 : 1; // L2 and Hcurl may use zero orders.
       int ho = std::max(lower_limit, std::min(H2D_GET_H_ORDER(order), mo));
       int vo = std::max(lower_limit, std::min(H2D_GET_V_ORDER(order), mo));
       order = e->is_triangle() ? ho : H2D_MAKE_QUAD_ORDER(ho, vo);
@@ -1185,7 +1187,8 @@ namespace Hermes
             xmlspace.spaceType().set("l2");
             break;
         default:
-            return false;
+          throw Exceptions::Exception("This type of space can not be saved.");
+          return false;
       }
 
       // Utility pointer.

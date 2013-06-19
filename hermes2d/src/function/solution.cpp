@@ -453,7 +453,7 @@ namespace Hermes
         }
       }
 
-      if(this->mesh == NULL) throw Hermes::Exceptions::Exception("mesh == NULL.\n");
+      if(this->mesh == NULL) throw Hermes::Exceptions::Exception("mesh == NULL");
       init_dxdy_buffer();
       this->element = NULL;
       if(Solution<Scalar>::static_verbose_output)
@@ -490,16 +490,15 @@ namespace Hermes
         }
       }
 
-#pragma omp parallel num_threads(solutions.size())
+      for (int i=0; i < spaces.size(); i++)
       {
-        int thread_number = omp_get_thread_num();
         if(Solution<Scalar>::static_verbose_output)
-          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", thread_number);
+          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", i);
 
         if(add_dir_lift == Hermes::vector<bool>())
-          Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], true, start_indices_new[thread_number]);
+          Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], true, start_indices_new[i]);
         else
-          Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], add_dir_lift[thread_number], start_indices_new[thread_number]);
+          Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], add_dir_lift[i], start_indices_new[i]);
       }
     }
 
@@ -558,16 +557,15 @@ namespace Hermes
         }
       }
 
-#pragma omp parallel num_threads(solutions.size())
+      for (int i=0; i < spaces.size(); i++)
       {
-        int thread_number = omp_get_thread_num();
         if(Solution<Scalar>::static_verbose_output)
-          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", thread_number);
+          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", i);
 
         if(add_dir_lift == Hermes::vector<bool>())
-          Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], true, start_indices_new[thread_number]);
+          Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], true, start_indices_new[i]);
         else
-          Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], add_dir_lift[thread_number], start_indices_new[thread_number]);
+          Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], add_dir_lift[i], start_indices_new[i]);
       }
     }
 
@@ -589,13 +587,12 @@ namespace Hermes
         counter += spaces[i]->get_num_dofs();
       }
 
-#pragma omp parallel num_threads(solutions.size())
+      for (int i=0; i < spaces.size(); i++)
       {
-        int thread_number = omp_get_thread_num();
         if(Solution<Scalar>::static_verbose_output)
-          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", thread_number);
+          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", i);
 
-        Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], add_dir_lift, start_indices_new[thread_number]);
+        Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], add_dir_lift, start_indices_new[i]);
       }
     }
 
@@ -617,13 +614,12 @@ namespace Hermes
         counter += spaces[i]->get_num_dofs();
       }
 
-#pragma omp parallel num_threads(solutions.size())
+      for (int i=0; i < spaces.size(); i++)
       {
-        int thread_number = omp_get_thread_num();
         if(Solution<Scalar>::static_verbose_output)
-          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", thread_number);
+          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", i);
 
-        Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], add_dir_lift, start_indices_new[thread_number]);
+        Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], add_dir_lift, start_indices_new[i]);
       }
     }
 
@@ -672,17 +668,16 @@ namespace Hermes
           start_indices_new.push_back(start_indices[i]);
         }
       }
-
-#pragma omp parallel num_threads(solutions.size())
+      
+      for (int i=0; i < spaces.size(); i++)
       {
-        int thread_number = omp_get_thread_num();
         if(Solution<Scalar>::static_verbose_output)
-          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", thread_number);
+          Hermes::Mixins::Loggable::Static::info("Vector to Solution: %d-th solution", i);
 
         if(add_dir_lift == Hermes::vector<bool>())
-          Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], true, start_indices_new[thread_number]);
+          Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], true, start_indices_new[i]);
         else
-          Solution<Scalar>::vector_to_solution(solution_vector, spaces[thread_number], solutions[thread_number], add_dir_lift[thread_number], start_indices_new[thread_number]);
+          Solution<Scalar>::vector_to_solution(solution_vector, spaces[i], solutions[i], add_dir_lift[i], start_indices_new[i]);
       }
     }
 
@@ -1145,6 +1140,8 @@ namespace Hermes
         case HERMES_L2_SPACE:
           xmlsolution.space().set("l2");
           break;
+        default:
+          throw Exceptions::Exception("This type of solution can not be saved.");
         }
 
         for(unsigned int coeffs_i = 0; coeffs_i < this->num_coeffs; coeffs_i++)
@@ -1205,6 +1202,8 @@ namespace Hermes
         case HERMES_L2_SPACE:
           xmlsolution.space().set("l2");
           break;
+        default:
+          throw Exceptions::Exception("This type of solution can not be saved.");
         }
 
         for(unsigned int coeffs_i = 0; coeffs_i < this->num_coeffs; coeffs_i++)
@@ -1269,8 +1268,7 @@ namespace Hermes
             {
               double* coeff_vec = new double[space->get_num_dofs()];
               MeshFunctionSharedPtr<double> sln(new ConstantSolution<double>(this->mesh, parsed_xml_solution->exactCXR().get()));
-              OGProjection<double> ogProj;
-              ogProj.project_global(space, sln, coeff_vec);
+              OGProjection<double>::project_global(space, sln, coeff_vec);
               this->set_coeff_vector(space, coeff_vec, true, 0);
               sln_type = HERMES_SLN;
             }
@@ -1282,8 +1280,7 @@ namespace Hermes
             {
               double* coeff_vec = new double[space->get_num_dofs()];
               MeshFunctionSharedPtr<double> sln(new ConstantSolutionVector<double>(this->mesh, parsed_xml_solution->exactCXR().get(), parsed_xml_solution->exactCYR().get()));
-              OGProjection<double> ogProj;
-              ogProj.project_global(space, sln, coeff_vec);
+              OGProjection<double>::project_global(space, sln, coeff_vec);
               this->set_coeff_vector(space, coeff_vec, true, 0);
               sln_type = HERMES_SLN;
             }
@@ -1367,8 +1364,7 @@ namespace Hermes
             {
               std::complex<double>* coeff_vec = new std::complex<double>[space->get_num_dofs()];
               MeshFunctionSharedPtr<std::complex<double> > sln(new ConstantSolution<std::complex<double> >(this->mesh, parsed_xml_solution->exactCXR().get()));
-              OGProjection<std::complex<double> > ogProj;
-              ogProj.project_global(space, sln, coeff_vec);
+              OGProjection<std::complex<double> >::project_global(space, sln, coeff_vec);
               this->set_coeff_vector(space, coeff_vec, true, 0);
               sln_type = HERMES_SLN;
             }
@@ -1380,8 +1376,7 @@ namespace Hermes
             {
               std::complex<double>* coeff_vec = new std::complex<double>[space->get_num_dofs()];
               MeshFunctionSharedPtr<std::complex<double> > sln(new ConstantSolutionVector<std::complex<double> >(this->mesh, std::complex<double>(parsed_xml_solution->exactCXR().get(), parsed_xml_solution->exactCXC().get()), std::complex<double>(parsed_xml_solution->exactCYR().get(), parsed_xml_solution->exactCYC().get())));
-              OGProjection<std::complex<double> > ogProj;
-              ogProj.project_global(space, sln, coeff_vec);
+              OGProjection<std::complex<double> >::project_global(space, sln, coeff_vec);
               this->set_coeff_vector(space, coeff_vec, true, 0);
               sln_type = HERMES_SLN;
             }
@@ -1594,7 +1589,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    Func<Scalar>* Solution<Scalar>::get_pt_value(double x, double y, Element* e)
+    Func<Scalar>* Solution<Scalar>::get_pt_value(double x, double y, bool use_MeshHashGrid, Element* e)
     {
       double xi1, xi2;
 
@@ -1646,7 +1641,7 @@ namespace Hermes
       else // HERMES_SLN
       {
         if(e == NULL)
-          e = RefMap::element_on_physical_coordinates(this->mesh, x, y, &xi1, &xi2);
+          e = RefMap::element_on_physical_coordinates(use_MeshHashGrid, this->mesh, x, y, &xi1, &xi2);
         else
           RefMap::untransform(e, x, y, xi1, xi2);
 

@@ -10,12 +10,16 @@
 #cmakedefine EXTREME_QUAD
 
 #cmakedefine WITH_UMFPACK
+#cmakedefine WITH_PARALUTION
 #cmakedefine WITH_MUMPS
 #cmakedefine WITH_SUPERLU
 #cmakedefine WITH_PETSC
 #cmakedefine WITH_HDF5
 #cmakedefine WITH_EXODUSII
 #cmakedefine WITH_MPI
+
+#cmakedefine WITH_TC_MALLOC
+#cmakedefine UMFPACK_LONG_INT
 
 // stacktrace
 #cmakedefine WITH_STACKTRACE

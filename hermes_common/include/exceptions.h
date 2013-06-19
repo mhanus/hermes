@@ -55,7 +55,7 @@ namespace Hermes
         virtual const char * what() const throw();
         /// \return name of function where exception was created.
         const char * get_func_name() const;
-        virtual ~Exception() throw() {};
+        virtual ~Exception() throw() { delete [] message; };
 
         virtual Exception* clone();
       protected:
@@ -171,6 +171,20 @@ namespace Hermes
         MethodNotOverridenException(const MethodNotOverridenException & e);
         virtual Exception* clone();
     };
+
+    /// \brief Method is not overriden and should be.
+    class HERMES_API MethodNotImplementedException : public Exception
+    {
+      public:
+        /// Constructor
+        /// \param[in] name Name of the function.
+        MethodNotImplementedException(const char * msg, ...);
+        ~MethodNotImplementedException() throw() {};
+        MethodNotImplementedException(const MethodNotImplementedException & e);
+        virtual Exception* clone();
+    };
+
+    
 
     /// \brief Mesh failed to load.
     /// Thrown by Hermes2D::MeshReaderH2DXML, MeshReaderH2D

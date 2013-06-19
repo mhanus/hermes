@@ -27,6 +27,7 @@
 #include "mixins.h"
 
 using namespace Hermes::Algebra;
+using namespace Hermes::Solvers;
 
 /// \brief General namespace for the Hermes library.
 namespace Hermes
@@ -103,13 +104,15 @@ namespace Hermes
       /// @return solution vector ( #sln )
       Scalar *get_sln_vector();
 
-      /// @return #error
-      int get_error();
       /// Get time spent on solving.
       /// @return time spent on solving in secs ( #time )
       double get_time();
+
       /// Get size of matrix
       virtual int get_matrix_size() = 0;
+
+      /// Get factorization scheme.
+      virtual FactorizationScheme get_used_factorization_scheme() { return HERMES_FACTORIZE_FROM_SCRATCH; };
 
       /// Set factorization scheme.
       /// @param[in] reuse_scheme factoriztion scheme to set
@@ -121,9 +124,9 @@ namespace Hermes
     protected:
       /// Solution vector.
       Scalar *sln;
-      /// \todo document (not sure what it do)
-      int error;
-      double time;  ///< Time spent on solving (in secs).
+
+      ///< Time spent on solving (in secs).
+      double time;
     };
 
     /// \brief Base class for defining interface for direct linear solvers.
@@ -134,6 +137,8 @@ namespace Hermes
     public:
       DirectSolver(unsigned int factorization_scheme = HERMES_FACTORIZE_FROM_SCRATCH)
         : LinearMatrixSolver<Scalar>(), factorization_scheme(factorization_scheme) {};
+
+      virtual FactorizationScheme get_used_factorization_scheme() { return (FactorizationScheme)factorization_scheme; };
 
     protected:
       virtual void set_factorization_scheme(FactorizationScheme reuse_scheme);
@@ -149,24 +154,50 @@ namespace Hermes
     public:
       IterSolver() : LinearMatrixSolver<Scalar>(), max_iters(10000), tolerance(1e-8), precond_yes(false) {};
 
+      /// Various tolerances.
+      /// Not necessarily supported by all iterative solvers used.
+      enum ToleranceType
+      {
+        AbsoluteTolerance,
+        RelativeTolerance,
+        DivergenceTolerance
+      };
+
+      /// Solve.
+      /// @return true on succes
+      /// \param[in] initial guess.
+      virtual bool solve(Scalar* initial_guess) = 0;
+
+      /// Get the number of iterations performed.
       virtual int get_num_iters() = 0;
+      
+      /// Get the final residual.
       virtual double get_residual() = 0;
 
       /// Set the convergence tolerance.
       /// @param[in] tol - the tolerance to set
-      void set_tolerance(double tol);
+      virtual void set_tolerance(double tol);
+
+      /// Set the convergence tolerance.
+      /// @param[in] tolerance - the tolerance to set
+      /// @param[in] toleranceType - the tolerance to set
+      virtual void set_tolerance(double tolerance, ToleranceType toleranceType);
 
       /// Set maximum number of iterations to perform.
       /// @param[in] iters - number of iterations
-      void set_max_iters(int iters);
-
-      virtual void set_precond(const char *name) = 0;
+      virtual void set_max_iters(int iters);
 
       virtual void set_precond(Precond<Scalar> *pc) = 0;
 
     protected:
-      int max_iters;          ///< Maximum number of iterations.
-      double tolerance;       ///< Convergence tolerance.
+      /// Maximum number of iterations.
+      int max_iters;
+      /// Convergence tolerance.
+      double tolerance;
+      /// Convergence tolerance type.
+      /// See the enum.
+      ToleranceType toleranceType;
+      /// Whether the solver is preconditioned.
       bool precond_yes;
     };
 
@@ -176,7 +207,7 @@ namespace Hermes
     /// @return created linear solver
     template<typename Scalar>
     HERMES_API LinearMatrixSolver<Scalar>*
-      create_linear_solver(Matrix<Scalar>* matrix, Vector<Scalar>* rhs);
+      create_linear_solver(Matrix<Scalar>* matrix, Vector<Scalar>* rhs, bool use_direct_solver = false);
   }
 }
 /*@}*/ // End of documentation group Solvers.

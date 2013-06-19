@@ -28,10 +28,10 @@ using namespace Hermes::Hermes2D;
 //
 // The following parameters can be changed:
 
-const bool HERMES_VISUALIZATION = true;           // Set to "false" to suppress Hermes OpenGL visualization.
-const bool VTK_VISUALIZATION = false;             // Set to "true" to enable VTK output.
-const int P_INIT = 2;                             // Uniform polynomial degree of mesh elements.
-const int INIT_REF_NUM = 2;                       // Number of initial uniform mesh refinements.
+const bool HERMES_VISUALIZATION = true;   // Set to "false" to suppress Hermes OpenGL visualization.
+const bool VTK_VISUALIZATION = false;     // Set to "true" to enable VTK output.
+const int P_INIT = 5;                     // Uniform polynomial degree of mesh elements.
+const int INIT_REF_NUM = 5;               // Number of initial uniform mesh refinements.
 
 // Problem parameters.
 const double LAMBDA_AL = 236.0;            // Thermal cond. of Al for temperatures around 20 deg Celsius.
@@ -41,6 +41,8 @@ const double FIXED_BDY_TEMP = 20.0;        // Fixed temperature on the boundary.
 
 int main(int argc, char* argv[])
 {
+  HermesCommonApi.set_integral_param_value(Hermes::matrixSolverType, SOLVER_PARALUTION);
+
   // Load the mesh.
   MeshSharedPtr mesh(new Mesh);
   Hermes::Hermes2D::MeshReaderH2DXML mloader;
@@ -91,7 +93,7 @@ int main(int argc, char* argv[])
 
       // Output mesh and element orders in VTK format.
       Hermes::Hermes2D::Views::Orderizer ord;
-      ord.save_mesh_vtk(space, "mesh->vtk");
+      ord.save_mesh_vtk(space, "mesh.vtk");
       ord.save_orders_vtk(space, "ord.vtk");
     }
 

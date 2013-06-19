@@ -28,6 +28,9 @@ namespace Hermes
       first_der_right(first_der_right), extrapolate_der_left(extrapolate_der_left),
       extrapolate_der_right(extrapolate_der_right)
     {
+      for(int i = 1; i < points.size(); i++)
+        if(points[i] <= points[i - 1])
+          throw Exceptions::Exception("Points must be in ascending order when constructing a spline.");
       this->is_const = false;
     }
 
@@ -242,7 +245,7 @@ namespace Hermes
       }
 
       // Check for improperly ordered or duplicated points.
-      double eps = 1e-8;
+      double eps = Hermes::Epsilon;
       for (int i = 0; i < nelem; i++)
       {
         if(points[i + 1] < points[i] + eps)

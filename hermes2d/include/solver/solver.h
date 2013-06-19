@@ -47,11 +47,26 @@ namespace Hermes
       public Hermes::Hermes2D::Mixins::DiscreteProblemWeakForm<Scalar>
     {
     public:
-      Solver();
-      Solver(DiscreteProblem<Scalar>* dp);
-      Solver(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space);
-      Solver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
+      Solver(bool force_use_direct_solver = false);
+      Solver(DiscreteProblem<Scalar>* dp, bool force_use_direct_solver = false);
+      Solver(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space, bool force_use_direct_solver = false);
+      Solver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces, bool force_use_direct_solver = false);
       virtual ~Solver();
+
+      /// Basic solve method.
+      virtual void solve();
+
+      /// Basic solve method.
+      /// \param[in] coeff_vec initiall guess as a vector of coefficients wrt. basis functions.
+      virtual void solve(Scalar* coeff_vec) = 0;
+
+      /// Solve.
+      /// \param[in] initial_guess Solution to start from (which is projected to obtain the initial coefficient vector.
+      virtual void solve(MeshFunctionSharedPtr<Scalar>& initial_guess);
+
+      /// Solve.
+      /// \param[in] initial_guess Solutions to start from (which is projected to obtain the initial coefficient vector.
+      virtual void solve(Hermes::vector<MeshFunctionSharedPtr<Scalar> >& initial_guess);
 
       /// Experimental
       /// \todo delete this?
@@ -73,6 +88,9 @@ namespace Hermes
       virtual void set_time(double time);
       virtual void set_time_step(double time_step);
 
+      // Verbose output.
+      virtual void set_verbose_output(bool to_set);
+
       /// SettableSpaces helper.
       virtual void set_spaces(Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
       virtual Hermes::vector<SpaceSharedPtr<Scalar> >& get_spaces();
@@ -89,11 +107,28 @@ namespace Hermes
       /// Get the Residual.
       Vector<Scalar>* get_residual();
 
+      /// Get the Linear solver (thus influence its behavior).
+      LinearMatrixSolver<Scalar>* get_linear_solver();
+
       /// If the cache should not be used for any reason.
       virtual void set_do_not_use_cache(bool to_set = true);
       
-      /// Reports cache hits and misses.
+      /// Report cache hits and misses.
       virtual void set_report_cache_hits_and_misses(bool to_set = true);
+
+      /// Set Reporting of UMFPACK numerical factorization data provided the used matrix solver is UMFPACK.
+      virtual void set_UMFPACK_output(bool to_set = true, bool with_output = false);
+      
+      /// Data values (types) for UMFPACK reporting.
+      enum UMFPACK_reporting_data_value
+      {
+        FactorizationSize = 0,
+        PeakMemoryUsage = 1,
+        Flops = 2
+      };
+      
+      /// Get UMFPACK numerical factorization data provided the used matrix solver is UMFPACK
+      virtual double get_UMFPACK_reporting_data(UMFPACK_reporting_data_value data_value);
 
     protected:
       /// Handle the jacobian re-calculation and re-usage of a previous one.
@@ -129,8 +164,14 @@ namespace Hermes
       /// For deciding if the jacobian is constant at this point.
       virtual bool reuse_jacobian_values();
 
+      /// Switch for UMFPACK reporting.
+      bool do_UMFPACK_reporting;
+
+      /// Data for UMFPACK reporting.
+      double UMFPACK_reporting_data[3];
+      
     private:
-      void init();
+      void init(bool force_use_direct_solver);
     };
   }
 }

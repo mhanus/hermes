@@ -13,281 +13,25 @@
 // You should have received a copy of the GNU General Public License
 // along with Hermes2D.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "mesh.h"
+#include "mesh_util.h"
 #include "refmap.h"
 #include <algorithm>
 #include "global.h"
 #include "api2d.h"
 #include "mesh_reader_h2d.h"
-
-
-#ifdef _WINDOWS
-MeshSharedPtr::MeshSharedPtr(Hermes::Hermes2D::Mesh* ptr) : std::shared_ptr<Hermes::Hermes2D::Mesh>(ptr)
-{
-}
-
-MeshSharedPtr::MeshSharedPtr(const MeshSharedPtr& other) : std::shared_ptr<Hermes::Hermes2D::Mesh>(other)
-{
-}
-
-void MeshSharedPtr::operator=(const MeshSharedPtr& other)
-{
-  std::shared_ptr<Hermes::Hermes2D::Mesh>::operator=(other);
-}
-#else
-MeshSharedPtr::MeshSharedPtr(Hermes::Hermes2D::Mesh* ptr) : std::tr1::shared_ptr<Hermes::Hermes2D::Mesh>(ptr)
-{
-}
-
-MeshSharedPtr::MeshSharedPtr(const MeshSharedPtr& other) : std::tr1::shared_ptr<Hermes::Hermes2D::Mesh>(other)
-{
-}
-
-void MeshSharedPtr::operator=(const MeshSharedPtr& other)
-{
-  std::tr1::shared_ptr<Hermes::Hermes2D::Mesh>::operator=(other);
-}
-#endif
-
-MeshSharedPtr::~MeshSharedPtr()
-{
-}
-
-
+#include "forms.h"
 
 namespace Hermes
 {
   namespace Hermes2D
   {
-    static const int H2D_DG_INNER_EDGE_INT = -1234567;
-    static const std::string H2D_DG_INNER_EDGE = "-1234567";
-    unsigned int Mesh::instance_count = 0;
-
-    bool Node::is_constrained_vertex() const
-    {
-      assert(type == HERMES_TYPE_VERTEX);
-      return ref <= 3 && !bnd;
-    }
-
-    void Node::ref_element(Element* e)
-    {
-      if(type == HERMES_TYPE_EDGE)
-      {
-        // store the element pointer in a free slot of 'elem'
-        if(elem[0] == NULL) elem[0] = e;
-        else
-        {
-          if(elem[1] == NULL)
-            elem[1] = e;
-          else
-            throw Hermes::Exceptions::Exception(false, "No free slot 'elem'");
-        }
-      }
-      ref++;
-    }
-
-    void Node::unref_element(HashTable* ht, Element* e)
-    {
-      if(type == HERMES_TYPE_VERTEX)
-      {
-        if(!--ref) ht->remove_vertex_node(id);
-      }
-      else
-      {
-        // remove the element from the array 'elem'
-        if(elem[0] == e) elem[0] = NULL;
-        else if(elem[1] == e) elem[1] = NULL;
-
-        if(!--ref) ht->remove_edge_node(id);
-      }
-    }
-
-    void Element::ref_all_nodes()
-    {
-      for (unsigned int i = 0; i < nvert; i++)
-      {
-        vn[i]->ref_element();
-        en[i]->ref_element(this);
-      }
-      this->areaCalculated = false;
-      this->diameterCalculated = false;
-    }
-
-    int Element::get_edge_orientation(int ie) const
-    {
-      return (this->vn[ie]->id < this->vn[this->next_vert(ie)]->id) ? 0 : 1;
-    }
-
-    void Element::unref_all_nodes(HashTable* ht)
-    {
-      for (unsigned int i = 0; i < nvert; i++)
-      {
-        vn[i]->unref_element(ht);
-        en[i]->unref_element(ht, this);
-      }
-      this->areaCalculated = false;
-      this->diameterCalculated = false;
-    }
-
-    Element::Element() : visited(false), area(0.0), diameter(0.0), center_set(false)
-    {
-    };
-
-    bool Element::is_triangle() const
-    {
-      return nvert == 3;
-    }
-
-    bool Element::is_quad() const
-    {
-      return nvert == 4;
-    }
-
-    bool Element::is_curved() const
-    {
-      return cm != NULL;
-    }
-
-    int Element::get_nvert() const
-    {
-      return this->nvert;
-    }
-
-    ElementMode2D Element::get_mode() const
-    {
-      return (nvert == 3) ? HERMES_MODE_TRIANGLE : HERMES_MODE_QUAD;
-    }
-
-    int Element::next_vert(int i) const
-    {
-      return (i < (int)nvert-1) ? i + 1 : 0;
-    }
-
-    int Element::prev_vert(int i) const
-    {
-      return (i > 0) ? i-1 : nvert-1;
-    }
-
-    bool Element::hsplit() const
-    {
-      if(active)
-        return false;
-      return sons[0] != NULL;
-    }
-
-    bool Element::vsplit() const
-    {
-      if(active)
-        return false;
-      return sons[2] != NULL;
-    }
-
-    bool Element::bsplit() const
-    {
-      if(active)
-        return false;
-      return sons[0] != NULL && sons[2] != NULL;
-    }
-
-    Element* Element::get_neighbor(int ie) const
-    {
-      Element** elem = en[ie]->elem;
-      if(elem[0] == this)
-        return elem[1];
-      if(elem[1] == this)
-        return elem[0];
-      assert(0);
-      return NULL;
-    }
-
-    double Element::get_area()
-    {
-      if(!this->areaCalculated)
-      {
-        double ax, ay, bx, by;
-        ax = vn[1]->x - vn[0]->x;
-        ay = vn[1]->y - vn[0]->y;
-        bx = vn[2]->x - vn[0]->x;
-        by = vn[2]->y - vn[0]->y;
-
-        this->area = 0.5*(ax*by - ay*bx);
-        if(is_quad())
-        {
-          ax = bx; ay = by;
-          bx = vn[3]->x - vn[0]->x;
-          by = vn[3]->y - vn[0]->y;
-
-          this->area = area + 0.5*(ax*by - ay*bx);
-        }
-        this->areaCalculated = true;
-      }
-      return this->area;
-    }
-
-    void Element::get_center(double& x, double& y)
-    {
-      if(center_set)
-      {
-        x = this->x_center;
-        y = this->y_center;
-        return;
-      }
-
-      // x - coordinate
-      this->x_center = this->vn[0]->x + this->vn[1]->x + this->vn[2]->x;
-      this->y_center = this->vn[0]->y + this->vn[1]->y + this->vn[2]->y;
-      if(this->is_quad())
-      {
-        this->x_center += this->vn[3]->x;
-        this->x_center = this->x_center / 4.0;
-        this->y_center += this->vn[3]->y;
-        this->y_center = this->y_center / 4.0;
-      }
-      else
-      {
-        this->x_center = this->x_center / 3.0;
-        this->y_center = this->y_center / 3.0;
-      }
-      x = this->x_center;
-      y = this->y_center;
-    }
-
-    double Element::get_diameter()
-    {
-      if(!this->diameterCalculated)
-      {
-        double max, l;
-        if(is_triangle())
-        {
-          max = 0.0;
-          for (int i = 0; i < 3; i++)
-          {
-            int j = next_vert(i);
-            l = sqr(vn[i]->x - vn[j]->x) + sqr(vn[i]->y - vn[j]->y);
-            if(l > max) 
-              max = l;
-          }
-        }
-        else
-        {
-          max = sqr(vn[0]->x - vn[2]->x) + sqr(vn[0]->y - vn[2]->y);
-          l   = sqr(vn[1]->x - vn[3]->x) + sqr(vn[1]->y - vn[3]->y);
-          if(l > max) 
-            max = l;
-        }
-        diameter = sqrt(max);
-        this->diameterCalculated = true;
-      }
-      return this->diameter;
-    }
-
     unsigned g_mesh_seq = 0;
+    static const int H2D_DG_INNER_EDGE_INT = -54125631;
+    static const std::string H2D_DG_INNER_EDGE = "-54125631";
 
-    Mesh::Mesh() : HashTable()
+    Mesh::Mesh() : HashTable(), meshHashGrid(NULL), nbase(0), nactive(0), ntopvert(0), ninitial(0), seq(g_mesh_seq++),
+      bounding_box_calculated(0)
     {
-      nbase = nactive = ntopvert = ninitial = 0;
-      seq = g_mesh_seq++;
-      this->instance_count++;
     }
 
     Mesh::~Mesh() 
@@ -523,6 +267,46 @@ namespace Hermes
       return seq;
     }
 
+    void Mesh::calc_bounding_box()
+    {
+      // find bounding box of the whole mesh
+      bool first = true;
+      Node* n;
+      for_all_vertex_nodes(n, this)
+      {
+        if(first)
+        {
+          this->bottom_left_x = this->top_right_x = n->x;
+          this->bottom_left_y = this->top_right_y = n->y;
+          first = false;
+        }
+        else
+        {
+          if(n->x > this->top_right_x)
+            this->top_right_x = n->x;
+          if(n->x < this->bottom_left_x)
+            this->bottom_left_x = n->x;
+          if(n->y > this->top_right_y)
+            this->top_right_y = n->y;
+          if(n->y < this->bottom_left_y)
+            this->bottom_left_y = n->y;
+        }
+      }
+    }
+
+    void Mesh::get_bounding_box(double& bottom_left_x_, double& bottom_left_y_, double& top_right_x_, double& top_right_y_)
+    {
+      if(!this->bounding_box_calculated)
+        this->calc_bounding_box();
+
+      top_right_x_ = this->top_right_x;
+      bottom_left_x_ = this->bottom_left_x;
+      top_right_y_ = this->top_right_y;
+      bottom_left_y_ = this->bottom_left_y;
+
+      bounding_box_calculated = true;
+    }
+
     void Mesh::set_seq(unsigned seq)
     {
       this->seq = seq;
@@ -613,7 +397,7 @@ namespace Hermes
 
       // set vertex and edge node pointers
       if(v0 == v1 || v1 == v2 || v2 == v3 || v3 == v0 || v2 == v0 || v3 == v1)
-        throw Hermes::Exceptions::MeshLoadFailureException("Some of the vertices of element #%d are identical which is impossible.", e->id);
+        throw Hermes::Exceptions::MeshLoadFailureException("Some of the vertices of element #%d are identical which is not right.", e->id);
       e->vn[0] = v0;
       e->vn[1] = v1;
       e->vn[2] = v2;
@@ -1053,11 +837,6 @@ namespace Hermes
       return -1;
     }
 
-    unsigned int Mesh::get_instance_count()
-    {
-      return instance_count;
-    }
-
     void Mesh::refine_towards_vertex(int vertex_id, int depth, bool mark_as_initial)
     {
       rtv_id = vertex_id;
@@ -1307,7 +1086,7 @@ namespace Hermes
       double length_pq = vector_length(pq_1, pq_2);
       double length_pr = vector_length(pr_1, pr_2);
       double sin_angle = (pq_1*pr_2 - pq_2*pr_1)/(length_pq*length_pr);
-      if(fabs(sin_angle) < 1e-8) return true;
+      if(fabs(sin_angle) < Hermes::Epsilon) return true;
       else return false;
     }
 
@@ -1324,8 +1103,8 @@ namespace Hermes
         length_1 = vector_length(v1->x - v0->x, v1->y - v0->y),
         length_2 = vector_length(v2->x - v1->x, v2->y - v1->y),
         length_3 = vector_length(v0->x - v2->x, v0->y - v2->y);
-      if(length_1 < 1e-14 || length_2 < 1e-14 || length_3 < 1e-14)
-        throw Hermes::Exceptions::Exception("Edge of triangular element #%d has length less than 1e-14.", i);
+      if(length_1 < Hermes::epsilon || length_2 < Hermes::epsilon || length_3 < Hermes::epsilon)
+        throw Hermes::Exceptions::Exception("Edge of triangular element #%d has length less than Hermes::epsilon.", i);
 
       // checking that vertices do not lie on the same line
       if(same_line(v0->x, v0->y, v1->x, v1->y, v2->x, v2->y))
@@ -1346,15 +1125,15 @@ namespace Hermes
         length_2 = vector_length(v2->x - v1->x, v2->y - v1->y),
         length_3 = vector_length(v3->x - v2->x, v3->y - v2->y),
         length_4 = vector_length(v0->x - v3->x, v0->y - v3->y);
-      if(length_1 < 1e-14 || length_2 < 1e-14 || length_3 < 1e-14 || length_4 < 1e-14)
-        throw Hermes::Exceptions::Exception("Edge of quad element #%d has length less than 1e-14.", i);
+      if(length_1 < Hermes::epsilon || length_2 < Hermes::epsilon || length_3 < Hermes::epsilon || length_4 < Hermes::epsilon)
+        throw Hermes::Exceptions::Exception("Edge of quad element #%d has length less than Hermes::epsilon.", i);
 
       // checking that both diagonals have nonzero length
       double
         diag_1 = vector_length(v2->x - v0->x, v2->y - v0->y),
         diag_2 = vector_length(v3->x - v1->x, v3->y - v1->y);
-      if(diag_1 < 1e-14 || diag_2 < 1e-14)
-        throw Hermes::Exceptions::Exception("Diagonal of quad element #%d has length less than 1e-14.", i);
+      if(diag_1 < Hermes::epsilon || diag_2 < Hermes::epsilon)
+        throw Hermes::Exceptions::Exception("Diagonal of quad element #%d has length less than Hermes::epsilon.", i);
 
       // checking that vertices v0, v1, v2 do not lie on the same line
       if(same_line(v0->x, v0->y, v1->x, v1->y, v2->x, v2->y))
@@ -1408,8 +1187,6 @@ namespace Hermes
       unsigned int i;
 
       free();
-      // Serves as a Mesh::init() for purposes of pointer calculation.
-      this->instance_count++;
 
       // copy nodes and elements
       HashTable::copy(mesh.get());
@@ -1481,7 +1258,6 @@ namespace Hermes
     void Mesh::init(int size)
     {
       HashTable::init(size);
-      instance_count++;
     }
 
     void Mesh::copy_base(MeshSharedPtr mesh)
@@ -1503,8 +1279,15 @@ namespace Hermes
 
       // copy base elements
       Element* e;
-      for_all_base_elements(e, mesh)
+      for (int id = 0; id < mesh->get_num_base_elements(); id++)
       {
+        e = mesh->get_element_fast(id);
+        if(!e->used)
+        {
+          Element* e_temp = elements.add();
+          e_temp->used = false;
+          continue;
+        }
         Element* enew;
         Node *v0 = &nodes[e->vn[0]->id], *v1 = &nodes[e->vn[1]->id], *v2 = &nodes[e->vn[2]->id];
         if(e->is_triangle())
@@ -1545,13 +1328,34 @@ namespace Hermes
       }
       elements.free();
       HashTable::free();
+
+      if(this->meshHashGrid)
+        delete this->meshHashGrid;
+
       this->boundary_markers_conversion.conversion_table.clear();
       this->boundary_markers_conversion.conversion_table_inverse.clear();
       this->element_markers_conversion.conversion_table.clear();
       this->element_markers_conversion.conversion_table_inverse.clear();
       this->refinements.clear();
       this->seq = -1;
-      instance_count--;
+    }
+
+    Element* Mesh::element_on_physical_coordinates(double x, double y)
+    {
+      // If no hash grid exists, create one.
+      if(!this->meshHashGrid)
+        this->meshHashGrid = new MeshHashGrid(this);
+      else
+      {
+        // If no the hash grid exists, but the mesh has been refined afterwards, re-create.
+        if(this->get_seq() != this->meshHashGrid->get_mesh_seq())
+        {
+          delete this->meshHashGrid;
+          this->meshHashGrid = new MeshHashGrid(this);
+        }
+      }
+
+      return this->meshHashGrid->getElement(x, y);
     }
 
     void Mesh::copy_converted(MeshSharedPtr mesh)
@@ -2310,6 +2114,11 @@ namespace Hermes
       conversion_table.insert(std::pair<int, std::string>(this->min_marker_unused, user_marker));
       conversion_table_inverse.insert(std::pair<std::string, int>(user_marker, this->min_marker_unused));
       return this->min_marker_unused++;
+    }
+
+    int Mesh::MarkersConversion::size() const
+    {
+      return this->conversion_table.size();
     }
 
     Mesh::MarkersConversion::StringValid Mesh::MarkersConversion::get_user_marker(int internal_marker) const

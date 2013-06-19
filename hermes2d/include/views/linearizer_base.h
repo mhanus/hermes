@@ -18,6 +18,8 @@
 
 #include "global.h"
 #include "../quadrature/quad_all.h"
+#include "../mesh/mesh.h"
+#include "mixins2d.h"
 
 namespace Hermes
 {
@@ -67,7 +69,10 @@ namespace Hermes
 
       /// Base class for Linearizer, Orderizer, Vectorizer.
 
-      class HERMES_API LinearizerBase : public Hermes::Mixins::TimeMeasurable, public Hermes::Mixins::Loggable
+      class HERMES_API LinearizerBase : 
+        public Hermes::Mixins::TimeMeasurable,
+        public Hermes::Mixins::Loggable,
+        public Hermes::Hermes2D::Mixins::Parallel
       {
       public:
         void set_max_absolute_value(double max_abs);
@@ -89,9 +94,18 @@ namespace Hermes
         /// the method free() has been called.
         virtual bool is_empty();
 
+        /// Initializing of a linearizing process.
+        virtual void init_linearizer_base(MeshFunctionSharedPtr<double> sln);
+        virtual void deinit_linearizer_base();
+
         /// Frees the instance.
         void free();
-
+        
+        /// Experimental upper-limiting of the maximum refinement level.
+        int get_max_level(Element* e, int polynomial_order, MeshSharedPtr mesh);
+        static double large_elements_fraction_of_mesh_size_threshold;
+        int* level_map;
+        
       protected:
         LinearizerBase(bool auto_max = true);
         ~LinearizerBase();
@@ -131,8 +145,6 @@ namespace Hermes
 
         mutable pthread_mutex_t data_mutex;
 
-        std::exception* caughtException;
-
         /// Calculates AABB from an array of X-axis and Y-axis coordinates. The distance between values in the array is stride bytes.
         static void calc_aabb(double* x, double* y, int stride, int num, double* min_x, double* max_x, double* min_y, double* max_y);
         friend class MeshView;
@@ -142,7 +154,7 @@ namespace Hermes
         friend class StreamView;
       };
 
-      const int LIN_MAX_LEVEL = 6;
+      const int LIN_MAX_LEVEL = 5;
     }
   }
 }

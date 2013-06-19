@@ -2,13 +2,11 @@
 # GLUT
 #
 
-if(MSVC)
-	set(GLUT_LIBRARY_NAME freeglut)
-else(MSVC)
-	set(GLUT_LIBRARY_NAME glut)
-endif(MSVC)
-
-FIND_LIBRARY(GLUT_LIBRARY ${GLUT_LIBRARY_NAME} ${GLUT_ROOT}/lib /usr/lib64 /usr/lib /usr/local/lib64 /usr/local/lib)
+if(WIN64)
+  FIND_LIBRARY(GLUT_LIBRARY NAMES freeglut glut PATHS ${GLUT_ROOT}/lib/x64 ${GLUT_ROOT}/lib)
+else(WIN64)  
+  FIND_LIBRARY(GLUT_LIBRARY NAMES freeglut glut PATHS ${GLUT_ROOT}/lib /usr/lib /usr/local/lib /usr/lib64 /usr/local/lib64)
+endif(WIN64)
 
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(GLUT DEFAULT_MSG GLUT_LIBRARY)

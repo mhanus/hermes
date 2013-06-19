@@ -113,7 +113,7 @@ namespace Hermes
     template<typename Scalar>
     void OGProjectionNOX<Scalar>::project_global(SpaceSharedPtr<Scalar> space,
       MeshFunction<Scalar>* source_meshfn, Scalar* target_vec,
-      ProjNormType proj_norm,
+      NormType proj_norm,
       double newton_tol, int newton_max_iter)
     {
       // Sanity checks.
@@ -121,7 +121,7 @@ namespace Hermes
 
       // If projection norm is not provided, set it
       // to match the type of the space.
-      ProjNormType norm = HERMES_UNSET_NORM;
+      NormType norm = HERMES_UNSET_NORM;
       if(proj_norm == HERMES_UNSET_NORM)
       {
         SpaceType space_type = space->get_type();
@@ -131,6 +131,7 @@ namespace Hermes
         case HERMES_HCURL_SPACE: norm = HERMES_HCURL_NORM; break;
         case HERMES_HDIV_SPACE: norm = HERMES_HDIV_NORM; break;
         case HERMES_L2_SPACE: norm = HERMES_L2_NORM; break;
+        case HERMES_UTILITY_L2_SPACES: norm = HERMES_L2_NORM; break;
         default: throw Hermes::Exceptions::Exception("Unknown space type in OGProjectionNOX<Scalar>::project_global().");
         }
       }
@@ -154,7 +155,7 @@ namespace Hermes
     template<typename Scalar>
     void OGProjectionNOX<Scalar>::project_global(SpaceSharedPtr<Scalar> space,
       MeshFunctionSharedPtr<Scalar> source_meshfn, Scalar* target_vec,
-      ProjNormType proj_norm,
+      NormType proj_norm,
       double newton_tol, int newton_max_iter)
     {
       project_global(space, source_meshfn.get(), target_vec, proj_norm, newton_tol, newton_max_iter);
@@ -163,7 +164,7 @@ namespace Hermes
     template<typename Scalar>
     void OGProjectionNOX<Scalar>::project_global(SpaceSharedPtr<Scalar> space,
       MeshFunctionSharedPtr<Scalar> source_sln, MeshFunctionSharedPtr<Scalar> target_sln,
-      ProjNormType proj_norm,
+      NormType proj_norm,
       double newton_tol, int newton_max_iter)
     {
       if(proj_norm == HERMES_UNSET_NORM)
@@ -175,6 +176,7 @@ namespace Hermes
         case HERMES_HCURL_SPACE: proj_norm = HERMES_HCURL_NORM; break;
         case HERMES_HDIV_SPACE: proj_norm = HERMES_HDIV_NORM; break;
         case HERMES_L2_SPACE: proj_norm = HERMES_L2_NORM; break;
+        case HERMES_UTILITY_L2_SPACES: proj_norm = HERMES_L2_NORM; break;
         default: throw Hermes::Exceptions::Exception("Unknown space type in OGProjectionNOX<Scalar>::project_global().");
         }
       }
@@ -194,7 +196,7 @@ namespace Hermes
     template<typename Scalar>
     void OGProjectionNOX<Scalar>::project_global(Hermes::vector<SpaceSharedPtr<Scalar> > spaces,
       Hermes::vector<MeshFunction<Scalar>* > source_meshfns,
-      Scalar* target_vec, Hermes::vector<ProjNormType> proj_norms,
+      Scalar* target_vec, Hermes::vector<NormType> proj_norms,
       double newton_tol, int newton_max_iter)
     {
       int n = spaces.size();
@@ -218,7 +220,7 @@ namespace Hermes
 
     template<typename Scalar>
     void OGProjectionNOX<Scalar>::project_global(Hermes::vector<SpaceSharedPtr<Scalar> > spaces, Hermes::vector<MeshFunctionSharedPtr<Scalar> > source_slns,
-      Scalar* target_vec, Hermes::vector<ProjNormType> proj_norms,
+      Scalar* target_vec, Hermes::vector<NormType> proj_norms,
       double newton_tol, int newton_max_iter)
     {
       int n = spaces.size();
@@ -242,7 +244,7 @@ namespace Hermes
     template<typename Scalar>
     void OGProjectionNOX<Scalar>::project_global(Hermes::vector<SpaceSharedPtr<Scalar> > spaces, Hermes::vector<MeshFunctionSharedPtr<Scalar> > source_slns,
       Hermes::vector<MeshFunctionSharedPtr<Scalar> > target_slns,
-      Hermes::vector<ProjNormType> proj_norms, bool delete_old_meshes,
+      Hermes::vector<NormType> proj_norms, bool delete_old_meshes,
       double newton_tol, int newton_max_iter)
     {
       int n = spaces.size();

@@ -78,6 +78,43 @@ namespace Hermes
       virtual Hermes::Ord ord(Hermes::Ord x, Hermes::Ord y) const = 0;
     };
 
+
+    /// @ingroup meshFunctions.
+    /// Serves for postprocessing of element-wise constant values (such as the error in adaptivity).
+    /// The second template parameter ValueType must be a type castable to Scalar.
+    template<typename Scalar, typename ValueType>
+    class HERMES_API ExactSolutionConstantArray : public ExactSolutionScalar<Scalar>
+    {
+    public:
+      /// Constructor.
+      /// \param[in] valueArray Array of element-wise values, sorted according to the elements' ids.
+      ExactSolutionConstantArray(MeshSharedPtr mesh, ValueType* valueArray, bool deleteArray = false);
+      virtual ~ExactSolutionConstantArray();
+
+      virtual MeshFunction<Scalar>* clone() const;
+
+      /// Function returning the value.
+      virtual Scalar value (double x, double y) const;
+      virtual Ord ord(Ord x, Ord y) const;
+
+      /// Function returning the derivatives.
+      virtual void derivatives (double x, double y, Scalar& dx, Scalar& dy) const;
+
+      inline std::string getClassName() const { return "ExactSolutionConstantArray"; }
+
+      void setArray(ValueType* valueArray);
+
+    protected:
+      /// Array of the values.
+      ValueType* valueArray;
+
+      /// Delete the array.
+      bool deleteArray;
+
+      template<typename T> friend class Solution;
+    };
+    
+
     /// @ingroup meshFunctions
     template<typename Scalar>
     class HERMES_API ExactSolutionVector : public ExactSolution<Scalar>

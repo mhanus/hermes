@@ -234,7 +234,6 @@ namespace Hermes
       int i, j, np = quad_2d->get_num_points(order, element->get_mode());
 
       // construct jacobi matrices of the direct reference map for all integration points
-
       double2x2* m = new double2x2[np];
       memset(m, 0, np * sizeof(double2x2));
       ref_map_pss.force_transform(sub_idx, ctm);
@@ -498,8 +497,8 @@ namespace Hermes
           result1 += pt[i][2] * jac[i] * (sqr((*m)[0][0] + (*m)[0][1]) + sqr((*m)[1][0] + (*m)[1][1]));
           result2 += pt[i][2] / jac[i] ;
         }
-        if((fabs((exact1 - result1) / exact1) < 1e-8) &&
-          (fabs((exact2 - result2) / exact2) < 1e-8)) break;
+        if((fabs((exact1 - result1) / exact1) < Hermes::Epsilon) &&
+          (fabs((exact2 - result2) / exact2) < Hermes::Epsilon)) break;
       }
       if(o >= 10)
       {
@@ -585,7 +584,7 @@ namespace Hermes
 
     void RefMap::untransform(Element* e, double x, double y, double& xi1, double& xi2)
     {
-      const double TOL = 1e-12;
+      const double TOL = Hermes::epsilon;
 
       // Newton Method
       int local_nc;
@@ -593,7 +592,7 @@ namespace Hermes
       double2  local_lin_coeffs[H2D_MAX_NUMBER_VERTICES];
       H1ShapesetJacobi shapeset;
       int local_indices[70];
-        
+
       // prepare the shapes and coefficients of the reference map
       int j, k = 0;
       for (unsigned int i = 0; i < e->get_nvert(); i++)
@@ -711,13 +710,21 @@ namespace Hermes
 
     bool RefMap::is_element_on_physical_coordinates(Element* e, double x, double y, double* x_reference, double* y_reference)
     {
+      // utility reference points that serve for the case when x_reference, y_reference are not passed.
+      double xi1, xi2;
+
       bool is_triangle = e->is_triangle();
       bool is_curved = e->is_curved();
 
       if(is_curved)
       {
-        untransform(e, x, y, *x_reference, *y_reference);
-        if(is_in_ref_domain(e, *x_reference, *y_reference))
+        untransform(e, x, y, xi1, xi2);
+        if(x_reference)
+          (*x_reference) = xi1;
+        if(y_reference)
+          (*y_reference) = xi2;
+
+        if(is_in_ref_domain(e, xi1, xi2))
           return true;
         else
           return false;
@@ -741,7 +748,7 @@ namespace Hermes
         vector[3][0] = e->vn[0]->x - e->vn[3]->x;
         vector[3][1] = e->vn[0]->y - e->vn[3]->y;
       }
- 
+
       // calculate cross products
       // -> if all cross products of edge vectors (vector[*]) x vector (thePoint - aVertex) are positive (negative),
       // the point is inside of the element.
@@ -752,7 +759,14 @@ namespace Hermes
       {
         if ((cross_product_0 * cross_product_1 >= 0) && (cross_product_0 * cross_product_2 >= 0) && (cross_product_1 * cross_product_2 >= 0))
         {
-          untransform(e, x, y, *x_reference, *y_reference);
+          if(x_reference || y_reference)
+          {
+            untransform(e, x, y, xi1, xi2);
+            if(x_reference)
+              (*x_reference) = xi1;
+            if(y_reference)
+              (*y_reference) = xi2;
+          }
           return true;
         }
         else
@@ -764,14 +778,21 @@ namespace Hermes
       {
         double cross_product_3 = (x - e->vn[3]->x) * vector[3][1] - (y - e->vn[3]->y) * vector[3][0];
         if ((cross_product_0 * cross_product_1 >= 0) && (cross_product_0 * cross_product_2 >= 0) && 
-            (cross_product_1 * cross_product_2 >= 0) && (cross_product_1 * cross_product_3 >= 0) &&
-            (cross_product_2 * cross_product_3 >= 0) && (cross_product_0 * cross_product_3 >= 0))
+          (cross_product_1 * cross_product_2 >= 0) && (cross_product_1 * cross_product_3 >= 0) &&
+          (cross_product_2 * cross_product_3 >= 0) && (cross_product_0 * cross_product_3 >= 0))
         {
           if ((cross_product_0 * cross_product_1 >= 0) && (cross_product_0 * cross_product_2 >= 0) && 
             (cross_product_1 * cross_product_2 >= 0) && (cross_product_1 * cross_product_3 >= 0) &&
             (cross_product_2 * cross_product_3 >= 0) && (cross_product_0 * cross_product_3 >= 0))
           {
-            untransform(e, x, y, *x_reference, *y_reference);
+            if(x_reference || y_reference)
+            {
+              untransform(e, x, y, xi1, xi2);
+              if(x_reference)
+                (*x_reference) = xi1;
+              if(y_reference)
+                (*y_reference) = xi2;
+            }
             return true;
           }
           else
@@ -782,14 +803,36 @@ namespace Hermes
       return false;
     }
 
-
-    Element* RefMap::element_on_physical_coordinates(MeshSharedPtr mesh, double x, double y, double* x_reference, double* y_reference)
+    Element* RefMap::element_on_physical_coordinates(bool use_MeshHashGrid, MeshSharedPtr mesh, double x, double y, double* x_reference, double* y_reference)
     {
-      // go through all elements
-      double xi1, xi2;
+      // utility element pointer.
       Element *e;
-      // vector for curved elements that do not have the point in them when considering straight edges.
+
+      // utility reference points that serve for the case when x_reference, y_reference are not passed.
+      double xi1, xi2;
+
+      // Optionally try the fastest approach for a multitude of successive calls - using the MeshHashGrid grid.
+      if(use_MeshHashGrid)
+      {
+        if(e = mesh->element_on_physical_coordinates(x, y))
+        {
+          if(x_reference || y_reference)
+          {
+            untransform(e, x, y, xi1, xi2);
+            if(x_reference)
+              (*x_reference) = xi1;
+            if(y_reference)
+              (*y_reference) = xi2;
+          }
+          return e;
+        }
+      }
+
+      // vector for curved elements that do not contain the point when considering straightened edges.
+      // these are then checked at the end of this method, as they are really slow to look for the point in.
       Hermes::vector<Element*> improbable_curved_elements;
+
+      // main loop over all active elements.
       for_all_active_elements(e, mesh)
       {
         bool is_triangle = e->is_triangle();
@@ -816,7 +859,7 @@ namespace Hermes
           vector[3][0] = e->vn[0]->x - e->vn[3]->x;
           vector[3][1] = e->vn[0]->y - e->vn[3]->y;
         }
- 
+
         // calculate cross products
         // -> if all cross products of edge vectors (vector[*]) x vector (thePoint - aVertex) are positive (negative),
         // the point is inside of the element.
@@ -829,11 +872,14 @@ namespace Hermes
           {
             if(!is_curved)
             {
-              untransform(e, x, y, xi1, xi2);
-              if(x_reference != NULL)
-                (*x_reference) = xi1;
-              if(y_reference != NULL)
-                (*y_reference) = xi2;
+              if(x_reference || y_reference)
+              {
+                untransform(e, x, y, xi1, xi2);
+                if(x_reference)
+                  (*x_reference) = xi1;
+                if(y_reference)
+                  (*y_reference) = xi2;
+              }
               return e;
             }
             else
@@ -847,23 +893,26 @@ namespace Hermes
             double distance_y = std::abs(y - gravity_center_y);
             if(distance_x < std::abs(e->vn[0]->x - gravity_center_x) && distance_x < std::abs(e->vn[1]->x - gravity_center_x) && distance_x < std::abs(e->vn[2]->x - gravity_center_x) &&
               distance_y < std::abs(e->vn[0]->y - gravity_center_y) && distance_y < std::abs(e->vn[1]->y - gravity_center_y) && distance_y < std::abs(e->vn[2]->y - gravity_center_y))
-                is_near_straightened_element = true;
+              is_near_straightened_element = true;
           }
         }
         else
         {
           double cross_product_3 = (x - e->vn[3]->x) * vector[3][1] - (y - e->vn[3]->y) * vector[3][0];
           if ((cross_product_0 * cross_product_1 >= 0) && (cross_product_0 * cross_product_2 >= 0) && 
-              (cross_product_1 * cross_product_2 >= 0) && (cross_product_1 * cross_product_3 >= 0) &&
-              (cross_product_2 * cross_product_3 >= 0) && (cross_product_0 * cross_product_3 >= 0))
+            (cross_product_1 * cross_product_2 >= 0) && (cross_product_1 * cross_product_3 >= 0) &&
+            (cross_product_2 * cross_product_3 >= 0) && (cross_product_0 * cross_product_3 >= 0))
           {
             if(!is_curved)
             {
-              untransform(e, x, y, xi1, xi2);
-              if(x_reference != NULL)
-                (*x_reference) = xi1;
-              if(y_reference != NULL)
-                (*y_reference) = xi2;
+              if(x_reference || y_reference)
+              {
+                untransform(e, x, y, xi1, xi2);
+                if(x_reference)
+                  (*x_reference) = xi1;
+                if(y_reference)
+                  (*y_reference) = xi2;
+              }
               return e;
             }
             else
@@ -877,7 +926,7 @@ namespace Hermes
             double distance_y = std::abs(y - gravity_center_y);
             if(distance_x <= std::abs(e->vn[0]->x - gravity_center_x) && distance_x <= std::abs(e->vn[1]->x - gravity_center_x) && distance_x <= std::abs(e->vn[2]->x - gravity_center_x) && distance_x <= std::abs(e->vn[3]->x - gravity_center_x) &&
               distance_y <= std::abs(e->vn[0]->y - gravity_center_y) && distance_y <= std::abs(e->vn[1]->y - gravity_center_y) && distance_y <= std::abs(e->vn[2]->y - gravity_center_y) && distance_y <= std::abs(e->vn[3]->y - gravity_center_y))
-                is_near_straightened_element = true;
+              is_near_straightened_element = true;
           }
         }
 
@@ -957,7 +1006,7 @@ namespace Hermes
       delete node;
     }
 
-     void RefMap::update_cur_node()
+    void RefMap::update_cur_node()
     {
       bool to_add = true;
       SubElementMap<Node>::Node* node_array = this->nodes.get(sub_idx, to_add);

@@ -17,8 +17,10 @@ project(hermes_common)
     src/mixins.cpp
     src/callstack.cpp
     src/matrix.cpp
+    src/cs_matrix.cpp
     src/api.cpp
-    src/tables.cpp
+    src/range.cpp
+    src/table.cpp
     src/qsort.cpp
     src/c99_functions.cpp
     src/ord.cpp
@@ -29,6 +31,7 @@ project(hermes_common)
     src/solvers/aztecoo_solver.cpp
     src/solvers/amesos_solver.cpp
     src/solvers/mumps_solver.cpp
+    src/solvers/paralution_solver.cpp
     src/solvers/superlu_solver.cpp
     src/solvers/superlu_solver_real.cpp
     src/solvers/superlu_solver_cplx.cpp
@@ -43,9 +46,11 @@ project(hermes_common)
     include/callstack.h
     include/common.h
     include/matrix.h
+    include/cs_matrix.h
     include/api.h
     include/array.h
-    include/tables.h
+    include/range.h
+    include/table.h
     include/qsort.h
     include/c99_functions.h
     include/ord.h
@@ -57,6 +62,7 @@ project(hermes_common)
     include/solvers/aztecoo_solver.h
     include/solvers/amesos_solver.h
     include/solvers/mumps_solver.h
+    include/solvers/paralution_solver.h
     include/solvers/superlu_solver.h
     include/solvers/petsc_solver.h
     include/solvers/umfpack_solver.h
@@ -82,6 +88,7 @@ project(hermes_common)
   # and set its build properties (compile and link flags, installation directories).
   macro(BUILD_COMMON_LIB HERMES_COMMON_LIB BUILD_FLAGS)
     add_library(${HERMES_COMMON_LIB} SHARED ${SRC} ${HEADERS})
+    add_definitions(-DHERMES_COMMON)
     set_target_properties(${HERMES_COMMON_LIB} PROPERTIES COMPILE_FLAGS ${BUILD_FLAGS})
 
     # Link with all third party libraries corresponding to selected configuration
@@ -89,11 +96,15 @@ project(hermes_common)
     # is controled in their respective CMakeLists.txt. Note that for unselected
     # TPL's, the respective variables will be empty.
 
+    if(NOT(${WITH_TC_MALLOC}))
+      set(TCMALLOC_LIBRARY "")
+    endif(NOT(${WITH_TC_MALLOC}))
+    
     target_link_libraries(  ${HERMES_COMMON_LIB}
       ${EXODUSII_LIBRARIES}
       ${HDF5_LIBRARY}
       ${METIS_LIBRARY}
-      ${UMFPACK_LIBRARIES}
+      ${UMFPACK_LIBRARIES} ${PARALUTION_LIBRARY}
       ${TRILINOS_LIBRARIES}
       ${PETSC_LIBRARIES}
       ${MUMPS_LIBRARIES}
@@ -117,11 +128,23 @@ project(hermes_common)
   # the selected Hermes configurations.
   #
   if(MSVC)
-    BUILD_COMMON_LIB(${HERMES_COMMON_LIB} ${DEBUG_FLAGS})
-    ADD_MSVC_BUILD_FLAGS(${HERMES_COMMON_LIB}
+    if(${HERMES_COMMON_DEBUG})
+      BUILD_COMMON_LIB(${HERMES_COMMON_LIB_DEBUG} ${DEBUG_FLAGS})
+      ADD_MSVC_BUILD_FLAGS(${HERMES_COMMON_LIB_DEBUG}
                          ${HERMES_COMMON_LIB_DEBUG}
                          ${HERMES_COMMON_LIB_RELEASE})
-    INSTALL_LIB(${HERMES_COMMON_LIB})
+      INSTALL_LIB(${HERMES_COMMON_LIB_DEBUG})
+      set(HERMES_COMMON ${HERMES_COMMON_LIB_DEBUG})
+    endif(${HERMES_COMMON_DEBUG})
+    
+    if(${HERMES_COMMON_RELEASE})
+      BUILD_COMMON_LIB(${HERMES_COMMON_LIB_RELEASE} ${RELEASE_FLAGS})
+      ADD_MSVC_BUILD_FLAGS(${HERMES_COMMON_LIB_RELEASE}
+                         ${HERMES_COMMON_LIB_RELEASE}
+                         ${HERMES_COMMON_LIB_RELEASE})
+      INSTALL_LIB(${HERMES_COMMON_LIB_RELEASE})
+      set(HERMES_COMMON ${HERMES_COMMON_LIB_RELEASE})
+    endif(${HERMES_COMMON_RELEASE})
   else(MSVC)
     if(HERMES_COMMON_DEBUG)
       set(BUILD_FLAGS "${DEBUG_FLAGS}")

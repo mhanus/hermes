@@ -32,12 +32,33 @@ namespace Hermes
   enum MatrixSolverType
   {
     SOLVER_UMFPACK = 0,
+    SOLVER_PARALUTION,
     SOLVER_PETSC,
     SOLVER_MUMPS,
     SOLVER_SUPERLU,
     SOLVER_AMESOS,
     SOLVER_AZTECOO
   };
+
+  enum DirectMatrixSolverType
+  {
+    DIRECT_SOLVER_UMFPACK = 0,
+    DIRECT_SOLVER_MUMPS,
+    DIRECT_SOLVER_SUPERLU,
+    DIRECT_SOLVER_AMESOS
+  };
+
+  enum IterativeMatrixSolverType
+  {
+    ITERATIVE_SOLVER_PARALUTION,
+    ITERATIVE_SOLVER_PETSC,
+    ITERATIVE_SOLVER_AZTECOO
+  };
+
+  namespace Solvers
+  {
+    template <typename Scalar> class HERMES_API CSCIterator;
+  }
 
   /// \brief Namespace containing classes for vector / matrix operations.
   namespace Algebra
@@ -317,7 +338,7 @@ namespace Hermes
       /// @param[in] n    - the column where to set
       /// @param[in] v    - value
       virtual void set_row_zero(unsigned int n);
-      
+
       /// update the stiffness matrix
       ///
       /// @param[in] m    - the row where to update
@@ -437,7 +458,7 @@ namespace Hermes
       };
 
       /// Duplicate sparse matrix (including allocation).
-      virtual SparseMatrix* duplicate() { return (SparseMatrix*)NULL;};
+      virtual SparseMatrix* duplicate() { throw Exceptions::MethodNotOverridenException("SparseMatrix* duplicate()"); return NULL; };
 
       /// Get fill-in.
       virtual double get_fill_in() const = 0;
@@ -489,6 +510,11 @@ namespace Hermes
     class HERMES_API Vector : public Hermes::Mixins::Loggable
     {
     public:
+      /// Default constructor.
+      Vector();
+      /// Constructor of vector with specific size.
+      /// @param[in] size size of vector
+      Vector(unsigned int size);
       virtual ~Vector() { }
 
       /// allocate memory for storing ndofs elements
@@ -558,12 +584,12 @@ namespace Hermes
     /// \brief Function returning a vector according to the users's choice.
     /// @return created vector
     template<typename Scalar> HERMES_API
-      Vector<Scalar>* create_vector();
+      Vector<Scalar>* create_vector(bool use_direct_solver = false);
 
     /// \brief Function returning a matrix according to the users's choice.
     /// @return created matrix
     template<typename Scalar> HERMES_API
-      SparseMatrix<Scalar>*  create_matrix();
+      SparseMatrix<Scalar>*  create_matrix(bool use_direct_solver = false);
   }
 }
 #endif

@@ -14,7 +14,7 @@
 // along with Hermes2D.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "discrete_problem/discrete_problem_selective_assembler.h"
-#include "neighbor.h"
+#include "neighbor_search.h"
 
 namespace Hermes
 {
@@ -293,8 +293,8 @@ namespace Hermes
         }
       }
 
-      int volume_markers_count = spacesToSet[0]->get_mesh()->get_element_markers_conversion().min_marker_unused;
-      int surface_markers_count = spacesToSet[0]->get_mesh()->get_boundary_markers_conversion().min_marker_unused;
+      int volume_markers_count = spacesToSet[0]->get_mesh()->get_element_markers_conversion().size();
+      int surface_markers_count = spacesToSet[0]->get_mesh()->get_boundary_markers_conversion().size();
 
       this->alloc_recalculation_tables_spaces_settings(WeakForm<Scalar>::FormVol, WeakForm<Scalar>::MatrixForm, volume_markers_count);
       this->alloc_recalculation_tables_spaces_settings(WeakForm<Scalar>::FormVol, WeakForm<Scalar>::VectorForm, volume_markers_count);
@@ -351,13 +351,13 @@ namespace Hermes
     {
       if(current_state->e[form->i] && current_state->e[form->j])
       {
-        if(fabs(form->scaling_factor) < 1e-12)
+        if(fabs(form->scaling_factor) < Hermes::epsilon)
           return false;
 
         // If a block scaling table is provided, and if the scaling coefficient
         // A_mn for this block is zero, then the form does not need to be assembled.
         if(this->block_weights)
-          if(fabs(this->block_weights->get_A(form->i, form->j)) < 1e-12)
+          if(fabs(this->block_weights->get_A(form->i, form->j)) < Hermes::epsilon)
             return false;
         return true;
       }
@@ -412,7 +412,7 @@ namespace Hermes
     {
       if(!current_state->e[form->i])
         return false;
-      if(fabs(form->scaling_factor) < 1e-12)
+      if(fabs(form->scaling_factor) < Hermes::epsilon)
         return false;
 
       return true;

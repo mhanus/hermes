@@ -13,7 +13,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Hermes2D.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "weakforms_maxwell.h"
+#include "weakform_library/weakforms_maxwell.h"
+#include "weakform_library/integrals_h1.h"
+
 namespace Hermes
 {
   namespace Hermes2D
@@ -63,7 +65,7 @@ namespace Hermes
         for (int i = 0; i < n; i++)
         {
           Scalar B_i = sqrt(sqr(u_ext[idx_j]->dx[i]) + sqr(u_ext[idx_j]->dy[i]));
-          if(std::abs(B_i) > 1e-12)
+          if(std::abs(B_i) > Hermes::epsilon)
           {
             planar_part += wt[i] * const_coeff*spline_coeff->derivative(B_i) / B_i
               * (u_ext[idx_j]->dx[i] * u->dx[i] + u_ext[idx_j]->dy[i] * u->dy[i])
