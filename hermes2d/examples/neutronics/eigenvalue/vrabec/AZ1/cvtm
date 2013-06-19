@@ -1,0 +1,3 @@
+#!/bin/bash
+
+python gmsh2hermes.py $1 domain.mesh materials boundaries
