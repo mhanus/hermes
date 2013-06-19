@@ -1,6 +1,5 @@
 #include "weakforms_neutronics.h"
 #include "solver/newton_solver.h"
-#include <examples/neutronics/utils.h>
 
 namespace Hermes { namespace Hermes2D {
     
@@ -30,32 +29,66 @@ void StationaryPicardSolver::solve(double *coeff_vec)
   unsigned int vec_in_memory = 1;   // There is already one vector in the memory.
   this->set_parameter_value(this->p_iteration, &it);
   this->set_parameter_value(this->p_vec_in_memory, &vec_in_memory);
-
+  
+  if (convergence_by_residual)
+  {
+    // Chances are residual has already been assembled in 'init_solving'.
+    if (!have_rhs)
+    {
+      this->conditionally_assemble(sln_vector, false, true);
+      have_rhs = true;
+    }
+    
+    initial_residual_norm = calculate_residual_norm();
+  }
+  
   while (true)
   {
     this->on_step_begin();
 
     // Assemble the residual and also jacobian when necessary (nonconstant jacobian, not reusable, ...).
-    this->conditionally_assemble(coeff_vec);
-
+    this->conditionally_assemble(coeff_vec, false, !have_rhs);
+    
     this->process_matrix_output(this->jacobian, it); 
     this->process_vector_output(this->residual, it);
 
     // Solve the linear system.
+    if (Hermes::HermesCommonApi.get_integral_param_value(Hermes::matrixSolverType) == Hermes::SOLVER_AZTECOO && dynamic_solver_tolerance)
+      dynamic_cast<Solvers::AztecOOSolver<double>*>(matrix_solver)->set_tolerance(
+        std::min(0.1, (it==1 && convergence_by_residual) ? initial_residual_norm : calculate_residual_norm())
+      );
+    
+    if (it == 1)
+      // Always factorize for the first time.
+      this->matrix_solver->set_factorization_scheme(HERMES_FACTORIZE_FROM_SCRATCH);
+    else if (jacobian_change_on_algebraic_level)
+      // The case when Jacobian is updated on an algebraic level (new assembling is not needed, but new factorization is). 
+      this->matrix_solver->set_factorization_scheme(HERMES_REUSE_MATRIX_REORDERING);
+    
     if(!this->matrix_solver->solve())
       throw Exceptions::LinearMatrixSolverException();
+    
+    jacobian_change_on_algebraic_level = false;
 
     memcpy(this->sln_vector, this->matrix_solver->get_sln_vector(), sizeof(double)*ndof);
-    
+    have_rhs = false;
+        
     if (!this->on_step_end())
     {
       this->deinit_solving(coeff_vec);
       this->deinit_anderson();
+      this->on_finish();
       return;
     }
 
     this->handle_previous_vectors(vec_in_memory);
-
+    
+    if (convergence_by_residual && !have_rhs)
+    {
+      dp->assemble(sln_vector, residual);
+      have_rhs = true;
+    }
+    
     double rel_error = this->calculate_relative_error(coeff_vec);
     
     // Output for the user.
@@ -69,6 +102,7 @@ void StationaryPicardSolver::solve(double *coeff_vec)
     case Converged:
       this->deinit_solving(coeff_vec);
       this->deinit_anderson();
+      this->on_finish();
       return;
       break;
 
@@ -76,6 +110,7 @@ void StationaryPicardSolver::solve(double *coeff_vec)
       throw Exceptions::ValueException("iterations", it, this->max_allowed_iterations);
       this->deinit_solving(coeff_vec);
       this->deinit_anderson();
+      this->on_finish();
       return;
       break;
 
@@ -83,6 +118,7 @@ void StationaryPicardSolver::solve(double *coeff_vec)
       throw Exceptions::Exception("Unknown exception in PicardSolver.");
       this->deinit_solving(coeff_vec);
       this->deinit_anderson();
+      this->on_finish();
       return;
       break;
 
@@ -95,6 +131,7 @@ void StationaryPicardSolver::solve(double *coeff_vec)
     {
       this->deinit_solving(coeff_vec);
       this->deinit_anderson();
+      this->on_finish();
       return;
     }
 
@@ -106,149 +143,88 @@ void StationaryPicardSolver::solve(double *coeff_vec)
   }
 }
 
-namespace Neutronics
+void StationaryPicardSolver::use_dynamic_solver_tolerance(bool to_set)
 {
-  int keff_eigenvalue_iteration(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions, 
-                                Common::WeakForms::KeffEigenvalueProblem* wf, const Hermes::vector<SpaceSharedPtr<double> >& spaces,
-                                MatrixSolverType matrix_solver, double tol_keff, double tol_flux, bool output_matrix_and_rhs, EMatrixDumpFormat output_fmt)
-  {
-    // Sanity checks.
-    if (spaces.size() != solutions.size()) 
-      ErrorHandling::error_function("Spaces and solutions supplied to power_iteration do not match.");
-                                  
-    // The following variables will store pointers to solutions obtained at each iteration and will be needed for 
-    // updating the eigenvalue. 
-    Hermes::vector<MeshFunctionSharedPtr<double> > new_solutions;
-    for (unsigned int i = 0; i < solutions.size(); i++) 
-      new_solutions.push_back(new Solution<double>(spaces[i]->get_mesh()));
-    
-    Common::SupportClasses::SourceFilter *new_source = wf->create_source_filter(new_solutions);
-    Common::SupportClasses::SourceFilter *old_source = wf->create_source_filter(solutions);
-      
-    // Initial coefficient vector for the Newton's method.
-    int ndof = Space<double>::get_num_dofs(spaces);
-    
-    DiscreteProblem<double> dp(wf, spaces);
-    //dp.set_do_not_use_cache();
-    NewtonSolver<double> solver(&dp);
+  if (Hermes::HermesCommonApi.get_integral_param_value(Hermes::matrixSolverType) != Hermes::SOLVER_AZTECOO)
+    warn("Decreasing solver tolerance may be used only with an iterative solver (this currently means setting Hermes::matrixSolverType = Hermes::SOLVER_AZTECOO).");
+  dynamic_solver_tolerance = to_set;
+}
 
-    if (output_matrix_and_rhs)
-    {
-      solver.output_matrix(1);
-      solver.output_rhs(1);
-      solver.set_matrix_E_matrix_dump_format(output_fmt);
-      solver.set_rhs_E_matrix_dump_format(output_fmt);
-    }
-        
-    // NOTE:
-    //  According to the 'physical' definitions of keff as a fraction of neutron sources and sinks, keff should be 
-    //  determined in an iteration like this: 
-    //    k_new = k_old * src_new/src_old.  (1)
-    //  This iteration can be expanded into the following form:
-    //    k_new = k_0 * src_new/src_0,      (2)
-    //  so if k_0 is set to src_0 at the beginning, we could potentially save one integration (of src_old) in each 
-    //  iteration. Although the results are the same for both approaches (1) and (2) (up to a different eigenvector
-    //  scaling), the calculation is slower surprisingly in case (2), even if compared to (1) where both old and new 
-    //  sources are integrated in each iteration (this is actually not neccessary as you can see in the implementation
-    //  below).
-    //        
-    double src_new = old_source->integrate();
-    bool meshes_changed = true;
-    bool eigen_done = false; int it = 0;
-    do 
-    {
-      // The matrix doesn't change within the power iteration loop, so we don't have to reassemble the Jacobian again.
-      try
-      {
-        if (output_matrix_and_rhs)
-        {
-          std::stringstream ss; ss << it;
-          solver.set_rhs_filename(std::string("rhs_") + ss.str() + std::string("_"));
-          solver.set_rhs_varname(std::string("b_") + ss.str() + std::string("_"));
-        }
-        solver.solve();
-      }
-      catch(Hermes::Exceptions::Exception e)
-      {
-        e.print_msg();
-        ErrorHandling::error_function("Newton's iteration failed.");
-      }
-      
-      // Convert coefficients vector into a set of Solution pointers.
-      Solution<double>::vector_to_solutions(solver.get_sln_vector(), spaces, new_solutions);
-
-      // Compute the eigenvalue for current iteration.
-      double src_old = src_new;
-      src_new = new_source->integrate();
-      double k_new = wf->get_keff() * src_new / src_old;
-      
-      double diff_keff = fabs(wf->get_keff() - k_new) / k_new;
-      Hermes::Mixins::Loggable::Static::info("      dominant eigenvalue (est): %g, rel. difference: %g", k_new, diff_keff);
-      
-      // Stopping criteria.
-      if (diff_keff < tol_keff) 
-        eigen_done = true;
-
-      // cout << "Iteration: " << it << ", flux diffces: " << endl; 
-     
-      if (tol_flux > 0)
-      {
-        for (unsigned int i = 0; i < solutions.size(); i++)
-        {
-          PostProcessor pp(wf->get_method_type(), wf->get_geom_type());
-          
-          // Normalize both flux iterates with the same criterion (unit integrated fission source).
-          Solution<double> sln;
-          sln.copy(solutions[i].get());
-          Solution<double> new_sln;
-          new_sln.copy(new_solutions[i].get());
-          
-          sln.multiply(1./src_old);
-          new_sln.multiply(1./src_new);
-          
-          //cout << i << " = " << fabs(pp.integrate(new_sln) - pp.integrate(sln)) << ", ";
-          
-          // Compare the two solutions.
-          if (fabs(pp.integrate(&new_sln) - pp.integrate(&sln)) >= tol_flux * pp.integrate(&new_sln))
-            eigen_done = false;
-          
-          if (eigen_done == false)
-            break;
-        }
-      }
-      
-      //cout << endl;
-
-      // Update the final eigenvalue.
-      wf->update_keff(k_new);
-      
-      // Update the eigenvector approximation.
-      // FIXME: It seems that Space::construct_refined_spaces prevents automatic determination of meshes_changed
-      //        through their seq number.
-      wf->update_fluxes(new_solutions, meshes_changed);
-      meshes_changed = false; // FIXME: true forces a reinitialization of the scalar flux filter used by the SPN weak form to
-                             // evaluate the right hand side. If meshes are not changed, the unimesh created in that
-                             // filter for the first time should not change either and this should be not neccessary.
+double StationaryPicardSolver::calculate_relative_error(double* coeff_vec)
+{
+  if (!convergence_by_residual)
+    return PicardSolver<double>::calculate_relative_error(coeff_vec);
   
-      it++;
-    }
-    while (!eigen_done);
+  double rel_res = calculate_residual_norm() / initial_residual_norm;
+
+  if(rel_res < 1e-12)
+  {
+    this->warn("\tPicard: a very small error threshold met, the loop should end.");
+    return rel_res;
+  }
+
+  return rel_res;
+}
+
+namespace Neutronics
+{  
+  KeffEigenvalueIteration::~KeffEigenvalueIteration()
+  { 
+    if (unshifted_jacobian != jacobian) 
+      delete unshifted_jacobian;
+    // jacobian will be deleted by the destructor of Solver
     
-    // Free memory.
-    // Not needed when MeshFunctionSharedPtr is used instead of ordinary pointers.
-    /*
-    for (unsigned int i = 0; i < solutions.size(); i++) 
-      delete new_solutions[i];
-    */
-    
-    delete new_source;
-    delete old_source;
-    
-    return it;
+    if (production_matrix)
+      delete production_matrix;
+    if (production_dp)
+      delete production_dp;
+    if (Ax)
+      delete [] Ax;
   }
     
   bool KeffEigenvalueIteration::on_initialization()
   {
+    // NOTE: It is neccessary to call assign_dofs(spaces) before this method.
+    
+    if (shift_strategy == RAYLEIGH_QUOTIENT_SHIFT && !rayleigh)
+    {
+      warn("Using Rayleigh quotient shifting strategy requires KeffEigenvalueIteration::rayleigh==true.");
+      use_rayleigh_quotient(true);
+    }
+    
+    if (production_wf)
+    {
+      if (!production_dp)
+      {
+        production_dp = new DiscreteProblem<double>();
+        production_dp->set_weak_formulation(production_wf);
+        production_dp->set_linear();
+        production_dp->set_do_not_use_cache();
+      }
+            
+      if (!production_matrix)
+        production_matrix = create_matrix<double>();
+      
+      production_dp->set_spaces(this->dp->get_spaces());
+      production_dp->assemble(production_matrix);
+    }
+    
+    // Initial assembly of Jacobian, so that the initial shift or Rayleigh quotient can be computed.
+    // Residual is computed as well, since it will be needed anyway.
+    conditionally_assemble(this->sln_vector); 
+    have_rhs = true;
+    
+    if (shift_strategy == FIXED_SHIFT)
+      set_shift(fixed_shift);
+        
+    if (rayleigh || convergence_by_residual)
+    {
+      if (Ax)
+        delete [] Ax;
+      
+      Ax = new double [ndof];
+    }
+    
     this->update();
     return true;
   }
@@ -256,6 +232,7 @@ namespace Neutronics
   bool KeffEigenvalueIteration::on_step_begin()
   {
     this->old_keff = keff;
+    have_Ax = false;
     return true;
   }
   
@@ -274,16 +251,182 @@ namespace Neutronics
   
   void KeffEigenvalueIteration::update()
   {
-    int ndof = Space<double>::get_num_dofs(this->dp->get_spaces());
     double lambda = 0.0;
-    for (int i = 0; i < ndof; i++) 
-      lambda += sqr(this->sln_vector[i]);
     
-    keff = sqrt(lambda);
-    double inv = 1./keff;
+    if (rayleigh)
+    {
+      double *resv = new double[ndof];
+
+      if (have_rhs)
+        residual->extract(resv);
+      else
+        production_matrix->multiply_with_vector(sln_vector, resv);
+      
+      double inv_norm = 1./Global<double>::get_l2_norm(resv, ndof);
+      for (int i = 0; i < ndof; i++) 
+        sln_vector[i] *= inv_norm;
+      
+      unshifted_jacobian->multiply_with_vector(sln_vector, Ax);
+      production_matrix->multiply_with_vector(sln_vector, resv);
+
+      residual->set_vector(resv);
+      delete [] resv;
+      
+      have_rhs = true;
+      have_Ax = true;
+      
+      for (int i = 0; i < ndof; i++) 
+      {
+        double Mxi = residual->get(i);
+        lambda += Ax[i]*Mxi;
+      }
+            
+      keff = 1./lambda;
+      
+      if (shift_strategy == RAYLEIGH_QUOTIENT_SHIFT)
+        set_shift(lambda);
+    }
+    else
+    {
+      for (int i = 0; i < ndof; i++) 
+        lambda += sqr(this->sln_vector[i]);
+      
+      lambda = 1./sqrt(lambda);
+      
+      for (int i = 0; i < ndof; i++) 
+        this->sln_vector[i] *= lambda;
+      
+      keff = 1./(lambda + fixed_shift);
+      
+      if (production_wf)
+      {
+        // Save some time by using the mat-vec product instead of assembling the rhs.
+        double *resv = new double[ndof];
+        production_matrix->multiply_with_vector(sln_vector, resv);
+        residual->set_vector(resv);
+        have_rhs = true;
+        delete [] resv;
+      }
+    }
+  }
+  
+  bool KeffEigenvalueIteration::on_finish()
+  {
+    if (jacobian != unshifted_jacobian)
+    {
+      // If shifted jacobian has been used, return to the original one and reset the
+      // matrix solver appropriately.
+      delete jacobian;
+      jacobian = unshifted_jacobian;
+      matrix_solver = create_linear_solver<double>(jacobian, residual);
+    }
+  }
+  
+  void KeffEigenvalueIteration::set_shift(double shift)
+  {
+    if (this->get_parameter_value(p_iteration) < num_unshifted_iterations)
+      return;
     
-    for (int i = 0; i < ndof; i++) 
-      this->sln_vector[i] *= inv;
+    if (jacobian == unshifted_jacobian)
+      unshifted_jacobian = jacobian->duplicate();
+    else
+    {
+      delete jacobian;
+      jacobian = unshifted_jacobian->duplicate();
+    }
+    
+    SparseMatrix<double> *shift_prod = production_matrix->duplicate();
+    shift_prod->multiply_with_Scalar(-shift);
+    jacobian->add_sparse_matrix(shift_prod);
+    delete shift_prod;
+    
+    jacobian_change_on_algebraic_level = true;
+  }
+  
+  void KeffEigenvalueIteration::set_spaces(const Hermes::vector<SpaceSharedPtr<double> >& spaces)
+  {
+    Solver<double>::set_spaces(spaces);
+    if (production_dp)
+      production_dp->set_spaces(spaces);
+  }
+  
+  void KeffEigenvalueIteration::set_spectral_shift_strategy(ShiftStrategies strategy, int num_unshifted_iterations, double fixed_shift)
+  {
+    shift_strategy = strategy;
+    this->num_unshifted_iterations = num_unshifted_iterations;
+    
+    if (strategy)
+      assert(production_wf);
+    if (strategy == FIXED_SHIFT)
+    {
+      assert(fixed_shift >= 0.0);    
+      this->fixed_shift = fixed_shift;
+    }
+  }
+  
+  void KeffEigenvalueIteration::set_fixed_spectral_shift(double fixed_shift)
+  {
+    shift_strategy = FIXED_SHIFT;
+    assert(production_wf);
+    assert(fixed_shift >= 0.0);
+    this->fixed_shift = fixed_shift;
+  }
+  
+  void KeffEigenvalueIteration::use_rayleigh_quotient(bool to_set)
+  {
+    if (to_set) assert(production_wf);
+    rayleigh = to_set;
+  }
+  
+  double KeffEigenvalueIteration::calculate_residual_norm()
+  {
+    if (!have_rhs) // e.g. when residual norm is needed after an iteration which was monitored differently
+    {
+      dp->assemble(sln_vector, residual);
+      have_rhs = true;
+    }
+    
+    if (!Ax)  // the case above
+      Ax = new double [ndof];  
+    
+    if (!have_Ax) // the case above, or when R. quot. was not used
+      this->unshifted_jacobian->multiply_with_vector(this->sln_vector, Ax);
+    
+    double res = 0.0;
+    double r = 1./keff;
+    
+    for (int i = 0; i < ndof; i++)
+    {
+      double Mxi = this->residual->get(i);
+      res += (Ax[i] - r * Mxi) * (Ax[i] - r * Mxi);
+    }
+        
+    return sqrt(res);
+  }
+  
+  void KeffEigenvalueIteration::init_solving(double* coeff_vec)
+  {
+    PicardSolver<double>::init_solving(coeff_vec);
+    // Copy back the scaled solution vector.
+    memcpy(coeff_vec, this->sln_vector, ndof*sizeof(double));
+  }
+  
+  double SourceIteration::calculate_residual_norm()
+  {
+    double *Ax = new double[ndof];
+    this->jacobian->multiply_with_vector(this->sln_vector, Ax);
+    
+    double res = 0.0;
+    
+    for (int i = 0; i < ndof; i++)
+    {
+      double bi = this->residual->get(i);
+      res += (Ax[i] - bi) * (Ax[i] - bi);
+    }
+    
+    delete [] Ax;
+    
+    return sqrt(res);
   }
     
 /* Neutronics */
