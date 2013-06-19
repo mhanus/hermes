@@ -640,7 +640,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             : GenericForm(G, geom_type),
               MatrixFormSurf<double>(mg.pos(m,g),mg.pos(n,g)),
               mrow(m), mcol(n), g(g)
-          {};
+          {
+            //this->setSymFlag(HERMES_SYM);
+          };
           
           Jacobian(const std::string& area,
                    unsigned int m, unsigned int n, unsigned int g, unsigned int G, 
@@ -649,6 +651,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
               MatrixFormSurf<double>(mg.pos(m,g),mg.pos(n,g)),
               mrow(m), mcol(n), g(g)
           { 
+            //this->setSymFlag(HERMES_SYM);
             this->set_area(area);
           };
           
@@ -659,6 +662,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
               MatrixFormSurf<double>(mg.pos(m,g),mg.pos(n,g)),
               mrow(m), mcol(n), g(g)
           { 
+            //this->setSymFlag(HERMES_SYM);
             this->set_areas(areas);
           };
           
@@ -877,38 +881,38 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
           Jacobian( unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
                     unsigned int G, double chi_to, double nu_from, double Sigma_f_from,
-                    GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
+                    GeomType geom_type = HERMES_PLANAR)
             : GenericForm(G, geom_type),
               MatrixFormVol<double>(mg.pos(m,gto), mg.pos(n,gfrom)), 
               mrow(m), mcol(n), gto(gto), gfrom(gfrom), 
               chi_to(chi_to), nu_from(nu_from), Sigma_f_from(Sigma_f_from)
           { 
-            this->setSymFlag(sym);
+            this->setSymFlag(G == 1 ? HERMES_SYM : HERMES_NONSYM);
           };
           
           Jacobian( const std::string& area, 
                     unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
                     unsigned int G, double chi_to, double nu_from, double Sigma_f_from,
-                    GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
+                    GeomType geom_type = HERMES_PLANAR)
             : GenericForm(G, geom_type),
               MatrixFormVol<double>(mg.pos(m,gto), mg.pos(n,gfrom)), 
               mrow(m), mcol(n), gto(gto), gfrom(gfrom),
               chi_to(chi_to), nu_from(nu_from), Sigma_f_from(Sigma_f_from)
           { 
-            this->setSymFlag(sym); 
+            this->setSymFlag(G == 1 ? HERMES_SYM : HERMES_NONSYM); 
             this->set_area(area);
           };
           
           Jacobian( const Hermes::vector<std::string>& areas,
                     unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom,
                     unsigned int G, double chi_to, double nu_from, double Sigma_f_from,
-                    GeomType geom_type = HERMES_PLANAR, SymFlag sym = HERMES_NONSYM )
+                    GeomType geom_type = HERMES_PLANAR)
             : GenericForm(G, geom_type),
               MatrixFormVol<double>(mg.pos(m,gto), mg.pos(n,gfrom)), 
               mrow(m), mcol(n), gto(gto), gfrom(gfrom),
               chi_to(chi_to), nu_from(nu_from), Sigma_f_from(Sigma_f_from)
           { 
-            this->setSymFlag(sym); 
+            this->setSymFlag(G == 1 ? HERMES_SYM : HERMES_NONSYM); 
             this->set_areas(areas);
           };
           
