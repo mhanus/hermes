@@ -22,4 +22,25 @@ void read_solution_from_file(std::istream& is, OutIt dest)
 
 void report_num_dof(const std::string& msg, const Hermes::vector<SpaceSharedPtr<double> > spaces);
 void report_errors(const std::string& msg, const Hermes::vector< double > errors);
-std::string itos(int t);
+
+template<typename dtype> std::string tostr(dtype t)
+{
+  std::stringstream ss; ss << t;
+  return ss.str();
+}
+
+void save_algebraic_representation(WeakForm<double>* wf, const Hermes::vector<SpaceSharedPtr<double> >& spaces, const std::string& varname, bool assign_dofs = true);
+
+enum VisualizationOptions 
+{
+    HERMES_SCALAR_VISUALIZATION   = 0x01,
+    HERMES_ANGULAR_VISUALIZATION   = 0x02,
+    VTK_SCALAR_VISUALIZATION   = 0x04,
+    VTK_ANGULAR_VISUALIZATION   = 0x08
+};
+
+void load_solution(const std::string& sln_file, 
+                   const Hermes::vector<SpaceSharedPtr<double> >& spaces, 
+                   const Neutronics::Common::MaterialProperties::MaterialPropertyMaps* matprop,
+                   VisualizationOptions visualization, bool mode_3D = false);
+

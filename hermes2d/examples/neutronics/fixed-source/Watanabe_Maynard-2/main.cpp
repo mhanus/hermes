@@ -228,7 +228,7 @@ int main(int argc, char* args[])
       // Output solution in VTK format.
       Linearizer lin;
       bool mode_3D = false;
-      lin.save_solution_vtk(slns[n], (std::string("sln_") + itos(n) + std::string(".vtk")).c_str(), "Solution", mode_3D);
+      lin.save_solution_vtk(slns[n], (std::string("sln_") + tostr(n) + std::string(".vtk")).c_str(), "Solution", mode_3D);
     }
   }
   
@@ -253,13 +253,13 @@ int main(int argc, char* args[])
       // Output solution in VTK format.
       Linearizer lin;
       bool mode_3D = false;
-      lin.save_solution_vtk(scalar_fluxes[g], (std::string("scalar_flux_g_") + itos(g) + std::string(".vtk")).c_str(), "Solution", mode_3D);
+      lin.save_solution_vtk(scalar_fluxes[g], (std::string("scalar_flux_g_") + tostr(g) + std::string(".vtk")).c_str(), "Solution", mode_3D);
     }
   }
       
   if (SAVE_SLN_VECTOR)
   {
-    std::string file = "x-R"+itos(INIT_REF_NUM)+"P"+itos(P_INIT)+"-S"+itos(N)+".dat";
+    std::string file = "x-R"+tostr(INIT_REF_NUM)+"P"+tostr(P_INIT)+"-S"+tostr(N)+".dat";
 
     std::ofstream fs(file.c_str());
     Loggable::Static::info("Saving the solution vector to %s", file.c_str());

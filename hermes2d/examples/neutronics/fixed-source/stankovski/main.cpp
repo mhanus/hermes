@@ -408,8 +408,8 @@ int main(int argc, char* argv[])
     while (done == false);
     
     // Save the convergence graphs.
-    graph_dof_est.save(("conv_dof_est_sp"+itos(SPN_ORDER)+".gp").c_str());
-    graph_cpu_est.save(("conv_cpu_est_sp"+itos(SPN_ORDER)+".gp").c_str());
+    graph_dof_est.save(("conv_dof_est_sp"+tostr(SPN_ORDER)+".gp").c_str());
+    graph_cpu_est.save(("conv_cpu_est_sp"+tostr(SPN_ORDER)+".gp").c_str());
     
     
     //
