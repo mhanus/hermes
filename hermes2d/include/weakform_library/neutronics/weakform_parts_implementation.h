@@ -453,11 +453,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                                                     Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const 
     {       
       if (geom_type == HERMES_PLANAR) 
-        return Coeffs::even_moment(0, mrow) * src * int_v<Real>(n, wt, v);
+        return -Coeffs::even_moment(0, mrow) * src * int_v<Real>(n, wt, v);
       else if (geom_type == HERMES_AXISYM_X) 
-        return Coeffs::even_moment(0, mrow) * src * int_y_v<Real>(n, wt, v, e);
+        return -Coeffs::even_moment(0, mrow) * src * int_y_v<Real>(n, wt, v, e);
       else 
-        return Coeffs::even_moment(0, mrow) * src * int_x_v<Real>(n, wt, v, e);
+        return -Coeffs::even_moment(0, mrow) * src * int_x_v<Real>(n, wt, v, e);
     }
   
   /* WeakFormParts */
