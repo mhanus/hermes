@@ -257,6 +257,11 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         sviews[g]->show(solutions[g]);
     }
     
+    void Visualization::show_scalar_fluxes(Hermes::vector< MeshFunctionSharedPtr<double> > solutions)
+    {
+      show_solutions(solutions);
+    }
+    
     void Visualization::show_orders(Hermes::vector< SpaceSharedPtr<double> > spaces)
     {
       for (unsigned int g = 0; g < n_groups; g++)
@@ -276,6 +281,12 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         lin.save_solution_vtk(solutions[g], file.c_str(), var.c_str(), mode_3D);
         info("Scalar flux in group %d saved in VTK format to file %s.", g, file.c_str());
       }
+    }
+    
+    void Visualization::save_scalar_fluxes_vtk(const std::string& base_filename, const std::string& base_varname, 
+                                    Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D)
+    {
+      save_solutions_vtk(base_filename, base_varname, solutions, mode_3D);
     }
     
     void Visualization::save_orders_vtk(const std::string& base_filename, Hermes::vector< SpaceSharedPtr<double> > spaces)
@@ -676,8 +687,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           sviews[mg.pos(m,g)]->show(solutions[mg.pos(m,g)]);
     }
     
-    void Visualization::show_even_flux_moment(unsigned int moment, unsigned int group, Views::ScalarView* sview,
-                                              Hermes::vector< MeshFunctionSharedPtr<double> > solutions)
+    void Visualization::show_scalar_fluxes(Hermes::vector< MeshFunctionSharedPtr<double> > solutions)
+    {
+      for (unsigned int g = 0; g < n_groups; g++)
+        show_even_flux_moment(0, g, solutions);
+    }
+    
+    void Visualization::show_even_flux_moment(unsigned int moment, unsigned int group, 
+                                              Hermes::vector< MeshFunctionSharedPtr<double> > solutions,
+                                              Views::ScalarView* sview)
     {
       if ((moment % 2) != 0 || moment >= n_moments)
       {
@@ -690,11 +708,17 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         return;
       }
       MeshFunctionSharedPtr<double> mf = new MomentFilter::EvenMomentVal(moment, group, n_groups, solutions);
-      sview->show(mf);
+      
+      if (sview)
+        sview->show(mf);
+      else
+        sviews[mg.pos(moment,group)]->show(mf);
     }
     
-    void Visualization::show_odd_flux_moment(unsigned int moment, unsigned int group, Views::VectorView* vview,
-                                             Hermes::vector< MeshFunctionSharedPtr<double> > solutions, const MaterialProperties::MaterialPropertyMaps& matprop)
+    void Visualization::show_odd_flux_moment(unsigned int moment, unsigned int group, 
+                                             Hermes::vector< MeshFunctionSharedPtr<double> > solutions, 
+                                             const MaterialProperties::MaterialPropertyMaps& matprop,
+                                             Views::VectorView* vview)
     {
       if ((moment % 2) != 1 || moment >= n_moments)
       {
@@ -708,10 +732,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
       MeshFunctionSharedPtr<double> mfx = new MomentFilter::OddMomentVal(0, moment, group, n_groups, solutions, &matprop);
       MeshFunctionSharedPtr<double> mfy = new MomentFilter::OddMomentVal(1, moment, group, n_groups, solutions, &matprop);
-      vview->show(mfx, mfy);
+      
+      if (vview)
+        vview->show(mfx, mfy);
+      else
+        vviews[mg.pos(moment,group)]->show(mfx, mfy);
     }
     
-    void Visualization::show_all_flux_moments(Hermes::vector< MeshFunctionSharedPtr<double> > solutions, const MaterialProperties::MaterialPropertyMaps& matprop)
+    void Visualization::show_all_flux_moments(Hermes::vector< MeshFunctionSharedPtr<double> > solutions, 
+                                              const MaterialProperties::MaterialPropertyMaps& matprop)
     {
       assert((sviews_app == NULL && vviews == NULL) || (sviews_app != NULL && vviews != NULL));
       
@@ -740,8 +769,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         for (unsigned int m = 0; m < n_odd_moments; m++)
         {
           unsigned int i = mg.pos(m,g);
-          show_even_flux_moment(2*m, g, sviews_app[i], solutions);
-          show_odd_flux_moment(2*m+1, g, vviews[i], solutions, matprop);
+          show_even_flux_moment(2*m, g, solutions, sviews_app[i]);
+          show_odd_flux_moment(2*m+1, g, solutions, matprop, vviews[i]);
         }
       }
     }
@@ -781,12 +810,28 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           std::string var = base_varname + std::string("_moment_") + itos(2*m) + appendix;
           lin.save_solution_vtk(mf, file.c_str(), var.c_str(), mode_3D);
           info("SP%d moment #%d of solution in group %d saved in VTK format to file %s.", n_moments-1, 2*m, g, file.c_str());
-          
+                    
           file = base_filename + std::string("_moment_") + itos(2*m+1) + appendix + std::string(".vtk");
           var = base_varname + std::string("_moment_") + itos(2*m+1) + appendix;
           lin.save_solution_vtk(solutions[mg.pos(m,g)], file.c_str(), var.c_str(), mode_3D);
           info("SP%d moment #%d of solution in group %d saved in VTK format to file %s.", n_moments-1, 2*m+1, g, file.c_str());
         }
+      }
+    }
+    
+    void Visualization::save_scalar_fluxes_vtk(const std::string& base_filename, const std::string& base_varname, 
+                                    Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D)
+    { 
+      Views::Linearizer lin;
+      for (unsigned int g = 0; g < n_groups; g++)
+      {
+        std::string appendix = std::string("_group_") + itos(g);
+        MeshFunctionSharedPtr<double> mf = new MomentFilter::EvenMomentVal(0, g, n_groups, solutions);
+          
+        std::string file = base_filename + appendix + std::string(".vtk");
+        std::string var = base_varname + appendix;
+        lin.save_solution_vtk(mf, file.c_str(), var.c_str(), mode_3D);
+        info("Scalar flux in group %d saved in VTK format to file %s.", g, file.c_str());
       }
     }
     
@@ -1248,6 +1293,137 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       for( ; it != scalar_fluxes->end(); ++it)
         delete *it;
       scalar_fluxes->clear();
+    }
+    
+    void Visualization::init(unsigned int width, unsigned int height, bool display_meshes) 
+    {
+#ifndef NOGLUT
+      for (unsigned int g = 0; g < n_groups; g++)
+      {
+        std::string title_flux = base_title_flux + itos(g) + std::string(", angle #");
+        std::string title_order = base_title_order + itos(g) + std::string(", angle #");
+        for (unsigned int m = 0; m < M; m++)
+        {
+          unsigned int i = ag.pos(m,g);
+          
+          sviews[i] = new Views::ScalarView((title_flux + itos(m)).c_str(), new Views::WinGeom((m%4)*(width+2), g*(height+2), width, height));
+          sviews[i]->show_mesh(false);
+          sviews[i]->set_3d_mode(true);
+          oviews[i] = new Views::OrderView((title_order + itos(m)).c_str(), new Views::WinGeom((m%4)*(width+2), n_groups*(height+2) + g*(height+2), width, height));
+        }
+      }
+      
+      if (display_meshes)
+      {
+        for (unsigned int g = 0; g < n_groups; g++)
+        {
+          std::string title = base_title_mesh + itos(g) + std::string(", angle #");
+          for (unsigned int m = 0; m < M; m++)
+            mviews[ag.pos(m,g)] = new Views::MeshView((title + itos(m)).c_str(), new Views::WinGeom((m%4)*(width+2), g*(height+2), width, height));
+        }
+      }
+#endif
+    }
+    
+    Visualization::~Visualization()
+    {
+      if (sviews_app != NULL)
+      {
+#ifndef NOGLUT
+        for (unsigned int g = 0; g < n_groups; g++)
+          delete sviews_app[g];
+#endif
+        delete [] sviews_app;
+      }
+    }
+
+#ifndef NOGLUT
+    void Visualization::show_meshes(Hermes::vector< MeshSharedPtr > meshes)
+    {
+      if (display_meshes)
+        for (unsigned int g = 0; g < n_groups; g++)
+          for (unsigned int m = 0; m < M; m++)
+            mviews[ag.pos(m,g)]->show(meshes[ag.pos(m,g)]);
+    }
+    
+    void Visualization::show_solutions(Hermes::vector< MeshFunctionSharedPtr<double> > solutions)
+    {
+      for (unsigned int g = 0; g < n_groups; g++)
+        for (unsigned int m = 0; m < M; m++)
+          sviews[ag.pos(m,g)]->show(solutions[ag.pos(m,g)]);
+    }
+    
+    void Visualization::show_scalar_fluxes(Hermes::vector< MeshFunctionSharedPtr<double> > solutions)
+    {
+      if (!sviews_app)
+      {
+        sviews_app = new Views::ScalarView* [n_groups];
+        for (unsigned int g = 0; g < n_groups; g++)
+        {
+          std::string title = "scalar flux in group " + itos(g);
+          sviews_app[g] = new Views::ScalarView(title.c_str(), new Views::WinGeom(0, g*(height+2), width, height));
+          sviews_app[g]->show_mesh(false);
+          sviews_app[g]->set_3d_mode(true);
+        }
+      }
+      
+      for (unsigned int g = 0; g < n_groups; g++)
+      {
+        MeshFunctionSharedPtr<double> mf = new MomentFilter::Val(0, 0, g, n_groups, solutions, odata);
+        sviews_app[g]->show(mf);
+      }
+    }
+    
+    void Visualization::show_orders(Hermes::vector< SpaceSharedPtr<double> > spaces)
+    {
+      for (unsigned int g = 0; g < n_groups; g++)
+        for (unsigned int m = 0; m < M; m++)
+          oviews[ag.pos(m,g)]->show(spaces[ag.pos(m,g)]);
+    }
+#endif    
+    
+    void Visualization::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
+                                    Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D)
+    { 
+      Views::Linearizer lin;
+      for (unsigned int g = 0; g < n_groups; g++)
+      {
+        std::string appendix = std::string("_group_") + itos(g);
+        for (unsigned int m = 0; m < M; m++)
+        {
+          std::string file = base_filename + std::string("_angle_") + itos(m) + appendix + std::string(".vtk");
+          std::string var = base_varname + std::string("_angle_") + itos(m) + appendix;
+          lin.save_solution_vtk(solutions[ag.pos(m,g)], file.c_str(), var.c_str(), mode_3D);
+          info("Flux in group #%d at angle #%d saved in VTK format to file %s.", g, m, file.c_str());
+        }
+      }
+    }
+    
+    void Visualization::save_scalar_fluxes_vtk(const std::string& base_filename, const std::string& base_varname, 
+                                    Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D)
+    { 
+      Views::Linearizer lin;
+      for (unsigned int g = 0; g < n_groups; g++)
+      {
+        std::string appendix = std::string("_group_") + itos(g);
+        std::string file = base_filename + appendix + std::string(".vtk");
+        std::string var = base_varname + appendix;
+        MeshFunctionSharedPtr<double> mf = new MomentFilter::Val(0, 0, g, n_groups, solutions, odata);
+        lin.save_solution_vtk(mf, file.c_str(), var.c_str(), mode_3D);
+        info("Scalar flux in group #%d saved in VTK format to file %s.", g, file.c_str());
+      }
+    }
+    
+    void Visualization::save_orders_vtk(const std::string& base_filename, Hermes::vector< SpaceSharedPtr<double> > spaces)
+    {
+      Views::Orderizer ord;
+      for (unsigned int g = 0; g < n_groups; g++)
+        for (unsigned int m = 0; m < M; m++)
+        {
+          std::string file = base_filename + std::string("_angle_") + itos(m) + std::string("_group_") + itos(g) + std::string(".vtk");
+          ord.save_orders_vtk(spaces[ag.pos(m,g)], file.c_str());
+          info("Information about approximation space for angle %d, group %d saved in VTK format to file %s.", m, g, file.c_str());
+        }
     }
     
   /* SupportClasses */
