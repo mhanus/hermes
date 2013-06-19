@@ -1146,15 +1146,57 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
   }    
   
   namespace SN { namespace MaterialProperties
-  {    
+  {
+    void MaterialPropertyMaps::set_Sigma_s(const MaterialPropertyMap2& Ss)
+    {
+      std::set<std::string>::const_iterator it;
+      for (it = materials_list.begin(); it != materials_list.end(); ++it)
+        Sigma_sn[*it].push_back(Ss.at(*it));
+    }
+    
+    // NOTE: Copied from SPN.
+    MaterialPropertyMap2 MaterialPropertyMaps::extract_isotropic_part(const MaterialPropertyMap3& arg) const
+    {
+      MaterialPropertyMap2 map2;
+      
+      MaterialPropertyMap3::const_iterator it = arg.begin();
+      for ( ; it != arg.end(); ++it)
+        map2[it->first] = it->second[0];
+      
+      return map2;
+    }
+        
     void MaterialPropertyMaps::validate()
     {
-      if (Sigma_t.empty())
-        ErrorHandling::error_function(Messages::E_SIGMA_T_REQUIRED);
-      
       Common::MaterialProperties::MaterialPropertyMaps::validate();
-             
+      
+      if (Sigma_t.empty())
+      {
+        if (!Sigma_a.empty() && !Sigma_sn.empty())
+        {
+          MaterialPropertyMap2 Sigma_s = extract_isotropic_part(Sigma_sn);
+          Sigma_t = NDArrayMapOp::add<rank1>(Sigma_a, sum_map2_columns(Sigma_s));
+        }
+        else
+          ErrorHandling::error_function(Messages::E_SIGMA_T_REQUIRED);
+      }
+      
       std::for_each(Sigma_t.begin(), Sigma_t.end(), Validation::ensure_size(G));
+      
+      if (!D.empty())
+      {
+        // Extract the P1-component of scattering cross-section from the given diffusion coef.
+        std::set<std::string>::const_iterator it;
+        for (it = materials_list.begin(); it != materials_list.end(); ++it)
+        {
+          rank2 S1(G, rank1(G, 0.0));
+          
+          for (int g = 0; g < G; g++)
+            S1[g][g] = Sigma_t[*it][g] - 1./(3*D[*it][g]);
+          
+          Sigma_sn[*it].push_back(S1);
+        }
+      }
     }
     
     rank1 MaterialPropertyMaps::compute_Sigma_a(const std::string& material) const

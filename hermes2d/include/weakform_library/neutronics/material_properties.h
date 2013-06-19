@@ -483,6 +483,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
                 
         MaterialPropertyMap3 Sigma_sn;
         MaterialPropertyMap1 Sigma_t;
+        MaterialPropertyMap1 D;
+        
+        MaterialPropertyMap2 extract_isotropic_part(const MaterialPropertyMap3& arg) const;
                         
       public:
         
@@ -497,6 +500,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         {}
                                 
         virtual void validate();
+        
+        virtual void set_D(const MaterialPropertyMap1& D) {
+          this->D = D;
+        }
                                     
         virtual void set_Sigma_sn(const MaterialPropertyMap3& Ss) {
           this->Sigma_sn = Ss;
@@ -505,6 +512,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         virtual void set_Sigma_t(const MaterialPropertyMap1& St) {
           this->Sigma_t = St;
         }
+        
+        virtual void set_Sigma_s(const MaterialPropertyMap2& Ss);
                             
         const MaterialPropertyMap3& get_Sigma_sn() const {
           return this->Sigma_sn;
