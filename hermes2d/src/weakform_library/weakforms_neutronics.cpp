@@ -5,6 +5,7 @@ namespace Hermes { namespace Hermes2D {
     
 void StationaryPicardSolver::solve(double *coeff_vec)
 {
+  this->dp->set_do_not_use_cache();
   int ndof = Space<double>::get_num_dofs(this->dp->get_spaces());
   
   bool _delete_coeff_vec = false;
