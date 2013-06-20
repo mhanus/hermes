@@ -6,7 +6,7 @@
 #include "neutronics/support_classes.h"
 #include "neutronics/weakform_parts_implementation.h"
 #include "neutronics/weakforms.h"
-#include "solver/picard_solver.h"
+#include "../solver/picard_solver.h"
 
 namespace Hermes { namespace Hermes2D {
     
@@ -41,7 +41,8 @@ namespace Hermes { namespace Hermes2D {
         constant_jacobian = true;
       }
       
-      virtual void solve(double *coeff_vec = NULL);
+      virtual void solve(double *coeff_vec);
+      void solve() { this->solve(NULL); }
       
       void measure_convergence_by_residual(bool to_set = true) { convergence_by_residual = to_set; }
       void use_dynamic_solver_tolerance(bool to_set = true);

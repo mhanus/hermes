@@ -9,7 +9,7 @@
 #include "views/order_view.h"
 
 #include "function/filter.h"
-#include "integrals/h1.h"
+#include "integrals_h1.h"
 
 namespace Hermes { namespace Hermes2D { namespace Neutronics
 {   
@@ -303,7 +303,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
         protected:
           virtual void precalculate(int order, int mask);
-          virtual Func<double>* get_pt_value(double x, double y, Element* e = NULL)
+          virtual Func<double>* get_pt_value(double x, double y, bool use_MeshHashGrid = false, Element* e = NULL)
           { 
             ErrorHandling::error_function("Not implemented yet"); 
             return NULL; 

@@ -263,7 +263,7 @@ namespace Neutronics
       else
         production_matrix->multiply_with_vector(sln_vector, resv);
       
-      double inv_norm = 1./Global<double>::get_l2_norm(resv, ndof);
+      double inv_norm = 1./get_l2_norm(resv, ndof);
       for (int i = 0; i < ndof; i++) 
         sln_vector[i] *= inv_norm;
       
