@@ -21,7 +21,7 @@ void read_solution_from_file(std::istream& is, OutIt dest)
 }
 
 void report_num_dof(const std::string& msg, const Hermes::vector<SpaceSharedPtr<double> > spaces);
-void report_errors(const std::string& msg, const Hermes::vector< double > errors);
+void report_errors(const std::string& msg, const ErrorCalculator<double>& error_calculator);
 
 template<typename dtype> std::string tostr(dtype t)
 {
