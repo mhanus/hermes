@@ -15,30 +15,22 @@ const int INIT_REF_NUM[N_EQUATIONS] = {  // Initial uniform mesh refinement for 
 const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the individual solution components. 
   1,1
 }; 
-        
-const double THRESHOLD = 0.1;            // This is a quantitative parameter of the adapt(...) function and
-                                         // it has different meanings for various adaptive strategies (see below).
-const int STRATEGY = -1;                 // Adaptive strategy:
-                                         // STRATEGY = 0 ... refine elements until sqrt(THRESHOLD) times total
-                                         //   error is processed. If more elements have similar errors, refine
-                                         //   all to keep the mesh symmetric.
-                                         // STRATEGY = 1 ... refine all elements whose error is larger
-                                         //   than THRESHOLD times maximum element error.
-                                         // STRATEGY = 2 ... refine all elements whose error is larger
-                                         //   than THRESHOLD.
-                                         // More adaptive strategies can be created in adapt_ortho_h1.cpp.
-const CandList CAND_LIST = H2D_H_ANISO; // Predefined list of element refinement candidates. Possible values are
+
+//
+// Adaptivity setting.
+//
+const bool DO_ADAPTIVITY = true;
+
+AdaptStoppingCriterionLevels<double> stoppingCriterion(0.5);           // Stopping criterion based on refining elements with similar errors.
+// AdaptStoppingCriterionSingleElement<double> stoppingCriterion(0.5); // Stopping criterion based on maximum element error.
+// AdaptStoppingCriterionCumulative<double> stoppingCriterion(0.5);    // Stopping criterion based on cumulative processed error.
+
+DefaultErrorCalculator<double, HERMES_H1_NORM> errorCalculator(RelativeErrorToGlobalNorm, N_EQUATIONS);
+
+const CandList CAND_LIST = H2D_H_ANISO;  // Predefined list of element refinement candidates. Possible values are
                                          // H2D_P_ISO, H2D_P_ANISO, H2D_H_ISO, H2D_H_ANISO, H2D_HP_ISO,
                                          // H2D_HP_ANISO_H, H2D_HP_ANISO_P, H2D_HP_ANISO.
                                          // See User Documentation for details.
-const int MESH_REGULARITY = -1;          // Maximum allowed level of hanging nodes:
-                                         // MESH_REGULARITY = -1 ... arbitrary level hangning nodes (default),
-                                         // MESH_REGULARITY = 1 ... at most one-level hanging nodes,
-                                         // MESH_REGULARITY = 2 ... at most two-level hanging nodes, etc.
-                                         // Note that regular meshes are not supported, this is due to
-                                         // their notoriously bad performance.
-const double CONV_EXP = 1.0;             // Default value is 1.0. This parameter influences the selection of
-                                         // candidates in hp-adaptivity. See get_optimal_refinement() for details.
 const double ERR_STOP = 0.5;             // Stopping criterion for adaptivity (rel. error tolerance between the
                                          // fine mesh and coarse mesh solution in percent).
 const int NDOF_STOP = 500000;             // Adaptivity process stops when the number of degrees of freedom grows over
@@ -78,7 +70,7 @@ int main(int argc, char* argv[])
 { 
   // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 0);
-  Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 2);
+  Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
   
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -101,7 +93,7 @@ int main(int argc, char* argv[])
   // Use multimesh, i.e. create one mesh for each energy group.
   Hermes::vector<MeshSharedPtr > meshes;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
-    meshes.push_back(new Mesh());
+    meshes.push_back(MeshSharedPtr(new Mesh()));
   
   // Load the mesh on which the 1st solution component (1st group, 0th moment) will be approximated.
   
@@ -164,9 +156,9 @@ int main(int argc, char* argv[])
   keff_eigenvalue_iteration.measure_convergence_by_residual(MEASURE_CONVERGENCE_BY_RESIDUAL);
   
   if (MEASURE_CONVERGENCE_BY_RESIDUAL)
-    keff_eigenvalue_iteration.set_tolerance(STRATEGY >= 0 ? 10*TOL_PIT_CM : 1e4*TOL_PIT_FM);
+    keff_eigenvalue_iteration.set_tolerance(DO_ADAPTIVITY ? 10*TOL_PIT_CM : 1e4*TOL_PIT_FM);
   else
-    keff_eigenvalue_iteration.set_keff_tol(STRATEGY >= 0 ? TOL_PIT_CM : TOL_PIT_FM);
+    keff_eigenvalue_iteration.set_keff_tol(DO_ADAPTIVITY ? TOL_PIT_CM : TOL_PIT_FM);
   
   WeakForm<double> prod_wf(wf.get_neq());
   //if (USE_RAYLEIGH_QUOTIENT || SHIFT_STRATEGY || SAVE_MATRICES)
@@ -208,8 +200,11 @@ int main(int argc, char* argv[])
   keff_eigenvalue_iteration.solve();
   Solution<double>::vector_to_solutions(keff_eigenvalue_iteration.get_sln_vector(), spaces, power_iterates);
   
-  if (STRATEGY >= 0)
-  {
+  if (DO_ADAPTIVITY)
+  {   
+    // Adaptivity processor class.
+    Adapt<double> adaptivity(spaces, &errorCalculator, &stoppingCriterion);
+    
     // DOF and CPU convergence graphs
     GnuplotGraph graph_dof("Error convergence", "NDOF", "log(error)");
     graph_dof.add_row("H1 err. est. [%]", "r", "-", "o");
@@ -235,7 +230,7 @@ int main(int argc, char* argv[])
       coarse_solutions.push_back(new Solution<double>());
     
     // Initialize the refinement selectors.
-    H1ProjBasedSelector<double> selector(CAND_LIST, CONV_EXP, H2DRS_DEFAULT_ORDER);
+    H1ProjBasedSelector<double> selector(CAND_LIST);
     Hermes::vector<RefinementSelectors::Selector<double>*> selectors;
     for (unsigned int i = 0; i < N_EQUATIONS; i++)
       selectors.push_back(&selector);
@@ -294,11 +289,10 @@ int main(int argc, char* argv[])
         cpu_time.tick(TimeMeasurable::HERMES_SKIP);
       }
       
-      Adapt<double> adaptivity(spaces);
-      
       Loggable::Static::info("Calculating errors.");
-      Hermes::vector<double> h1_group_errors;
-      double h1_err_est = adaptivity.calc_err_est(coarse_solutions, power_iterates, &h1_group_errors) * 100;
+      
+      errorCalculator.calculate_errors(coarse_solutions, power_iterates); 
+      double h1_err_est = sqrt(errorCalculator.get_total_error_squared()) * 100;
       
       // Time measurement.
       cpu_time.tick();
@@ -309,7 +303,7 @@ int main(int argc, char* argv[])
       // Millipercent eigenvalue error w.r.t. the reference value (see physical_parameters.cpp). 
       double keff_err = 1e5*fabs(keff_eigenvalue_iteration.get_keff() - REF_K_EFF)/REF_K_EFF;
       
-      report_errors("group err_est_coarse (H1): ", h1_group_errors);
+      report_errors("group err_est_coarse (H1): ", errorCalculator);
       Loggable::Static::info("total err_est_coarse (H1): %g%%", h1_err_est);
       Loggable::Static::info("k_eff err: %g milli-percent", keff_err);
       
@@ -330,7 +324,7 @@ int main(int argc, char* argv[])
       else 
       {
         Loggable::Static::info("Adapting the coarse meshes.");
-        done = adaptivity.adapt(selectors, THRESHOLD, STRATEGY, MESH_REGULARITY);        
+        done = adaptivity.adapt(selectors);        
         if (Space<double>::get_num_dofs(ref_spaces) >= NDOF_STOP) 
           done = true;
       }
