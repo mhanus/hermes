@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
 {
   // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 0);
-  //Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
+  //Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
 
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -112,7 +112,7 @@ int main(int argc, char* argv[])
   // Use multimesh, i.e. create one mesh for each energy group.
   Hermes::vector<MeshSharedPtr > meshes;
   for (unsigned int g = 0; g < matprop.get_G(); g++) 
-    meshes.push_back(new Mesh());
+    meshes.push_back(MeshSharedPtr(new Mesh()));
   
   // Load the mesh for the 1st group.
   MeshReaderH2D mesh_reader;
