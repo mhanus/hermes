@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
 {  
   // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 0);
-  //Hermes::Hermes2D::Hermes2DApi.set_integral_param_value(Hermes::Hermes2D::numThreads, 1);
+  //Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
 
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
   // Use multimesh, i.e. create one mesh for each energy group and pseudo-flux.
   Hermes::vector<MeshSharedPtr > meshes;
   for (unsigned int i = 0; i < N_EQUATIONS; i++)
-    meshes.push_back(new Mesh());
+    meshes.push_back(MeshSharedPtr(new Mesh()));
   
   // Load the mesh on which the 1st solution component (1st group, 0th moment) will be approximated.
   MeshReaderH2D mesh_reader;
