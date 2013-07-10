@@ -44,3 +44,10 @@ void load_solution(const std::string& sln_file,
                    const Neutronics::Common::MaterialProperties::MaterialPropertyMaps* matprop,
                    VisualizationOptions visualization, bool mode_3D = false);
 
+void load_solution(const std::string& sln_file, 
+                   const Hermes::vector<SpaceSharedPtr<double> >& spaces, 
+                   VisualizationOptions visualization, bool mode_3D = false);
+                   
+void load_solution(const std::string& sln_file, 
+                   const SpaceSharedPtr<double>& space, 
+                   VisualizationOptions visualization, bool mode_3D = false);                   
