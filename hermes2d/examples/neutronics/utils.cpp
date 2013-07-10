@@ -64,7 +64,7 @@ void save_algebraic_representation(Hermes::Hermes2D::WeakForm< double >* wf, con
     vector = create_vector<double>();
     
     dumper.output_rhs();
-    dumper.set_rhs_E_matrix_dump_format(DF_HERMES_BIN);;
+    dumper.set_rhs_E_matrix_dump_format(DF_HERMES_BIN);
     dumper.set_rhs_number_format("%1.15f");
     dumper.set_rhs_filename(varname+".dat");
     dumper.set_rhs_varname(varname);
