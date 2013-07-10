@@ -19,7 +19,7 @@ const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the in
 //
 // Adaptivity setting.
 //
-const bool DO_ADAPTIVITY = true;
+const bool DO_ADAPTIVITY = false;
 
 AdaptStoppingCriterionLevels<double> stoppingCriterion(0.5);           // Stopping criterion based on refining elements with similar errors.
 // AdaptStoppingCriterionSingleElement<double> stoppingCriterion(0.5); // Stopping criterion based on maximum element error.
@@ -54,15 +54,15 @@ const int SAVE_MATRICES = 0; // If non-zero, save algebraic representation of in
 // Eigenvalue iteration control.
 //
 double TOL_PIT_CM = 1e-5;   // Tolerance for convergence on the coarse mesh.
-double TOL_PIT_FM = 1e-8;   // Tolerance for convergence on the fine mesh.
+double TOL_PIT_FM = 1e-13;   // Tolerance for convergence on the fine mesh.
 const int MAX_PIT = 3000;   // Maximal number of iterations.
 const bool MEASURE_CONVERGENCE_BY_RESIDUAL = true;  // When 'false', eigenvalue difference will be used to monitor convergence. 
 
-const bool USE_RAYLEIGH_QUOTIENT = false; // Use Rayleigh quotient to estimate the eigenvalue in each iteration. 
+const bool USE_RAYLEIGH_QUOTIENT = true; // Use Rayleigh quotient to estimate the eigenvalue in each iteration. 
                                           // When 'false', the reciprocal norm of current eigenvector iterate will be used.
 
 // Shifting strategy for the inverse iteration.
-const KeffEigenvalueIteration::ShiftStrategies SHIFT_STRATEGY = KeffEigenvalueIteration::NO_SHIFT;
+const KeffEigenvalueIteration::ShiftStrategies SHIFT_STRATEGY = KeffEigenvalueIteration::RAYLEIGH_QUOTIENT_SHIFT;
 const double FIXED_SHIFT = 0.666;
 const bool MODIFY_SHIFT_DURING_ADAPTIVITY = true;
 
@@ -140,7 +140,6 @@ int main(int argc, char* argv[])
   
   if (argc == 3 && !strcmp(argv[1], "-sln"))
   {
-    Neutronics::Common::SupportClasses::Visualization* vis;
     load_solution(argv[2], spaces, matprop, visualization);
     return 0;
   }
@@ -156,7 +155,7 @@ int main(int argc, char* argv[])
   keff_eigenvalue_iteration.measure_convergence_by_residual(MEASURE_CONVERGENCE_BY_RESIDUAL);
   
   if (MEASURE_CONVERGENCE_BY_RESIDUAL)
-    keff_eigenvalue_iteration.set_tolerance(DO_ADAPTIVITY ? 10*TOL_PIT_CM : 1e4*TOL_PIT_FM);
+    keff_eigenvalue_iteration.set_tolerance(DO_ADAPTIVITY ? TOL_PIT_CM : TOL_PIT_FM);
   else
     keff_eigenvalue_iteration.set_keff_tol(DO_ADAPTIVITY ? TOL_PIT_CM : TOL_PIT_FM);
   
@@ -236,7 +235,7 @@ int main(int argc, char* argv[])
       selectors.push_back(&selector);
       
     if (MEASURE_CONVERGENCE_BY_RESIDUAL)
-      keff_eigenvalue_iteration.set_tolerance(1e4*TOL_PIT_FM);
+      keff_eigenvalue_iteration.set_tolerance(TOL_PIT_FM);
     else
       keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_FM);
     
@@ -338,7 +337,7 @@ int main(int argc, char* argv[])
     if (HERMES_VISUALIZATION)
     {
       views.show_solutions(power_iterates);
-      views.show_orders(spaces);
+      //views.show_orders(spaces);
     }
     if (VTK_VISUALIZATION)
     {
