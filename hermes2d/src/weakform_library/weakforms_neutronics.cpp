@@ -20,15 +20,16 @@ void StationaryPicardSolver::solve(double *coeff_vec)
     _delete_coeff_vec = true;
   }
   
+  unsigned int it = 0;
+  this->set_parameter_value(this->p_iteration, &it);
+  
   this->init_solving(coeff_vec);
   
   this->delete_coeff_vec = _delete_coeff_vec;
 
   this->init_anderson();
 
-  unsigned int it = 1;
   unsigned int vec_in_memory = 1;   // There is already one vector in the memory.
-  this->set_parameter_value(this->p_iteration, &it);
   this->set_parameter_value(this->p_vec_in_memory, &vec_in_memory);
   
   if (convergence_by_residual)
@@ -321,6 +322,15 @@ namespace Neutronics
       jacobian = unshifted_jacobian;
       matrix_solver = create_linear_solver<double>(jacobian, residual);
     }
+    
+    // Multiply the resulting dominant eigenvector by -1 if it is negative.
+    double s = 0.0;
+    for (int i = 0; i < ndof; i++) 
+      s += this->sln_vector[i];
+    
+    if (s < 0)
+      for (int i = 0; i < ndof; i++) 
+        this->sln_vector[i] *= -1;
   }
   
   void KeffEigenvalueIteration::set_shift(double shift)
