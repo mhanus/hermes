@@ -1,7 +1,7 @@
 #define HERMES_REPORT_ALL
 #define HERMES_REPORT_FILE "application.log"
 #include "definitions.h"
-#include "problem_data.h"
+#include "../problem_data.h"
 #include "weakforms_neutronics.h"
 
 #include <iterator>
@@ -18,7 +18,7 @@ const bool MULTIMESH = false;
 // Number of initial uniform mesh refinements.
 const int INIT_REF_NUM = 3;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
-const int P_INIT = 0;
+const int P_INIT = 1;
 
 const unsigned int N_GROUPS = 1;    // Monoenergetic (single group) problem.
 const int N = 16;                    
@@ -30,7 +30,7 @@ const int M = N_GROUPS * N*(N+2)/2;
 // Number of last iterations used.
 // 1... standard fixed point.
 // >1... Anderson acceleration.
-const int PICARD_NUM_LAST_ITER_USED = 1;
+const int PICARD_NUM_LAST_ITER_USED = 3;
 // 0 <= beta <= 1... parameter for the Anderson acceleration.
 const double PICARD_ANDERSON_BETA = 0;
 // Stopping criterion for the Picard's method.
@@ -117,13 +117,13 @@ int main(int argc, char* args[])
       wf = new IsotropicScatteringAndFissionMatrixForms(matprop, args[1]);
       SupportClasses::AngleGroupFlattener ag(N_GROUPS);
       for (int g = 0; g < N_GROUPS; g++)
-        spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[ag(0,g)] : meshes[0], P_INIT));
+        spaces.push_back(new H1Space<double>(MULTIMESH ? meshes[ag(0,g)] : meshes[0], P_INIT));
     }
     else
     {
       wf = new SNWeakForm(N, matprop, reflective_boundaries, vacuum_boundaries, args[1]);  
       for (int n = 0; n < M; n++)
-        spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+        spaces.push_back(new H1Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
     }
     
     Loggable::Static::info("Saving %s. NDOF = %d", args[1], Space<double>::get_num_dofs(spaces));
@@ -170,7 +170,7 @@ int main(int argc, char* args[])
   Hermes::vector<SpaceSharedPtr<double> > spaces;
   
   for (int n = 0; n < M; n++)
-    spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+    spaces.push_back(new H1Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
   
   int ndof =  Space<double>::get_num_dofs(spaces);
   
@@ -270,7 +270,7 @@ int main(int argc, char* args[])
     fs.close();
   }
 
-  PostProcessor pp(NEUTRONICS_SN, HERMES_PLANAR, new SupportClasses::OrdinatesData(N, "lgvalues.txt"));
+  PostProcessor pp(NEUTRONICS_SN, HERMES_PLANAR, new SupportClasses::OrdinatesData(N, "../lgvalues.txt"));
     
   Hermes::vector<double> reaction_rates;
   pp.get_integrated_reaction_rates(Neutronics::TOTAL, slns, &reaction_rates, matprop, edit_regions);

@@ -2,7 +2,7 @@ clear all
 
 pweights
 
-ndof = 165888
+ndof = 176400
 N = length(pw)
 ndof_per_ord = ndof/N
 
