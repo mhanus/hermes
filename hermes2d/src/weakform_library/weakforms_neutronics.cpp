@@ -62,10 +62,10 @@ void StationaryPicardSolver::solve(double *coeff_vec)
     
     if (it == 1)
       // Always factorize for the first time.
-      this->matrix_solver->set_factorization_scheme(HERMES_FACTORIZE_FROM_SCRATCH);
+      this->matrix_solver->set_reuse_scheme(HERMES_CREATE_STRUCTURE_FROM_SCRATCH);
     else if (jacobian_change_on_algebraic_level)
       // The case when Jacobian is updated on an algebraic level (new assembling is not needed, but new factorization is). 
-      this->matrix_solver->set_factorization_scheme(HERMES_REUSE_MATRIX_REORDERING);
+      this->matrix_solver->set_reuse_scheme(HERMES_REUSE_MATRIX_REORDERING);
     
     if(!this->matrix_solver->solve())
       throw Exceptions::LinearMatrixSolverException();

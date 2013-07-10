@@ -493,7 +493,7 @@ namespace Hermes
           this->step_info();
           if(this->handle_convergence_state_return_finished(this->get_convergence_state(), coeff_vec))
           {
-            this->info("Newton: assemble at it. %d duration: %f s.", it, assemble_time);
+            this->info("Newton: assemble at duration: %f s.", assemble_time);
             return;
           }
           else
@@ -587,7 +587,7 @@ namespace Hermes
           // Test convergence - if in this iteration we found a solution.
           if(this->handle_convergence_state_return_finished(this->get_convergence_state(), coeff_vec))
           {
-            this->info("Newton: assemble at it. %d duration: %f s.", it, assemble_time);
+            this->info("Newton: assemble duration: %f s.", assemble_time);
             return;
           }
         }
