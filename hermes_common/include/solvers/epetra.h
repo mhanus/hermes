@@ -81,10 +81,19 @@ namespace Hermes
       EpetraMatrix* duplicate() { return new EpetraMatrix<Scalar>(*this); }
       
       virtual void add(unsigned int m, unsigned int n, Scalar **mat, int *rows, int *cols);
-      virtual void export_to_file(char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format = "%lf");
       virtual unsigned int get_matrix_size() const;
       virtual unsigned int get_nnz() const;
       virtual double get_fill_in() const;
+      
+      /// Matrix export method.
+      /// Utility version
+      /// \See Matrix<Scalar>::export_to_file.
+      void export_to_file(char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format = "%lf");
+      
+      /// Reading matrix
+      /// Utility version
+      /// \See Matrix<Scalar>::import_from_file.
+      void import_from_file(char *filename, const char *var_name, MatrixExportFormat fmt);
       
     protected:
       Epetra_BlockMap *std_map;
@@ -120,6 +129,7 @@ namespace Hermes
       virtual void add(unsigned int idx, Scalar y);
       virtual void add(unsigned int n, unsigned int *idx, Scalar *y);
       virtual void export_to_file(char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format = "%lf");
+      virtual void import_from_file(char *filename, const char *var_name, MatrixExportFormat fmt);
 
     protected:
       Epetra_BlockMap *std_map;

@@ -186,6 +186,8 @@ namespace Hermes
       /// - "New Ifpack" - Ifpack internal preconditioner.
       /// - "ML" - Multi level preconditioner
       virtual void set_precond(const char *pc);
+      
+      virtual std::string getClassName() const { return "NewtonSolverNOX"; }
 
     protected:
       int num_iters;
