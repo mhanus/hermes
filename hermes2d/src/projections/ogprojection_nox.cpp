@@ -19,6 +19,11 @@
 #include "space.h"
 #include "discrete_problem.h"
 #include "solver/nox_solver.h"
+
+//FIXME
+#undef HAVE_NOX
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 #if(defined HAVE_NOX && defined HAVE_EPETRA && defined HAVE_TEUCHOS)
 
 namespace Hermes
