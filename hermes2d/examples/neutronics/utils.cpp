@@ -1,5 +1,6 @@
 #define HERMES_REPORT_ALL
 #include "utils.h"
+#include "algebra_mixins.h"
 
 #include <iterator>
 
@@ -47,32 +48,32 @@ void save_algebraic_representation(Hermes::Hermes2D::WeakForm< double >* wf, con
   SparseMatrix<double>* matrix = NULL;
   Vector<double>* vector = NULL;
   
-  Mixins::MatrixRhsOutput<double> dumper;
+  Hermes::Algebra::Mixins::MatrixRhsOutput<double> exporter;
   
   if (has_matrices)
   {
     matrix = create_matrix<double>();
     
-    dumper.output_matrix();
-    dumper.set_matrix_E_matrix_dump_format(DF_HERMES_BIN);
-    dumper.set_matrix_number_format("%1.15f");
-    dumper.set_matrix_filename(varname+".dat");
-    dumper.set_matrix_varname(varname);
+    exporter.output_matrix();
+    exporter.set_matrix_export_format(EXPORT_FORMAT_MATLAB_MATIO);
+    exporter.set_matrix_number_format("%1.15f");
+    exporter.set_matrix_filename(varname+".dat");
+    exporter.set_matrix_varname(varname);
   }
   if (has_vectors)
   {
     vector = create_vector<double>();
     
-    dumper.output_rhs();
-    dumper.set_rhs_E_matrix_dump_format(DF_HERMES_BIN);
-    dumper.set_rhs_number_format("%1.15f");
-    dumper.set_rhs_filename(varname+".dat");
-    dumper.set_rhs_varname(varname);
+    exporter.output_rhs();
+    exporter.set_matrix_export_format(EXPORT_FORMAT_MATLAB_MATIO);
+    exporter.set_rhs_number_format("%1.15f");
+    exporter.set_rhs_filename(varname+".dat");
+    exporter.set_rhs_varname(varname);
   }
   
   dp.assemble(matrix, vector);
-  dumper.process_matrix_output(matrix);
-  dumper.process_vector_output(vector);
+  exporter.process_matrix_output(matrix);
+  exporter.process_vector_output(vector);
   
   if (matrix)
     delete matrix;

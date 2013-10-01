@@ -19,7 +19,7 @@ const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the in
 //
 // Adaptivity setting.
 //
-const bool DO_ADAPTIVITY = false;
+const bool DO_ADAPTIVITY = true;
 
 AdaptStoppingCriterionLevels<double> stoppingCriterion(0.5);           // Stopping criterion based on refining elements with similar errors.
 // AdaptStoppingCriterionSingleElement<double> stoppingCriterion(0.5); // Stopping criterion based on maximum element error.
@@ -44,10 +44,10 @@ Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibiliti
 const VisualizationOptions visualization = HERMES_SCALAR_VISUALIZATION;
 const bool HERMES_VISUALIZATION = visualization & (HERMES_SCALAR_VISUALIZATION | HERMES_ANGULAR_VISUALIZATION);
 const bool VTK_VISUALIZATION = visualization & (VTK_SCALAR_VISUALIZATION | VTK_ANGULAR_VISUALIZATION);
-const bool DISPLAY_MESHES = true;       // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
+const bool DISPLAY_MESHES = false;       // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
 const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
 
-const int SAVE_MATRICES = 0; // If non-zero, save algebraic representation of individual parts comprising the weak formulation.
+const int SAVE_MATRICES = 1; // If non-zero, save algebraic representation of individual parts comprising the weak formulation.
                              // If SAVE_MATRICES == 2, the program ends right after saving the matrices.
 
 //
@@ -62,7 +62,7 @@ const bool USE_RAYLEIGH_QUOTIENT = true; // Use Rayleigh quotient to estimate th
                                           // When 'false', the reciprocal norm of current eigenvector iterate will be used.
 
 // Shifting strategy for the inverse iteration.
-const KeffEigenvalueIteration::ShiftStrategies SHIFT_STRATEGY = KeffEigenvalueIteration::RAYLEIGH_QUOTIENT_SHIFT;
+const KeffEigenvalueIteration::ShiftStrategies SHIFT_STRATEGY = KeffEigenvalueIteration::FIXED_SHIFT;
 const double FIXED_SHIFT = 0.666;
 const bool MODIFY_SHIFT_DURING_ADAPTIVITY = true;
 
@@ -152,10 +152,9 @@ int main(int argc, char* argv[])
   
   Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
   keff_eigenvalue_iteration.set_max_allowed_iterations(MAX_PIT);  
-  keff_eigenvalue_iteration.measure_convergence_by_residual(MEASURE_CONVERGENCE_BY_RESIDUAL);
   
   if (MEASURE_CONVERGENCE_BY_RESIDUAL)
-    keff_eigenvalue_iteration.set_tolerance(DO_ADAPTIVITY ? TOL_PIT_CM : TOL_PIT_FM);
+    keff_eigenvalue_iteration.set_tolerance(DO_ADAPTIVITY ? TOL_PIT_CM : TOL_PIT_FM, ResidualNormRatioToInitial);
   else
     keff_eigenvalue_iteration.set_keff_tol(DO_ADAPTIVITY ? TOL_PIT_CM : TOL_PIT_FM);
   
@@ -235,7 +234,7 @@ int main(int argc, char* argv[])
       selectors.push_back(&selector);
       
     if (MEASURE_CONVERGENCE_BY_RESIDUAL)
-      keff_eigenvalue_iteration.set_tolerance(TOL_PIT_FM);
+      keff_eigenvalue_iteration.set_tolerance(TOL_PIT_FM, ResidualNormRatioToInitial);
     else
       keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_FM);
     

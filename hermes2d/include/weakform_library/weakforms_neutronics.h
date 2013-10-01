@@ -22,21 +22,21 @@ namespace Hermes { namespace Hermes2D {
     public:
       StationaryPicardSolver(DiscreteProblem<double>* dp)
         : PicardSolver<double>(dp), 
-          convergence_by_residual(false), have_rhs(false), dynamic_solver_tolerance(false), jacobian_change_on_algebraic_level(false) 
+          have_rhs(false), dynamic_solver_tolerance(false), jacobian_change_on_algebraic_level(false) 
       {
         constant_jacobian = true;
       }
       
       StationaryPicardSolver(WeakForm<double>* wf, SpaceSharedPtr<double>& space) 
         : PicardSolver<double>(wf, space), 
-          convergence_by_residual(false), have_rhs(false), dynamic_solver_tolerance(false), jacobian_change_on_algebraic_level(false) 
+          have_rhs(false), dynamic_solver_tolerance(false), jacobian_change_on_algebraic_level(false) 
       {
         constant_jacobian = true;
       }
       
       StationaryPicardSolver(WeakForm<double>* wf, const Hermes::vector<SpaceSharedPtr<double> >& spaces) 
         : PicardSolver<double>(wf, spaces),
-          convergence_by_residual(false), have_rhs(false), dynamic_solver_tolerance(false), jacobian_change_on_algebraic_level(false)
+          have_rhs(false), dynamic_solver_tolerance(false), jacobian_change_on_algebraic_level(false)
       {
         constant_jacobian = true;
       }
@@ -44,10 +44,11 @@ namespace Hermes { namespace Hermes2D {
       virtual void solve(double *coeff_vec);
       void solve() { this->solve(NULL); }
       
-      void measure_convergence_by_residual(bool to_set = true) { convergence_by_residual = to_set; }
       void use_dynamic_solver_tolerance(bool to_set = true);
       
-      virtual double calculate_relative_error(double* coeff_vec);
+      bool converged();
+      
+      virtual void set_tolerance(double tolerance_, NonlinearConvergenceMeasurementType toleranceType, bool handleMultipleTolerancesAnd = false);
       
       virtual double calculate_residual_norm() = 0;
       
