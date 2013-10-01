@@ -17,6 +17,10 @@
 */
 #include "solver/nox_solver.h"
 
+//FIXME
+#undef HAVE_NOX
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 #if(defined HAVE_NOX && defined HAVE_EPETRA && defined HAVE_TEUCHOS)
 
 namespace Hermes
@@ -92,7 +96,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    Teuchos::RCP<Precond<Scalar> > DiscreteProblemNOX<Scalar>::get_precond()
+    Teuchos::RCP<Preconditioners::Precond<Scalar> > DiscreteProblemNOX<Scalar>::get_precond()
     {
       return precond;
     }
@@ -167,16 +171,16 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    void DiscreteProblemNOX<Scalar>::set_precond(Teuchos::RCP<Precond<Scalar> > &pc)
+    void DiscreteProblemNOX<Scalar>::set_precond(Teuchos::RCP<Preconditioners::Precond<Scalar> > &pc)
     {
       precond = pc;
       this->dp->create_sparse_structure(&jacobian);
     }
 
     template<typename Scalar>
-    void NewtonSolverNOX<Scalar>::set_precond(Precond<Scalar> &pc)
+    void NewtonSolverNOX<Scalar>::set_precond(Preconditioners::Precond<Scalar> &pc)
     {
-      Teuchos::RCP<Precond<Scalar> > tpc = Teuchos::rcpFromRef(pc);
+      Teuchos::RCP<Preconditioners::Precond<Scalar> > tpc = Teuchos::rcpFromRef(pc);
       ndp.set_precond(tpc);
       nl_pars->sublist("Direction").sublist("Newton").sublist("Linear Solver").set("Preconditioner", "User Defined");
     }
@@ -244,7 +248,7 @@ namespace Hermes
       // linear system settings
       Teuchos::ParameterList &ls_pars = nl_pars->sublist("Direction").sublist("Newton").sublist("Linear Solver");
       // preconditioner
-      Teuchos::RCP<Precond<Scalar> > precond = ndp.get_precond();
+      Teuchos::RCP<Preconditioners::Precond<Scalar> > precond = ndp.get_precond();
       //linear system
       Teuchos::RCP<NOX::Epetra::LinearSystemAztecOO> lin_sys;
       // problem

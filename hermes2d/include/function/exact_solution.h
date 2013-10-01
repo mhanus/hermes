@@ -279,7 +279,7 @@ namespace Hermes
 
       MeshFunction<Scalar>* clone() const = 0;
 
-      template<typename Scalar> friend Func<Scalar>* init_fn(UExtFunction<Scalar>* fu, Func<Scalar>** u_ext, int u_ext_size, const int order);
+      template<typename T> friend Func<T>* init_fn(UExtFunction<T>* fu, Func<T>** u_ext, int u_ext_size, const int order);
     };
   }
 }

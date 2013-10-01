@@ -229,13 +229,13 @@ namespace Hermes
     }
 
     template<>
-    void EpetraMatrix<std::complex<double> >::multiply_with_vector(std::complex<double>* vector_in, std::complex<double>* vector_out, bool vector_out_initialized) const
+    void EpetraMatrix<std::complex<double> >::multiply_with_vector(std::complex<double>* vector_in, std::complex<double>*& vector_out, bool vector_out_initialized) const
     {
       SparseMatrix<std::complex<double> >::multiply_with_vector(vector_in, vector_out, vector_out_initialized);
     }
    
    template<>
-   void EpetraMatrix<double>::multiply_with_vector(double* vector_in, double* vector_out, bool vector_out_initialized) const
+   void EpetraMatrix<double>::multiply_with_vector(double* vector_in, double*& vector_out, bool vector_out_initialized) const
    {
       Epetra_Vector x(View, mat->OperatorDomainMap(), vector_in);
       Epetra_Vector y(mat->OperatorRangeMap());
@@ -426,23 +426,21 @@ namespace Hermes
     }
     
     template<>
-    bool EpetraVector<double>::export_to_file(const char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format)
+    void EpetraVector<double>::export_to_file(const char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format)
     {
       switch (fmt)
       {
-      case DF_MATLAB_SPARSE:
-      case EXPORT_FORMAT_PLAIN_ASCII:
-        EpetraExt::VectorToHandle(file, *this->vec);
-        return true;
+        case EXPORT_FORMAT_MATRIX_MARKET://TODO
+        case EXPORT_FORMAT_MATLAB_MATIO://TODO
+        case EXPORT_FORMAT_PLAIN_ASCII:
+          EpetraExt::VectorToMatlabFile(filename, *this->vec);
       }
-      
-      return false;
     }
     
     template<>
-    bool EpetraVector<std::complex<double> >::export_to_file(const char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format)
+    void EpetraVector<std::complex<double> >::export_to_file(const char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format)
     {
-      return false;
+      throw Exceptions::MethodNotImplementedException("void EpetraVector<std::complex<double> >::export_to_file");
     }
 
     template class HERMES_API EpetraMatrix<double>;
