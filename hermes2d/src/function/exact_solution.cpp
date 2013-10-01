@@ -106,7 +106,7 @@ namespace Hermes
     }
 
     template<typename Scalar, typename ValueType>
-    Ord ExactSolutionConstantArray<Scalar, ValueType>::ord(Ord x, Ord y) const {
+    Ord ExactSolutionConstantArray<Scalar, ValueType>::ord(double x, double y) const {
       return Ord(0);
     }
 
@@ -302,7 +302,7 @@ namespace Hermes
     };
 
     template<typename Scalar>
-    Ord ConstantSolution<Scalar>::ord(Ord x, Ord y) const {
+    Ord ConstantSolution<Scalar>::ord(double x, double y) const {
       return Ord(0);
     }
 
@@ -332,7 +332,7 @@ namespace Hermes
     };
 
     template<typename Scalar>
-    Ord ZeroSolution<Scalar>::ord(Ord x, Ord y) const {
+    Ord ZeroSolution<Scalar>::ord(double x, double y) const {
       return Ord(0);
     }
 
@@ -435,7 +435,7 @@ namespace Hermes
     };
 
     template<typename Scalar>
-    Ord ConstantSolutionVector<Scalar>::ord(Ord x, Ord y) const {
+    Ord ConstantSolutionVector<Scalar>::ord(double x, double y) const {
       return Ord(0);
     }
 
@@ -531,7 +531,7 @@ namespace Hermes
     };
 
     template<typename Scalar>
-    Ord ZeroSolutionVector<Scalar>::ord(Ord x, Ord y) const {
+    Ord ZeroSolutionVector<Scalar>::ord(double x, double y) const {
       return Ord(0);
     }
 
@@ -566,7 +566,7 @@ namespace Hermes
       throw Exceptions::Exception("ExactSolutionEggShell::derivatives should never be called.");
     }
 
-    Hermes::Ord ExactSolutionEggShell::ord(Hermes::Ord x, Hermes::Ord y) const
+    Hermes::Ord ExactSolutionEggShell::ord(double x, double y) const
     {
       throw Exceptions::Exception("ExactSolutionEggShell::ord should never be called.");
       return Hermes::Ord(0);
@@ -577,6 +577,13 @@ namespace Hermes
       Solution<double> * sln = new Solution<double>;
       sln->copy(this);
       return sln;
+    }
+
+    template<typename Scalar>
+    UExtFunction<Scalar>::UExtFunction(MeshSharedPtr mesh) : MeshFunction<Scalar>(mesh)
+    {
+      this->num_components = 1;
+      this->set_quad_2d(&g_quad_2d_std);
     }
 
     template HERMES_API class ExactSolutionScalar<double>;
@@ -598,5 +605,8 @@ namespace Hermes
     template HERMES_API class ZeroSolution<std::complex<double> >;
     template HERMES_API class ZeroSolutionVector<double>;
     template HERMES_API class ZeroSolutionVector<std::complex<double> >;
+
+    template HERMES_API class UExtFunction<double>;
+    template HERMES_API class UExtFunction<std::complex<double> >;
   }
 }

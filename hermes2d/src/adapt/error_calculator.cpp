@@ -156,7 +156,7 @@ namespace Hermes
     }
     
     template<typename Scalar>
-    void ErrorCalculator<Scalar>::calculate_errors(Hermes::vector<MeshFunctionSharedPtr<Scalar> >& coarse_solutions_, Hermes::vector<MeshFunctionSharedPtr<Scalar> >& fine_solutions_, bool sort_and_store)
+    void ErrorCalculator<Scalar>::calculate_errors(Hermes::vector<MeshFunctionSharedPtr<Scalar> > coarse_solutions_, Hermes::vector<MeshFunctionSharedPtr<Scalar> > fine_solutions_, bool sort_and_store)
     {
       this->coarse_solutions = coarse_solutions_;
       this->fine_solutions = fine_solutions_;
@@ -297,8 +297,6 @@ namespace Hermes
       
       if(component >= this->component_count)
         throw Hermes::Exceptions::ValueException("component", component, this->component_count);
-      if(element_id >= element_count[component])
-        throw Hermes::Exceptions::ValueException("element_id", element_id, this->element_count[component]);
 
       return this->errors[component][element_id];
     }
@@ -310,8 +308,6 @@ namespace Hermes
         return 0.0;
       if(component >= this->component_count)
         throw Hermes::Exceptions::ValueException("component", component, this->component_count);
-      if(element_id >= element_count[component])
-        throw Hermes::Exceptions::ValueException("element_id", element_id, this->element_count[component]);
 
       return this->norms[component][element_id];
     }

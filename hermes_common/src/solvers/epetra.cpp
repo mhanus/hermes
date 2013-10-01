@@ -229,13 +229,13 @@ namespace Hermes
     }
 
     template<>
-    void EpetraMatrix<std::complex<double> >::multiply_with_vector(std::complex<double>* vector_in, std::complex<double>*& vector_out, bool vector_out_initialized) const
+    void EpetraMatrix<std::complex<double> >::multiply_with_vector(std::complex<double>* vector_in, std::complex<double>* vector_out, bool vector_out_initialized) const
     {
       SparseMatrix<std::complex<double> >::multiply_with_vector(vector_in, vector_out, vector_out_initialized);
     }
    
    template<>
-   void EpetraMatrix<double>::multiply_with_vector(double* vector_in, double*& vector_out, bool vector_out_initialized) const
+   void EpetraMatrix<double>::multiply_with_vector(double* vector_in, double* vector_out, bool vector_out_initialized) const
    {
       Epetra_Vector x(View, mat->OperatorDomainMap(), vector_in);
       Epetra_Vector y(mat->OperatorRangeMap());
@@ -276,7 +276,7 @@ namespace Hermes
     }
    
     template<>
-    void EpetraMatrix<double>::export_to_file(char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format)
+    void EpetraMatrix<double>::export_to_file(const char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format)
     {
       throw Exceptions::MethodNotImplementedException("EpetraMatrix<double>::export_to_file");
       /*
@@ -290,21 +290,9 @@ namespace Hermes
     }
     
     template<>
-    void EpetraMatrix<std::complex<double> >::export_to_file(char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format)
+    void EpetraMatrix<std::complex<double> >::export_to_file(const char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format)
     {
       throw Exceptions::MethodNotImplementedException("EpetraMatrix<double>::export_to_file");
-    }
-    
-    template<>
-    void EpetraMatrix<double>::import_from_file(char *filename, const char *var_name, MatrixExportFormat fmt)
-    {
-      throw Exceptions::MethodNotImplementedException("EpetraMatrix<double>::import_from_file");
-    }
-    
-    template<>
-    void EpetraMatrix<std::complex<double> >::import_from_file(char *filename, const char *var_name, MatrixExportFormat fmt)
-    {
-      throw Exceptions::MethodNotImplementedException("EpetraMatrix<double>::import_from_file");
     }
 
     template<typename Scalar>
@@ -371,10 +359,13 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    void EpetraVector<Scalar>::change_sign()
+    Vector<Scalar>* EpetraVector<Scalar>::change_sign()
     {
-      for (unsigned int i = 0; i < this->size; i++) (*vec)[i] *= -1.;
-      for (unsigned int i = 0; i < this->size; i++) (*vec_im)[i] *= -1.;
+      for (unsigned int i = 0; i < this->size; i++)
+        (*vec)[i] *= -1.;
+      for (unsigned int i = 0; i < this->size; i++)
+        (*vec_im)[i] *= -1.;
+      return this;
     }
 
     template<typename Scalar>
@@ -435,39 +426,23 @@ namespace Hermes
     }
     
     template<>
-    void EpetraVector<double>::export_to_file(char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format)
+    bool EpetraVector<double>::export_to_file(const char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format)
     {
       switch (fmt)
       {
-      //case DF_MATLAB_SPARSE:
-      case EXPORT_FORMAT_MATLAB_MATIO: //TODO
+      case DF_MATLAB_SPARSE:
       case EXPORT_FORMAT_PLAIN_ASCII:
-        EpetraExt::VectorToMatlabFile(filename, *this->vec);
-        //return true;
+        EpetraExt::VectorToHandle(file, *this->vec);
+        return true;
       }
       
-      //return false;
+      return false;
     }
     
     template<>
-    void EpetraVector<std::complex<double> >::export_to_file(char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format)
+    bool EpetraVector<std::complex<double> >::export_to_file(const char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format)
     {
-      throw Exceptions::MethodNotImplementedException("EpetraVector<std::complex<double> >::export_to_file");
-      //return false;
-    }
-    
-    template<>
-    void EpetraVector<double>::import_from_file(char *filename, const char *var_name, MatrixExportFormat fmt)
-    {
-      throw Exceptions::MethodNotImplementedException("EpetraVector<double>::import_from_file");
-      //return false;
-    }
-    
-    template<>
-    void EpetraVector<std::complex<double> >::import_from_file(char *filename, const char *var_name, MatrixExportFormat fmt)
-    {
-      throw Exceptions::MethodNotImplementedException("EpetraVector<std::complex<double> >::import_from_file");
-      //return false;
+      return false;
     }
 
     template class HERMES_API EpetraMatrix<double>;

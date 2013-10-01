@@ -71,6 +71,8 @@ namespace Hermes
       this->nonlinear = !to_set;
       if(dirichlet_lift_accordingly)
         this->add_dirichlet_lift = !this->nonlinear;
+      else
+        this->add_dirichlet_lift = this->nonlinear;
     }
 
     template<typename Scalar>
@@ -260,14 +262,13 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    void DiscreteProblem<Scalar>::init_assembling(Traverse::State**& states, int& num_states, Solution<Scalar>** u_ext_sln)
+    void DiscreteProblem<Scalar>::init_assembling(Traverse::State**& states, int& num_states, Solution<Scalar>** u_ext_sln, Hermes::vector<MeshSharedPtr >& meshes)
     {
       // Optionally zero cache hits and misses.
       if(this->report_cache_hits_and_misses)
         this->zero_cache_hits_and_misses();
 
       // Vector of meshes.
-      Hermes::vector<MeshSharedPtr > meshes;
       for(unsigned int space_i = 0; space_i < spaces.size(); space_i++)
         meshes.push_back(spaces[space_i]->get_mesh());
       for(unsigned int ext_i = 0; ext_i < this->wf->ext.size(); ext_i++)
@@ -313,7 +314,8 @@ namespace Hermes
       // Initialize states && previous iterations.
       int num_states;
       Traverse::State** states;
-      this->init_assembling(states, num_states, u_ext_sln);
+      Hermes::vector<MeshSharedPtr> meshes;
+      this->init_assembling(states, num_states, u_ext_sln, meshes);
 
       // Creating matrix sparse structure.
       // If there are no states, return.
@@ -336,7 +338,7 @@ namespace Hermes
 
             DiscreteProblemDGAssembler<Scalar>* dgAssembler;
             if(is_DG)
-              dgAssembler = new DiscreteProblemDGAssembler<Scalar>(this->threadAssembler[thread_number], this->spaces);
+              dgAssembler = new DiscreteProblemDGAssembler<Scalar>(this->threadAssembler[thread_number], this->spaces, meshes);
 
             for(int state_i = start; state_i < end; state_i++)
             {

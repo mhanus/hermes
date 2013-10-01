@@ -5,6 +5,8 @@
  #define PI (3.141592653589793) 
 
 using namespace Hermes;
+using namespace Hermes::Solvers;
+using namespace Hermes::Algebra;
 using namespace Hermes::Hermes2D;
 
 
@@ -83,7 +85,7 @@ public:
 
   virtual double value (double x, double y) const;
 
- virtual Ord ord(Ord x, Ord y) const ;
+  virtual Ord ord(double x, double y) const ;
 
    MeshFunction<double>* clone() const;
 };

@@ -47,7 +47,11 @@ namespace Hermes
 #ifdef WITH_BSON
       virtual void save_bson(const char* filename) const;
 #endif
-    protected:
+      /// Function returning the integration order that
+      /// should be used when integrating the function.
+      virtual Hermes::Ord ord(double x, double y) const = 0;
+
+      protected:
       /// For scaling of the solution.
       Scalar exact_multiplicator;
       template<typename T> friend class Solution;
@@ -77,10 +81,6 @@ namespace Hermes
         derivatives (x, y, dx, dy);
         return value (x, y);
       };
-
-      /// Function returning the integration order that
-      /// should be used when integrating the function.
-      virtual Hermes::Ord ord(Hermes::Ord x, Hermes::Ord y) const = 0;
     };
 
 
@@ -100,7 +100,7 @@ namespace Hermes
 
       /// Function returning the value.
       virtual Scalar value (double x, double y) const;
-      virtual Ord ord(Ord x, Ord y) const;
+      virtual Ord ord(double x, double y) const;
 
       /// Function returning the derivatives.
       virtual void derivatives (double x, double y, Scalar& dx, Scalar& dy) const;
@@ -142,10 +142,6 @@ namespace Hermes
         derivatives (x, y, dx, dy);
         return value (x, y);
       };
-
-      /// Function returning the integration order that
-      /// should be used when integrating the function.
-      virtual Hermes::Ord ord(Hermes::Ord x, Hermes::Ord y) const = 0;
     };
     
     /// @ingroup meshFunctions
@@ -160,7 +156,7 @@ namespace Hermes
 
       virtual void derivatives (double x, double y, Scalar& dx, Scalar& dy) const;
 
-      virtual Ord ord(Ord x, Ord y) const;
+      virtual Ord ord(double x, double y) const;
       virtual MeshFunction<Scalar>* clone() const;
 
       /// Saves the exact solution to an XML file.
@@ -185,7 +181,7 @@ namespace Hermes
 
       virtual void derivatives (double x, double y, Scalar& dx, Scalar& dy) const;
 
-      virtual Ord ord(Ord x, Ord y) const;
+      virtual Ord ord(double x, double y) const;
       virtual MeshFunction<Scalar>* clone() const;
     };
 
@@ -201,7 +197,7 @@ namespace Hermes
 
       virtual void derivatives (double x, double y, Scalar2<Scalar>& dx, Scalar2<Scalar>& dy) const;
 
-      virtual Ord ord(Ord x, Ord y) const;
+      virtual Ord ord(double x, double y) const;
       virtual MeshFunction<Scalar>* clone() const;
 
       /// Saves the exact solution to an XML file.
@@ -226,7 +222,7 @@ namespace Hermes
 
       virtual void derivatives (double x, double y, Scalar2<Scalar>& dx, Scalar2<Scalar>& dy) const;
 
-      virtual Ord ord(Ord x, Ord y) const;
+      virtual Ord ord(double x, double y) const;
       virtual MeshFunction<Scalar>* clone() const;
     };
 
@@ -248,9 +244,42 @@ namespace Hermes
 
       /// Function returning the integration order that
       /// should be used when integrating the function.
-      virtual Hermes::Ord ord(Hermes::Ord x, Hermes::Ord y) const;
+      virtual Hermes::Ord ord(double x, double y) const;
 
       MeshFunction<double>* clone() const;
+    };
+
+    /// @ingroup meshFunctions
+    /// Function operating on previous nonlinear solutions in assembling (u_ext)
+    template<typename Scalar>
+    class HERMES_API UExtFunction : public MeshFunction<Scalar>
+    {
+    public:
+      /// \param[in] polynomialOrder The polynomial order used for the space where the solution of the
+      /// internal Laplace equation is sought.
+      UExtFunction(MeshSharedPtr mesh);
+      virtual ~UExtFunction() {};
+
+      /// Function returning the value.
+#ifndef H2D_USE_SECOND_DERIVATIVES
+      virtual void value (Scalar* values, Scalar* dx, Scalar* dy, Scalar result[3]) const = 0;
+      virtual void ord(Hermes::Ord* values, Hermes::Ord* dx, Hermes::Ord* dy, Hermes::Ord result[3]) const = 0;
+#else
+      virtual Scalar value (Scalar* values, Scalar* dx, Scalar* dy, Scalar* dxx, Scalar* dxy, Scalar* dyy, Scalar result[6]) const = 0;
+      virtual Hermes::Ord ord(Hermes::Ord* values, Hermes::Ord* dx, Hermes::Ord* dy, Hermes::Ord* dxx, Hermes::Ord* dxy, Hermes::Ord* dyy, Hermes::Ord result[6]) const = 0;
+#endif
+
+      virtual Func<Scalar>* get_pt_value(double x, double y, bool use_MeshHashGrid = false, Element* e = NULL)
+      {
+        throw Exceptions::Exception("UExtFunction is only usable in assembling, not for getting point values.");
+        return NULL;
+      }
+
+      virtual void precalculate(int order, int mask) {};
+
+      MeshFunction<Scalar>* clone() const = 0;
+
+      template<typename Scalar> friend Func<Scalar>* init_fn(UExtFunction<Scalar>* fu, Func<Scalar>** u_ext, int u_ext_size, const int order);
     };
   }
 }

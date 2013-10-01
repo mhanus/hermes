@@ -1,9 +1,4 @@
-#define HERMES_REPORT_ALL
-#define HERMES_REPORT_FILE "application.log"
 #include "definitions.h"
-#include "function/function.h"
-
-using namespace RefinementSelectors;
 
 //  This example solves the same nonlinear problem as the previous
 //  one but now using the Newton's method.
@@ -94,17 +89,17 @@ int main(int argc, char* argv[])
   {
     newton.solve(coeff_vec);
   }
-  catch(NewtonSolver<double>::NewtonException& e)
+  catch(Hermes::Exceptions::NonlinearException& e)
   {
     switch(e.get_exception_state())
     {
-       case NewtonSolver<double>::AboveMaxIterations:
+       case AboveMaxIterations:
          std::cout << std::endl << "\t\t\tAboveMaxIterations" << std::endl;
          break;
-      case NewtonSolver<double>::BelowMinDampingCoeff:
+      case BelowMinDampingCoeff:
         std::cout << std::endl << "\t\t\tBelowMinDampingCoeff" << std::endl;
          break;
-      case NewtonSolver<double>::AboveMaxAllowedResidualNorm:
+      case AboveMaxAllowedResidualNorm:
         std::cout << std::endl << "\t\t\tAboveMaxAllowedResidualNorm" << std::endl;
          break;
     }
