@@ -113,7 +113,6 @@ project(hermes2d)
   set(SRC
     src/boundary_conditions/essential_boundary_conditions.cpp
     src/api2d.cpp
-    src/calculation_continuity.cpp
     src/graph.cpp
     src/mixins2d.cpp
     src/weakform/weakform.cpp
@@ -375,7 +374,6 @@ project(hermes2d)
   set(HEADERS
     include/api2d.h
     include/boundary_conditions/essential_boundary_conditions.h
-    include/calculation_continuity.h
     include/mixins2d.h
     include/graph.h
     include/weakform/weakform.h
