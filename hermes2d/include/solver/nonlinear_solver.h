@@ -94,11 +94,11 @@ namespace Hermes
       /// \return If the main loop in solve() should finalize after this.
       virtual bool handle_convergence_state_return_finished(NonlinearConvergenceState state, Scalar* coeff_vec) = 0;
 
-      /// Set the residual norm tolerance for ending the Newton's loop.
+      /// Set the residual norm tolerance for ending the nonlinear solution loop.
       /// Default: this->set_tolerance(1e-8, ResidualNormAbsolute);
       /// \param[in] handleMultipleTolerancesAnd If true, multiple tolerances defined will have to be all fulfilled in order to proclaim
       /// solution as a correct one. If false, only one will be enough.
-      void set_tolerance(double newton_tol, NonlinearConvergenceMeasurementType toleranceType, bool handleMultipleTolerancesAnd = false);
+      virtual void set_tolerance(double tolerance_, NonlinearConvergenceMeasurementType toleranceType, bool handleMultipleTolerancesAnd = false);
 
       /// Get the number of iterations.
       int get_num_iters() const;
