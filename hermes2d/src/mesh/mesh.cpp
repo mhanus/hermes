@@ -1103,8 +1103,12 @@ namespace Hermes
         length_1 = vector_length(v1->x - v0->x, v1->y - v0->y),
         length_2 = vector_length(v2->x - v1->x, v2->y - v1->y),
         length_3 = vector_length(v0->x - v2->x, v0->y - v2->y);
-      if(length_1 < Hermes::epsilon || length_2 < Hermes::epsilon || length_3 < Hermes::epsilon)
-        throw Hermes::Exceptions::Exception("Edge of triangular element #%d has length less than Hermes::epsilon.", i);
+      if(length_1 < Hermes::epsilon || length_2 < Hermes::epsilon || length_3 < Hermes::epsilon) {
+        std::cout << "v0: (" << v0->id << "," << v0->x << "," << v0->y << ")" << std::endl;
+        std::cout << "v1: (" << v1->id << "," << v1->x << "," << v1->y << ")" << std::endl;
+        std::cout << "v2: (" << v2->id << "," << v2->x << "," << v2->y << ")" << std::endl;
+        throw Hermes::Exceptions::Exception("Edge of triangular element #%d has length less than 1e-14.", i);
+      }
 
       // checking that vertices do not lie on the same line
       if(same_line(v0->x, v0->y, v1->x, v1->y, v2->x, v2->y)) {
