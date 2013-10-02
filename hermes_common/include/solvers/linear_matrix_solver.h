@@ -143,6 +143,7 @@ namespace Hermes
     protected:
       virtual void set_factorization_scheme(FactorizationScheme reuse_scheme);
 
+    public:
       unsigned int factorization_scheme;
     };
 

@@ -244,7 +244,10 @@ namespace Hermes
                   if(am->dof[i] >= 0)
                     for (unsigned int j = 0; j < an->cnt; j++)
                       if(an->dof[j] >= 0)
+                      {
                         mat->pre_add_ij(am->dof[i], an->dof[j]);
+                        //std::cout << "m" << m << " n" << n << " i" << i << " j" << j << "\t (" << am->dof[i] <<  ", " << an->dof[j] << ")" << std::endl;
+                      }
                 }
               }
             }
