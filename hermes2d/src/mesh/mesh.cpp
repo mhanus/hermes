@@ -1260,8 +1260,12 @@ namespace Hermes
         throw Hermes::Exceptions::Exception("Edge of triangular element #%d has length less than Hermes::epsilon.", i);
 
       // checking that vertices do not lie on the same line
-      if(same_line(v0->x, v0->y, v1->x, v1->y, v2->x, v2->y))
+      if(same_line(v0->x, v0->y, v1->x, v1->y, v2->x, v2->y)) {
+        std::cout << "v0: (" << v0->id << "," << v0->x << "," << v0->y << ")" << std::endl;
+        std::cout << "v1: (" << v1->id << "," << v1->x << "," << v1->y << ")" << std::endl;
+        std::cout << "v2: (" << v2->id << "," << v2->x << "," << v2->y << ")" << std::endl;
         throw Hermes::Exceptions::Exception("Triangular element #%d: all vertices lie on the same line.", i);
+      }
 
       // checking positive orientation. If not positive, swapping vertices
       if(!is_convex(v1->x - v0->x, v1->y - v0->y, v2->x - v0->x, v2->y - v0->y))
@@ -1303,16 +1307,48 @@ namespace Hermes
 
       // checking that vertex v1 lies on the right of the diagonal v2-v0
       int vertex_1_ok = is_convex(v1->x - v0->x, v1->y - v0->y, v2->x - v0->x, v2->y - v0->y);
-      if(!vertex_1_ok) throw Hermes::Exceptions::Exception("Vertex v1 of quad element #%d does not lie on the right of the diagonal v2-v0.", i);
+      if(!vertex_1_ok) {
+        std::cout << std::endl;
+        std::cout << "v0: (" << v0->id << "," << v0->x << "," << v0->y << ")" << std::endl;
+        std::cout << "v1: (" << v1->id << "," << v1->x << "," << v1->y << ")" << std::endl;
+        std::cout << "v2: (" << v2->id << "," << v2->x << "," << v2->y << ")" << std::endl;
+        std::cout << "v3: (" << v3->id << "," << v3->x << "," << v3->y << ")" << std::endl;
+        std::cout << std::endl;
+        throw Hermes::Exceptions::Exception("Vertex v1 of quad element #%d does not lie on the right of the diagonal v2-v0.", i);
+      }
       // checking that vertex v3 lies on the left of the diagonal v2-v0
       int vertex_3_ok = is_convex(v2->x - v0->x, v2->y - v0->y, v3->x - v0->x, v3->y - v0->y);
-      if(!vertex_3_ok) throw Hermes::Exceptions::Exception("Vertex v3 of quad element #%d does not lie on the left of the diagonal v2-v0.", i);
+      if(!vertex_3_ok) {
+        std::cout << std::endl;
+        std::cout << "v0: (" << v0->id << "," << v0->x << "," << v0->y << ")" << std::endl;
+        std::cout << "v1: (" << v1->id << "," << v1->x << "," << v1->y << ")" << std::endl;
+        std::cout << "v2: (" << v2->id << "," << v2->x << "," << v2->y << ")" << std::endl;
+        std::cout << "v3: (" << v3->id << "," << v3->x << "," << v3->y << ")" << std::endl;
+        std::cout << std::endl;
+        throw Hermes::Exceptions::Exception("Vertex v3 of quad element #%d does not lie on the left of the diagonal v2-v0.", i);
+      }
       // checking that vertex v2 lies on the right of the diagonal v3-v1
       int vertex_2_ok = is_convex(v2->x - v1->x, v2->y - v1->y, v3->x - v1->x, v3->y - v1->y);
-      if(!vertex_2_ok) throw Hermes::Exceptions::Exception("Vertex v2 of quad element #%d does not lie on the right of the diagonal v3-v1.", i);
+      if(!vertex_2_ok) {
+        std::cout << std::endl;
+        std::cout << "v0: (" << v0->id << "," << v0->x << "," << v0->y << ")" << std::endl;
+        std::cout << "v1: (" << v1->id << "," << v1->x << "," << v1->y << ")" << std::endl;
+        std::cout << "v2: (" << v2->id << "," << v2->x << "," << v2->y << ")" << std::endl;
+        std::cout << "v3: (" << v3->id << "," << v3->x << "," << v3->y << ")" << std::endl;
+        std::cout << std::endl;
+        throw Hermes::Exceptions::Exception("Vertex v2 of quad element #%d does not lie on the right of the diagonal v3-v1.", i);
+      }
       // checking that vertex v0 lies on the left of the diagonal v3-v1
       int vertex_0_ok = is_convex(v3->x - v1->x, v3->y - v1->y, v0->x - v1->x, v0->y - v1->y);
-      if(!vertex_0_ok) throw Hermes::Exceptions::Exception("Vertex v0 of quad element #%d does not lie on the left of the diagonal v2-v1.", i);
+      if(!vertex_0_ok) {
+        std::cout << std::endl;
+        std::cout << "v0: (" << v0->id << "," << v0->x << "," << v0->y << ")" << std::endl;
+        std::cout << "v1: (" << v1->id << "," << v1->x << "," << v1->y << ")" << std::endl;
+        std::cout << "v2: (" << v2->id << "," << v2->x << "," << v2->y << ")" << std::endl;
+        std::cout << "v3: (" << v3->id << "," << v3->x << "," << v3->y << ")" << std::endl;
+        std::cout << std::endl;
+        throw Hermes::Exceptions::Exception("Vertex v0 of quad element #%d does not lie on the left of the diagonal v2-v1.", i);
+      }
     }
 
     bool Mesh::rescale(double x_ref, double y_ref)

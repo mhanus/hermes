@@ -146,6 +146,10 @@ namespace Hermes
             typename Space<Scalar>::NodeData* nd = this->ndata + vn->id;
             Node* en = e->en[i];
             nd = this->ndata + en->id;
+            
+            //if (en->ref <= 1 && en->bnd == 0)
+            //  std::cout << en->id << "/" << e->id+175 << " (" << en->ref << ") === " << en->p1 << " --- " << en->p2 << std::endl;
+            
             if(nd->dof == this->H2D_UNASSIGNED_DOF)
             {
               // If the edge node is not constrained, assign it dofs.
