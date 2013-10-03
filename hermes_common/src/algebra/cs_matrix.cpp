@@ -334,6 +334,86 @@ namespace Hermes
     {
       CSMatrix<std::complex<double> >::add(m, n, v);
     }
+    
+    template<typename Scalar>
+    void CSCMatrix<Scalar>::add_as_block(unsigned int offset_i, unsigned int offset_j, SparseMatrix<Scalar>* mat)
+    {
+      CSCMatrix<Scalar>* mat_cast = dynamic_cast<CSCMatrix<Scalar>*>(mat);
+      if(!mat_cast)
+        throw Hermes::Exceptions::Exception("Wrong matrix type detected in CSCMatrix<Scalar>::add_as_block().");
+
+      CSCMatrix<Scalar>::Iterator mat_it(mat_cast);
+      CSCMatrix<Scalar>::Iterator this_it(this);
+
+      // Sanity check.
+      bool this_not_empty = this_it.init();
+      if(!this_not_empty)
+        throw Hermes::Exceptions::Exception("Empty matrix detected in CSCMatrix<Scalar>::add_as_block_csc().");
+
+      // Iterate through the small matrix column by column and add all nonzeros
+      // to the large one.
+      bool mat_not_finished = mat_it.init();
+      if(!mat_not_finished)
+        throw Hermes::Exceptions::Exception("Empty matrix detected in CSCMatrix<Scalar>::add_as_block_csc().");
+
+      int mat_i, mat_j;
+      Scalar mat_val;
+      while(mat_not_finished)
+      {
+        mat_it.get_current_position(mat_i, mat_j, mat_val);
+        bool found = this_it.move_to_position(mat_i + offset_i, mat_j + offset_j);
+        if(!found)
+          throw Hermes::Exceptions::Exception("Nonzero matrix entry at %d, %d not found in CSCMatrix<Scalar>::add_as_block().",
+          mat_i + offset_i, mat_j + offset_j);
+        this_it.add_to_current_position(mat_val);
+        mat_not_finished = mat_it.move_ptr();
+      }
+    }
+
+    template<typename Scalar>
+    void CSCMatrix<Scalar>::add_sparse_matrix(SparseMatrix<Scalar>* mat)
+    {
+      assert(this->get_size() == mat->get_size());
+      
+      CSCMatrix<Scalar>* mat_cast = dynamic_cast<CSCMatrix<Scalar>*>(mat);
+      if(!mat_cast)
+        throw Hermes::Exceptions::Exception("Wrong matrix type detected in CSCMatrix<Scalar>::add_sparse_matrix().");
+      
+      // Create iterators for both matrices.
+      CSCMatrix<Scalar>::Iterator mat_it(mat_cast);
+      CSCMatrix<Scalar>::Iterator this_it(this);
+      
+      int mat_i, mat_j;
+      Scalar mat_val;
+      int this_i, this_j;
+      Scalar this_val;
+
+      bool mat_not_finished = mat_it.init();
+      bool this_not_finished = this_it.init();
+      while(mat_not_finished && this_not_finished)
+      {
+        mat_it.get_current_position(mat_i, mat_j, mat_val);
+        //printf("mat: current position %d %d %g\n", mat_i, mat_j, mat_val);
+        this_it.get_current_position(this_i, this_j, this_val);
+        //printf("this: current position %d %d %g\n", this_i, this_j, this_val);
+        while(mat_i != this_i || mat_j != this_j)
+        {
+          //printf("SHOULD NOT BE HERE\n");
+          this_not_finished = this_it.move_ptr();
+          if(!this_not_finished)
+          {
+            printf("Entry %d %d does not exist in the matrix to which it is contributed.\n", mat_i, mat_j);
+            throw Hermes::Exceptions::Exception("Incompatible matrices in add_csc_matrix().");
+          }
+          this_it.get_current_position(this_i, this_j, this_val);
+        }
+        this_it.add_to_current_position(mat_val);
+        mat_not_finished = mat_it.move_ptr();
+        this_not_finished = this_it.move_ptr();
+        if(mat_not_finished && !this_not_finished)
+          throw Hermes::Exceptions::Exception("Incompatible matrices in add_csc_matrix().");
+      }
+    }
 
     template<typename Scalar>
     Scalar CSCMatrix<Scalar>::get(unsigned int m, unsigned int n) const
@@ -780,6 +860,99 @@ namespace Hermes
       CSRMatrix<Scalar>* new_matrix = new CSRMatrix<Scalar>();
       new_matrix->create(this->get_size(), this->get_nnz(), this->get_Ap(), this->get_Ai(), this->get_Ax());
       return new_matrix;
+    }
+   
+    template<typename Scalar>
+    bool CSMatrix<Scalar>::Iterator::init()
+    {
+      if(this->size == 0 || this->nnz == 0) return false;
+      this->Ap_pos = 0;
+      this->Ai_pos = 0;
+      return true;
+    }
+
+    template<typename Scalar>
+    CSMatrix<Scalar>::Iterator::Iterator(CSMatrix<Scalar>* mat)
+    {
+      this->size = mat->get_size();
+      this->nnz = mat->get_nnz();
+      this->Ai = mat->get_Ai();
+      this->Ap = mat->get_Ap();
+      this->Ax = mat->get_Ax();
+      this->Ai_pos = 0;
+      this->Ap_pos = 0;
+    }
+
+    template<typename Scalar>
+    bool CSMatrix<Scalar>::Iterator::move_ptr()
+    {
+      if(Ai_pos >= nnz - 1) return false; // It is no longer possible to find next element.
+      if(Ai_pos + 1 >= Ap[Ap_pos + 1])
+      {
+        Ap_pos++;
+      }
+      Ai_pos++;
+      return true;
+    }
+
+    template<typename Scalar>
+    void CSMatrix<Scalar>::Iterator::add_to_current_position(Scalar val)
+    {
+      this->Ax[this->Ai_pos] += val;
+    }
+
+    template<typename Scalar>
+    CSCMatrix<Scalar>::Iterator::Iterator(CSCMatrix<Scalar>* mat) : CSMatrix<Scalar>::Iterator(mat)
+    {
+    }
+
+    template<typename Scalar>
+    void CSCMatrix<Scalar>::Iterator::get_current_position(int& i, int& j, Scalar& val)
+    {
+      i = this->Ai[this->Ai_pos];
+      j = this->Ap_pos;
+      val = this->Ax[this->Ai_pos];
+    }
+
+    template<typename Scalar>
+    bool CSCMatrix<Scalar>::Iterator::move_to_position(int i, int j)
+    {
+      int ii, jj;
+      Scalar val;
+      get_current_position(ii, jj, val);
+      while (!(ii == i && jj == j))
+      {
+        if(!this->move_ptr()) return false;
+        get_current_position(ii, jj, val);
+      }
+      return true;
+    }
+
+    template<typename Scalar>
+    CSRMatrix<Scalar>::Iterator::Iterator(CSRMatrix<Scalar>* mat) : CSMatrix<Scalar>::Iterator(mat)
+    {
+    }
+
+    template<typename Scalar>
+    void CSRMatrix<Scalar>::Iterator::get_current_position(int& i, int& j, Scalar& val)
+    {
+      i = this->Ai[this->Ai_pos];
+      j = this->Ap_pos;
+      val = this->Ax[this->Ai_pos];
+    }
+
+    template<typename Scalar>
+    bool CSRMatrix<Scalar>::Iterator::move_to_position(int i, int j)
+    {
+      int ii, jj;
+      Scalar val;
+      get_current_position(ii, jj, val);
+      while (!(ii == i && jj == j))
+      {
+        if(!this->move_ptr()) return false;
+        get_current_position(ii, jj, val);
+      }
+      return true;
     }
   }
 }
