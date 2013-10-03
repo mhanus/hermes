@@ -110,6 +110,26 @@ namespace Hermes
       /// Number of non-zero entries ( =  Ap[size]).
       unsigned int nnz;
       template<typename T> friend SparseMatrix<T>*  create_matrix();
+      
+      class Iterator
+      {
+      public:
+        Iterator(CSMatrix<Scalar>* mat);
+        bool init();
+        virtual void get_current_position(int& i, int& j, Scalar& val) = 0;
+        virtual bool move_to_position(int i, int j) = 0;
+        bool move_ptr();
+        void add_to_current_position(Scalar val);
+      
+      protected:
+        int size;
+        int nnz;
+        int* Ai;
+        int* Ap;
+        Scalar* Ax;
+        int Ai_pos;
+        int Ap_pos;       
+      };
     };
 
     /// \brief General CSC Matrix class.
@@ -132,6 +152,16 @@ namespace Hermes
       virtual Scalar get(unsigned int m, unsigned int n) const;
 
       virtual void add(unsigned int m, unsigned int n, Scalar v);
+      
+      /// Add matrix. Optimized for CSC storage format.
+      /// @param[in] mat matrix to be added
+      virtual void add_sparse_matrix(SparseMatrix<Scalar>* mat);
+
+      /// Add matrix to specific position. Optimized for CSC storage format.
+      /// @param[in] i row in target matrix coresponding with top row of added matrix
+      /// @param[in] j column in target matrix coresponding with lef column of added matrix
+      /// @param[in] mat added matrix
+      virtual void add_as_block(unsigned int i, unsigned int j, SparseMatrix<Scalar>* mat);
 
       void multiply_with_vector(Scalar* vector_in, Scalar*& vector_out, bool vector_out_initialized) const;
 
@@ -140,6 +170,15 @@ namespace Hermes
 
       /// Duplicates a matrix (including allocation).
       virtual CSMatrix<Scalar>* duplicate() const;
+      
+    protected:
+      class Iterator : public CSMatrix<Scalar>::Iterator
+      {
+      public:
+        Iterator(CSCMatrix<Scalar>* mat);
+        void get_current_position(int& i, int& j, Scalar& val);
+        bool move_to_position(int i, int j);
+      };
     };
 
     /// \brief General CSR Matrix class.
@@ -169,11 +208,6 @@ namespace Hermes
       /// Duplicates a matrix (including allocation).
       virtual SparseMatrix<Scalar>* duplicate() const;
 
-      /// Add matrix.
-      /// @param[in] mat matrix to be added
-      virtual void add_matrix(CSMatrix<Scalar>* mat);
-      virtual void add_sparse_matrix(SparseMatrix<Scalar>* mat);
-
       /// Important - normal SparseMatrix has the pages structure suitable for CSC matrix, so we need
       /// to override the structure creation here.
       /// add indices of nonzero matrix element
@@ -181,6 +215,15 @@ namespace Hermes
       /// @param[in] row  - row index
       /// @param[in] col  - column index
       virtual void pre_add_ij(unsigned int row, unsigned int col);
+      
+    protected:
+      class Iterator : public CSMatrix<Scalar>::Iterator
+      {
+      public:
+        Iterator(CSRMatrix<Scalar>* mat);
+        void get_current_position(int& i, int& j, Scalar& val);
+        bool move_to_position(int i, int j);  
+      };
     };
   }
 }
