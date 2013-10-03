@@ -22,21 +22,21 @@ namespace Hermes { namespace Hermes2D {
     public:
       StationaryPicardSolver(DiscreteProblem<double>* dp)
         : PicardSolver<double>(dp), 
-          have_rhs(false), dynamic_solver_tolerance(false), jacobian_change_on_algebraic_level(false) 
+          have_rhs(false), dynamic_solver_tolerance(false), jacobian_change_on_algebraic_level(true) 
       {
         constant_jacobian = true;
       }
       
       StationaryPicardSolver(WeakForm<double>* wf, SpaceSharedPtr<double>& space) 
         : PicardSolver<double>(wf, space), 
-          have_rhs(false), dynamic_solver_tolerance(false), jacobian_change_on_algebraic_level(false) 
+          have_rhs(false), dynamic_solver_tolerance(false), jacobian_change_on_algebraic_level(true) 
       {
         constant_jacobian = true;
       }
       
       StationaryPicardSolver(WeakForm<double>* wf, const Hermes::vector<SpaceSharedPtr<double> >& spaces) 
         : PicardSolver<double>(wf, spaces),
-          have_rhs(false), dynamic_solver_tolerance(false), jacobian_change_on_algebraic_level(false)
+          have_rhs(false), dynamic_solver_tolerance(false), jacobian_change_on_algebraic_level(true)
       {
         constant_jacobian = true;
       }

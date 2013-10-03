@@ -38,6 +38,7 @@ void StationaryPicardSolver::solve(double *coeff_vec)
 
   unsigned int vec_in_memory = 1;   // There is already one vector in the memory.
   this->set_parameter_value(this->p_vec_in_memory, &vec_in_memory);
+  it++;
   
   if (this->tolerance_set[2])
   {
@@ -70,37 +71,41 @@ void StationaryPicardSolver::solve(double *coeff_vec)
     this->process_vector_output(this->residual, it);
 
     // Solve the linear system.
-    if (Hermes::HermesCommonApi.get_integral_param_value(Hermes::matrixSolverType) == Hermes::SOLVER_AZTECOO && dynamic_solver_tolerance)
-      dynamic_cast<Solvers::AztecOOSolver<double>*>(matrix_solver)->set_tolerance(
-        std::min(0.1, (it==1 && this->tolerance_set[2]) ? initial_residual_norm : calculate_residual_norm())
-      );
+    Solvers::IterSolver<double>* iter_solver = dynamic_cast<Solvers::IterSolver<double>*>(matrix_solver);
     
-    if (it == 1)
-      // Always factorize for the first time.
-      this->matrix_solver->set_reuse_scheme(Solvers::HERMES_CREATE_STRUCTURE_FROM_SCRATCH);
-    else if (jacobian_change_on_algebraic_level)
-      // The case when Jacobian is updated on an algebraic level (new assembling is not needed, but new factorization is). 
-      this->matrix_solver->set_reuse_scheme(Solvers::HERMES_REUSE_MATRIX_REORDERING);
-    
-    this->matrix_solver->solve(coeff_vec);
-    
+    if (iter_solver)
+    {
+      if (dynamic_solver_tolerance)
+        iter_solver->set_tolerance(
+          std::min(0.1, (it==1 && this->tolerance_set[2]) ? initial_residual_norm : calculate_residual_norm())
+        );
+    }
+    else
+    {
+      // Always factorize for the first time or in the case when Jacobian is updated on an algebraic level 
+      // (new assembling is not needed, but new factorization is). 
+      if (jacobian_change_on_algebraic_level)
+        this->matrix_solver->set_reuse_scheme(Solvers::HERMES_CREATE_STRUCTURE_FROM_SCRATCH);
+      else
+        this->matrix_solver->set_reuse_scheme(Solvers::HERMES_REUSE_MATRIX_STRUCTURE_COMPLETELY);
+    }
+
+    this->matrix_solver->solve(this->sln_vector);
     this->handle_UMFPACK_reports();
     
     jacobian_change_on_algebraic_level = false;
 
     memcpy(this->sln_vector, this->matrix_solver->get_sln_vector(), sizeof(double)*ndof);
     have_rhs = false;
-        
-    if (!this->on_step_end())
+
+    if(!this->on_step_end())
     {
       this->deinit_solving(coeff_vec);
       this->deinit_anderson();
       this->on_finish();
       return;
     }
-
-    //this->handle_previous_vectors(vec_in_memory);
-
+    
     if (this->tolerance_set[2] && !have_rhs)
     {
       dp->assemble(sln_vector, residual);
@@ -116,8 +121,8 @@ void StationaryPicardSolver::solve(double *coeff_vec)
     }
     
     this->handle_previous_vectors(vec_in_memory);
-  
-    if(!this->on_step_end())
+    
+    if(this->anderson_is_on && !this->on_step_end())
     {
       this->deinit_solving(coeff_vec);
       this->deinit_anderson();
@@ -151,11 +156,22 @@ void StationaryPicardSolver::use_dynamic_solver_tolerance(bool to_set)
 
 bool StationaryPicardSolver::converged()
 {  
-  double rel_res2 = std::numeric_limits<double>::max();
-  double rel_res6 = std::numeric_limits<double>::max();
+  double rel_err = std::numeric_limits<double>::max();
+  double rel_res = std::numeric_limits<double>::max();
   
   if (this->tolerance_set[2])
   {
+    rel_res = calculate_residual_norm() / initial_residual_norm;
+    
+    // Output for the user.
+    this->info("\tPicard: iteration %d, nDOFs %d, relative residual %g%%", this->get_current_iteration_number(), this->ndof, rel_res * 100);
+
+    if(rel_res < 1e-12)
+      this->warn("\tPicard: a very small error threshold met, the loop should end.");
+  }
+  
+  if (this->tolerance_set[6])
+  {  
     // This is the new sln_vector.
     double* new_sln_vector = this->matrix_solver->get_sln_vector();
     
@@ -168,21 +184,10 @@ bool StationaryPicardSolver::converged()
       abs_error += std::abs((this->sln_vector[i] - new_sln_vector[i]) * (this->sln_vector[i] - new_sln_vector[i]));
     abs_error = std::sqrt(abs_error);
     
-    rel_res2 = abs_error / new_norm;
+    rel_err = abs_error / new_norm;
     
     // Output for the user.
-    this->info("\tPicard: iteration %d, nDOFs %d, relative error %g%%", this->get_current_iteration_number(), this->ndof, rel_res2 * 100);
-  }
-  
-  if (this->tolerance_set[6])
-  {  
-    rel_res6 = calculate_residual_norm() / initial_residual_norm;
-    
-    // Output for the user.
-    this->info("\tPicard: iteration %d, nDOFs %d, relative residual %g%%", this->get_current_iteration_number(), this->ndof, rel_res6 * 100);
-
-    if(rel_res6 < 1e-12)
-      this->warn("\tPicard: a very small error threshold met, the loop should end.");
+    this->info("\tPicard: iteration %d, nDOFs %d, relative error %g%%", this->get_current_iteration_number(), this->ndof, rel_err * 100);
   }
   
   bool conv;
@@ -191,16 +196,16 @@ bool StationaryPicardSolver::converged()
     conv = true;
     
     if (this->tolerance_set[2])
-      conv = conv && (rel_res2 < this->tolerance[2]);
+      conv = conv && (rel_res < this->tolerance[2]);
     if (this->tolerance_set[6])
-      conv = conv && (rel_res6 < this->tolerance[6]);
+      conv = conv && (rel_err < this->tolerance[6]);
   }
   else
   {
     if (this->tolerance_set[2])
-      conv = (rel_res2 < this->tolerance[2]);
+      conv = (rel_res < this->tolerance[2]);
     if (this->tolerance_set[6])
-      conv = (rel_res6 < this->tolerance[6]);
+      conv = (rel_err < this->tolerance[6]);
   }
   
   return conv;
@@ -303,23 +308,25 @@ namespace Neutronics
         production_matrix->multiply_with_vector(sln_vector, resv);
       
       double inv_norm = 1./get_l2_norm(resv, ndof);
-      for (int i = 0; i < ndof; i++) 
+      for (int i = 0; i < ndof; i++)
+      {
         sln_vector[i] *= inv_norm;
+        resv[i] *= inv_norm;
+      }
       
       unshifted_jacobian->multiply_with_vector(sln_vector, Ax);
-      production_matrix->multiply_with_vector(sln_vector, resv);
-
+            
+      for (int i = 0; i < ndof; i++) 
+      {
+        double Mxi = resv[i];
+        lambda += Ax[i]*Mxi;
+      }
+      
       residual->set_vector(resv);
       delete [] resv;
       
       have_rhs = true;
       have_Ax = true;
-      
-      for (int i = 0; i < ndof; i++) 
-      {
-        double Mxi = residual->get(i);
-        lambda += Ax[i]*Mxi;
-      }
             
       keff = 1./lambda;
       
@@ -359,6 +366,7 @@ namespace Neutronics
       delete jacobian;
       jacobian = unshifted_jacobian;
       matrix_solver = Solvers::create_linear_solver<double>(jacobian, residual);
+      matrix_solver->set_reuse_scheme(Solvers::HERMES_CREATE_STRUCTURE_FROM_SCRATCH);
     }
     
     // Multiply the resulting dominant eigenvector by -1 if it is negative.
@@ -382,6 +390,7 @@ namespace Neutronics
     {
       delete jacobian;
       jacobian = unshifted_jacobian->duplicate();
+      this->matrix_solver->set_reuse_scheme(Solvers::HERMES_CREATE_STRUCTURE_FROM_SCRATCH);
     }
     
     SparseMatrix<double> *shift_prod = production_matrix->duplicate();
