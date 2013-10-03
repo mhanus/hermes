@@ -19,7 +19,7 @@ const int P_INIT[N_EQUATIONS] = {        // Initial polynomial orders for the in
 //
 // Adaptivity setting.
 //
-const bool DO_ADAPTIVITY = true;
+const bool DO_ADAPTIVITY = false;
 
 AdaptStoppingCriterionLevels<double> stoppingCriterion(0.5);           // Stopping criterion based on refining elements with similar errors.
 // AdaptStoppingCriterionSingleElement<double> stoppingCriterion(0.5); // Stopping criterion based on maximum element error.
@@ -37,8 +37,8 @@ const int NDOF_STOP = 500000;             // Adaptivity process stops when the n
                                          // this limit. This is mainly to prevent h-adaptivity to go on forever.
 const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the number of adaptation steps grows over
                                          // this limit.
-Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
-                                                                  // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
+Hermes::MatrixSolverType matrix_solver_type = Hermes::SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
+                                                                       // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
                                                   
 
 const VisualizationOptions visualization = HERMES_SCALAR_VISUALIZATION;
@@ -47,7 +47,7 @@ const bool VTK_VISUALIZATION = visualization & (VTK_SCALAR_VISUALIZATION | VTK_A
 const bool DISPLAY_MESHES = false;       // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
 const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
 
-const int SAVE_MATRICES = 1; // If non-zero, save algebraic representation of individual parts comprising the weak formulation.
+const int SAVE_MATRICES = 0; // If non-zero, save algebraic representation of individual parts comprising the weak formulation.
                              // If SAVE_MATRICES == 2, the program ends right after saving the matrices.
 
 //
@@ -62,7 +62,7 @@ const bool USE_RAYLEIGH_QUOTIENT = true; // Use Rayleigh quotient to estimate th
                                           // When 'false', the reciprocal norm of current eigenvector iterate will be used.
 
 // Shifting strategy for the inverse iteration.
-const KeffEigenvalueIteration::ShiftStrategies SHIFT_STRATEGY = KeffEigenvalueIteration::FIXED_SHIFT;
+const KeffEigenvalueIteration::ShiftStrategies SHIFT_STRATEGY = KeffEigenvalueIteration::RAYLEIGH_QUOTIENT_SHIFT;
 const double FIXED_SHIFT = 0.666;
 const bool MODIFY_SHIFT_DURING_ADAPTIVITY = true;
 
@@ -70,6 +70,7 @@ int main(int argc, char* argv[])
 { 
   // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::HermesCommonApi.set_integral_param_value(Hermes::matrixSolverType, matrix_solver_type);
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
   
   // Time measurement.

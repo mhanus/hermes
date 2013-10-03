@@ -17,7 +17,7 @@ const int INIT_REF_NUM[N_EQUATIONS] = {
   /*-------*/
     0,  0,     // SP1
     0,  0,     // SP3
-//     1,  1,     // SP5
+//    0,  0,     // SP5
 //     2,  2,     // SP7
 //     2,  2      // SP9
   };
@@ -26,7 +26,7 @@ const int INIT_REF_NUM[N_EQUATIONS] = {
   /*-------*/
     1,  1,     // SP1
     1,  1,     // SP3
-//     1,  1,     // SP5
+//    1,  1,     // SP5
 //     2,  2,     // SP7
 //     2,  2      // SP9
   };
@@ -52,14 +52,14 @@ const int NDOF_STOP = 500000;             // Adaptivity process stops when the n
                                          // this limit. This is mainly to prevent h-adaptivity to go on forever.
 const int MAX_ADAPT_NUM = 30;            // Adaptivity process stops when the number of adaptation steps grows over
                                          // this limit.
-Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
+Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_AZTECOO;  // Possibilities: SOLVER_AMESOS, SOLVER_AZTECOO, SOLVER_MUMPS,
                                                                   // SOLVER_PETSC, SOLVER_SUPERLU, SOLVER_UMFPACK.
                                                   
 
 const VisualizationOptions visualization = HERMES_SCALAR_VISUALIZATION;
 const bool HERMES_VISUALIZATION = visualization & (HERMES_SCALAR_VISUALIZATION | HERMES_ANGULAR_VISUALIZATION);
 const bool VTK_VISUALIZATION = visualization & (VTK_SCALAR_VISUALIZATION | VTK_ANGULAR_VISUALIZATION);
-const bool DISPLAY_MESHES = true;       // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
+const bool DISPLAY_MESHES = false;       // Set to "true" to display initial mesh data. Requires HERMES_VISUALIZATION == true.
 const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
 
 const int SAVE_MATRICES = 0; // If non-zero, save algebraic representation of individual parts comprising the weak formulation.
@@ -84,8 +84,8 @@ const bool MODIFY_SHIFT_DURING_ADAPTIVITY = true;
 
 int main(int argc, char* argv[])
 {  
-    // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 0);
+  Hermes::HermesCommonApi.set_integral_param_value(Hermes::matrixSolverType, matrix_solver);
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
   
   // Time measurement.
@@ -175,6 +175,46 @@ int main(int argc, char* argv[])
   else
     keff_eigenvalue_iteration.set_keff_tol(DO_ADAPTIVITY ? TOL_PIT_CM : TOL_PIT_FM);
   
+  MlPrecond<double> *prec;
+  
+  if (matrix_solver == Hermes::SOLVER_AZTECOO)
+  {
+    prec = new MlPrecond<double>("nssa");
+
+    // output level, 0 being silent and 10 verbose
+    prec->set_param("ML output", 5);
+
+    // maximum number of levels possible
+    prec->set_param("max levels",5);
+    
+    prec->set_param("PDE equations", (int) N_EQUATIONS);
+
+    //common smoother options: Chebyshev, Gauss-Seidel, symmetric Gauss-Seidel, Jacobi, ILU, IC
+    prec->set_param("smoother: type","Chebyshev");
+    prec->set_param("smoother: sweeps", 4);
+
+    //set a different smoother on the first coarse level (finest level = 0)
+    //prec->set_param("smoother: type (level 1)","symmetric Gauss-Seidel");
+    //prec->set_param("smoother: sweeps (level 1)",4);
+
+    // use both pre and post smoothing
+    prec->set_param("smoother: pre or post", "both");
+
+    //coarsest level solve.  One can use any smoother here, as well.
+    prec->set_param("coarse: type","Amesos-KLU");
+
+    // coarsening options:  Uncoupled, MIS, Uncoupled-MIS (uncoupled on the finer grids, then switch to MIS)
+    prec->set_param("aggregation: type", "Uncoupled");
+    
+    prec->set_param("energy minimization: enable", true);
+    
+    keff_eigenvalue_iteration.set_iterative_method("bicgstab");
+    keff_eigenvalue_iteration.set_preconditioner(prec);
+    keff_eigenvalue_iteration.get_linear_solver()->use_node_wise_ordering(N_EQUATIONS);
+    keff_eigenvalue_iteration.get_linear_solver()->set_verbose_output(true);
+    keff_eigenvalue_iteration.use_dynamic_solver_tolerance();
+  }
+    
   WeakForm<double> prod_wf(wf.get_neq());
   //if (USE_RAYLEIGH_QUOTIENT || SHIFT_STRATEGY || SAVE_MATRICES)
     wf.get_fission_yield_part(&prod_wf);
@@ -348,7 +388,7 @@ int main(int argc, char* argv[])
     if (HERMES_VISUALIZATION)
     {
       views.show_solutions(power_iterates);
-      views.show_orders(spaces);
+      //views.show_orders(spaces);
     }
     if (VTK_VISUALIZATION)
     {
@@ -360,6 +400,9 @@ int main(int argc, char* argv[])
     double keff_err = 1e5*fabs(keff_eigenvalue_iteration.get_keff() - REF_K_EFF)/REF_K_EFF;
     Loggable::Static::info("K_eff error = %g pcm", keff_err);
   }
+  
+  if (matrix_solver == Hermes::SOLVER_AZTECOO)
+    delete prec;
     
   cpu_time.tick();
   Loggable::Static::info("Total running time: %g s", cpu_time.accumulated());
@@ -374,8 +417,6 @@ int main(int argc, char* argv[])
   SupportClasses::SourceFilter sf(power_iterates, *matprop);
   Loggable::Static::info("Total fission source by normalized flux: %g.", sf.integrate());
   
-  delete matprop;
-  
   if (HERMES_VISUALIZATION)
   {
     views.show_all_flux_moments(power_iterates, *matprop);
@@ -386,6 +427,8 @@ int main(int argc, char* argv[])
     views.save_solutions_vtk("flux", "flux", power_iterates);
     views.save_orders_vtk("space", spaces);
   }
+  
+  delete matprop;
   
   return 0;
 }
