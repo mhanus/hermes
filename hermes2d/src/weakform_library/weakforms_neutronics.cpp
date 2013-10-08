@@ -8,6 +8,8 @@ void StationaryPicardSolver::set_tolerance(double tolerance_, NonlinearConvergen
     this->clear_tolerances();
   
   NonlinearSolver<double>::set_tolerance(tolerance_, toleranceType, handleMultipleTolerancesAnd);
+  
+  measure_convergence_by_residual = this->tolerance_set[2];
 }
     
 void StationaryPicardSolver::solve(double *coeff_vec)
@@ -40,7 +42,7 @@ void StationaryPicardSolver::solve(double *coeff_vec)
   this->set_parameter_value(this->p_vec_in_memory, &vec_in_memory);
   it++;
   
-  if (this->tolerance_set[2])
+  if (this->measure_convergence_by_residual)
   {
     // Chances are residual has already been assembled in 'init_solving'.
     if (!have_rhs)
@@ -73,22 +75,17 @@ void StationaryPicardSolver::solve(double *coeff_vec)
     // Solve the linear system.
     Solvers::IterSolver<double>* iter_solver = dynamic_cast<Solvers::IterSolver<double>*>(matrix_solver);
     
-    if (iter_solver)
-    {
-      if (dynamic_solver_tolerance)
-        iter_solver->set_tolerance(
-          std::min(0.1, (it==1 && this->tolerance_set[2]) ? initial_residual_norm : calculate_residual_norm())
-        );
-    }
+    // Always factorize for the first time or in the case when Jacobian is updated on an algebraic level 
+    // (new assembling is not needed, but new factorization is). 
+    if (jacobian_change_on_algebraic_level)
+      this->matrix_solver->set_reuse_scheme(Solvers::HERMES_CREATE_STRUCTURE_FROM_SCRATCH);
     else
-    {
-      // Always factorize for the first time or in the case when Jacobian is updated on an algebraic level 
-      // (new assembling is not needed, but new factorization is). 
-      if (jacobian_change_on_algebraic_level)
-        this->matrix_solver->set_reuse_scheme(Solvers::HERMES_CREATE_STRUCTURE_FROM_SCRATCH);
-      else
-        this->matrix_solver->set_reuse_scheme(Solvers::HERMES_REUSE_MATRIX_STRUCTURE_COMPLETELY);
-    }
+      this->matrix_solver->set_reuse_scheme(Solvers::HERMES_REUSE_MATRIX_STRUCTURE_COMPLETELY);
+      
+    if (iter_solver &&  dynamic_solver_tolerance)
+        iter_solver->set_tolerance(
+          std::min(0.1, (it==1 && this->measure_convergence_by_residual) ? initial_residual_norm : calculate_residual_norm())
+        );
 
     this->matrix_solver->solve(this->sln_vector);
     this->handle_UMFPACK_reports();
@@ -106,7 +103,7 @@ void StationaryPicardSolver::solve(double *coeff_vec)
       return;
     }
     
-    if (this->tolerance_set[2] && !have_rhs)
+    if (this->measure_convergence_by_residual && !have_rhs)
     {
       dp->assemble(sln_vector, residual);
       have_rhs = true;
@@ -159,7 +156,7 @@ bool StationaryPicardSolver::converged()
   double rel_err = std::numeric_limits<double>::max();
   double rel_res = std::numeric_limits<double>::max();
   
-  if (this->tolerance_set[2])
+  if (this->measure_convergence_by_residual)
   {
     rel_res = calculate_residual_norm() / initial_residual_norm;
     
@@ -170,7 +167,9 @@ bool StationaryPicardSolver::converged()
       this->warn("\tPicard: a very small error threshold met, the loop should end.");
   }
   
-  if (this->tolerance_set[6])
+  bool measure_convergence_by_relative_error = this->tolerance_set[6];
+  
+  if (measure_convergence_by_relative_error)
   {  
     // This is the new sln_vector.
     double* new_sln_vector = this->matrix_solver->get_sln_vector();
@@ -195,16 +194,16 @@ bool StationaryPicardSolver::converged()
   {
     conv = true;
     
-    if (this->tolerance_set[2])
+    if (this->measure_convergence_by_residual)
       conv = conv && (rel_res < this->tolerance[2]);
-    if (this->tolerance_set[6])
+    if (measure_convergence_by_relative_error)
       conv = conv && (rel_err < this->tolerance[6]);
   }
   else
   {
-    if (this->tolerance_set[2])
+    if (this->measure_convergence_by_residual)
       conv = (rel_res < this->tolerance[2]);
-    if (this->tolerance_set[6])
+    if (measure_convergence_by_relative_error)
       conv = (rel_err < this->tolerance[6]);
   }
   
@@ -262,7 +261,7 @@ namespace Neutronics
     if (shift_strategy == FIXED_SHIFT)
       set_shift(fixed_shift);
         
-    if (rayleigh || this->tolerance_set[2])
+    if (rayleigh || this->measure_convergence_by_residual)
     {
       if (Ax)
         delete [] Ax;
@@ -305,7 +304,7 @@ namespace Neutronics
       if (have_rhs)
         residual->extract(resv);
       else
-        production_matrix->multiply_with_vector(sln_vector, resv);
+        production_matrix->multiply_with_vector(sln_vector, resv, true);
       
       double inv_norm = 1./get_l2_norm(resv, ndof);
       for (int i = 0; i < ndof; i++)
@@ -314,7 +313,7 @@ namespace Neutronics
         resv[i] *= inv_norm;
       }
       
-      unshifted_jacobian->multiply_with_vector(sln_vector, Ax);
+      unshifted_jacobian->multiply_with_vector(sln_vector, Ax, true);
             
       for (int i = 0; i < ndof; i++) 
       {
@@ -349,7 +348,7 @@ namespace Neutronics
       {
         // Save some time by using the mat-vec product instead of assembling the rhs.
         double *resv = new double[ndof];
-        production_matrix->multiply_with_vector(sln_vector, resv);
+        production_matrix->multiply_with_vector(sln_vector, resv, true);
         residual->set_vector(resv);
         have_rhs = true;
         delete [] resv;
@@ -448,7 +447,7 @@ namespace Neutronics
       Ax = new double [ndof];  
     
     if (!have_Ax) // the case above, or when R. quot. was not used
-      this->unshifted_jacobian->multiply_with_vector(this->sln_vector, Ax);
+      this->unshifted_jacobian->multiply_with_vector(this->sln_vector, Ax, true);
     
     double res = 0.0;
     double r = 1./keff;
@@ -472,7 +471,7 @@ namespace Neutronics
   double SourceIteration::calculate_residual_norm()
   {
     double *Ax = new double[ndof];
-    this->jacobian->multiply_with_vector(this->sln_vector, Ax);
+    this->jacobian->multiply_with_vector(this->sln_vector, Ax, true);
     
     double res = 0.0;
     
