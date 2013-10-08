@@ -72,7 +72,7 @@ const int SAVE_MATRICES = 0; // If non-zero, save algebraic representation of in
 double TOL_PIT_CM = 1e-5;   // Tolerance for convergence on the coarse mesh.
 double TOL_PIT_FM = 1e-9;   // Tolerance for convergence on the fine mesh.
 const int MAX_PIT = 1000;   // Maximal number of iterations.
-const bool MEASURE_CONVERGENCE_BY_RESIDUAL = true;  // When 'false', eigenvalue difference will be used to monitor convergence. 
+const bool MEASURE_CONVERGENCE_BY_RESIDUAL = false;  // When 'false', eigenvalue difference will be used to monitor convergence. 
 
 const bool USE_RAYLEIGH_QUOTIENT = true; // Use Rayleigh quotient to estimate the eigenvalue in each iteration. 
                                           // When 'false', the reciprocal norm of current eigenvector iterate will be used.
@@ -168,18 +168,17 @@ int main(int argc, char* argv[])
     
   Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
   keff_eigenvalue_iteration.set_max_allowed_iterations(MAX_PIT);  
-  keff_eigenvalue_iteration.measure_convergence_by_residual(MEASURE_CONVERGENCE_BY_RESIDUAL);
   
   if (MEASURE_CONVERGENCE_BY_RESIDUAL)
-    keff_eigenvalue_iteration.set_tolerance(DO_ADAPTIVITY ? TOL_PIT_CM : TOL_PIT_FM);
+    keff_eigenvalue_iteration.set_tolerance(DO_ADAPTIVITY ? TOL_PIT_CM : TOL_PIT_FM, ResidualNormRatioToInitial);
   else
     keff_eigenvalue_iteration.set_keff_tol(DO_ADAPTIVITY ? TOL_PIT_CM : TOL_PIT_FM);
   
-  MlPrecond<double> *prec;
+  Hermes::Preconditioners::MlPrecond<double> *prec;
   
   if (matrix_solver == Hermes::SOLVER_AZTECOO)
   {
-    prec = new MlPrecond<double>("nssa");
+    prec = new Hermes::Preconditioners::MlPrecond<double>("nssa");
 
     // output level, 0 being silent and 10 verbose
     prec->set_param("ML output", 5);
@@ -292,7 +291,7 @@ int main(int argc, char* argv[])
       selectors.push_back(&selector);
       
     if (MEASURE_CONVERGENCE_BY_RESIDUAL)
-      keff_eigenvalue_iteration.set_tolerance(TOL_PIT_FM);
+      keff_eigenvalue_iteration.set_tolerance(TOL_PIT_FM, ResidualNormRatioToInitial);
     else
       keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_FM);
     
