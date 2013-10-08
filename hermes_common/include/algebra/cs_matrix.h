@@ -163,7 +163,7 @@ namespace Hermes
       /// @param[in] mat added matrix
       virtual void add_as_block(unsigned int i, unsigned int j, SparseMatrix<Scalar>* mat);
 
-      void multiply_with_vector(Scalar* vector_in, Scalar*& vector_out, bool vector_out_initialized) const;
+      void multiply_with_vector(Scalar* vector_in, Scalar*& vector_out, bool vector_out_initialized = false) const;
 
       void export_to_file(const char *filename, const char *var_name, MatrixExportFormat fmt, char* number_format = "%lf");
       void import_from_file(const char *filename, const char *var_name, MatrixExportFormat fmt);

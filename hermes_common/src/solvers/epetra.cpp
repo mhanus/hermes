@@ -58,8 +58,8 @@ namespace Hermes
       this->std_map = new Epetra_BlockMap( this->grph->Map() );
       this->owner = true;
 
-      this->row_storage = true;
-      this->col_storage = false;
+      this->row_storage = op.row_storage;
+      this->col_storage = op.col_storage;
     }
     
     template<>
