@@ -1,7 +1,7 @@
 #define HERMES_REPORT_ALL
 #define HERMES_REPORT_FILE "application.log"
 #include "definitions.h"
-#include "problem_data.h"
+#include "../problem_data.h"
 #include "weakforms_neutronics.h"
 
 #include <iterator>
@@ -16,12 +16,12 @@ const bool HERMES_MESH_VISUALIZATION = false;
 
 const bool MULTIMESH = false;
 // Number of initial uniform mesh refinements.
-const int INIT_REF_NUM = 3;
+const int INIT_REF_NUM = 2;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
-const int P_INIT = 0;
+const int P_INIT = 2;
 
 const unsigned int N_GROUPS = 1;    // Monoenergetic (single group) problem.
-const int N = 12;                    
+const int N = 8;                    
 const int M = N_GROUPS * N*(N+2)/2;
 
 //
@@ -47,7 +47,7 @@ int main(int argc, char* args[])
   // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 1);
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::matrixSolverType, matrix_solver_type);
-  //Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
+  Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
   
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -117,13 +117,13 @@ int main(int argc, char* args[])
       wf = new IsotropicScatteringAndFissionMatrixForms(matprop, args[1]);
       SupportClasses::AngleGroupFlattener ag(N_GROUPS);
       for (int g = 0; g < N_GROUPS; g++)
-        spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[ag(0,g)] : meshes[0], P_INIT));
+        spaces.push_back(new H1Space<double>(MULTIMESH ? meshes[ag(0,g)] : meshes[0], P_INIT));
     }
     else
     {
       wf = new SNWeakForm(N, matprop, reflective_boundaries, vacuum_boundaries, args[1]);  
       for (int n = 0; n < M; n++)
-        spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+        spaces.push_back(new H1Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
     }
     
     Loggable::Static::info("Saving %s. NDOF = %d", args[1], Space<double>::get_num_dofs(spaces));
@@ -137,7 +137,7 @@ int main(int argc, char* args[])
     if (assemble_Q)  
     {
       solver.output_rhs(1);
-      solver.set_rhs_E_matrix_dump_format(DF_HERMES_BIN);;
+      solver.set_rhs_export_format(EXPORT_FORMAT_MATLAB_MATIO);
       solver.set_rhs_filename("Q");
       solver.set_rhs_number_format("%1.15f");
       solver.set_rhs_varname("Q");
@@ -145,7 +145,7 @@ int main(int argc, char* args[])
     if (assemble_matrix)
     {
       solver.output_matrix(1);
-      solver.set_matrix_E_matrix_dump_format(DF_HERMES_BIN);
+      solver.set_matrix_export_format(EXPORT_FORMAT_MATLAB_MATIO);
       solver.set_matrix_filename(!strcmp(args[1], "LQ") ? "L" : args[1]);
       solver.set_matrix_number_format("%1.15f");
       solver.set_matrix_varname(!strcmp(args[1], "LQ") ? "L" : args[1]);
@@ -170,15 +170,16 @@ int main(int argc, char* args[])
   Hermes::vector<SpaceSharedPtr<double> > spaces;
   
   for (int n = 0; n < M; n++)
-    spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+    //spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+    spaces.push_back(new H1Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
   
   int ndof =  Space<double>::get_num_dofs(spaces);
   
   // Display the mesh.
 //  OrderView oview("Coarse mesh", new WinGeom(0, 0, 440, 350));
 //  oview.show(spaces[0]);
-//  BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
-//  bview.show(spaces[0]);
+  BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
+  bview.show(spaces[0]);
 
   // Discrete formulation.
   DiscreteProblem<double> dp(&wf, spaces);
@@ -187,7 +188,7 @@ int main(int argc, char* args[])
   SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);
-  solver.set_tolerance(PICARD_TOL);
+  solver.set_tolerance(PICARD_TOL, ResidualNormRatioToInitial);
   solver.set_max_allowed_iterations(PICARD_MAX_ITER);
   solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);
@@ -272,19 +273,19 @@ int main(int argc, char* args[])
   
   if (SAVE_FLUX_PROFILE)
   {
-    std::string file = "flux_9.84375_y-R"+tostr(INIT_REF_NUM)+"P"+tostr(P_INIT)+"-S"+tostr(N)+".dat";
+    std::string file = "flux_x_0.1667-R"+tostr(INIT_REF_NUM)+"P"+tostr(P_INIT)+"-S"+tostr(N)+".dat";
 
-    double x = 9.84375;
+    double y = 0.1667;
     
     int nintervals = 100;
     double a = 10.;
-    double dy = a / nintervals; // advance by 1 mm
+    double dx = a / nintervals; // advance by 1 mm
     int npts = nintervals + 1;
     
     double *res = new double [(npts)*N_GROUPS];
         
     std::ofstream fs(file.c_str());
-    Loggable::Static::info("Saving the scalar flux profile at x=9.84375cm to %s", file.c_str());
+    Loggable::Static::info("Saving the scalar flux profile at y=0.1667cm to %s", file.c_str());
     
     fs << std::setprecision(16);
     
@@ -292,12 +293,12 @@ int main(int argc, char* args[])
     {
       std::cout << std::endl << "GROUP " << g << std::endl;
       
-      double y = 0;
+      double x = 0;
       
-      for (int i = 0; i < npts; i++, y+=dy)
+      for (int i = 0; i < npts; i++, x+=dx)
       {
-        (std::cout << "(" << x << "," << y << ")" << std::endl).flush();
         res[i+g*npts] = *scalar_fluxes[g]->get_pt_value(x, y)->val;    
+        (std::cout << "(" << x << "," << y << ") = " << res[i+g*npts] << std::endl).flush();
       }
       
       std::copy(res+g*(npts), res+(g+1)*(npts), std::ostream_iterator<double>(fs, "\n"));
