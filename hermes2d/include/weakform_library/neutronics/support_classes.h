@@ -615,11 +615,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         Views::ScalarView** sviews_app;
       
       protected:
-#ifndef NOGLUT
         void init(unsigned int width, unsigned int height, bool display_meshes);
-#else
-        void init(unsigned int width, unsigned int height, bool display_meshes) {};
-#endif
+
       public:
         Visualization(unsigned int G, unsigned int N, const OrdinatesData& odata, bool display_meshes = false)
           : Common::SupportClasses::Visualization(N*(N+2)/2*G, G, 450, 450, display_meshes), M(N*(N+2)/2), ag(G), sviews_app(NULL), odata(odata)
