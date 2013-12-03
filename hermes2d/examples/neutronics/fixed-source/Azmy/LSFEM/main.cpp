@@ -5,20 +5,22 @@
 #include "weakforms_neutronics.h"
 
 #include <iterator>
+#include <iomanip>
+
 const bool SAVE_FLUX_PROFILE = true;
 const bool SAVE_SLN_VECTOR = false;
 
 const bool HERMES_ANG_VISUALIZATION = false;
 const bool VTK_ANG_VISUALIZATION = true;
-const bool HERMES_SCAL_VISUALIZATION = true;
+const bool HERMES_SCAL_VISUALIZATION = false;
 const bool VTK_SCAL_VISUALIZATION = true;
 const bool HERMES_MESH_VISUALIZATION = false;
 
 const bool MULTIMESH = false;
 // Number of initial uniform mesh refinements.
-const int INIT_REF_NUM = 2;
+const int INIT_REF_NUM = 4;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
-const int P_INIT = 2;
+const int P_INIT = 1;
 
 const unsigned int N_GROUPS = 1;    // Monoenergetic (single group) problem.
 const int N = 8;                    
@@ -47,7 +49,7 @@ int main(int argc, char* args[])
   // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 1);
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::matrixSolverType, matrix_solver_type);
-  Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
+  Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 4);
   
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -107,12 +109,12 @@ int main(int argc, char* args[])
   if (argc > 1)
   {
     bool assemble_matrix = strcmp(args[1], "Q");
-    bool assemble_Q = !strcmp(args[1], "Q") || !strcmp(args[1], "LQ");
+    bool assemble_Q = !strcmp(args[1], "Q") || !strcmp(args[1], "AQ");
     
     WeakForm<double> *wf;
     Hermes::vector<SpaceSharedPtr<double> > spaces;
     
-    if (!strcmp(args[1], "S") || !strcmp(args[1], "F"))
+    if (false)//(!strcmp(args[1], "S") || !strcmp(args[1], "F"))
     {
       wf = new IsotropicScatteringAndFissionMatrixForms(matprop, args[1]);
       SupportClasses::AngleGroupFlattener ag(N_GROUPS);
@@ -138,7 +140,7 @@ int main(int argc, char* args[])
     {
       solver.output_rhs(1);
       solver.set_rhs_export_format(EXPORT_FORMAT_MATLAB_MATIO);
-      solver.set_rhs_filename("Q");
+      solver.set_rhs_filename("Q.mat");
       solver.set_rhs_number_format("%1.15f");
       solver.set_rhs_varname("Q");
     }
@@ -146,9 +148,9 @@ int main(int argc, char* args[])
     {
       solver.output_matrix(1);
       solver.set_matrix_export_format(EXPORT_FORMAT_MATLAB_MATIO);
-      solver.set_matrix_filename(!strcmp(args[1], "LQ") ? "L" : args[1]);
+      solver.set_matrix_filename(!strcmp(args[1], "AQ") ? "A.mat" : std::string(args[1])+".mat");
       solver.set_matrix_number_format("%1.15f");
-      solver.set_matrix_varname(!strcmp(args[1], "LQ") ? "L" : args[1]);
+      solver.set_matrix_varname(!strcmp(args[1], "AQ") ? "A" : args[1]);
     }
     
     try 
@@ -178,8 +180,8 @@ int main(int argc, char* args[])
   // Display the mesh.
 //  OrderView oview("Coarse mesh", new WinGeom(0, 0, 440, 350));
 //  oview.show(spaces[0]);
-  BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
-  bview.show(spaces[0]);
+//  BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
+//  bview.show(spaces[0]);
 
   // Discrete formulation.
   DiscreteProblem<double> dp(&wf, spaces);
@@ -265,7 +267,7 @@ int main(int argc, char* args[])
     std::ofstream fs(file.c_str());
     Loggable::Static::info("Saving the solution vector to %s", file.c_str());
 
-    fs << setprecision(16);
+    fs << std::setprecision(16);
     std::copy(sln_vector, sln_vector+ndof, std::ostream_iterator<double>(fs, "\n"));
     
     fs.close();
