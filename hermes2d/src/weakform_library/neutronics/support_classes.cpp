@@ -1155,7 +1155,6 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void OrdinatesData::ordinate_to_moment(unsigned int n, unsigned int l, int m, unsigned int g, unsigned int G, Func< Real >* const solution_fn, int num_quad_pts, Real* moment_values_at_quad_pts) const
     {
       SphericalHarmonic Rlm(l, m);
-      AngleGroupFlattener ag(G);
       
       for (int quad_pt = 0; quad_pt < num_quad_pts; quad_pt++)
       {
