@@ -117,6 +117,55 @@ private:
     //Real b(Real x, Real y) const;
   };
   
+  class VolumetricScatteringMF : protected GenericForm, public MatrixFormVol<double>
+	{
+	    const SupportClasses::OrdinatesData& odata;
+	    rank3 Sigma_sn;
+	    double Sigma_t;
+	    unsigned int L;
+	    unsigned int gto, gfrom;
+
+	public:
+	    VolumetricScatteringMF(const SupportClasses::OrdinatesData& odata,
+              unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom, unsigned int G,
+              const rank3& Sigma_sn, double Sigma_t)
+		: GenericForm(n, G), MatrixFormVol<double>(ag.pos(m,gto), ag.pos(n,gfrom)),
+		  odata(odata), Sigma_sn(Sigma_sn), Sigma_t(Sigma_t), L(Sigma_sn.size()-1), gto(gto), gfrom(gfrom)
+	  {
+	  };
+
+	    VolumetricScatteringMF(const SupportClasses::OrdinatesData& odata,
+			  const Hermes::vector<std::string>& areas,
+	                unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom, unsigned int G,
+	                const rank3& Sigma_sn, double Sigma_t)
+	  		: GenericForm(n, G), MatrixFormVol<double>(ag.pos(m,gto), ag.pos(n,gfrom)),
+	  		  odata(odata), Sigma_sn(Sigma_sn), Sigma_t(Sigma_t), L(Sigma_sn.size()-1), gto(gto), gfrom(gfrom)
+	  {
+ 		set_areas(areas);
+	  };
+
+	template<typename Real>
+	Real matrix_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *u, Func<Real> *v, Geom<Real> *e, Func<Real> **ext) const;
+
+	  virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, Func<double> **ext) const
+	  {
+		  return matrix_form<double>(n, wt, u_ext, u, v, e, ext);
+	  }
+
+	  virtual Ord ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v, Geom<Ord> *e, Func<Ord> **ext) const
+	  {
+		  return matrix_form<Ord>(n, wt, u_ext, u, v, e, ext);
+	  }
+
+	  MatrixFormVol<double>* clone() const
+	  {
+		return new SNWeakForm::VolumetricScatteringMF(*this);
+	  }
+
+	  //template<typename Real>
+	  //Real b(Real x, Real y) const;
+	};
+
   class VolumetricExternalSourceVF : protected GenericForm, public VectorFormVol<double>
   {
     const SupportClasses::OrdinatesData& odata;
