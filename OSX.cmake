@@ -23,8 +23,6 @@ IF (H2D_WITH_GLUT)
     IF (${GLUT_FILE} MATCHES ".*libglut.dylib")
         SET (GLUT_LIBRARY ${GLUT_FILE} CACHE STRING "libglut shows strange behaviour" FORCE)
         EXECUTE_PROCESS(COMMAND file ${GLUT_LIBRARY} OUTPUT_VARIABLE RESULT)
-
-        MESSAGE(STATUS "Using ${GLUT_LIBRARY} as ${RESULT}")
         
         ## The output is seen as one string
         EXECUTE_PROCESS(COMMAND "nm" ${GLUT_LIBRARY} OUTPUT_VARIABLE RESULT)
