@@ -1,6 +1,8 @@
 #include "definitions.h"
 #include <cstdlib>
 
+#define SPD
+
 IsotropicScatteringAndFissionMatrixForms::IsotropicScatteringAndFissionMatrixForms(const MaterialProperties::MaterialPropertyMaps& matprop, const char* out_tensor) : WeakForm<double>(matprop.get_G())
 {
   bool assemble_S = false;
@@ -143,6 +145,8 @@ Real SNWeakForm::VolumetricStreamingAndReactionsMF::b(Real x, Real y) const
 }
 */
 
+#ifndef SPD
+
 template<typename Real>
 Real SNWeakForm::VolumetricScatteringSourceVF::vector_form(int n, double* wt, Func< Real >* u_ext[], Func< Real >* v, Geom< Real >* e, Func< Real >** ext) const
 {
@@ -190,9 +194,9 @@ Real SNWeakForm::VolumetricScatteringSourceVF::vector_form(int n, double* wt, Fu
   
   //std::cout << "VolumetricScatteringSourceVF :: " << result << std::endl;
   
-  return /*1/Sigma_t**/result;
+  //return 1/Sigma_t*result;
+  return result;
 }
-
 
 template<typename Real>
 Real SNWeakForm::VolumetricScatteringMF::matrix_form(int n, double* wt, Func< Real >* u_ext[], Func< Real >* u, Func< Real >* v, Geom< Real >* e, Func< Real >** ext) const
@@ -237,10 +241,97 @@ Real SNWeakForm::VolumetricScatteringMF::matrix_form(int n, double* wt, Func< Re
 
   delete [] trialfn_moment_values_at_quad_pts;
 
+  return result;
+  //return 1/Sigma_t*result;
+}
+
+template<typename Real>
+Real SNWeakForm::VolumetricExternalSourceVF::vector_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *v,
+                                                  Geom<Real> *e, Func<Real> **ext) const
+{
+  Real result = Real(0.0);
+  SNWeakForm* _wf = static_cast<SNWeakForm*>(wf);
+
+  for (int quad_pt = 0; quad_pt < n; quad_pt++)
+  {
+    Real tmp = Q * ( _wf->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]) + Sigma_t * v->val[quad_pt] );
+
+    // Contribution to spatial integral.
+    if (geom_type == HERMES_AXISYM_X)
+      result += tmp * wt[quad_pt] * e->y[quad_pt];
+    else if (geom_type == HERMES_AXISYM_Y)
+      result += tmp * wt[quad_pt] * e->x[quad_pt];
+    else
+      result += tmp * wt[quad_pt];
+  }
+
+
+  //std::cout << "VolumetricExternalSourceVF :: " << result << std::endl;
+
   return /*1/Sigma_t**/result;
 }
 
-/*
+#else
+
+template<typename Real>
+Real SNWeakForm::VolumetricScatteringMF::matrix_form(int n, double* wt, Func< Real >* u_ext[], Func< Real >* u, Func< Real >* v, Geom< Real >* e, Func< Real >** ext) const
+{
+  Real result(0.0);
+  Real *trialfn_moment_values_at_quad_pts = new Real [n];
+  Real *testfn_moment_values_at_quad_pts = new Real [n];
+  SNWeakForm* _wf = static_cast<SNWeakForm*>(wf);
+
+    for (unsigned int l = 0; l <= L; l++)
+    {
+      Real deg_l_result(0.0);
+      double C = (2*l + 1) / (4*M_PI);
+
+      for (int m = -l; m <= l; m++)
+      {
+        if ( ((l + m) % 2) == 0 )
+        {
+        	odata.ordinate_to_moment(direction, l, m, gfrom, G, u, n, trialfn_moment_values_at_quad_pts);
+        	odata.ordinate_to_moment(direction, l, m, gto, G, v, n, testfn_moment_values_at_quad_pts);
+
+
+          SupportClasses::SphericalHarmonic Rlm(l, m);
+          double rlm_in_dir = Rlm(odata.xi[direction], odata.eta[direction], odata.mu[direction]);
+
+          for (int quad_pt = 0; quad_pt < n; quad_pt++)
+          {
+        	  Real trialfn_group_source_moment = trialfn_moment_values_at_quad_pts[quad_pt] * rlm_in_dir;
+        	  Real testfn_group_source_moment = testfn_moment_values_at_quad_pts[quad_pt] * rlm_in_dir;
+
+        	  Real tmp = -trialfn_group_source_moment * C * Sigma_sn[l][gto][gfrom]
+        	                                          * ( _wf->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]) +
+        	                                              Sigma_t * v->val[quad_pt] );
+			  tmp -= testfn_group_source_moment * C * Sigma_sn[l][gto][gto]
+												* ( _wf->calculate_a_dot_v(direction, u->dx[quad_pt], u->dy[quad_pt]) +
+													Sigma_t * u->val[quad_pt] );
+			  tmp += testfn_group_source_moment * C * Sigma_sn[l][gto][gto] * trialfn_group_source_moment * C * Sigma_sn[l][gto][gfrom];
+
+            // Contribution to spatial integral.
+            if (geom_type == HERMES_AXISYM_X)
+              deg_l_result += tmp * wt[quad_pt] * e->y[quad_pt];
+            else if (geom_type == HERMES_AXISYM_Y)
+              deg_l_result += tmp * wt[quad_pt] * e->x[quad_pt];
+            else
+              deg_l_result += tmp * wt[quad_pt];
+          }
+        }
+      }
+
+      result += deg_l_result;
+    }
+
+    delete [] trialfn_moment_values_at_quad_pts;
+    delete [] testfn_moment_values_at_quad_pts;
+
+
+  return /*1/Sigma_t**/result;
+}
+
+
 template<typename Real>
 Real SNWeakForm::VolumetricScatteringSourceVF::vector_form(int n, double* wt, Func< Real >* u_ext[], Func< Real >* v, Geom< Real >* e, Func< Real >** ext) const
 {
@@ -302,34 +393,8 @@ Real SNWeakForm::VolumetricScatteringSourceVF::vector_form(int n, double* wt, Fu
   
   return result;
 }
-*/
-template<typename Real>
-Real SNWeakForm::VolumetricExternalSourceVF::vector_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *v,
-                                                  Geom<Real> *e, Func<Real> **ext) const
-{
-  Real result = Real(0.0);
-  SNWeakForm* _wf = static_cast<SNWeakForm*>(wf);
-            
-  for (int quad_pt = 0; quad_pt < n; quad_pt++)
-  {            
-    Real tmp = Q * ( _wf->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]) + Sigma_t * v->val[quad_pt] );
-    
-    // Contribution to spatial integral.
-    if (geom_type == HERMES_AXISYM_X)
-      result += tmp * wt[quad_pt] * e->y[quad_pt];
-    else if (geom_type == HERMES_AXISYM_Y)
-      result += tmp * wt[quad_pt] * e->x[quad_pt];
-    else
-      result += tmp * wt[quad_pt];
-  }
 
-  
-  //std::cout << "VolumetricExternalSourceVF :: " << result << std::endl;
-  
-  return /*1/Sigma_t**/result;
-}
 
-/*
 template<typename Real>
 Real SNWeakForm::VolumetricExternalSourceVF::vector_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *v,
                                                   Geom<Real> *e, Func<Real> **ext) const
@@ -383,20 +448,8 @@ Real SNWeakForm::VolumetricExternalSourceVF::vector_form(int n, double *wt, Func
   
   return result;
 }
-*/
-/*
-double SNWeakForm::VolumetricExternalSourceVF::Q(double x, double y) const
-{
-  //return 1 + (3*M_PI*(1 + x)*(1 + y)*std::cos((M_PI*(1 + x)*std::pow(1 + y,2))/8.))/20. + (M_PI*std::pow(1 + y,2)*std::cos((M_PI*(1 + x)*std::pow(1 + y,2))/8.))/10. + std::sin((M_PI*(1 + x)*std::pow(1 + y,2))/8.);
- 
-  return 6;
-}
 
-Ord SNWeakForm::VolumetricExternalSourceVF::Q(Ord x, Ord y) const
-{
-  return Ord(0);
-}
-*/
+#endif
 
 double SNWeakForm::SpecularReflectionMF_X::value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v,
                                                       Geom<double> *e, Func<double> **ext) const
