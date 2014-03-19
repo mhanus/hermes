@@ -1178,10 +1178,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         moment_values_at_quad_pts[quad_pt] = Real(0);
         
         for (int n = 0; n < M; n++)
-          moment_values_at_quad_pts[quad_pt] += pw[n] * solution_fns[ag.pos(n,g)]->val[quad_pt] * Rlm(xi[n], eta[n], mu[n]);
+          moment_values_at_quad_pts[quad_pt] += /*pw[n] **/ solution_fns[ag.pos(n,g)]->val[quad_pt] * Rlm(xi[n], eta[n], mu[n]);
       
-        moment_values_at_quad_pts[quad_pt] *= 2;       // add contribution from the lower hemisphere
-        moment_values_at_quad_pts[quad_pt] *= 4*M_PI;  // make integral of the unity function over the whole sphere equal to 4 PI
+        //moment_values_at_quad_pts[quad_pt] *= 2;       // add contribution from the lower hemisphere
+        //moment_values_at_quad_pts[quad_pt] *= 4*M_PI;  // make integral of the unity function over the whole sphere equal to 4 PI
       }
     }
     
@@ -1199,10 +1199,10 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         moment_values_at_quad_pts[quad_pt] = Real(0);
          
         for (int n = 0; n < M; n++)
-          moment_values_at_quad_pts[quad_pt] += pw[n] * solution_values_at_quad_pts.at(ag.pos(n,g))[quad_pt] * Rlm(xi[n], eta[n], mu[n]);
+          moment_values_at_quad_pts[quad_pt] +=/* pw[n] **/ solution_values_at_quad_pts.at(ag.pos(n,g))[quad_pt] * Rlm(xi[n], eta[n], mu[n]);
       
-        moment_values_at_quad_pts[quad_pt] *= 2;  // add contribution from the lower hemisphere
-        moment_values_at_quad_pts[quad_pt] *= 4*M_PI;  // make integral of the unity function over the whole sphere equal to 4 PI
+        //moment_values_at_quad_pts[quad_pt] *= 2;  // add contribution from the lower hemisphere
+        //moment_values_at_quad_pts[quad_pt] *= 4*M_PI;  // make integral of the unity function over the whole sphere equal to 4 PI
       }
     }
     
@@ -1242,7 +1242,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         if (sln[sol_idx]->get_fn_order() > order)
           order = sln[sol_idx]->get_fn_order();
     }
-    
+
     MeshFunction<double>* MomentFilter::ValDxDy::clone() const
     {
       Hermes::vector<MeshFunctionSharedPtr<double> > slns;
