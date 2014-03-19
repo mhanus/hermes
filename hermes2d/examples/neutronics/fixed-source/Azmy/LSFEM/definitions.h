@@ -10,6 +10,10 @@ using namespace Hermes::Mixins;
 using namespace Neutronics;
 using namespace Neutronics::SN;
 
+//#define VER1
+//#define VER2
+#define VER3
+
 class SNWeakForm : public WeakForm<double>
 {
 public:
@@ -28,29 +32,34 @@ private:
       GeomType geom_type;
       unsigned int G;
       unsigned int direction;
+      unsigned int direction_from;
       SupportClasses::AngleGroupFlattener ag;
       
       GenericForm(unsigned int direction, unsigned int G, GeomType geom_type = HERMES_PLANAR)
-        : geom_type(geom_type), direction(direction), G(G), ag(G)
+        : geom_type(geom_type), direction(direction), direction_from(direction), G(G), ag(G)
       {};
+      GenericForm(unsigned int direction, unsigned int direction_from, unsigned int G, GeomType geom_type = HERMES_PLANAR)
+				: geom_type(geom_type), direction(direction), direction_from(direction_from), G(G), ag(G)
+			{};
   };
     
   class VolumetricStreamingAndReactionsMF : protected GenericForm, public MatrixFormVol<double>
   {
     double Sigma_t;
+    const SupportClasses::OrdinatesData& odata;
     
   public:
-    VolumetricStreamingAndReactionsMF(unsigned int n, unsigned int g, unsigned int G, double Sigma_t) 
+    VolumetricStreamingAndReactionsMF(const SupportClasses::OrdinatesData& odata, unsigned int n, unsigned int g, unsigned int G, double Sigma_t)
       : GenericForm(n, G), MatrixFormVol<double>(ag.pos(n,g), ag.pos(n,g)), 
-        Sigma_t(Sigma_t)
+        Sigma_t(Sigma_t), odata(odata)
     {
       this->setSymFlag(HERMES_SYM);
     };
     
-    VolumetricStreamingAndReactionsMF(const Hermes::vector<std::string>& areas, 
+    VolumetricStreamingAndReactionsMF(const SupportClasses::OrdinatesData& odata, const Hermes::vector<std::string>& areas,
                                       unsigned int n, unsigned int g, unsigned int G, double Sigma_t) 
       : GenericForm(n, G), MatrixFormVol<double>(ag.pos(n,g), ag.pos(n,g)), 
-        Sigma_t(Sigma_t)
+        Sigma_t(Sigma_t), odata(odata)
     {
       this->setSymFlag(HERMES_SYM);
       set_areas(areas);
@@ -129,18 +138,24 @@ private:
 	    VolumetricScatteringMF(const SupportClasses::OrdinatesData& odata,
               unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom, unsigned int G,
               const rank3& Sigma_sn, double Sigma_t)
-		: GenericForm(n, G), MatrixFormVol<double>(ag.pos(m,gto), ag.pos(n,gfrom)),
+		: GenericForm(m, n, G), MatrixFormVol<double>(ag.pos(m,gto), ag.pos(n,gfrom)),
 		  odata(odata), Sigma_sn(Sigma_sn), Sigma_t(Sigma_t), L(Sigma_sn.size()-1), gto(gto), gfrom(gfrom)
 	  {
+#if defined(VER2) or defined(VER3)
+	    	setSymFlag(HERMES_SYM);
+#endif
 	  };
 
 	    VolumetricScatteringMF(const SupportClasses::OrdinatesData& odata,
 			  const Hermes::vector<std::string>& areas,
 	                unsigned int m, unsigned int n, unsigned int gto, unsigned int gfrom, unsigned int G,
 	                const rank3& Sigma_sn, double Sigma_t)
-	  		: GenericForm(n, G), MatrixFormVol<double>(ag.pos(m,gto), ag.pos(n,gfrom)),
+	  		: GenericForm(m, n, G), MatrixFormVol<double>(ag.pos(m,gto), ag.pos(n,gfrom)),
 	  		  odata(odata), Sigma_sn(Sigma_sn), Sigma_t(Sigma_t), L(Sigma_sn.size()-1), gto(gto), gfrom(gfrom)
 	  {
+#if defined(VER2) or defined(VER3)
+	    	setSymFlag(HERMES_SYM);
+#endif
  		set_areas(areas);
 	  };
 
@@ -183,7 +198,8 @@ private:
       : GenericForm(n, G), VectorFormVol<double>(ag(n,g)), 
         odata(odata), Sigma_sn(Sigma_sn), Sigma_t(Sigma_t), L(Sigma_sn.size()-1),
         Q(isotropic ? Q/(4*M_PI) : Q), gto(g)
-    {};
+    {
+    };
     
     VolumetricExternalSourceVF(const SupportClasses::OrdinatesData& odata,
                                const Hermes::vector<std::string>& areas,
@@ -218,9 +234,10 @@ private:
    
   class BoundaryStreamingMF : protected GenericForm, public MatrixFormSurf<double>
   { 
+  	const SupportClasses::OrdinatesData& odata;
   public:
-    BoundaryStreamingMF(unsigned int n, unsigned int g, unsigned int G) 
-      : GenericForm(n, G), MatrixFormSurf<double>(ag.pos(n,g), ag.pos(n,g))
+    BoundaryStreamingMF(const SupportClasses::OrdinatesData& odata, unsigned int n, unsigned int g, unsigned int G)
+      : GenericForm(n, G), MatrixFormSurf<double>(ag.pos(n,g), ag.pos(n,g)), odata(odata)
     {};
 
     virtual double value(int n, double *wt, Func<double> *u_ext[], Func<double> *u, Func<double> *v, Geom<double> *e, Func<double> **ext) const;
@@ -235,11 +252,12 @@ private:
 
   class SpecularReflectionMF_X : protected GenericForm, public MatrixFormSurf<double>
   { 
+  	const SupportClasses::OrdinatesData& odata;
   public:
     SpecularReflectionMF_X(const SupportClasses::OrdinatesData& odata, 
                            unsigned int n, unsigned int g, unsigned int G,
                            const Hermes::vector<std::string>& reflective_boundaries) 
-      : GenericForm(n, G), MatrixFormSurf<double>(ag.pos(n,g), ag.pos(odata.reflections_about_x[n],g))
+      : GenericForm(n, G), MatrixFormSurf<double>(ag.pos(n,g), ag.pos(odata.reflections_about_x[n],g)), odata(odata)
     {
       set_areas(reflective_boundaries);
     };
@@ -256,11 +274,12 @@ private:
   
   class SpecularReflectionMF_Y : protected GenericForm, public MatrixFormSurf<double>
   { 
+  	const SupportClasses::OrdinatesData& odata;
   public:
     SpecularReflectionMF_Y(const SupportClasses::OrdinatesData& odata,
                            unsigned int n, unsigned int g, unsigned int G,
                            const Hermes::vector<std::string>& reflective_boundaries) 
-      : GenericForm(n, G), MatrixFormSurf<double>(ag.pos(n,g), ag.pos(odata.reflections_about_y[n],g))
+      : GenericForm(n, G), MatrixFormSurf<double>(ag.pos(n,g), ag.pos(odata.reflections_about_y[n],g)), odata(odata)
     {
       set_areas(reflective_boundaries);
     };
