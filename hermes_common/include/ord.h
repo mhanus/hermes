@@ -105,6 +105,9 @@ namespace Hermes
   HERMES_API Ord cos(const Ord &a);
   HERMES_API Ord log(const Ord &a);
   HERMES_API Ord exp(const Ord &a);
+
+  HERMES_API Ord max(double d, const Ord &o);
+  HERMES_API double max(double d, double o);
 }
 
 #endif

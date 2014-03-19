@@ -83,4 +83,6 @@ namespace Hermes
   Ord cos(const Ord &a) { return Ord::get_max_order(); }
   Ord log(const Ord &a) { return Ord::get_max_order(); }
   Ord exp(const Ord &a) { return Ord(3 * a.get_order()); }
+  Ord max(double d, const Ord &o) {return o;}
+  double max(double d, double o) { return std::max(d,o); }
 }
