@@ -1,5 +1,5 @@
 #include "hermes2d.h"
-#include "../../utils.h"
+#include "../../../utils.h"
 
 /* Namespaces used */
 
@@ -48,7 +48,7 @@ class SourceFunction : public Hermes2DFunction<double>
     {};
     
     virtual double value(double x, double y) const { return /*1.0*/eps*chi.value(x,y)/(4*M_PI); }
-    virtual Hermes::Ord value(Hermes::Ord x, Hermes::Ord y) const { return /*Hermes::Ord(1.0);*/eps*chi.value(x,y); }
+    virtual Hermes::Ord value(Hermes::Ord x, Hermes::Ord y) const { /*return Hermes::Ord(1.0);*/eps*chi.value(x,y); }
 };
 
 class SNWeakForm : public WeakForm<double>
