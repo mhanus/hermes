@@ -1,0 +1,21 @@
+#!/bin/bash
+
+NEBULA_DIR=`pwd`
+NEBULA_MATL_DIR=/Users/mhanus/Documents/projekty/eclipse/EVC/nebula/
+MATL=/Applications/MATLAB_R2012b.app/bin/matlab
+PARAVIEW=/Applications/paraview.app/Contents/MacOS/paraview
+
+./Nebula-LS A
+
+cp A.mat $NEBULA_MATL_DIR
+
+cd $NEBULA_MATL_DIR 
+$MATL -nosplash -nodesktop -automation -r "test; exit();"
+cd $NEBULA_DIR
+
+cp ${NEBULA_MATL_DIR}x.dat .
+
+./Nebula-LS -sln x.dat
+
+$PARAVIEW --data=scalar_flux.vtk
+

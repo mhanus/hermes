@@ -10,6 +10,8 @@ double ExtinctionFunction::value(double x, double y) const
     return chi0 * std::exp(5. - 5./(1.-(sx+sy)));
   else
     return 0.0;
+
+  return chi0;
 }
 
 Ord ExtinctionFunction::value(Ord x, Ord y) const
@@ -36,7 +38,7 @@ Real IsotropicScatteringMatrixForm::ScatteringMF::matrix_form( int n, double *wt
 SNWeakForm::SNWeakForm(unsigned int N, double extinction, double thermalization,
                        const Hermes::vector<std::string>& reflective_boundaries, const Hermes::vector<std::string>& inflow_boundaries,
                        const char* out_tensor) 
-  : WeakForm<double>(N*(N+2)/2), N(N), M(N*(N+2)/2), odata(SupportClasses::OrdinatesData(N, "lgvalues.txt"))
+  : WeakForm<double>(N*(N+2)/2), N(N), M(N*(N+2)/2), odata(SupportClasses::OrdinatesData(N, "../lgvalues.txt"))
 {  
     std::cout << odata;
     
@@ -97,7 +99,7 @@ double SNWeakForm::VolumetricStreamingAndReactionsMF::value(int n, double *wt, F
 Ord SNWeakForm::VolumetricStreamingAndReactionsMF::ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *u, Func<Ord> *v,
                                                   Geom<Ord> *e, Func<Ord> **ext) const
 { 
-  return u->val[0] * (v->dx[0]+v->dy[0]+v->val[0]+Sigma_t.value(e->x[i], e->y[i]));
+	return u->val[0] * (v->dx[0]+v->dy[0]+v->val[0]+Sigma_t.value(e->x[i], e->y[i]));
 }
 /*
 template<typename Real>

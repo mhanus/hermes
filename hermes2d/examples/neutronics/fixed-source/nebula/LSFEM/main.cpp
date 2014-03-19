@@ -1,7 +1,7 @@
 #define HERMES_REPORT_ALL
 #define HERMES_REPORT_FILE "application.log"
 #include "definitions.h"
-#include "problem_data.h"
+#include "../problem_data.h"
 #include "weakforms_neutronics.h"
 
 #include <iterator>
@@ -10,7 +10,7 @@ const bool SAVE_SLN_VECTOR = true;
 
 const bool HERMES_ANG_VISUALIZATION = false;
 const bool VTK_ANG_VISUALIZATION = true;
-const bool HERMES_SCAL_VISUALIZATION = true;
+const bool HERMES_SCAL_VISUALIZATION = false;
 const bool VTK_SCAL_VISUALIZATION = true;
 const bool HERMES_MESH_VISUALIZATION = false;
 
@@ -20,7 +20,7 @@ const int INIT_REF_NUM = 5;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
 const int P_INIT = 1;
 
-const int N = 6;          
+const int N = 8;
 const int M = N*(N+2)/2;
 
 //
@@ -33,7 +33,7 @@ const int PICARD_NUM_LAST_ITER_USED = 3;
 // 0 <= beta <= 1... parameter for the Anderson acceleration.
 const double PICARD_ANDERSON_BETA = 0;
 // Stopping criterion for the Picard's method.
-const double PICARD_TOL = 5e-3;
+const double PICARD_TOL = 1e-2;
 // Maximum allowed number of Picard iterations.
 const int PICARD_MAX_ITER = 1000; 
 // Value for constant initial condition.
@@ -46,7 +46,7 @@ int main(int argc, char* args[])
   // Set the number of threads used in Hermes.
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 1);
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::matrixSolverType, matrix_solver_type);
-  //Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
+  //Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 1);
   
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -97,21 +97,21 @@ int main(int argc, char* args[])
     case 2:
     {
       bool assemble_matrix = strcmp(args[1], "Q");
-      bool assemble_Q = !strcmp(args[1], "Q") || !strcmp(args[1], "LQ");
+      bool assemble_Q = !strcmp(args[1], "Q") || !strcmp(args[1], "AQ");
       
       WeakForm<double> *wf;
       Hermes::vector<SpaceSharedPtr<double> > spaces;
       
-      if (!strcmp(args[1], "S") || !strcmp(args[1], "F"))
+      if (false)//!strcmp(args[1], "S") || !strcmp(args[1], "F"))
       {
         wf = new IsotropicScatteringMatrixForm(extinction, thermalization);
-        spaces.push_back(new L2Space<double>(meshes[0], P_INIT));
+        spaces.push_back(new H1Space<double>(meshes[0], P_INIT));
       }
       else
       {
         wf = new SNWeakForm(N, extinction, thermalization, reflective_boundaries, vacuum_boundaries, args[1]);  
         for (int n = 0; n < M; n++)
-          spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+          spaces.push_back(new H1Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
       }
       
       Loggable::Static::info("Saving %s. NDOF = %d", args[1], Space<double>::get_num_dofs(spaces));
@@ -125,18 +125,18 @@ int main(int argc, char* args[])
       if (assemble_Q)  
       {
         solver.output_rhs(1);
-        solver.set_rhs_E_matrix_dump_format(DF_HERMES_BIN);;
-        solver.set_rhs_filename("Q");
+        solver.set_rhs_export_format(EXPORT_FORMAT_MATLAB_MATIO);
+        solver.set_rhs_filename("Q.mat");
         solver.set_rhs_number_format("%1.15f");
         solver.set_rhs_varname("Q");
       }
       if (assemble_matrix)
       {
         solver.output_matrix(1);
-        solver.set_matrix_E_matrix_dump_format(DF_HERMES_BIN);
-        solver.set_matrix_filename(!strcmp(args[1], "LQ") ? "L" : args[1]);
+        solver.set_matrix_export_format(EXPORT_FORMAT_MATLAB_MATIO);
+        solver.set_matrix_filename(!strcmp(args[1], "AQ") ? "A.mat" : std::string(args[1])+".mat");
         solver.set_matrix_number_format("%1.15f");
-        solver.set_matrix_varname(!strcmp(args[1], "LQ") ? "L" : args[1]);
+        solver.set_matrix_varname(!strcmp(args[1], "AQ") ? "A" : args[1]);
       }
       
       try 
@@ -156,7 +156,7 @@ int main(int argc, char* args[])
         Hermes::vector<SpaceSharedPtr<double> > spaces;
   
         for (int n = 0; n < M; n++)
-          spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+          spaces.push_back(new H1Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
         
         int ndof =  Space<double>::get_num_dofs(spaces);
     
@@ -172,7 +172,7 @@ int main(int argc, char* args[])
         Solution<double>::vector_to_solutions(x_ext.data(), spaces, sol_ext);
         
         Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes;
-        SupportClasses::OrdinatesData odata(N, "lgvalues.txt");
+        SupportClasses::OrdinatesData odata(N, "../lgvalues.txt");
         SupportClasses::MomentFilter::get_scalar_fluxes(sol_ext, &scalar_fluxes, 1, odata);
         
         if (HERMES_SCAL_VISUALIZATION)
@@ -188,7 +188,7 @@ int main(int argc, char* args[])
         {
           // Output solution in VTK format.
           Linearizer lin;
-          bool mode_3D = false;
+          bool mode_3D = true;
           lin.save_solution_vtk(scalar_fluxes[0], "scalar_flux.vtk", "Solution", mode_3D);
         }
       }
@@ -205,7 +205,7 @@ int main(int argc, char* args[])
   Hermes::vector<SpaceSharedPtr<double> > spaces;
   
   for (int n = 0; n < M; n++)
-    spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+    spaces.push_back(new H1Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
   
   int ndof =  Space<double>::get_num_dofs(spaces);
   
@@ -222,7 +222,7 @@ int main(int argc, char* args[])
   SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);
-  solver.set_tolerance(PICARD_TOL);
+  solver.set_tolerance(PICARD_TOL, ResidualNormRatioToInitial);
   solver.set_max_allowed_iterations(PICARD_MAX_ITER);
   solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);
