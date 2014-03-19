@@ -23,7 +23,7 @@ const int INIT_REF_NUM = 4;
 const int P_INIT = 1;
 
 const unsigned int N_GROUPS = 1;    // Monoenergetic (single group) problem.
-const int N = 8;                    
+const int N = 8;
 const int M = N_GROUPS * N*(N+2)/2;
 
 //
@@ -43,6 +43,43 @@ const int PICARD_MAX_ITER = 1000;
 const double INIT_COND_CONST = 1.0; 
 
 MatrixSolverType matrix_solver_type = SOLVER_UMFPACK;
+
+void save_flux_profile(const Hermes::vector<MeshFunctionSharedPtr<double> >& scalar_fluxes)
+{
+  std::string file = "flux_x_0.1667-R"+tostr(INIT_REF_NUM)+"P"+tostr(P_INIT)+"-S"+tostr(N)+".dat";
+
+  double y = 0.1667;
+
+  int nintervals = 100;
+  double a = 10.;
+  double dx = a / nintervals; // advance by 1 mm
+  int npts = nintervals + 1;
+
+  double *res = new double [(npts)*N_GROUPS];
+
+  std::ofstream fs(file.c_str());
+  Loggable::Static::info("Saving the scalar flux profile at y=0.1667cm to %s", file.c_str());
+
+  fs << std::setprecision(16);
+
+  for (unsigned int g = 0; g < N_GROUPS; g++)
+  {
+    std::cout << std::endl << "GROUP " << g << std::endl;
+
+    double x = 0;
+
+    for (int i = 0; i < npts; i++, x+=dx)
+    {
+      res[i+g*npts] = *scalar_fluxes[g]->get_pt_value(x, y)->val;
+      (std::cout << "(" << x << "," << y << ") = " << res[i+g*npts] << std::endl).flush();
+    }
+
+    std::copy(res+g*(npts), res+(g+1)*(npts), std::ostream_iterator<double>(fs, "\n"));
+  }
+
+  fs.close();
+  delete [] res;
+}
 
 int main(int argc, char* args[])
 {
@@ -106,6 +143,7 @@ int main(int argc, char* args[])
   Hermes::vector<std::string> vacuum_boundaries(1);
   vacuum_boundaries.push_back("vacuum");
   
+
   if (argc > 1)
   {
     bool assemble_matrix = strcmp(args[1], "Q");
@@ -128,7 +166,50 @@ int main(int argc, char* args[])
         spaces.push_back(new H1Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
     }
     
-    Loggable::Static::info("Saving %s. NDOF = %d", args[1], Space<double>::get_num_dofs(spaces));
+    int ndof =  Space<double>::get_num_dofs(spaces);
+
+		if (!strcmp(args[1], "-sln"))
+		{
+			std::vector<double> x_ext;
+			x_ext.reserve(ndof);
+			std::ifstream ifs( args[2] , std::ifstream::in );
+			read_solution_from_file(ifs, std::back_inserter(x_ext));
+			ifs.close();
+
+			Hermes::vector<MeshFunctionSharedPtr<double> > sol_ext;
+			for (unsigned int i = 0; i < M; i++)
+				sol_ext.push_back(new Solution<double>());
+			Solution<double>::vector_to_solutions(x_ext.data(), spaces, sol_ext);
+
+			SupportClasses::OrdinatesData odata(N, "../lgvalues.txt");
+			Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes;
+			SupportClasses::MomentFilter::get_scalar_fluxes(sol_ext, &scalar_fluxes, 1, odata);
+
+			if (HERMES_SCAL_VISUALIZATION)
+			{
+				ScalarView view("Scalar flux", new WinGeom(0, 0, 450, 350));
+				view.fix_scale_width(60);
+				view.show(scalar_fluxes[0]);
+				Views::View::wait();
+			}
+
+			// VTK output.
+			if(VTK_SCAL_VISUALIZATION)
+			{
+				// Output solution in VTK format.
+				Linearizer lin;
+				bool mode_3D = true;
+				lin.save_solution_vtk(scalar_fluxes[0], "scalar_flux.vtk", "Solution", mode_3D);
+			}
+
+			if (SAVE_FLUX_PROFILE)
+				save_flux_profile(scalar_fluxes);
+
+			return 0;
+		}
+
+
+    Loggable::Static::info("Saving %s. NDOF = %d", args[1], ndof);
     
     DiscreteProblem<double> dp(wf, spaces);
     SourceIteration solver(&dp);
@@ -236,7 +317,6 @@ int main(int argc, char* args[])
   }
   
   // View the coarse mesh scalar flux and/or save it to .vtk files.
-  
   Hermes::vector<MeshFunctionSharedPtr<double> > scalar_fluxes;
   SupportClasses::MomentFilter::get_scalar_fluxes(slns, &scalar_fluxes, N_GROUPS, wf.get_ordinates_data());
   
@@ -259,7 +339,7 @@ int main(int argc, char* args[])
       lin.save_solution_vtk(scalar_fluxes[g], (std::string("scalar_flux_g_") + tostr(g) + std::string(".vtk")).c_str(), "Solution", mode_3D);
     }
   }
-    
+
   if (SAVE_SLN_VECTOR)
   {
     std::string file = "x-R"+tostr(INIT_REF_NUM)+"P"+tostr(P_INIT)+"-S"+tostr(N)+".dat";
@@ -272,43 +352,9 @@ int main(int argc, char* args[])
     
     fs.close();
   }
-  
-  if (SAVE_FLUX_PROFILE)
-  {
-    std::string file = "flux_x_0.1667-R"+tostr(INIT_REF_NUM)+"P"+tostr(P_INIT)+"-S"+tostr(N)+".dat";
 
-    double y = 0.1667;
-    
-    int nintervals = 100;
-    double a = 10.;
-    double dx = a / nintervals; // advance by 1 mm
-    int npts = nintervals + 1;
-    
-    double *res = new double [(npts)*N_GROUPS];
-        
-    std::ofstream fs(file.c_str());
-    Loggable::Static::info("Saving the scalar flux profile at y=0.1667cm to %s", file.c_str());
-    
-    fs << std::setprecision(16);
-    
-    for (unsigned int g = 0; g < N_GROUPS; g++)
-    {
-      std::cout << std::endl << "GROUP " << g << std::endl;
-      
-      double x = 0;
-      
-      for (int i = 0; i < npts; i++, x+=dx)
-      {
-        res[i+g*npts] = *scalar_fluxes[g]->get_pt_value(x, y)->val;    
-        (std::cout << "(" << x << "," << y << ") = " << res[i+g*npts] << std::endl).flush();
-      }
-      
-      std::copy(res+g*(npts), res+(g+1)*(npts), std::ostream_iterator<double>(fs, "\n"));
-    }
-    
-    fs.close();
-    delete [] res;
-  }
-  
+  if (SAVE_FLUX_PROFILE)
+    	save_flux_profile(scalar_fluxes);
+
   return 0;
 }
