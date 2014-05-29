@@ -99,13 +99,13 @@ SNWeakForm::SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropert
             add_matrix_form(new VolumetricStreamingAndReactionsMF(odata, regions, n, gto, G, Sigma_t[gto]));
           
           if (assemble_S)
-						for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
+            for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
 #ifdef VER1
-							for (unsigned int m = 0; m < M; m++)
-								add_matrix_form(new VolumetricScatteringMF(odata, regions, m, n, gto, gfrom, G, Sigma_sn, Sigma_t[gto]));
+              for (unsigned int m = 0; m < M; m++)
+                add_matrix_form(new VolumetricScatteringMF(odata, regions, m, n, gto, gfrom, G, Sigma_sn, Sigma_t[gto]));
 #else
-							for (unsigned int m = n; m < M; m++)
-								add_matrix_form(new VolumetricScatteringMF(odata, regions, m, n, gto, gfrom, G, Sigma_sn, Sigma_t[gto]));
+              for (unsigned int m = n; m < M; m++)
+                add_matrix_form(new VolumetricScatteringMF(odata, regions, m, n, gto, gfrom, G, Sigma_sn, Sigma_t[gto]));
 #endif
 
           if (!Sigma_sn.empty() && assemble_all)
@@ -124,22 +124,22 @@ double SNWeakForm::VolumetricStreamingAndReactionsMF::value(int n, double *wt, F
   for (int quad_pt = 0; quad_pt < n; quad_pt++)
   {
 #if defined(VER2)
-	  result += wt[quad_pt] * 1/Sigma_t * ( static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, u->dx[quad_pt], u->dy[quad_pt]) +
-															Sigma_t * u->val[quad_pt] )
-													* ( static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]) +
-															Sigma_t * v->val[quad_pt] );
+    result += wt[quad_pt] * 1/Sigma_t * ( static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, u->dx[quad_pt], u->dy[quad_pt]) +
+                              Sigma_t * u->val[quad_pt] )
+                          * ( static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]) +
+                              Sigma_t * v->val[quad_pt] );
 #endif
 #if defined(VER1)
-	  result += wt[quad_pt] * ( static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, u->dx[quad_pt], u->dy[quad_pt]) +
+    result += wt[quad_pt] * ( static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, u->dx[quad_pt], u->dy[quad_pt]) +
                         Sigma_t * u->val[quad_pt] )
                     * ( static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]) +
                         Sigma_t * v->val[quad_pt] );
 #endif
 #if defined(VER3)
-	  result += wt[quad_pt] * 1/Sigma_t
-												 * static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, u->dx[quad_pt], u->dy[quad_pt])
-												 * static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]);
-	  result += Sigma_t * u->val[quad_pt] * v->val[quad_pt] * wt[quad_pt];
+    result += wt[quad_pt] * 1/Sigma_t
+                         * static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, u->dx[quad_pt], u->dy[quad_pt])
+                         * static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]);
+    result += Sigma_t * u->val[quad_pt] * v->val[quad_pt] * wt[quad_pt];
 #endif
   }
   //std::cout << "VolumetricStreamingAndReactionsMF :: " << result << std::endl;
@@ -230,7 +230,7 @@ Real SNWeakForm::VolumetricScatteringMF::matrix_form(int n, double* wt, Func< Re
       {
         if ( ((l + m) % 2) == 0 )
         {
-        	odata.ordinate_to_moment(direction_from, l, m, gfrom, G, u, n, trialfn_moment_values_at_quad_pts);
+          odata.ordinate_to_moment(direction_from, l, m, gfrom, G, u, n, trialfn_moment_values_at_quad_pts);
 
 
           SupportClasses::SphericalHarmonic Rlm(l, m);
@@ -308,8 +308,8 @@ Real SNWeakForm::VolumetricScatteringMF::matrix_form(int n, double* wt, Func< Re
       {
         if ( ((l + m) % 2) == 0 )
         {
-        	odata.ordinate_to_moment(direction_from, l, m, gfrom, G, u, n, trialfn_moment_values_at_quad_pts);
-        	odata.ordinate_to_moment(direction, l, m, gto, G, v, n, testfn_moment_values_at_quad_pts);
+          odata.ordinate_to_moment(direction_from, l, m, gfrom, G, u, n, trialfn_moment_values_at_quad_pts);
+          odata.ordinate_to_moment(direction, l, m, gto, G, v, n, testfn_moment_values_at_quad_pts);
 
 
           SupportClasses::SphericalHarmonic Rlm(l, m);
@@ -317,17 +317,17 @@ Real SNWeakForm::VolumetricScatteringMF::matrix_form(int n, double* wt, Func< Re
 
           for (int quad_pt = 0; quad_pt < n; quad_pt++)
           {
-        	  Real trialfn_group_source_moment = trialfn_moment_values_at_quad_pts[quad_pt] * rlm_in_dir;
-        	  Real testfn_group_source_moment = testfn_moment_values_at_quad_pts[quad_pt] * rlm_in_dir;
+            Real trialfn_group_source_moment = trialfn_moment_values_at_quad_pts[quad_pt] * rlm_in_dir;
+            Real testfn_group_source_moment = testfn_moment_values_at_quad_pts[quad_pt] * rlm_in_dir;
 
-        	  Real tmp = trialfn_group_source_moment * C * Sigma_sn[l][gto][gfrom]
-        	                                          * ( _wf->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]) +
-        	                                              Sigma_t * v->val[quad_pt] );
-        	  if (direction == direction_from)
-        	  tmp += testfn_group_source_moment * C * Sigma_sn[l][gto][gto]
-												* ( _wf->calculate_a_dot_v(direction, u->dx[quad_pt], u->dy[quad_pt]) +
-													Sigma_t * u->val[quad_pt] );
-        	  tmp -= testfn_group_source_moment * C * Sigma_sn[l][gto][gto] * trialfn_group_source_moment * C * Sigma_sn[l][gto][gfrom];
+            Real tmp = trialfn_group_source_moment * C * Sigma_sn[l][gto][gfrom]
+                                                    * ( _wf->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]) +
+                                                        Sigma_t * v->val[quad_pt] );
+            if (direction == direction_from)
+            tmp += testfn_group_source_moment * C * Sigma_sn[l][gto][gto]
+                        * ( _wf->calculate_a_dot_v(direction, u->dx[quad_pt], u->dy[quad_pt]) +
+                          Sigma_t * u->val[quad_pt] );
+            tmp -= testfn_group_source_moment * C * Sigma_sn[l][gto][gto] * trialfn_group_source_moment * C * Sigma_sn[l][gto][gfrom];
 
             // Contribution to spatial integral.
             if (geom_type == HERMES_AXISYM_X)
@@ -489,8 +489,8 @@ Real SNWeakForm::VolumetricScatteringMF::matrix_form(int n, double* wt, Func< Re
       {
         if ( ((l + m) % 2) == 0 )
         {
-        	//odata.ordinate_to_moment(direction_from, l, m, gfrom, G, u, n, trialfn_moment_values_at_quad_pts);
-        	//odata.ordinate_to_moment(direction, l, m, gto, G, v, n, testfn_moment_values_at_quad_pts);
+          //odata.ordinate_to_moment(direction_from, l, m, gfrom, G, u, n, trialfn_moment_values_at_quad_pts);
+          //odata.ordinate_to_moment(direction, l, m, gto, G, v, n, testfn_moment_values_at_quad_pts);
 
 
           //SupportClasses::SphericalHarmonic Rlm(l, m);
@@ -498,14 +498,14 @@ Real SNWeakForm::VolumetricScatteringMF::matrix_form(int n, double* wt, Func< Re
 
           for (int quad_pt = 0; quad_pt < n; quad_pt++)
           {
-        	  //Real trialfn_group_source_moment = trialfn_moment_values_at_quad_pts[quad_pt] * rlm_in_dir;
-        	  //Real testfn_group_source_moment = testfn_moment_values_at_quad_pts[quad_pt] * rlm_in_dir;
+            //Real trialfn_group_source_moment = trialfn_moment_values_at_quad_pts[quad_pt] * rlm_in_dir;
+            //Real testfn_group_source_moment = testfn_moment_values_at_quad_pts[quad_pt] * rlm_in_dir;
 
-        	  Real tmp = -/* odata.pw[direction_from] * 2 * */ C * Sigma_sn[l][gto][gfrom] / (Sigma_t * (Sigma_t - Sigma_sn[l][gto][gfrom]))
-        	                                          * _wf->calculate_a_dot_v(direction_from, u->dx[quad_pt], u->dy[quad_pt])
-        	                                          * _wf->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]);
-        	  //if (direction == direction_from)
-        	  	tmp += C * Sigma_sn[l][gto][gfrom] * u->val[quad_pt] * v->val[quad_pt];
+            Real tmp = -/* odata.pw[direction_from] * 2 * */ C * Sigma_sn[l][gto][gfrom] / (Sigma_t * (Sigma_t - Sigma_sn[l][gto][gfrom]))
+                                                    * _wf->calculate_a_dot_v(direction_from, u->dx[quad_pt], u->dy[quad_pt])
+                                                    * _wf->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]);
+            //if (direction == direction_from)
+              tmp += C * Sigma_sn[l][gto][gfrom] * u->val[quad_pt] * v->val[quad_pt];
 
             // Contribution to spatial integral.
             if (geom_type == HERMES_AXISYM_X)
@@ -622,7 +622,7 @@ Real SNWeakForm::VolumetricExternalSourceVF::vector_form(int n, double *wt, Func
             //Func<Real>* u = u_ext[ag.pos(direction,gfrom)];
             
             Real tmp = Q * (1/Sigma_t +/* C * */ Sigma_sn[0][gto][gto] / (Sigma_t * (Sigma_t - Sigma_sn[0][gto][gto])))
-            						 * _wf->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]) + Q * v->val[quad_pt];
+                         * _wf->calculate_a_dot_v(direction, v->dx[quad_pt], v->dy[quad_pt]) + Q * v->val[quad_pt];
             //tmp = tmp * odata.pw[direction] * 2 * 4*M_PI;
             // Contribution to spatial integral.
             if (geom_type == HERMES_AXISYM_X)
