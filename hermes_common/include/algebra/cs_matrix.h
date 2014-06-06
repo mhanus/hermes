@@ -121,7 +121,7 @@ namespace Hermes
       int *Ap;
       /// Number of non-zero entries ( =  Ap[size]).
       unsigned int nnz;
-      template<typename T> friend SparseMatrix<T>*  create_matrix();
+      template<typename T> friend SparseMatrix<T>*  create_matrix(bool use_direct_solver = false);
       
       class Iterator
       {
