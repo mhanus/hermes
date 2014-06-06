@@ -47,12 +47,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         /// \brief Empty virtual destructor.
         /// Required in order to properly delete derived classes accessed through a pointer to this class.
-        virtual ~SourceFilter() {}
+        virtual ~SourceFilter() {};
         
         virtual void assign_solutions(const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions);
         
         virtual void set_active_element(Element* e);
         
+
+        MeshFunction<double>* clone() const;
+
         double integrate();
                     
       protected:
@@ -275,8 +278,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           virtual void set_active_element(Element* e);
           
         protected:
-          void filter_fn(int n, 
-                         Hermes::vector<double *> values, Hermes::vector<double *> dx, Hermes::vector<double *> dy, 
+          void filter_fn(int n, double* x, double* y,
+                         Hermes::vector<const double *> values, Hermes::vector<const double *> dx, Hermes::vector<const double *> dy,
                          double* rslt, double* rslt_dx, double* rslt_dy);
                          
           unsigned int angular_moment;
@@ -564,13 +567,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           
       };
       
-      class ValDxDy : protected Common, public DXDYFilter<double>
+      class ValDxDy : protected Common, public Filter<double>
       {
         public:
           ValDxDy(unsigned int l, int m, unsigned int group, unsigned int G,
                   const Hermes::vector<MeshFunctionSharedPtr<double> >& solutions,
                   const OrdinatesData& odata)
-            : Common(l, m, group, G, odata), DXDYFilter<double>(solutions)
+            : Common(l, m, group, G, odata), Filter<double>(solutions)
           {
           };
           
@@ -579,14 +582,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           virtual void set_active_element(Element* e);
           
         protected:
-          void filter_fn(int n, 
-                         Hermes::vector<double *> values, Hermes::vector<double *> dx, Hermes::vector<double *> dy, 
-                         double* rslt, double* rslt_dx, double* rslt_dy) 
-          {
-            odata.ordinates_to_moment<double>(l, m, g, G, values, n, rslt);
-            odata.ordinates_to_moment<double>(l, m, g, G, dx, n, rslt_dx);
-            odata.ordinates_to_moment<double>(l, m, g, G, dy, n, rslt_dy);
-          };
+          void precalculate(int order, int mask);
+
+          virtual Func<double>* get_pt_value(double x, double y, bool use_MeshHashGrid, Element* e);
       };
       
       static void get_scalar_fluxes(const Hermes::vector<MeshFunctionSharedPtr<double> >& angular_fluxes,

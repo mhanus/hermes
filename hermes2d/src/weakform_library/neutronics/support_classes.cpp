@@ -91,7 +91,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             o++;
           limit_order(o, e->get_mode());
           this->set_quad_order(o, H2D_FN_VAL);
-          double *uval = this->get_fn_values();
+          const double *uval = this->get_fn_values();
           double result = 0.0;
           
           if (geom_type == HERMES_PLANAR)
@@ -119,6 +119,19 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       return integral;
     }
     
+    MeshFunction<double>* SourceFilter::clone() const
+		{
+			Hermes::vector<MeshFunctionSharedPtr<double> > slns;
+
+			for (int i = 0; i < this->num; i++)
+				slns.push_back(this->sln[i]->clone());
+
+			SourceFilter* filter = new SourceFilter(slns, this->matprop, this->geom_type);
+			return filter;
+		}
+
+
+
     const std::string Visualization::base_title_flux = "Neutron flux: group ";
     const std::string Visualization::base_title_order = "Polynomial orders: group ";
     const std::string Visualization::base_title_mesh = "Core mesh for group ";
@@ -272,7 +285,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void Visualization::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
                                     Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D)
     {
-      Views::Linearizer lin;
+      Views::Linearizer lin(FileExport);
       for (unsigned int g = 0; g < n_groups; g++)
       {
         std::string appendix = std::string("_group_") + itos(g);
@@ -434,8 +447,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       return new EvenMomentVal(angular_moment, group, G, slns);
     }
     
-    void MomentFilter::EvenMomentValDxDy::filter_fn(int n, Hermes::vector<double *> values, 
-                                          Hermes::vector<double *> dx, Hermes::vector<double *> dy, 
+    void MomentFilter::EvenMomentValDxDy::filter_fn(int n, double *x, double *y, Hermes::vector<const double *> values,
+                                          Hermes::vector<const double *> dx, Hermes::vector<const double *> dy,
                                           double* rslt, double* rslt_dx, double* rslt_dy)
     {
       for (int i = 0; i < n; i++) 
@@ -496,19 +509,24 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     
     void MomentFilter::OddMomentVal::precalculate(int order, int mask)
     {
+#ifdef H2D_USE_SECOND_DERIVATIVES
       if (mask & (H2D_FN_DX | H2D_FN_DY | H2D_FN_DXX | H2D_FN_DYY | H2D_FN_DXY))
-        ErrorHandling::error_function("MomentFilter::OddMomentVal not defined for derivatives.");
+#else
+      if (mask & (H2D_FN_DX | H2D_FN_DY))
+#endif
+      	throw Hermes::Exceptions::Exception("OddMomentVal not defined for derivatives.");
       
       Quad2D* quad = this->quads[this->cur_quad];
       int np = quad->get_num_points(order, this->mode);
-      Filter<double>::Node* node = new_node(H2D_FN_VAL_0, np);
       
-      double **dx = new double* [this->num], **dy = new double* [this->num];
+      const double* dx[H2D_MAX_COMPONENTS];
+      const double* dy[H2D_MAX_COMPONENTS];
       for (unsigned int gfrom = 0; gfrom < matprop->get_G(); gfrom++)
       {
         unsigned int i = mg.pos(req_mom_idx,gfrom);
-        this->sln[i]->set_quad_order(order, H2D_FN_VAL | H2D_FN_DX | H2D_FN_DY);
-        this->sln[i]->get_dx_dy_values(dx[i], dy[i]);
+        this->sln[i]->set_quad_order(order, H2D_FN_DX | H2D_FN_DY);
+        dx[i] = this->sln[i]->get_dx_values();
+        dy[i] = this->sln[i]->get_dy_values();
       }
    
       std::string material = matprop->get_material(this->element->marker, this->mesh);
@@ -516,27 +534,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       for (int i = 0; i < np; i++)
       {
-        node->values[0][0][i] = 0.0;
+        this->values[0][0][i] = 0.0;
         for (unsigned int gfrom = 0; gfrom < matprop->get_G(); gfrom++)
         {
           if (component == 0)
-            node->values[0][0][i] += -D[g][gfrom] * dx[mg.pos(req_mom_idx,gfrom)][i];
+            this->values[0][0][i] += -D[g][gfrom] * dx[mg.pos(req_mom_idx,gfrom)][i];
           else
-            node->values[0][0][i] += -D[g][gfrom] * dy[mg.pos(req_mom_idx,gfrom)][i];
+            this->values[0][0][i] += -D[g][gfrom] * dy[mg.pos(req_mom_idx,gfrom)][i];
         }
-        node->values[0][0][i] *= Coeffs::D(odd_req_mom);
+        this->values[0][0][i] *= Coeffs::D(odd_req_mom);
       }
-      
-      delete [] dx;
-      delete [] dy;
-      
-      if(this->nodes->present(order)) 
-      {
-        assert(this->nodes->get(order) == this->cur_node);
-        ::free(this->nodes->get(order));
-      }
-      this->nodes->add(node, order);
-      this->cur_node = node;
     }
     
     // TODO: Templatize.
@@ -798,7 +805,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void Visualization::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
                                     Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D)
     { 
-      Views::Linearizer lin;
+      Views::Linearizer lin(FileExport);
       for (unsigned int g = 0; g < n_groups; g++)
       {
         std::string appendix = std::string("_group_") + itos(g);
@@ -822,7 +829,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void Visualization::save_scalar_fluxes_vtk(const std::string& base_filename, const std::string& base_varname, 
                                     Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D)
     { 
-      Views::Linearizer lin;
+      Views::Linearizer lin(FileExport);
       for (unsigned int g = 0; g < n_groups; g++)
       {
         std::string appendix = std::string("_group_") + itos(g);
@@ -1231,9 +1238,43 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       return new Val(l, m, g, G, slns, odata);
     }
     
+    void MomentFilter::ValDxDy::precalculate(int order, int mask)
+    {
+			Quad2D* quad = this->quads[this->cur_quad];
+			int np = quad->get_num_points(order, this->element->get_mode());
+
+			// precalculate all solutions
+			for (int i = 0; i < this->num; i++)
+				this->sln[i]->set_quad_order(order, H2D_FN_DEFAULT);
+
+			// obtain solution tables
+			Hermes::vector<double*> val, dx, dy;
+			val.reserve(this->num);
+			dx.reserve(this->num);
+			dy.reserve(this->num);
+			for (int i = 0; i < this->num; i++)
+			{
+				val.push_back(const_cast<double*>( this->sln[i]->get_fn_values() ));
+				dx.push_back(const_cast<double*>( this->sln[i]->get_dx_values() ));
+				dy.push_back(const_cast<double*>( this->sln[i]->get_dy_values() ));
+			}
+
+			// apply the filter
+			odata.ordinates_to_moment<double>(l, m, g, G, val, np, this->values[0][0]);
+			odata.ordinates_to_moment<double>(l, m, g, G, dx, np, this->values[0][1]);
+			odata.ordinates_to_moment<double>(l, m, g, G, dy, np, this->values[0][2]);
+
+		}
+
+    Func<double>* MomentFilter::ValDxDy::get_pt_value(double x, double y, bool use_MeshHashGrid, Element* e)
+		{
+			this->warn("MomentFilter::ValDxDy::get_pt_value not implemented.");
+			return 0;
+		}
+
     void MomentFilter::ValDxDy::set_active_element(Element* e)
     {
-      DXDYFilter<double>::set_active_element(e);
+      Filter<double>::set_active_element(e);
       
       order = -1;
       
@@ -1400,7 +1441,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void Visualization::save_solutions_vtk(const std::string& base_filename, const std::string& base_varname, 
                                     Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D)
     { 
-      Views::Linearizer lin;
+      Views::Linearizer lin(FileExport);
       for (unsigned int g = 0; g < n_groups; g++)
       {
         std::string appendix = std::string("_group_") + itos(g);
@@ -1417,7 +1458,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     void Visualization::save_scalar_fluxes_vtk(const std::string& base_filename, const std::string& base_varname, 
                                     Hermes::vector< MeshFunctionSharedPtr<double> > solutions, bool mode_3D)
     { 
-      Views::Linearizer lin;
+      Views::Linearizer lin(FileExport);
       for (unsigned int g = 0; g < n_groups; g++)
       {
         std::string appendix = std::string("_group_") + itos(g);
@@ -1469,7 +1510,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         int o = solution->get_fn_order() + ru->get_inv_ref_order();
         limit_order(o, e->get_mode());
         solution->set_quad_order(o, H2D_FN_VAL);
-        double *uval = solution->get_fn_values();
+        const double *uval = solution->get_fn_values();
         double result = 0.0;
         
         if (geom_type == HERMES_PLANAR)
@@ -1569,7 +1610,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         int o = solution->get_fn_order() + ru->get_inv_ref_order();
         limit_order(o, e->get_mode());
         solution->set_quad_order(o, H2D_FN_VAL);
-        double *uval = solution->get_fn_values();
+        const double *uval = solution->get_fn_values();
         double result = 0.0;
         
         if (geom_type == HERMES_PLANAR)

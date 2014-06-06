@@ -438,7 +438,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             : MatrixFormVol<double>(gto, gfrom), 
               Sigma_s_to_from(Sigma_s_to_from), geom_type(geom_type)
           {
-            this->scaling_factor = -1;
+            this->setScalingFactor(-1);
           };
           
           Jacobian( const std::string& area,
@@ -449,7 +449,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
               Sigma_s_to_from(Sigma_s_to_from), geom_type(geom_type)
           { 
             this->set_area(area);
-            this->scaling_factor = -1;
+            this->setScalingFactor(-1);
           };
           
           Jacobian( const Hermes::vector<std::string>& areas,
@@ -461,7 +461,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           { 
             this->set_areas(areas);
           
-            this->scaling_factor = -1;
+            this->setScalingFactor(-1);
           };
           
           template<typename Real>
@@ -498,7 +498,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
             : VectorFormVol<double>(gto), 
               gfrom(gfrom), Sigma_s_to_from(Sigma_s_to_from), geom_type(geom_type)
           {
-            this->scaling_factor = -1;
+            this->setScalingFactor(-1);
           };
           
           Residual( const std::string& area,
@@ -509,7 +509,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
               gfrom(gfrom), Sigma_s_to_from(Sigma_s_to_from), geom_type(geom_type)
           { 
             this->set_area(area);
-            this->scaling_factor = -1;
+            this->setScalingFactor(-1);
           };
           
           Residual( const Hermes::vector<std::string>& areas,
@@ -520,7 +520,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
               gfrom(gfrom), Sigma_s_to_from(Sigma_s_to_from), geom_type(geom_type)
           { 
             this->set_areas(areas);
-            this->scaling_factor = -1;
+            this->setScalingFactor(-1);
           };
           
           template<typename Real>
