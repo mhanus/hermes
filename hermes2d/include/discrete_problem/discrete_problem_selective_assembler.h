@@ -55,7 +55,7 @@ namespace Hermes
       bool prepare_sparse_structure(SparseMatrix<Scalar>* mat, Vector<Scalar>* rhs, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces, Traverse::State**& states, int& num_states);
       
       /// Sets new_ spaces for the instance.
-      void set_spaces(Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
+      void set_spaces(const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
       
       /// Set the weak forms.
       void set_weak_formulation(WeakForm<Scalar>* wf);

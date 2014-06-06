@@ -77,7 +77,7 @@ namespace Hermes
       PicardSolver();
       PicardSolver(DiscreteProblem<Scalar>* dp);
       PicardSolver(WeakForm<Scalar>* wf, SpaceSharedPtr<Scalar>& space);
-      PicardSolver(WeakForm<Scalar>* wf, Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
+      PicardSolver(WeakForm<Scalar>* wf, const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces);
       void init();
       virtual ~PicardSolver();
 

@@ -122,7 +122,7 @@ namespace Hermes
     }
 
     template<typename Scalar>
-    void Solver<Scalar>::set_spaces(Hermes::vector<SpaceSharedPtr<Scalar> >& spaces)
+    void Solver<Scalar>::set_spaces(const Hermes::vector<SpaceSharedPtr<Scalar> >& spaces)
     {
       this->dp->set_spaces(spaces);
     }
