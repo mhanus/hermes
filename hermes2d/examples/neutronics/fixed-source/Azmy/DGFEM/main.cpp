@@ -3,14 +3,14 @@
 #include "definitions.h"
 #include "../problem_data.h"
 #include "weakforms_neutronics.h"
-
+#include <iomanip>
 #include <iterator>
 const bool SAVE_FLUX_PROFILE = true;
 const bool SAVE_SLN_VECTOR = false;
 
 const bool HERMES_ANG_VISUALIZATION = false;
 const bool VTK_ANG_VISUALIZATION = true;
-const bool HERMES_SCAL_VISUALIZATION = true;
+const bool HERMES_SCAL_VISUALIZATION = false;
 const bool VTK_SCAL_VISUALIZATION = true;
 const bool HERMES_MESH_VISUALIZATION = false;
 
@@ -45,9 +45,9 @@ MatrixSolverType matrix_solver_type = SOLVER_UMFPACK;
 int main(int argc, char* args[])
 {
   // Set the number of threads used in Hermes.
-  Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 1);
+  
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::matrixSolverType, matrix_solver_type);
-  Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
+  Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 1);
   
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -178,8 +178,8 @@ int main(int argc, char* args[])
   // Display the mesh.
 //  OrderView oview("Coarse mesh", new WinGeom(0, 0, 440, 350));
 //  oview.show(spaces[0]);
-  BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
-  bview.show(spaces[0]);
+//  BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
+//  bview.show(spaces[0]);
 
   // Discrete formulation.
   DiscreteProblem<double> dp(&wf, spaces);
@@ -188,7 +188,7 @@ int main(int argc, char* args[])
   SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);
-  solver.set_tolerance(PICARD_TOL, ResidualNormRatioToInitial);
+  solver.set_tolerance(PICARD_TOL, Hermes::Solvers::ResidualNormRatioToInitial);
   solver.set_max_allowed_iterations(PICARD_MAX_ITER);
   solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);
@@ -227,7 +227,7 @@ int main(int argc, char* args[])
     if(VTK_ANG_VISUALIZATION)
     {
       // Output solution in VTK format.
-      Linearizer lin;
+      Linearizer lin(FileExport);
       bool mode_3D = false;
       lin.save_solution_vtk(slns[n], (std::string("sln_") + tostr(n) + std::string(".vtk")).c_str(), "Solution", mode_3D);
     }
@@ -252,7 +252,7 @@ int main(int argc, char* args[])
     if(VTK_SCAL_VISUALIZATION)
     {
       // Output solution in VTK format.
-      Linearizer lin;
+      Linearizer lin(FileExport);
       bool mode_3D = true;
       lin.save_solution_vtk(scalar_fluxes[g], (std::string("scalar_flux_g_") + tostr(g) + std::string(".vtk")).c_str(), "Solution", mode_3D);
     }
@@ -265,7 +265,7 @@ int main(int argc, char* args[])
     std::ofstream fs(file.c_str());
     Loggable::Static::info("Saving the solution vector to %s", file.c_str());
 
-    fs << setprecision(16);
+    fs << std::setprecision(16);
     std::copy(sln_vector, sln_vector+ndof, std::ostream_iterator<double>(fs, "\n"));
     
     fs.close();

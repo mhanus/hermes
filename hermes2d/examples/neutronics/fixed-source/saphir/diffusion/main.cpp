@@ -231,7 +231,7 @@ int main(int argc, char* argv[])
   Views::View::wait();
 #else
   // Output solution in VTK format.
-  Hermes::Hermes2D::Views::Linearizer lin;
+  Hermes::Hermes2D::Views::Linearizer lin(FileExport);
   bool mode_3D = true;
   lin.save_solution_vtk(ref_sln, "sln.vtk", "Neutron flux", mode_3D);
 

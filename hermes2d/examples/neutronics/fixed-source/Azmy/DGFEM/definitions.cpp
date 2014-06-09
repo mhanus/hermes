@@ -254,7 +254,7 @@ double SNWeakForm::SpecularReflectionMF_X::value(int n, double *wt, Func<double>
     double a_dot_n = static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, e->nx[quad_pt], e->ny[quad_pt]);
   
     if (a_dot_n < 0)
-      if (fabs(e->ny[quad_pt] - 1.0) < eps || fabs(e->ny[quad_pt] + 1.0) < eps && fabs(e->nx[quad_pt]) < eps)
+      if (fabs(e->ny[quad_pt] - 1.0) < eps || (fabs(e->ny[quad_pt] + 1.0) < eps && fabs(e->nx[quad_pt]) < eps))
         result += wt[quad_pt] * u->val[quad_pt] * a_dot_n * v->val[quad_pt];
   }
   
@@ -277,7 +277,7 @@ double SNWeakForm::SpecularReflectionMF_Y::value(int n, double *wt, Func<double>
     double a_dot_n = static_cast<SNWeakForm*>(wf)->calculate_a_dot_v(direction, e->nx[quad_pt], e->ny[quad_pt]);
     
     if (a_dot_n < 0)
-      if (fabs(e->nx[quad_pt] - 1.0) < eps || fabs(e->nx[quad_pt] + 1.0) < eps && fabs(e->ny[quad_pt]) < eps)
+      if (fabs(e->nx[quad_pt] - 1.0) < eps || (fabs(e->nx[quad_pt] + 1.0) < eps && fabs(e->ny[quad_pt]) < eps))
         result += wt[quad_pt] * u->val[quad_pt] * a_dot_n * v->val[quad_pt];
   }
   
@@ -380,9 +380,9 @@ double SNWeakForm::SpecularReflectionVF::value(int n, double *wt, Func<double> *
     {
       double boundary_data = 0.0;
       
-      if (fabs(e->nx[quad_pt] - 1.0) < eps || fabs(e->nx[quad_pt] + 1.0) < eps && fabs(e->ny[quad_pt]) < eps)
+      if (fabs(e->nx[quad_pt] - 1.0) < eps || (fabs(e->nx[quad_pt] + 1.0) < eps && fabs(e->ny[quad_pt]) < eps))
         boundary_data = u_ext[ag.pos(odata.reflections_about_x[direction],g)]->val[quad_pt];
-      else if (fabs(e->ny[quad_pt] - 1.0) < eps || fabs(e->ny[quad_pt] + 1.0) < eps && fabs(e->nx[quad_pt]) < eps)
+      else if (fabs(e->ny[quad_pt] - 1.0) < eps || (fabs(e->ny[quad_pt] + 1.0) < eps && fabs(e->nx[quad_pt]) < eps))
         boundary_data = u_ext[ag.pos(odata.reflections_about_y[direction],g)]->val[quad_pt];
       else
         Hermes::Mixins::Loggable::Static::warn("Only horizontal or vertical boundaries are currently supported for specular reflection b. c.");

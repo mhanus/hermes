@@ -84,7 +84,7 @@ void save_flux_profile(const Hermes::vector<MeshFunctionSharedPtr<double> >& sca
 int main(int argc, char* args[])
 {
   // Set the number of threads used in Hermes.
-  Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 1);
+  
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::matrixSolverType, matrix_solver_type);
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 4);
   
@@ -197,7 +197,7 @@ int main(int argc, char* args[])
 			if(VTK_SCAL_VISUALIZATION)
 			{
 				// Output solution in VTK format.
-				Linearizer lin;
+				Linearizer lin(FileExport);
 				bool mode_3D = true;
 				lin.save_solution_vtk(scalar_fluxes[0], "scalar_flux.vtk", "Solution", mode_3D);
 			}
@@ -271,7 +271,7 @@ int main(int argc, char* args[])
   SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);
-  solver.set_tolerance(PICARD_TOL, ResidualNormRatioToInitial);
+  solver.set_tolerance(PICARD_TOL, Hermes::Solvers::ResidualNormRatioToInitial);
   solver.set_max_allowed_iterations(PICARD_MAX_ITER);
   solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);
@@ -310,7 +310,7 @@ int main(int argc, char* args[])
     if(VTK_ANG_VISUALIZATION)
     {
       // Output solution in VTK format.
-      Linearizer lin;
+      Linearizer lin(FileExport);
       bool mode_3D = false;
       lin.save_solution_vtk(slns[n], (std::string("sln_") + tostr(n) + std::string(".vtk")).c_str(), "Solution", mode_3D);
     }
@@ -334,7 +334,7 @@ int main(int argc, char* args[])
     if(VTK_SCAL_VISUALIZATION)
     {
       // Output solution in VTK format.
-      Linearizer lin;
+      Linearizer lin(FileExport);
       bool mode_3D = true;
       lin.save_solution_vtk(scalar_fluxes[g], (std::string("scalar_flux_g_") + tostr(g) + std::string(".vtk")).c_str(), "Solution", mode_3D);
     }

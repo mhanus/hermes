@@ -103,7 +103,7 @@ int ref_fn(Element* e)
 int main(int argc, char* argv[])
 {  
   // Set the number of threads used in Hermes.
-  Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 1);
+  
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
 
   // Time measurement.

@@ -27,12 +27,19 @@ void StationaryPicardSolver::solve(double *coeff_vec)
   Hermes::vector<double> residual_norms;
   Hermes::vector<double> solution_norms;
   Hermes::vector<double> solution_change_norms;
+  Hermes::vector<double> damping_factors;
 
+  // Initial damping factor.
+  damping_factors.push_back(this->manual_damping ? manual_damping_factor : initial_auto_damping_factor);
+
+  // Link parameters.
   this->set_parameter_value(this->p_iteration, &it);
   this->set_parameter_value(this->p_residual_norms, &residual_norms);
   this->set_parameter_value(this->p_solution_norms, &solution_norms);
   this->set_parameter_value(this->p_solution_change_norms, &solution_change_norms);
+  this->set_parameter_value(this->p_damping_factors, &damping_factors);
   
+
   this->init_solving(coeff_vec);
   this->get_parameter_value(this->p_solution_norms).push_back(get_l2_norm(this->sln_vector, this->problem_size));
 
@@ -43,8 +50,9 @@ void StationaryPicardSolver::solve(double *coeff_vec)
     // Chances are residual has already been assembled in 'init_solving'.
     if (!have_rhs)
     {
-      this->dp->assemble(this->sln_vector, this->get_residual());
+      this->dp->assemble(this->sln_vector, this->get_jacobian(), this->get_residual());
       have_rhs = true;
+      jacobian_reusable = true;
     }
     
     this->get_parameter_value(this->p_residual_norms).push_back(calculate_residual_norm());

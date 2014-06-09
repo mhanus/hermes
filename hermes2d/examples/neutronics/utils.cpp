@@ -37,7 +37,6 @@ void save_algebraic_representation(Hermes::Hermes2D::WeakForm< double >* wf, con
 {
   DiscreteProblem<double> dp(wf, spaces);
   dp.set_linear();
-  dp.set_do_not_use_cache();
   
   if (assign_dofs)
     Space<double>::assign_dofs(spaces);
@@ -183,15 +182,15 @@ void load_solution(const std::string& sln_file,
   
   if (visualization & (VTK_SCALAR_VISUALIZATION | VTK_ANGULAR_VISUALIZATION))
   {
-    Hermes::Hermes2D::Views::Linearizer lin;
+    Views::Linearizer lin(FileExport);
     //Hermes::Hermes2D::Views::Orderizer ord;
     
     for (unsigned int i = 0; i < spaces.size(); i++)
     {
-      lin.save_solution_vtk(sol_ext[i], std::string("sln_"+tostr(i)+".vtk").c_str(), std::string("Solution "+tostr(i)).c_str(),
-                            mode_3D, 1, Hermes::Hermes2D::Views::HERMES_EPS_VERYHIGH);
+      lin.save_solution_vtk(sol_ext[i], std::string("sln_"+tostr(i)+".vtk").c_str(), std::string("Solution "+tostr(i)).c_str(), mode_3D);
       //ord.save_mesh_vtk(spaces[i], std::string("mesh_"+tostr(i)+".vtk").c_str());
       //ord.save_orders_vtk(spaces[i], std::string("ord_"+tostr(i)+".vtk").c_str());
+      //ord.save_markers_vtk(spaces[i], std::string("markers_"+tostr(i)+".vtk").c_str());
     }
   }
   if (visualization & (HERMES_SCALAR_VISUALIZATION | HERMES_ANGULAR_VISUALIZATION))
@@ -202,7 +201,7 @@ void load_solution(const std::string& sln_file,
     {
       views[i] = new Views::ScalarView("Solution", new Views::WinGeom((i*600)%1800, 600*((i*600)/1801), 600, 600));
       views[i]->set_3d_mode(mode_3D);
-      views[i]->show(sol_ext[i], Hermes::Hermes2D::Views::HERMES_EPS_VERYHIGH);
+      views[i]->show(sol_ext[i]);
     }
     
     Views::View::wait();
@@ -230,18 +229,19 @@ void load_solution(const std::string& sln_file,
   
   if (visualization & (VTK_SCALAR_VISUALIZATION | VTK_ANGULAR_VISUALIZATION))
   {
-    Hermes::Hermes2D::Views::Linearizer lin;
-    lin.save_solution_vtk(sol_ext, "sln.vtk", "Solution", mode_3D, 1, Hermes::Hermes2D::Views::HERMES_EPS_VERYHIGH);
+    Views::Linearizer lin(FileExport);
+    lin.save_solution_vtk(sol_ext, "sln.vtk", "Solution", mode_3D);
     
     //Hermes::Hermes2D::Views::Orderizer ord;
     //ord.save_mesh_vtk(space, "mesh.vtk");
     //ord.save_orders_vtk(space, "ord.vtk");
+    //ord.save_markers_vtk(space, "markers.vtk");
   }
   if (visualization & (HERMES_SCALAR_VISUALIZATION | HERMES_ANGULAR_VISUALIZATION))
   {
     Views::ScalarView view("Solution", new Views::WinGeom(0, 0, 600, 600));
     view.set_3d_mode(mode_3D);
-    view.show(sol_ext, Hermes::Hermes2D::Views::HERMES_EPS_VERYHIGH);
+    view.show(sol_ext);
     view.wait_for_close();
   }
 }
