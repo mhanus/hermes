@@ -259,7 +259,7 @@ project(hermes)
       set(CMAKE_CXX_FLAGS "-Wuninitialized -Wvla -Wsign-compare ${CMAKE_CXX_FLAGS}")
 
     set(HERMES_RELEASE_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG -O3")
-    set(HERMES_DEBUG_FLAGS   "${CMAKE_CXX_FLAGS} -g -D_DEBUG")
+    set(HERMES_DEBUG_FLAGS   "${CMAKE_CXX_FLAGS} -g -gdwarf-3 -D_DEBUG")
     
     # look for libbfd
     find_library( BFD_LIBRARY  NAMES bfd libbfd bfd-2.23.2-system PATH /usr/lib /usr/lib64 )
