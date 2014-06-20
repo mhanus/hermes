@@ -1106,7 +1106,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
           for (int j = 0; j < 4; j++)
           {
             mu.push_back(mu_base[n-1]);
-            pw.push_back( wt[n-1] / (8*n)); // equal weights in each polar level, summing up to 1 over the whole sphere.
+            pw.push_back( M_PI * wt[n-1] / n); // equal weights in each polar level, summing up to 4PI over the whole sphere.
           }
           
           dir+=4;
@@ -1144,7 +1144,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       for (int n = 0; n < odata.M; n++)
         sum += odata.pw[n];
       
-      os << "sum of weights over the whole sphere: " << 2*sum << endl;
+      os << "sum of weights over the whole sphere: " << sum << endl;
       
       const char* pwfile = "pweights.m";
       FILE* fp;
@@ -1164,11 +1164,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       SphericalHarmonic Rlm(l, m);
       
       for (int quad_pt = 0; quad_pt < num_quad_pts; quad_pt++)
-      {
         moment_values_at_quad_pts[quad_pt] = pw[n] * solution_fn->val[quad_pt] * Rlm(xi[n], eta[n], mu[n]);
-        moment_values_at_quad_pts[quad_pt] *= 2;       // add contribution from the lower hemisphere
-        moment_values_at_quad_pts[quad_pt] *= 4*M_PI;  // make integral of the unity function over the whole sphere equal to 4 PI
-      }
     }
     
     template void OrdinatesData::ordinate_to_moment<double>(unsigned int n, unsigned int l, int m, unsigned int g, unsigned int G, Func< double >* const solution_fn, int num_quad_pts, double* moment_values_at_quad_pts) const;
@@ -1179,16 +1175,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     {
       SphericalHarmonic Rlm(l, m);
       AngleGroupFlattener ag(G);
-      
+
       for (int quad_pt = 0; quad_pt < num_quad_pts; quad_pt++)
       {
         moment_values_at_quad_pts[quad_pt] = Real(0);
         
         for (int n = 0; n < M; n++)
-          moment_values_at_quad_pts[quad_pt] += /*pw[n] **/ solution_fns[ag.pos(n,g)]->val[quad_pt] * Rlm(xi[n], eta[n], mu[n]);
-      
-        //moment_values_at_quad_pts[quad_pt] *= 2;       // add contribution from the lower hemisphere
-        //moment_values_at_quad_pts[quad_pt] *= 4*M_PI;  // make integral of the unity function over the whole sphere equal to 4 PI
+          moment_values_at_quad_pts[quad_pt] += pw[n] * solution_fns[ag.pos(n,g)]->val[quad_pt] * Rlm(xi[n], eta[n], mu[n]);
       }
     }
     
@@ -1206,10 +1199,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         moment_values_at_quad_pts[quad_pt] = Real(0);
          
         for (int n = 0; n < M; n++)
-          moment_values_at_quad_pts[quad_pt] +=/* pw[n] **/ solution_values_at_quad_pts.at(ag.pos(n,g))[quad_pt] * Rlm(xi[n], eta[n], mu[n]);
-      
-        //moment_values_at_quad_pts[quad_pt] *= 2;  // add contribution from the lower hemisphere
-        //moment_values_at_quad_pts[quad_pt] *= 4*M_PI;  // make integral of the unity function over the whole sphere equal to 4 PI
+          moment_values_at_quad_pts[quad_pt] += pw[n] * solution_values_at_quad_pts.at(ag.pos(n,g))[quad_pt] * Rlm(xi[n], eta[n], mu[n]);
       }
     }
     

@@ -197,8 +197,8 @@ Real SNWeakForm::VolumetricFissionSourceVF::vector_form(int n, double* wt, Func<
       Real group_scalar_flux(0.0);
       for (int dir = 0; dir < odata.M; dir++)
         group_scalar_flux += odata.pw[dir] * u_ext[ag.pos(dir,gfrom)]->val[quad_pt];
-      //group_scalar_flux *= 2 / (4*M_PI) * 2*M_PI;
-      group_scalar_flux *= 2;
+
+      group_scalar_flux /= (4*M_PI);
       
       // Compute fission source with element-wise constant nuSigma_f.
       group_scalar_flux *= nu[gfrom] * Sigma_f[gfrom];
