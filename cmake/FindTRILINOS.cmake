@@ -14,6 +14,7 @@ SET(TRILINOS_INCLUDE_SEARCH_PATH
 	/usr/local/include/
   /usr/include/trilinos
   ${TRILINOS_ROOT}/include
+  ${TRILINOS_ROOT}/include/trilinos
 )
 
 if(WIN64)
