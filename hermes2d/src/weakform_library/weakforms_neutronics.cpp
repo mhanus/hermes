@@ -60,6 +60,8 @@ void StationaryPicardSolver::solve(double *coeff_vec)
   
   while (true)
   {
+      std::cout << "1" << std::endl;
+
     // Handle the event of step beginning.
     if(!this->on_step_begin())
     {
@@ -104,7 +106,7 @@ void StationaryPicardSolver::solve(double *coeff_vec)
 
     if (iter_solver && dynamic_solver_tolerance)
       iter_solver->set_tolerance( std::min(0.1, this->get_parameter_value(this->p_residual_norms).back()) );
-
+std::cout << "2" << std::endl;
     this->solve_linear_system();
     
     have_rhs = false;
@@ -118,10 +120,11 @@ void StationaryPicardSolver::solve(double *coeff_vec)
 			this->finalize_solving();
 			return;
     }
-    
+
+std::cout << "3" << std::endl;
     if (measure_convergence_by_residual || dynamic_solver_tolerance)
     	this->get_parameter_value(this->p_residual_norms).push_back(calculate_residual_norm());
-    
+std::cout << "4" << std::endl;
     if (this->handle_convergence_state_return_finished(this->get_convergence_state()))
       return;
 
@@ -465,7 +468,7 @@ namespace Neutronics
 			dp->assemble(sln_vector, this->get_residual());
 			have_rhs = true;
 		}
-
+std::cout << Hermes::get_l2_norm(this->get_residual()) << std::endl;
     double *Ax = new double[problem_size];
     this->get_jacobian()->multiply_with_vector(this->sln_vector, Ax, true);
     
@@ -479,6 +482,8 @@ namespace Neutronics
     
     delete [] Ax;
     
+    std::cout << sqrt(res) << std::endl;
+
     return sqrt(res);
   }
     
