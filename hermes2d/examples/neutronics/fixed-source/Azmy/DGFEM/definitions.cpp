@@ -1,46 +1,6 @@
 #include "definitions.h"
 #include <cstdlib>
 
-IsotropicScatteringAndFissionMatrixForms::IsotropicScatteringAndFissionMatrixForms(const MaterialProperties::MaterialPropertyMaps& matprop, const char* out_tensor) : WeakForm<double>(matprop.get_G())
-{
-  bool assemble_S = false;
-  bool assemble_F = false;
-  
-  if (!strcmp(out_tensor, "S"))
-    assemble_S = true;
-  else if (!strcmp(out_tensor, "F"))
-    assemble_F = true;
-  else
-    error("Wrong specification of matrix to save - use either S or F");
-    
-  bool1 chi_nnz = matprop.get_fission_nonzero_structure();
-  
-  std::set<std::string>::const_iterator material = matprop.get_materials_list().begin();
-  for ( ; material != matprop.get_materials_list().end(); ++material)
-  {
-    Hermes::vector<std::string> regions = matprop.get_regions(*material);
-          
-    rank3 Sigma_sn = matprop.get_Sigma_sn(*material);
-    rank1 Sigma_f = matprop.get_Sigma_f(*material);
-    rank1 chi = matprop.get_chi(*material);
-    rank1 nu = matprop.get_nu(*material);
-    
-    for (unsigned int gto = 0; gto < matprop.get_G(); gto++)
-    {
-      for (unsigned int gfrom = 0; gfrom < matprop.get_G(); gfrom++)
-      {
-        if (!Sigma_sn.empty() && assemble_S)                      
-          add_matrix_form(new Diffusion::WeakFormParts::Scattering::Jacobian(regions, gto, gfrom, -Sigma_sn[0][gto][gfrom]));
-        if (chi_nnz[gto] && assemble_F)
-          add_matrix_form( new Diffusion::WeakFormParts::FissionYield::Jacobian(regions, gto, gfrom, 
-                                                                                chi[gto], -nu[gfrom], Sigma_f[gfrom]) );
-      }
-      
-      add_vector_form(new Diffusion::WeakFormParts::ExternalSources::LinearForm(regions, gto, -1.0));
-    }   
-  }
-}
-
 SNWeakForm::SNWeakForm(unsigned int N, const MaterialProperties::MaterialPropertyMaps& matprop,
                        const Hermes::vector<std::string>& reflective_boundaries, const Hermes::vector<std::string>& inflow_boundaries,
                        const char* out_tensor) 

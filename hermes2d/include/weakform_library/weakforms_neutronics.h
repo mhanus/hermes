@@ -20,26 +20,35 @@ namespace Hermes { namespace Hermes2D {
       bool measure_convergence_by_residual;
       
     public:
+      StationaryPicardSolver()
+        : PicardSolver<double>(),
+          measure_convergence_by_residual(false), have_rhs(false), dynamic_solver_tolerance(false)
+      {
+        constant_jacobian = true;
+      }
+
       StationaryPicardSolver(DiscreteProblem<double>* dp)
         : PicardSolver<double>(dp), 
           measure_convergence_by_residual(false), have_rhs(false), dynamic_solver_tolerance(false)
       {
       	constant_jacobian = true;
-      };
+      }
       
       StationaryPicardSolver(WeakForm<double>* wf, SpaceSharedPtr<double>& space) 
         : PicardSolver<double>(wf, space), 
           measure_convergence_by_residual(false), have_rhs(false), dynamic_solver_tolerance(false)
       {
       	constant_jacobian = true;
-      };
+      }
       
       StationaryPicardSolver(WeakForm<double>* wf, const Hermes::vector<SpaceSharedPtr<double> >& spaces) 
         : PicardSolver<double>(wf, spaces),
           measure_convergence_by_residual(false), have_rhs(false), dynamic_solver_tolerance(false)
       {
       	constant_jacobian = true;
-      };
+      }
+
+      virtual ~StationaryPicardSolver() {}
       
       virtual void solve(double *coeff_vec);
       void solve() { this->solve(NULL); }
@@ -54,6 +63,8 @@ namespace Hermes { namespace Hermes2D {
       using Solvers::NonlinearMatrixSolver<double>::set_tolerance;
       virtual void set_tolerance(double tolerance_, Solvers::NonlinearConvergenceMeasurementType toleranceType, bool handleMultipleTolerancesAnd = false);
       
+      bool on_initialization();
+
       virtual double calculate_residual_norm() = 0;
       
       using PicardSolver<double>::solve;  // Re-expose other overloaded 'solve' methods hidden by the above override.
@@ -73,7 +84,7 @@ namespace Hermes { namespace Hermes2D {
             production_matrix(NULL), production_dp(NULL), production_wf(prod_wf), Ax(NULL), have_Ax(false)
         {
         	unshifted_jacobian = this->get_jacobian();
-        };
+        }
         
         KeffEigenvalueIteration(DiscreteProblem<double>* dp, WeakForm<double>* prod_wf = NULL)
           : StationaryPicardSolver(dp), 
@@ -82,7 +93,7 @@ namespace Hermes { namespace Hermes2D {
             production_matrix(NULL), production_dp(NULL), production_wf(prod_wf), Ax(NULL), have_Ax(false)
         {
         	unshifted_jacobian = this->get_jacobian();
-        };
+        }
         
         virtual ~KeffEigenvalueIteration();
         
@@ -133,12 +144,18 @@ namespace Hermes { namespace Hermes2D {
       public:
         SourceIteration(WeakForm<double>* wf, const Hermes::vector<SpaceSharedPtr<double> >& spaces)
           : StationaryPicardSolver(wf, spaces)
-        {};
+        {}
         
         SourceIteration(DiscreteProblem<double>* dp)
           : StationaryPicardSolver(dp)
-        {};
+        {}
         
+        SourceIteration()
+          : StationaryPicardSolver()
+        {}
+
+        virtual ~SourceIteration() {}
+
         virtual double calculate_residual_norm();
     };
     

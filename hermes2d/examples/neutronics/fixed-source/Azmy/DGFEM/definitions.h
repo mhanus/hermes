@@ -7,8 +7,12 @@ using namespace Hermes;
 using namespace Hermes::Hermes2D;
 using namespace Hermes::Hermes2D::Views;
 using namespace Hermes::Mixins;
+using namespace Hermes::Hermes2D::RefinementSelectors;
+
 using namespace Neutronics;
 using namespace Neutronics::SN;
+
+
 
 class SNWeakForm : public WeakForm<double>
 {
@@ -329,9 +333,3 @@ private:
   SupportClasses::OrdinatesData odata;
 };
 
-class IsotropicScatteringAndFissionMatrixForms : public WeakForm<double>
-{
-public:
-  IsotropicScatteringAndFissionMatrixForms(const MaterialProperties::MaterialPropertyMaps& matprop, const char* out_tensor);
-  virtual WeakForm<double>* clone() const { return new IsotropicScatteringAndFissionMatrixForms(*this); }
-};

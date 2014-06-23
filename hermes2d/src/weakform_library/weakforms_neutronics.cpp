@@ -5,7 +5,7 @@ namespace Hermes { namespace Hermes2D {
 void StationaryPicardSolver::set_tolerance(double tolerance_, Solvers::NonlinearConvergenceMeasurementType toleranceType, bool handleMultipleTolerancesAnd)
 {
   NonlinearMatrixSolver<double>::set_tolerance(tolerance_, toleranceType, handleMultipleTolerancesAnd);
-  measure_convergence_by_residual = this->tolerance_set[2];
+  measure_convergence_by_residual = this->tolerance_set[0] || this->tolerance_set[1] || this->tolerance_set[2] || this->tolerance_set[3] || this->tolerance_set[4];
 }
 
 Vector<double>* StationaryPicardSolver::duplicate_rhs()
@@ -148,6 +148,13 @@ Solvers::NonlinearConvergenceState StationaryPicardSolver::get_convergence_state
 		return Solvers::NonlinearConvergenceState::NotConverged;
 
 	return Solvers::NonlinearConvergenceState::Error;
+}
+
+bool StationaryPicardSolver::on_initialization()
+{
+    this->have_rhs = false;
+    this->jacobian_reusable = false;
+    return true;
 }
 
 bool StationaryPicardSolver::converged()
