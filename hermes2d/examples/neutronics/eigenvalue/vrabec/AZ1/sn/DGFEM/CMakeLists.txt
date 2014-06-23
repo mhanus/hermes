@@ -1,0 +1,9 @@
+project(vrabec_AZ1-sn-dg)
+
+add_executable(${PROJECT_NAME} main.cpp definitions.cpp ../../problem_data.cpp ../../../../../utils.cpp)
+
+#set (FLAGS "${FLAGS} -g")
+set (FLAGS "${FLAGS} -O2")
+set_property(TARGET ${PROJECT_NAME} PROPERTY COMPILE_FLAGS ${FLAGS})
+
+target_link_libraries(${PROJECT_NAME} ${HERMES2D})
