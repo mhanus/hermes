@@ -16,24 +16,24 @@ const bool VTK_VISUALIZATION = true;
     const bool VTK_SCAL_VISUALIZATION = true;
     const bool VTK_ORD_VISUALIZATION = true;
 
-const bool HERMES_VISUALIZATION = false;
-    const bool HERMES_ANG_VISUALIZATION = false;
-    const bool HERMES_SCAL_VISUALIZATION = false;
-    const bool HERMES_ORD_VISUALIZATION = false;
+const bool HERMES_VISUALIZATION = true;
+    const bool HERMES_ANG_VISUALIZATION = true;
+    const bool HERMES_SCAL_VISUALIZATION = true;
+    const bool HERMES_ORD_VISUALIZATION = true;
     const bool HERMES_MESH_VISUALIZATION = false;
     const bool SHOW_INTERMEDIATE_ORDERS = false;     // Set to "true" to display coarse mesh solutions during adaptivity.
     const bool SHOW_INTERMEDIATE_SOLUTIONS = false;  // Set to "true" to display solutions on intermediate meshes during adaptivity.
 
 const bool MULTIMESH = true;
 // Number of initial uniform mesh refinements.
-const int INIT_REF_NUM = 1;
+const int INIT_REF_NUM = 2;
 // Initial polynomial degrees of mesh elements in vertical and horizontal directions.
 const int P_INIT = 0;
 // Use vertex based limiter for P_INIT < 3?
 const bool USE_LIMITER = false;
 
 const unsigned int N_GROUPS = 1;    // Monoenergetic (single group) problem.
-const int N = 8;
+const int N = 2;
 const int M = N_GROUPS * N*(N+2)/2;
 
 //
@@ -48,7 +48,7 @@ const double PICARD_ANDERSON_BETA = 0;
 // Stopping criterion for the Picard's method.
 const double PICARD_TOL = 1e-6;
 // Maximum allowed number of Picard iterations.
-const int PICARD_MAX_ITER = 1000;
+const int PICARD_MAX_ITER = 20;
 // Value for constant initial condition.
 const double INIT_COND_CONST = 1.0;
 
@@ -65,7 +65,7 @@ AdaptStoppingCriterionSingleElement<double> stoppingCriterion(THRESHOLD);
 // Adaptivity processor class.
 Adapt<double> adaptivity(&errorCalculator, &stoppingCriterion);
 // Predefined list of element refinement candidates.
-const CandList CAND_LIST = H2D_HP_ANISO;
+const CandList CAND_LIST = H2D_H_ANISO;
 // Stopping criterion for adaptivity.
 const double ERR_STOP = 1e-2;
 
@@ -88,7 +88,7 @@ int main(int argc, char* args[])
   // Set the number of threads used in Hermes.
   
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::matrixSolverType, matrix_solver_type);
-  //Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
+  Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 1);
   
   // Time measurement.
   TimeMeasurable cpu_time;
@@ -125,11 +125,12 @@ int main(int argc, char* args[])
 
   Loggable::Static::info("%d elements, %d vertices", meshes[0]->get_num_active_elements(), meshes[0]->get_num_vertex_nodes() );
   
-  Hermes::vector<MeshFunctionSharedPtr<double> > slns, ref_slns;
+  Hermes::vector<MeshFunctionSharedPtr<double> > init_slns, slns, ref_slns;
   for (int i = 0; i < M; i++)
   {
     ref_slns.push_back(new Solution<double>);
-    slns.push_back(new ConstantSolution<double>(MULTIMESH ? meshes[i] : meshes[0], INIT_COND_CONST));
+    slns.push_back(new Solution<double>);
+    init_slns.push_back(new ConstantSolution<double>(MULTIMESH ? meshes[i] : meshes[0], INIT_COND_CONST));
   }
 
     // Load material data.
@@ -167,16 +168,6 @@ int main(int argc, char* args[])
 //  BaseView<double> bview("Shape functions", new WinGeom(450, 0, 440, 350));
 //  bview.show(spaces[0]);
 
-  // Discrete problem solver.
-  SourceIteration solver;
-  solver.set_weak_formulation(&wf);
-
-  solver.use_Anderson_acceleration(false);
-  solver.set_tolerance(PICARD_TOL, Hermes::Solvers::ResidualNormRatioToInitial);
-  solver.set_max_allowed_iterations(PICARD_MAX_ITER);
-  solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
-  solver.set_anderson_beta(PICARD_ANDERSON_BETA);
-  solver.set_verbose_output(true);
 
   // Initialize refinement selectors.
   L2ProjBasedSelector<double> selector(CAND_LIST);
@@ -191,6 +182,8 @@ int main(int argc, char* args[])
   GnuplotGraph graph_cpu_est("Relative L2 error of flux approximation", "CPU time [s]", "error [%]");
   setup_convergence_graph(&graph_dof_est);
   setup_convergence_graph(&graph_cpu_est);
+  
+  adaptivity.set_spaces(spaces);
 
   // Adaptivity loop:
   int as = 1; bool done = false;
@@ -207,7 +200,8 @@ int main(int argc, char* args[])
     {
       Mesh::ReferenceMeshCreator ref_mesh_creator(meshes[i]);
       MeshSharedPtr ref_mesh = ref_mesh_creator.create_ref_mesh();
-      Space<double>::ReferenceSpaceCreator ref_space_creator(spaces[i], ref_mesh);
+      std::cout << i << " " << ref_mesh->get_num_elements() << " " << ref_mesh->get_num_active_elements() << std::endl;
+      Space<double>::ReferenceSpaceCreator ref_space_creator(spaces[i], ref_mesh, 0);
       SpaceSharedPtr<double> ref_space = ref_space_creator.create_ref_space();
       ref_spaces[i] = ref_space;
     }
@@ -219,17 +213,30 @@ int main(int argc, char* args[])
     // Time measurement.
     cpu_time.tick();
 
+      // Discrete problem solver.
+  SourceIteration solver;
+  solver.set_weak_formulation(&wf);
+
+  solver.use_Anderson_acceleration(false);
+  solver.set_tolerance(PICARD_TOL, Hermes::Solvers::ResidualNormRatioToInitial);
+  solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
+  solver.set_anderson_beta(PICARD_ANDERSON_BETA);
+  solver.set_verbose_output(true);
+  
     // Iterate on reference spaces.
     solver.set_spaces(ref_spaces);
+    solver.set_max_allowed_iterations(PICARD_MAX_ITER + 5*as);
 
     try
     {
-      solver.solve(slns);
+      if (as == 1)
+        solver.solve(init_slns);
+      else
+        solver.solve(ref_slns);
     }
     catch (Hermes::Exceptions::Exception& e)
     {
       std::cout << e.info();
-      return -1;
     }
     catch (std::exception& e)
     {
@@ -251,8 +258,6 @@ int main(int argc, char* args[])
 
     Loggable::Static::info("Projecting reference solutions on coarse mesh.");
     OGProjection<double> ogProjection; ogProjection.project_global(spaces, ref_slns, slns);
-
-    adaptivity.set_spaces(spaces);
 
     errorCalculator.calculate_errors(slns, ref_slns);
     double err_est_rel_total = errorCalculator.get_total_error_squared() * 100;
@@ -276,7 +281,16 @@ int main(int argc, char* args[])
 
     std::cout << "Discretization error (angular fluxes): " << err_est_rel_total << "%." << std::endl;
 //    std::cout << "Discretization error (scalar fluxes): " << scalar_flux_err_est_rel_total << "%." << std::endl;
-
+/*
+    if (HERMES_ANG_VISUALIZATION)
+        views.show_solutions(ref_slns);
+    if (HERMES_SCAL_VISUALIZATION)
+        views.show_scalar_fluxes(ref_slns);
+    if (HERMES_ORD_VISUALIZATION)
+        views.show_orders(ref_spaces);
+    
+    Views::View::wait_for_keypress();
+*/    
     // If err_est too large, adapt spaces
     if (err_est_rel_total < ERR_STOP)
       done = true;
