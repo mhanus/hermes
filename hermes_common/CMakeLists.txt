@@ -222,7 +222,6 @@ project(hermes_common)
 
     target_link_libraries(  ${HERMES_COMMON_LIB}
       ${EXODUSII_LIBRARIES}
-      ${HDF5_LIBRARY}
       ${METIS_LIBRARY}
       ${UMFPACK_LIBRARIES} ${PARALUTION_LIBRARY}
       ${TRILINOS_LIBRARIES}
@@ -243,6 +242,7 @@ project(hermes_common)
       ${LIBIBERTY_LIBRARY}
       ${BSON_LIBRARY}
       ${MATIO_LIBRARY}
+      ${HDF5_LIBRARY}
       ${WINBLAS_LIBRARY} 
       ${ADDITIONAL_LIBS}
     )
