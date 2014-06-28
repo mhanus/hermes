@@ -6,10 +6,82 @@
 #include "neutronics/material_properties.h"
 #include <iomanip>
 
+#if defined(WIN32) || defined(_WIN32)
+  #define PATH_SEP "\\"
+#else
+  #define PATH_SEP "/"
+#endif
+
 namespace Hermes { namespace Hermes2D { namespace Neutronics
 {
   namespace Common { namespace MaterialProperties
   {
+
+    void save_xs_mat_PARCS(std::ofstream& out, const rank1& xs)
+    {
+      rank1::const_iterator it = xs.begin();
+      for (unsigned int g = 1; it != xs.end(); ++it, ++g)
+      {
+        out << "* GROUP \t" << g << std::endl;
+        out << "\t" << *it << std::endl;
+      }
+      out << std::endl;
+    }
+
+    void save_xs_mat_PARCS(std::ofstream& out, const rank2& xs)
+    {
+      rank2::const_iterator xs_j = xs.begin();
+      for (unsigned int gfrom = 1; xs_j != xs.end(); ++xs_j, ++gfrom)
+      {
+        rank1::const_iterator xs_ij = xs_j->begin();
+        for (unsigned int gto = 1; xs_ij != xs_j->end(); ++xs_ij, ++gto)
+        {
+          out << "* GROUP \t" << gfrom << " -> " << gto << std::endl;
+          out << "\t" << *xs_ij << std::endl;
+        }
+      }
+      out << std::endl;
+    }
+
+    void save_xs_mat_PARCS(std::ofstream& out, const rank3& xs)
+    {
+      rank3::const_iterator xs_k = xs.begin();
+      for (unsigned int moment = 0; xs_k != xs.end(); ++xs_k, ++moment)
+      {
+        out << "* MOMENT \t" << moment << std::endl << "*" << std::endl;
+
+        rank2::const_iterator xs_jk = xs_k->begin();
+        for (unsigned int gfrom = 1; xs_jk != xs_k->end(); ++xs_jk, ++gfrom)
+        {
+          rank1::const_iterator xs_ijk = xs_jk->begin();
+          for (unsigned int gto = 1; xs_ijk != xs_jk->end(); ++xs_ijk, ++gto)
+          {
+            out << "* GROUP \t" << gfrom << " -> " << gto << std::endl;
+            out << "\t" << *xs_ijk << std::endl;
+          }
+        }
+      }
+      out << std::endl;
+    }
+
+    template<typename rankx>
+    void save_xs_PARCS(const std::string& folder, const std::map<std::string, rankx>& xs, const std::string& xs_table_entry)
+    {
+      for (typename std::map<std::string, rankx>::const_iterator data_elem = xs.begin(); data_elem != xs.end(); ++data_elem)
+      {
+        // TODO: General, but not particularly effective (file opened/closed for each x-sec and material).
+        // NOTE: Folder must exist.
+        std::ofstream out(folder + PATH_SEP + data_elem->first, std::ios_base::app);
+
+        out << "*\n";
+        out << "* " << xs_table_entry << std::endl;
+        out << "*\n";
+
+        save_xs_mat_PARCS(out, data_elem->second);
+      }
+    }
+
+
     MaterialPropertyMaps::MaterialPropertyMaps(unsigned int G, const RegionMaterialMap& reg_mat_map)
       : region_material_map(reg_mat_map), G(G), 
         fission_materials(Hermes::vector<std::string>()), fission_regions(Hermes::vector<std::string>())
@@ -43,6 +115,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         fission_regions.insert(insert_it, regs.begin(), regs.end());
         insert_it = fission_regions.begin();
       }
+    }
+
+    void MaterialPropertyMaps::save_PARCS(const std::string &folder) const
+    {
+      save_xs_PARCS(folder, Sigma_a, "Absorption XSEC Table");
+      save_xs_PARCS(folder, Sigma_f, "Fission XSEC Table");
+      save_xs_PARCS(folder, nu, "Nu XSEC Table");
+      save_xs_PARCS(folder, nuSigma_f, "Nu-Fission XSEC Table");
+      save_xs_PARCS(folder, chi, "Fission Spectrum");
+      save_xs_PARCS(folder, src0, "Isotropic source");
     }
 
     void MaterialPropertyMaps::extend_to_multigroup(const MaterialPropertyMap0& mrsg_map, 
@@ -593,6 +675,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         ErrorHandling::error_function(Messages::E_INVALID_MARKER);
         return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
       }
+    }
+
+    void MaterialPropertyMaps::save_PARCS(const std::string &folder) const
+    {
+      Common::MaterialProperties::MaterialPropertyMaps::save_PARCS(folder);
+      Common::MaterialProperties::save_xs_PARCS(folder, this->D, "Diffusion XSEC Table");
+      Common::MaterialProperties::save_xs_PARCS(folder, this->Sigma_r, "Reduction XSEC Table");
+      Common::MaterialProperties::save_xs_PARCS(folder, this->Sigma_t, "Total XSEC Table");
+      Common::MaterialProperties::save_xs_PARCS(folder, this->Sigma_s, "Scattering XSEC Table");
     }
     
     std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop)
@@ -1259,6 +1350,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         ErrorHandling::error_function(Messages::E_INVALID_MARKER);
         return *(new rank2()); // To avoid MSVC problems; execution should never come to this point.
       }
+    }
+
+    void MaterialPropertyMaps::save_PARCS(const std::string &folder) const
+    {
+      Common::MaterialProperties::MaterialPropertyMaps::save_PARCS(folder);
+      Common::MaterialProperties::save_xs_PARCS(folder, this->Sigma_t, "Total XSEC Table");
+      Common::MaterialProperties::save_xs_PARCS(folder, this->Sigma_sn, "Scattering XSEC Table");
     }
     
     std::ostream& operator<<(std::ostream& os, const MaterialPropertyMaps& matprop)

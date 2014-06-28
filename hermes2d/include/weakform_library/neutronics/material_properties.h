@@ -226,6 +226,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         unsigned int get_G() const { return G; } 
         
         friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
+        virtual void save_PARCS(const std::string& folder) const;
     };
     
   /* MaterialProperties */
@@ -312,6 +313,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         const rank1& get_D(const std::string& material) const;
         
         friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
+        virtual void save_PARCS(const std::string& folder) const;
     };
     
     class TransportCorrectedMaterialPropertyMaps : public MaterialPropertyMaps
@@ -466,6 +468,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         unsigned int get_N_odd() const { return N_odd; }
         
         friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
+        // TODO: virtual void save_PARCS(const std::string& folder) const;
     };
     
   /* MaterialProperties */
@@ -533,6 +536,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         virtual rank2 compute_Sigma_s(const std::string& material) const;
         
         friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
+        virtual void save_PARCS(const std::string& folder) const;
     };
     
   /* MaterialProperties */
