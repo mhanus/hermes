@@ -57,7 +57,7 @@ namespace Hermes { namespace Hermes2D {
 
       void use_dynamic_solver_tolerance(bool to_set = true);
       
-      bool converged();
+      virtual bool converged();
       Solvers::NonlinearConvergenceState get_convergence_state();
       
       using Solvers::NonlinearMatrixSolver<double>::set_tolerance;
@@ -76,6 +76,12 @@ namespace Hermes { namespace Hermes2D {
     {
       public:
         enum ShiftStrategies { NO_SHIFT = 0, FIXED_SHIFT, RAYLEIGH_QUOTIENT_SHIFT };
+        enum ConvergenceMeasurementType
+        {
+          ResidualNormRatioToInitial = 0x0004,
+          SolutionChangeRelative = 0x0040,
+          EigenvalueRelative = 0x0400
+        };
         
         KeffEigenvalueIteration(WeakForm<double>* wf, const Hermes::vector<SpaceSharedPtr<double> >& spaces, WeakForm<double>* prod_wf = NULL)
           : StationaryPicardSolver(wf, spaces), 
@@ -104,7 +110,8 @@ namespace Hermes { namespace Hermes2D {
         
         double get_keff() const { return keff; }
         
-        void set_keff_tol(double tol) { keff_tol = tol; }
+        void set_tolerance(double tolerance_, KeffEigenvalueIteration::ConvergenceMeasurementType toleranceType, bool handleMultipleTolerancesAnd = false);
+        virtual bool converged();
         
         void set_production_weakform(WeakForm<double> *prod_wf) { production_wf = prod_wf; }
         void set_spectral_shift_strategy(ShiftStrategies strategy, int num_unshifted_iterations = 0, double fixed_shift = 0.0);

@@ -4,8 +4,11 @@ namespace Hermes { namespace Hermes2D {
 
 void StationaryPicardSolver::set_tolerance(double tolerance_, Solvers::NonlinearConvergenceMeasurementType toleranceType, bool handleMultipleTolerancesAnd)
 {
+  if (toleranceType != Solvers::NonlinearConvergenceMeasurementType::ResidualNormRatioToInitial || toleranceType != Solvers::NonlinearConvergenceMeasurementType::SolutionChangeRelative)
+    this->error("Only ResidualNormRatioToInitial or SolutionChangeRelative tolerance types are supported by StationaryPicardSolver.");
+
   NonlinearMatrixSolver<double>::set_tolerance(tolerance_, toleranceType, handleMultipleTolerancesAnd);
-  measure_convergence_by_residual = this->tolerance_set[0] || this->tolerance_set[1] || this->tolerance_set[2] || this->tolerance_set[3] || this->tolerance_set[4];
+  measure_convergence_by_residual = this->tolerance_set[2];
 }
 
 Vector<double>* StationaryPicardSolver::duplicate_rhs()
@@ -159,6 +162,14 @@ bool StationaryPicardSolver::on_initialization()
 
 bool StationaryPicardSolver::converged()
 {
+	if (!this->tolerance_set[2] && !this->tolerance_set[6])
+	{
+		if (this->handleMultipleTolerancesAnd)
+			return true;
+		else
+			return false;
+	}
+
 	double rel_err = std::numeric_limits<double>::max();
 	double rel_res = std::numeric_limits<double>::max();
 
@@ -221,6 +232,45 @@ namespace Neutronics
     if (Ax)
       delete [] Ax;
   }
+
+  void KeffEigenvalueIteration::set_tolerance(double tolerance_, KeffEigenvalueIteration::ConvergenceMeasurementType toleranceType, bool handleMultipleTolerancesAnd)
+  {
+    Solvers::NonlinearConvergenceMeasurementType ctype;
+    if (toleranceType == KeffEigenvalueIteration::ConvergenceMeasurementType::ResidualNormRatioToInitial ||
+        toleranceType == KeffEigenvalueIteration::ConvergenceMeasurementType::SolutionChangeRelative)
+    {
+      switch (toleranceType)
+      {
+        case KeffEigenvalueIteration::ConvergenceMeasurementType::ResidualNormRatioToInitial:
+          ctype = Solvers::NonlinearConvergenceMeasurementType::ResidualNormRatioToInitial;
+          break;
+        case KeffEigenvalueIteration::ConvergenceMeasurementType::SolutionChangeRelative:
+          ctype = Solvers::NonlinearConvergenceMeasurementType::SolutionChangeRelative;
+          break;
+      }
+
+      StationaryPicardSolver::set_tolerance(tolerance_, ctype, handleMultipleTolerancesAnd);
+    }
+
+    if (toleranceType == EigenvalueRelative)
+      this->keff_tol = tolerance_;
+  }
+
+  bool KeffEigenvalueIteration::converged()
+  {
+    bool conv = StationaryPicardSolver::converged();
+
+    double rel_err = abs(keff - old_keff) / keff;
+    this->info("\n\t\t k_eff rel. error %g%%", rel_err * 100);
+
+    if (keff_tol > 0)
+      if (this->handleMultipleTolerancesAnd)
+        conv = conv && (rel_err > keff_tol);
+      else
+        conv = conv || (rel_err > keff_tol);
+
+    return conv;
+  }
     
   bool KeffEigenvalueIteration::on_initialization()
   {
@@ -279,13 +329,6 @@ namespace Neutronics
   bool KeffEigenvalueIteration::on_step_end()
   {
     this->update();
-    
-    double rel_err = abs(keff - old_keff) / keff;
-    this->info("\n\t\tk_eff = %g, rel. error %g%%", keff, rel_err * 100);
-    
-    if (keff_tol > 0)
-      return (rel_err > keff_tol);
-    
     return true;
   }
   
@@ -350,6 +393,8 @@ namespace Neutronics
         delete [] resv;
       }
     }
+
+    this->info("\n\t\tk_eff = %g", keff);
   }
   
   bool KeffEigenvalueIteration::on_finish()
