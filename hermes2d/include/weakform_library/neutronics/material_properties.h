@@ -91,6 +91,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         Hermes::vector<std::string> fission_regions;
         
         unsigned int G;
+        unsigned int output_precision;
         
         bool1 fission_nonzero_structure;
         
@@ -225,7 +226,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         unsigned int get_G() const { return G; } 
         
+        void set_output_precision(unsigned int prec) { output_precision = prec; }
         friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
+        virtual void save_PARCS(const std::string& folder) const;
     };
     
   /* MaterialProperties */
@@ -312,6 +315,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         const rank1& get_D(const std::string& material) const;
         
         friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
+        virtual void save_PARCS(const std::string& folder) const;
     };
     
     class TransportCorrectedMaterialPropertyMaps : public MaterialPropertyMaps
@@ -466,6 +470,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         unsigned int get_N_odd() const { return N_odd; }
         
         friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
+        // TODO: virtual void save_PARCS(const std::string& folder) const;
     };
     
   /* MaterialProperties */
@@ -533,6 +538,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         virtual rank2 compute_Sigma_s(const std::string& material) const;
         
         friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
+        virtual void save_PARCS(const std::string& folder) const;
     };
     
   /* MaterialProperties */

@@ -57,8 +57,8 @@ const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse
 const bool USE_TRANSPORT_CORRECTED_CROSS_SECTIONS = false;
 
 // Power iteration control.
-double TOL_PIT_CM = 1e-3;   // Tolerance for eigenvalue convergence on the coarse mesh.
-double TOL_PIT_FM = 1e-4;   // Tolerance for eigenvalue convergence on the fine mesh.
+double KEFF_TOL_CM = 1e-3;   // Tolerance for eigenvalue convergence on the coarse mesh.
+double KEFF_TOL_FM = 1e-4;   // Tolerance for eigenvalue convergence on the fine mesh.
 
 int main(int argc, char* argv[])
 {  
@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
   report_num_dof("Coarse mesh power iteration, NDOF: ", spaces);
   
   Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
-  keff_eigenvalue_iteration.set_tolerance(TOL_PIT_CM);
+  keff_eigenvalue_iteration.set_tolerance(KEFF_TOL_CM);
   keff_eigenvalue_iteration.set_max_allowed_iterations(1000);
   //keff_eigenvalue_iteration.output_matrix();
   //keff_eigenvalue_iteration.output_rhs();
@@ -187,7 +187,7 @@ int main(int argc, char* argv[])
     for (unsigned int i = 0; i < N_EQUATIONS; i++)
       selectors.push_back(&selector);
     
-    keff_eigenvalue_iteration.set_tolerance(TOL_PIT_FM);
+    keff_eigenvalue_iteration.set_tolerance(KEFF_TOL_FM);
     
     // Adaptivity loop:
     int as = 1; bool done = false; 

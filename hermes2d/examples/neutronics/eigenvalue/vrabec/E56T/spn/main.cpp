@@ -70,8 +70,8 @@ const bool DISPLAY_MESHES = false;       // Set to "true" to display initial mes
 const bool INTERMEDIATE_VISUALIZATION = true; // Set to "true" to display coarse mesh solutions during adaptivity.
 
 // Power iteration control.
-double TOL_PIT_CM = 1e-5;   // Tolerance for eigenvalue convergence on the coarse mesh.
-double TOL_PIT_FM = 1e-6;   // Tolerance for eigenvalue convergence on the fine mesh.
+double KEFF_TOL_CM = 1e-5;   // Tolerance for eigenvalue convergence on the coarse mesh.
+double KEFF_TOL_FM = 1e-6;   // Tolerance for eigenvalue convergence on the fine mesh.
 
 int main(int argc, char* argv[])
 {  
@@ -96,12 +96,16 @@ int main(int argc, char* argv[])
   
   matprop->validate();
   
+  matprop->output_precision = 2;
   std::cout << *matprop;
   
   // Use multimesh, i.e. create one mesh for each energy group.
   Hermes::vector<MeshSharedPtr > meshes;
   for (unsigned int i = 0; i < N_EQUATIONS; i++) 
-    meshes.push_back(new Mesh());
+  {
+    meshes.push_back(MeshSharedPtr(new Mesh()));
+    meshes[i]->resacale(10,10); // mm -> cm
+  }
   
   // Load the mesh on which the 1st solution component (1st group, 0th moment) will be approximated.
   MeshReaderH2D mesh_reader;
@@ -144,7 +148,7 @@ int main(int argc, char* argv[])
   report_num_dof("Coarse mesh power iteration, NDOF: ", spaces);
   
   Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
-  keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_CM);
+  keff_eigenvalue_iteration.set_keff_tol(KEFF_TOL_CM);
   keff_eigenvalue_iteration.set_max_allowed_iterations(1000);
   //keff_eigenvalue_iteration.set_matrix_E_matrix_dump_format(Hermes::Algebra::DF_HERMES_BIN);
   //keff_eigenvalue_iteration.set_matrix_filename("A");

@@ -6,12 +6,84 @@
 #include "neutronics/material_properties.h"
 #include <iomanip>
 
+#if defined(WIN32) || defined(_WIN32)
+  #define PATH_SEP "\\"
+#else
+  #define PATH_SEP "/"
+#endif
+
 namespace Hermes { namespace Hermes2D { namespace Neutronics
 {
   namespace Common { namespace MaterialProperties
   {
+
+    void save_xs_mat_PARCS(std::ofstream& out, const rank1& xs)
+    {
+      rank1::const_iterator it = xs.begin();
+      for (unsigned int g = 1; it != xs.end(); ++it, ++g)
+      {
+        out << "* GROUP \t" << g << std::endl;
+        out << "\t" << *it << std::endl;
+      }
+      out << std::endl;
+    }
+
+    void save_xs_mat_PARCS(std::ofstream& out, const rank2& xs)
+    {
+      rank2::const_iterator xs_j = xs.begin();
+      for (unsigned int gfrom = 1; xs_j != xs.end(); ++xs_j, ++gfrom)
+      {
+        rank1::const_iterator xs_ij = xs_j->begin();
+        for (unsigned int gto = 1; xs_ij != xs_j->end(); ++xs_ij, ++gto)
+        {
+          out << "* GROUP \t" << gfrom << " -> " << gto << std::endl;
+          out << "\t" << *xs_ij << std::endl;
+        }
+      }
+      out << std::endl;
+    }
+
+    void save_xs_mat_PARCS(std::ofstream& out, const rank3& xs)
+    {
+      rank3::const_iterator xs_k = xs.begin();
+      for (unsigned int moment = 0; xs_k != xs.end(); ++xs_k, ++moment)
+      {
+        out << "* MOMENT \t" << moment << std::endl << "*" << std::endl;
+
+        rank2::const_iterator xs_jk = xs_k->begin();
+        for (unsigned int gfrom = 1; xs_jk != xs_k->end(); ++xs_jk, ++gfrom)
+        {
+          rank1::const_iterator xs_ijk = xs_jk->begin();
+          for (unsigned int gto = 1; xs_ijk != xs_jk->end(); ++xs_ijk, ++gto)
+          {
+            out << "* GROUP \t" << gfrom << " -> " << gto << std::endl;
+            out << "\t" << *xs_ijk << std::endl;
+          }
+        }
+      }
+      out << std::endl;
+    }
+
+    template<typename rankx>
+    void save_xs_PARCS(const std::string& folder, const std::map<std::string, rankx>& xs, const std::string& xs_table_entry)
+    {
+      for (typename std::map<std::string, rankx>::const_iterator data_elem = xs.begin(); data_elem != xs.end(); ++data_elem)
+      {
+        // TODO: General, but not particularly effective (file opened/closed for each x-sec and material).
+        // NOTE: Folder must exist.
+        std::ofstream out(folder + PATH_SEP + data_elem->first, std::ios_base::app);
+
+        out << "*\n";
+        out << "* " << xs_table_entry << std::endl;
+        out << "*\n";
+
+        save_xs_mat_PARCS(out, data_elem->second);
+      }
+    }
+
+
     MaterialPropertyMaps::MaterialPropertyMaps(unsigned int G, const RegionMaterialMap& reg_mat_map)
-      : region_material_map(reg_mat_map), G(G), 
+      : region_material_map(reg_mat_map), G(G), output_precision(6),
         fission_materials(Hermes::vector<std::string>()), fission_regions(Hermes::vector<std::string>())
     {
       RegionMaterialMap::const_iterator it = reg_mat_map.begin();
@@ -23,7 +95,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     
     MaterialPropertyMaps::MaterialPropertyMaps(unsigned int G, const std::set<std::string>& mat_list) 
-      : materials_list(mat_list), G(G),
+      : materials_list(mat_list), G(G), output_precision(6),
         fission_materials(Hermes::vector<std::string>()), fission_regions(Hermes::vector<std::string>())  
     { 
       std::set<std::string>::const_iterator it = mat_list.begin();
@@ -43,6 +115,16 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         fission_regions.insert(insert_it, regs.begin(), regs.end());
         insert_it = fission_regions.begin();
       }
+    }
+
+    void MaterialPropertyMaps::save_PARCS(const std::string &folder) const
+    {
+      save_xs_PARCS(folder, Sigma_a, "Absorption XSEC Table");
+      save_xs_PARCS(folder, Sigma_f, "Fission XSEC Table");
+      save_xs_PARCS(folder, nu, "Nu XSEC Table");
+      save_xs_PARCS(folder, nuSigma_f, "Nu-Fission XSEC Table");
+      save_xs_PARCS(folder, chi, "Fission Spectrum");
+      save_xs_PARCS(folder, src0, "Isotropic source");
     }
 
     void MaterialPropertyMaps::extend_to_multigroup(const MaterialPropertyMap0& mrsg_map, 
@@ -336,29 +418,37 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
     }
     
+    #define  COLW(header) std::max(number_width, header)
     std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop)
     {
       using namespace std;
-      
+
+      os.setf(std::ios::scientific, std::ios::floatfield);
+      os << std::setprecision(matprop.output_precision);
+
+      int gto_width = 12;
+      int number_width = 9+matprop.output_precision;
+      int total_width = gto_width + COLW(3) + COLW(2) + COLW(7) + COLW(14);
+
       os << endl;
-      os << setw(12) << "target group" << setw(10) << "chi" << setw(10) << "nu";
-      os << setw(10) << "Sigma_f" << setw(14) << "iso. ext. src" << endl; 
+      os << setw(12) << "target group" << setw(COLW(3)) << "chi" << setw(COLW(2)) << "nu";
+      os << setw(COLW(7)) << "Sigma_f" << setw(COLW(14)) << "iso. ext. src" << endl;
       
       MaterialPropertyMap1::const_iterator data_elem = matprop.chi.begin();
       for ( ; data_elem != matprop.chi.end(); ++data_elem)
       {
         std::string mat = data_elem->first;
         
-        os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
-        os << setw(40) << mat << endl;
-        os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+        os << setw(total_width) << setfill('-') << '-' << endl << setfill(' ');
+        os << setw(total_width/2+mat.length()/2) << mat << endl;
+        os << setw(total_width) << setfill('-') << '-' << endl << setfill(' ');
         for (unsigned int gto = 0; gto < matprop.G; gto++)
         {
-          os << setw(6) << gto << setw(6) << ' ';
-          os << setw(10) << matprop.get_chi(mat)[gto];
-          os << setw(10) << matprop.get_nu(mat)[gto];
-          os << setw(10) << matprop.get_Sigma_f(mat)[gto];
-          os << setw(14);
+          os << setw(gto_width/2) << gto << setw(gto_width/2) << ' ';
+          os << setw(number_width) << matprop.get_chi(mat)[gto];
+          os << setw(number_width) << matprop.get_nu(mat)[gto];
+          os << setw(number_width) << matprop.get_Sigma_f(mat)[gto];
+          os << setw(COLW(14));
           if (matprop.src0.empty())
             os << "N/A";
           else
@@ -368,7 +458,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         }
       }
       
-      os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+      os << total_width << setfill('-') << '-' << endl << setfill(' ');
       os << "All-region fission spectrum: ";
       
       for (unsigned int g = 0; g < matprop.G; g++)
@@ -594,6 +684,15 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         return *(new rank1()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
+
+    void MaterialPropertyMaps::save_PARCS(const std::string &folder) const
+    {
+      Common::MaterialProperties::MaterialPropertyMaps::save_PARCS(folder);
+      Common::MaterialProperties::save_xs_PARCS(folder, this->D, "Diffusion XSEC Table");
+      Common::MaterialProperties::save_xs_PARCS(folder, this->Sigma_r, "Reduction XSEC Table");
+      Common::MaterialProperties::save_xs_PARCS(folder, this->Sigma_t, "Total XSEC Table");
+      Common::MaterialProperties::save_xs_PARCS(folder, this->Sigma_s, "Scattering XSEC Table");
+    }
     
     std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop)
     {
@@ -601,36 +700,40 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       os << static_cast<const Common::MaterialProperties::MaterialPropertyMaps&>(matprop) << endl;
       
-      os << setw(12) << "target group" << setw(10) << "D" << setw(10) << "Sigma_r";
-      os << setw(22) << "Sigma_s" << endl; 
+      int gto_width = 12;
+      int number_width = 9+matprop.output_precision;
+      int total_width = gto_width + number_width*2 + number_width*matprop.G;
+
+      os << setw(12) << "target group" << setw(number_width) << "D" << setw(number_width) << "Sigma_r";
+      os << setw(number_width) << "Sigma_s" << endl;
       
       MaterialPropertyMap1::const_iterator data_elem = matprop.Sigma_r.begin();
       for ( ; data_elem != matprop.Sigma_r.end(); ++data_elem)
       {
         std::string mat = data_elem->first;
         
-        os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
-        os << setw(40) << mat << endl;
-        os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+        os << setw(total_width) << setfill('-') << '-' << endl << setfill(' ');
+        os << setw(total_width/2+mat.length()/2) << mat << endl;
+        os << setw(total_width) << setfill('-') << '-' << endl << setfill(' ');
         for (unsigned int gto = 0; gto < matprop.G; gto++)
         {
-          os << setw(6) << gto << setw(6) << ' ';
-          os << setw(10) << matprop.get_D(mat)[gto];
-          os << setw(10) << matprop.get_Sigma_r(mat)[gto];
+          os << setw(gto_width/2) << gto << setw(gto_width/2) << ' ';
+          os << setw(number_width) << matprop.get_D(mat)[gto];
+          os << setw(number_width) << matprop.get_Sigma_r(mat)[gto];
           
           for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
-            os << setw(8) << matprop.get_Sigma_s(mat)[gto][gfrom];
+            os << setw(number_width) << matprop.get_Sigma_s(mat)[gto][gfrom];
           
           os << endl;
         }
       }
       
-      os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+      os << total_width << setfill('-') << '-' << endl << setfill(' ');
       os << "All-region scattering spectrum: " << endl;
       for (unsigned int gto = 0; gto < matprop.G; gto++)
       {
         for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
-          os << setw(10) << matprop.get_scattering_nonzero_structure()[gto][gfrom];
+          os << setw(number_width) << matprop.get_scattering_nonzero_structure()[gto][gfrom];
         os << endl;
       }
       
@@ -1094,7 +1197,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       os << static_cast<const Common::MaterialProperties::MaterialPropertyMaps&>(matprop) << endl;
       
       int gto_width = 12;
-      int elem_width = 14;
+      int number_width = 9+matprop.output_precision;
+      int elem_width = std::max(14, number_width);
       int total_width = 2*gto_width + 2*elem_width*matprop.G;          
                           
       MaterialPropertyMap3::const_iterator Srn_elem = matprop.Sigma_rn.begin();
@@ -1105,7 +1209,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         rank3 Srn_moments = Srn_elem->second;
         rank3 Srn_inv_moments = Srn_inv_elem->second;
         
-        os << setw(total_width) << setfill('_') << ' ' << endl << setfill(' ');
+        os << setw(total_width) << setfill('-') << '-' << endl << setfill(' ');
         os << setw(total_width/2+mat.length()/2) << mat << endl << endl;
                
         os << setw(gto_width)  << "trgt group";
@@ -1260,6 +1364,13 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         return *(new rank2()); // To avoid MSVC problems; execution should never come to this point.
       }
     }
+
+    void MaterialPropertyMaps::save_PARCS(const std::string &folder) const
+    {
+      Common::MaterialProperties::MaterialPropertyMaps::save_PARCS(folder);
+      Common::MaterialProperties::save_xs_PARCS(folder, this->Sigma_t, "Total XSEC Table");
+      Common::MaterialProperties::save_xs_PARCS(folder, this->Sigma_sn, "Scattering XSEC Table");
+    }
     
     std::ostream& operator<<(std::ostream& os, const MaterialPropertyMaps& matprop)
     {
@@ -1268,8 +1379,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       os << static_cast<const Common::MaterialProperties::MaterialPropertyMaps&>(matprop) << endl;
       
       int gto_width = 12;
-      int elem_width = 14;
-      int total_width = 2*gto_width + elem_width*(matprop.G);          
+      int number_width = 9+matprop.output_precision;
+      int elem_width = std::max(14, number_width);
+      int total_width = 2*gto_width + elem_width*(matprop.G);
 
       MaterialPropertyMap1::const_iterator St_elem = matprop.Sigma_t.begin();
       MaterialPropertyMap3::const_iterator Ssn_elem = matprop.Sigma_sn.begin();
@@ -1278,7 +1390,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         std::string mat = St_elem->first;
         rank1 St = St_elem->second;
         
-        os << setw(total_width) << setfill('_') << ' ' << endl << setfill(' ');
+        os << setw(total_width) << setfill('-') << '-' << endl << setfill(' ');
         os << setw(total_width/2+mat.length()/2) << mat << endl << endl;
         
         os << setw(gto_width)  << "trgt group";

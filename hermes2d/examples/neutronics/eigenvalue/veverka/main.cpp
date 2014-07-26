@@ -62,8 +62,8 @@ const bool SAVE_MATRICES = true; // Save algebraic representation of individual 
 //
 // Eigenvalue iteration control.
 //
-double TOL_PIT_CM = 1e-5;   // Tolerance for convergence on the coarse mesh.
-double TOL_PIT_FM = 1e-9;   // Tolerance for convergence on the fine mesh.
+double KEFF_TOL_CM = 1e-5;   // Tolerance for convergence on the coarse mesh.
+double KEFF_TOL_FM = 1e-9;   // Tolerance for convergence on the fine mesh.
 const int MAX_PIT = 1000;   // Maximal number of iterations.
 const bool MEASURE_CONVERGENCE_BY_RESIDUAL = true;  // When 'false', eigenvalue difference will be used to monitor convergence. 
 
@@ -174,9 +174,9 @@ int main(int argc, char* argv[])
   keff_eigenvalue_iteration.measure_convergence_by_residual(MEASURE_CONVERGENCE_BY_RESIDUAL);
   
   if (MEASURE_CONVERGENCE_BY_RESIDUAL)
-    keff_eigenvalue_iteration.set_tolerance(STRATEGY >= 0 ? TOL_PIT_CM : TOL_PIT_FM);
+    keff_eigenvalue_iteration.set_tolerance(STRATEGY >= 0 ? KEFF_TOL_CM : KEFF_TOL_FM);
   else
-    keff_eigenvalue_iteration.set_keff_tol(STRATEGY >= 0 ? TOL_PIT_CM : TOL_PIT_FM);
+    keff_eigenvalue_iteration.set_keff_tol(STRATEGY >= 0 ? KEFF_TOL_CM : KEFF_TOL_FM);
   
   WeakForm<double> prod_wf(wf.get_neq());
   if (USE_RAYLEIGH_QUOTIENT || SHIFT_STRATEGY || SAVE_MATRICES)
@@ -246,9 +246,9 @@ int main(int argc, char* argv[])
       selectors.push_back(&selector);
     
     if (MEASURE_CONVERGENCE_BY_RESIDUAL)
-      keff_eigenvalue_iteration.set_tolerance(TOL_PIT_FM);
+      keff_eigenvalue_iteration.set_tolerance(KEFF_TOL_FM);
     else
-      keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_FM);
+      keff_eigenvalue_iteration.set_keff_tol(KEFF_TOL_FM);
     
     // Adaptivity loop:
     int as = 1; bool done = false; 

@@ -80,7 +80,7 @@ Hermes::MatrixSolverType matrix_solver = Hermes::SOLVER_UMFPACK;  // Possibiliti
 
 // Power iteration control.
 
-double TOL_PIT_CM = 5e-5;   // Tolerance for eigenvalue convergence on the coarse mesh.
+double KEFF_TOL_CM = 5e-5;   // Tolerance for eigenvalue convergence on the coarse mesh.
 double TOL_PIT_RM = 5e-6;   // Tolerance for eigenvalue convergence on the fine mesh.
 
 int main(int argc, char* argv[])
@@ -209,7 +209,7 @@ int main(int argc, char* argv[])
   report_num_dof("Coarse mesh power iteration, NDOF: ", spaces);
   
   Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
-  keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_CM);
+  keff_eigenvalue_iteration.set_keff_tol(KEFF_TOL_CM);
   keff_eigenvalue_iteration.set_max_allowed_iterations(1000);
   //keff_eigenvalue_iteration.set_matrix_E_matrix_dump_format(Hermes::Algebra::DF_HERMES_BIN);
   //keff_eigenvalue_iteration.set_matrix_filename("A");

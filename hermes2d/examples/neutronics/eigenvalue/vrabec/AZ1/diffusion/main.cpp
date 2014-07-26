@@ -53,10 +53,11 @@ const int SAVE_MATRICES = 0; // If non-zero, save algebraic representation of in
 //
 // Eigenvalue iteration control.
 //
-double TOL_PIT_CM = 1e-5;   // Tolerance for convergence on the coarse mesh.
-double TOL_PIT_FM = 1e-13;   // Tolerance for convergence on the fine mesh.
+double KEFF_TOL_CM = 1e-5;   // Tolerance for convergence on the coarse mesh.
+double KEFF_TOL_FM = 1e-13;   // Tolerance for convergence on the fine mesh.
+const bool ALL_CRITERIONS = false;
+
 const int MAX_PIT = 3000;   // Maximal number of iterations.
-const bool MEASURE_CONVERGENCE_BY_RESIDUAL = true;  // When 'false', eigenvalue difference will be used to monitor convergence. 
 
 const bool USE_RAYLEIGH_QUOTIENT = true; // Use Rayleigh quotient to estimate the eigenvalue in each iteration. 
                                           // When 'false', the reciprocal norm of current eigenvector iterate will be used.
@@ -66,13 +67,23 @@ const KeffEigenvalueIteration::ShiftStrategies SHIFT_STRATEGY = KeffEigenvalueIt
 const double FIXED_SHIFT = 0.666;
 const bool MODIFY_SHIFT_DURING_ADAPTIVITY = true;
 
+// Setup the convergence graphs.
+void setup_convergence_graph(GnuplotGraph *graph)
+{
+  graph->add_row("H1 err. est. [%]", "r", "-", "o");
+  graph->add_row("L2 err. est. [%]", "g", "-", "s");
+  graph->add_row("Keff err. est. [milli-%]", "b", "-", "d");
+  graph->set_log_y();
+  graph->show_legend();
+  graph->show_grid();
+}
+
 int main(int argc, char* argv[])
 { 
   // Set the number of threads used in Hermes.
-  Hermes::HermesCommonApi.set_integral_param_value(Hermes::exceptionsPrintCallstack, 0);
-  Hermes::HermesCommonApi.set_integral_param_value(Hermes::matrixSolverType, matrix_solver_type);
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
-  
+  Hermes::HermesCommonApi.set_integral_param_value(Hermes::matrixSolverType, matrix_solver_type);
+
   // Time measurement.
   TimeMeasurable cpu_time;
   cpu_time.tick();
@@ -89,11 +100,12 @@ int main(int argc, char* argv[])
   
   matprop->validate();
   
+  matprop->set_output_precision(2);
   std::cout << *matprop;
   
   // Use multimesh, i.e. create one mesh for each energy group.
   Hermes::vector<MeshSharedPtr > meshes;
-  for (unsigned int i = 0; i < N_EQUATIONS; i++) 
+  for (unsigned int i = 0; i < N_EQUATIONS; i++)
     meshes.push_back(MeshSharedPtr(new Mesh()));
   
   // Load the mesh on which the 1st solution component (1st group, 0th moment) will be approximated.
@@ -113,6 +125,8 @@ int main(int argc, char* argv[])
   
   for (unsigned int i = 1; i < N_EQUATIONS; i++) 
   {
+    meshes[0]->rescale(10,10); // mm -> cm
+
     // Obtain meshes for the subsequent components by cloning the mesh loaded for the 1st one.
     meshes[i]->copy(meshes[0]);
         
@@ -153,11 +167,13 @@ int main(int argc, char* argv[])
   
   Neutronics::KeffEigenvalueIteration keff_eigenvalue_iteration(&wf, spaces);
   keff_eigenvalue_iteration.set_max_allowed_iterations(MAX_PIT);  
-  
-  if (MEASURE_CONVERGENCE_BY_RESIDUAL)
-    keff_eigenvalue_iteration.set_tolerance(DO_ADAPTIVITY ? TOL_PIT_CM : TOL_PIT_FM, ResidualNormRatioToInitial);
-  else
-    keff_eigenvalue_iteration.set_keff_tol(DO_ADAPTIVITY ? TOL_PIT_CM : TOL_PIT_FM);
+  keff_eigenvalue_iteration.clear_tolerances();
+  keff_eigenvalue_iteration.set_tolerance(DO_ADAPTIVITY ? KEFF_TOL_CM : KEFF_TOL_FM,
+                                          KeffEigenvalueIteration::ConvergenceMeasurementType::EigenvalueRelative,
+                                          ALL_CRITERIONS);
+//  keff_eigenvalue_iteration.set_tolerance(DO_ADAPTIVITY ? RES_TOL_CM : RES_TOL_FM,
+//                                          KeffEigenvalueIteration::ConvergenceMeasurementType::ResidualNormRatioToInitial,
+//                                          ALL_CRITERIONS);
   
   WeakForm<double> prod_wf(wf.get_neq());
   //if (USE_RAYLEIGH_QUOTIENT || SHIFT_STRATEGY || SAVE_MATRICES)
@@ -206,20 +222,9 @@ int main(int argc, char* argv[])
     
     // DOF and CPU convergence graphs
     GnuplotGraph graph_dof("Error convergence", "NDOF", "log(error)");
-    graph_dof.add_row("H1 err. est. [%]", "r", "-", "o");
-    graph_dof.add_row("L2 err. est. [%]", "g", "-", "s");
-    graph_dof.add_row("Keff err. est. [milli-%]", "b", "-", "d");
-    graph_dof.set_log_y();
-    graph_dof.show_legend();
-    graph_dof.show_grid();
-    
     GnuplotGraph graph_cpu("Error convergence", "CPU time [s]", "log(error)");
-    graph_cpu.add_row("H1 err. est. [%]", "r", "-", "o");
-    graph_cpu.add_row("L2 err. est. [%]", "g", "-", "s");
-    graph_cpu.add_row("Keff err. est. [milli-%]", "b", "-", "d");
-    graph_cpu.set_log_y();
-    graph_cpu.show_legend();
-    graph_cpu.show_grid();
+    setup_convergence_graph(&graph_dof);
+    setup_convergence_graph(&graph_cpu);
     
     // Create pointers to coarse mesh solutions used for error estimation.
     Hermes::vector<MeshFunctionSharedPtr<double> > coarse_solutions;
@@ -234,10 +239,12 @@ int main(int argc, char* argv[])
     for (unsigned int i = 0; i < N_EQUATIONS; i++)
       selectors.push_back(&selector);
       
-    if (MEASURE_CONVERGENCE_BY_RESIDUAL)
-      keff_eigenvalue_iteration.set_tolerance(TOL_PIT_FM, ResidualNormRatioToInitial);
-    else
-      keff_eigenvalue_iteration.set_keff_tol(TOL_PIT_FM);
+    keff_eigenvalue_iteration.set_tolerance(KEFF_TOL_FM,
+                                            KeffEigenvalueIteration::ConvergenceMeasurementType::EigenvalueRelative,
+                                            ALL_CRITERIONS);
+  //  keff_eigenvalue_iteration.set_tolerance(RES_TOL_FM,
+  //                                          KeffEigenvalueIteration::ConvergenceMeasurementType::ResidualNormRatioToInitial,
+  //                                          ALL_CRITERIONS);
     
     // Adaptivity loop:
     
