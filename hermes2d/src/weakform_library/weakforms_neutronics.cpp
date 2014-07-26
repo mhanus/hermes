@@ -248,24 +248,23 @@ namespace Neutronics
   void KeffEigenvalueIteration::set_tolerance(double tolerance_, KeffEigenvalueIteration::ConvergenceMeasurementType toleranceType, bool handleMultipleTolerancesAnd)
   {
     Solvers::NonlinearConvergenceMeasurementType ctype;
-    if (toleranceType == KeffEigenvalueIteration::ConvergenceMeasurementType::ResidualNormRatioToInitial ||
-        toleranceType == KeffEigenvalueIteration::ConvergenceMeasurementType::SolutionChangeRelative)
+    switch (toleranceType)
     {
-      switch (toleranceType)
-      {
-        case KeffEigenvalueIteration::ConvergenceMeasurementType::ResidualNormRatioToInitial:
-          ctype = Solvers::NonlinearConvergenceMeasurementType::ResidualNormRatioToInitial;
-          break;
-        case KeffEigenvalueIteration::ConvergenceMeasurementType::SolutionChangeRelative:
-          ctype = Solvers::NonlinearConvergenceMeasurementType::SolutionChangeRelative;
-          break;
-      }
-
-      StationaryPicardSolver::set_tolerance(tolerance_, ctype, handleMultipleTolerancesAnd);
+      case KeffEigenvalueIteration::ConvergenceMeasurementType::ResidualNormRatioToInitial:
+        ctype = Solvers::NonlinearConvergenceMeasurementType::ResidualNormRatioToInitial;
+        break;
+      case KeffEigenvalueIteration::ConvergenceMeasurementType::SolutionChangeRelative:
+        ctype = Solvers::NonlinearConvergenceMeasurementType::SolutionChangeRelative;
+        break;
+      case KeffEigenvalueIteration::ConvergenceMeasurementType::EigenvalueRelative:
+        // HACK: some convergence measurement must be set in NonlinearMatrixSolver; this one is ignored is StationaryPicardSolver::converged()
+        ctype = Solvers::NonlinearConvergenceMeasurementType::SolutionChangeAbsolute;
+        this->keff_tol = tolerance_;
+        break;
     }
 
-    if (toleranceType == EigenvalueRelative)
-      this->keff_tol = tolerance_;
+    NonlinearMatrixSolver<double>::set_tolerance(tolerance_, ctype, handleMultipleTolerancesAnd);
+    measure_convergence_by_residual = this->tolerance_set[2];
   }
 
   bool KeffEigenvalueIteration::converged()
