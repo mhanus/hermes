@@ -4,7 +4,7 @@ namespace Hermes { namespace Hermes2D {
 
 void StationaryPicardSolver::set_tolerance(double tolerance_, Solvers::NonlinearConvergenceMeasurementType toleranceType, bool handleMultipleTolerancesAnd)
 {
-  if (toleranceType != Solvers::NonlinearConvergenceMeasurementType::ResidualNormRatioToInitial || toleranceType != Solvers::NonlinearConvergenceMeasurementType::SolutionChangeRelative)
+  if (toleranceType != Solvers::NonlinearConvergenceMeasurementType::ResidualNormRatioToInitial && toleranceType != Solvers::NonlinearConvergenceMeasurementType::SolutionChangeRelative)
     this->error("Only ResidualNormRatioToInitial or SolutionChangeRelative tolerance types are supported by StationaryPicardSolver.");
 
   NonlinearMatrixSolver<double>::set_tolerance(tolerance_, toleranceType, handleMultipleTolerancesAnd);
@@ -41,7 +41,6 @@ void StationaryPicardSolver::solve(double *coeff_vec)
   this->set_parameter_value(this->p_solution_norms, &solution_norms);
   this->set_parameter_value(this->p_solution_change_norms, &solution_change_norms);
   this->set_parameter_value(this->p_damping_factors, &damping_factors);
-  
 
   this->init_solving(coeff_vec);
   this->get_parameter_value(this->p_solution_norms).push_back(get_l2_norm(this->sln_vector, this->problem_size));
@@ -162,14 +161,6 @@ bool StationaryPicardSolver::on_initialization()
 
 bool StationaryPicardSolver::converged()
 {
-	if (!this->tolerance_set[2] && !this->tolerance_set[6])
-	{
-		if (this->handleMultipleTolerancesAnd)
-			return true;
-		else
-			return false;
-	}
-
 	double rel_err = std::numeric_limits<double>::max();
 	double rel_res = std::numeric_limits<double>::max();
 
@@ -194,6 +185,14 @@ bool StationaryPicardSolver::converged()
 	this->info("\t\tsolution norm: %g,", solution_norm);
 	this->info("\t\tsolution change norm: %g.", solution_change_norm);
 	this->info("\t\trelative solution change: %g.", solution_change_norm / previous_solution_norm);
+
+	if (!this->tolerance_set[2] && !this->tolerance_set[6])
+	{
+		if (this->handleMultipleTolerancesAnd)
+			return true;
+		else
+			return false;
+	}
 
 	bool measure_convergence_by_relative_error = this->tolerance_set[6];
 	bool conv = false;
@@ -233,6 +232,19 @@ namespace Neutronics
       delete [] Ax;
   }
 
+  void KeffEigenvalueIteration::init_solving(double* coeff_vec)
+  {
+    this->problem_size = Space<double>::assign_dofs(this->get_spaces());
+    if (coeff_vec == nullptr)
+    {
+      coeff_vec = new double [this->problem_size];
+      for (int i = 0; i < this->problem_size; i++)
+        coeff_vec[i] = 1.0;
+    }
+    PicardMatrixSolver<double>::init_solving(coeff_vec);
+    delete [] coeff_vec;
+  }
+
   void KeffEigenvalueIteration::set_tolerance(double tolerance_, KeffEigenvalueIteration::ConvergenceMeasurementType toleranceType, bool handleMultipleTolerancesAnd)
   {
     Solvers::NonlinearConvergenceMeasurementType ctype;
@@ -261,13 +273,13 @@ namespace Neutronics
     bool conv = StationaryPicardSolver::converged();
 
     double rel_err = abs(keff - old_keff) / keff;
-    this->info("\n\t\t k_eff rel. error %g%%", rel_err * 100);
+    this->info("\n\t\tk_eff rel. error %g%%", rel_err * 100);
 
     if (keff_tol > 0)
       if (this->handleMultipleTolerancesAnd)
-        conv = conv && (rel_err > keff_tol);
+        conv = conv && (rel_err < keff_tol);
       else
-        conv = conv || (rel_err > keff_tol);
+        conv = conv || (rel_err < keff_tol);
 
     return conv;
   }
@@ -375,14 +387,14 @@ namespace Neutronics
     {
       for (int i = 0; i < problem_size; i++)
         lambda += sqr(this->sln_vector[i]);
-      
+
       lambda = 1./sqrt(lambda);
-      
+
       for (int i = 0; i < problem_size; i++)
         this->sln_vector[i] *= lambda;
-      
+
       keff = 1./(lambda + fixed_shift);
-      
+
       if (production_wf)
       {
         // Save some time by using the mat-vec product instead of assembling the rhs.

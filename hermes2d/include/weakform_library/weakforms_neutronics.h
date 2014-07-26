@@ -108,6 +108,8 @@ namespace Hermes { namespace Hermes2D {
         bool on_step_end();
         bool on_finish();
         
+        virtual void init_solving(double* coeff_vec);
+
         double get_keff() const { return keff; }
         
         void set_tolerance(double tolerance_, KeffEigenvalueIteration::ConvergenceMeasurementType toleranceType, bool handleMultipleTolerancesAnd = false);
