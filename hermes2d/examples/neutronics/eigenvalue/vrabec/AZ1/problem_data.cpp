@@ -11,7 +11,7 @@ ProblemData::ProblemData(const std::string& datafile)
   std::string mat_name;
   
   int sz = 0;
-  while (df >> ws >> mat_name)
+  while (df >> std::ws >> mat_name)
   {
     std::string tmp;
     df >> tmp;
