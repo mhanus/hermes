@@ -83,7 +83,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
 
 
     MaterialPropertyMaps::MaterialPropertyMaps(unsigned int G, const RegionMaterialMap& reg_mat_map)
-      : region_material_map(reg_mat_map), G(G), 
+      : region_material_map(reg_mat_map), G(G), output_precision(6),
         fission_materials(Hermes::vector<std::string>()), fission_regions(Hermes::vector<std::string>())
     {
       RegionMaterialMap::const_iterator it = reg_mat_map.begin();
@@ -95,7 +95,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
     }
     
     MaterialPropertyMaps::MaterialPropertyMaps(unsigned int G, const std::set<std::string>& mat_list) 
-      : materials_list(mat_list), G(G),
+      : materials_list(mat_list), G(G), output_precision(6),
         fission_materials(Hermes::vector<std::string>()), fission_regions(Hermes::vector<std::string>())  
     { 
       std::set<std::string>::const_iterator it = mat_list.begin();
@@ -418,29 +418,37 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       }
     }
     
+    #define  COLW(header) std::max(number_width, header)
     std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop)
     {
       using namespace std;
-      
+
+      os.setf(std::ios::scientific, std::ios::floatfield);
+      os << std::setprecision(matprop.output_precision);
+
+      int gto_width = 12;
+      int number_width = 9+matprop.output_precision;
+      int total_width = gto_width + COLW(3) + COLW(2) + COLW(7) + COLW(14);
+
       os << endl;
-      os << setw(12) << "target group" << setw(10) << "chi" << setw(10) << "nu";
-      os << setw(10) << "Sigma_f" << setw(14) << "iso. ext. src" << endl; 
+      os << setw(12) << "target group" << setw(COLW(3)) << "chi" << setw(COLW(2)) << "nu";
+      os << setw(COLW(7)) << "Sigma_f" << setw(COLW(14)) << "iso. ext. src" << endl;
       
       MaterialPropertyMap1::const_iterator data_elem = matprop.chi.begin();
       for ( ; data_elem != matprop.chi.end(); ++data_elem)
       {
         std::string mat = data_elem->first;
         
-        os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
-        os << setw(40) << mat << endl;
-        os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+        os << setw(total_width) << setfill('-') << '-' << endl << setfill(' ');
+        os << setw(total_width/2+mat.length()/2) << mat << endl;
+        os << setw(total_width) << setfill('-') << '-' << endl << setfill(' ');
         for (unsigned int gto = 0; gto < matprop.G; gto++)
         {
-          os << setw(6) << gto << setw(6) << ' ';
-          os << setw(10) << matprop.get_chi(mat)[gto];
-          os << setw(10) << matprop.get_nu(mat)[gto];
-          os << setw(10) << matprop.get_Sigma_f(mat)[gto];
-          os << setw(14);
+          os << setw(gto_width/2) << gto << setw(gto_width/2) << ' ';
+          os << setw(number_width) << matprop.get_chi(mat)[gto];
+          os << setw(number_width) << matprop.get_nu(mat)[gto];
+          os << setw(number_width) << matprop.get_Sigma_f(mat)[gto];
+          os << setw(COLW(14));
           if (matprop.src0.empty())
             os << "N/A";
           else
@@ -450,7 +458,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         }
       }
       
-      os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+      os << total_width << setfill('-') << '-' << endl << setfill(' ');
       os << "All-region fission spectrum: ";
       
       for (unsigned int g = 0; g < matprop.G; g++)
@@ -692,36 +700,40 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       
       os << static_cast<const Common::MaterialProperties::MaterialPropertyMaps&>(matprop) << endl;
       
-      os << setw(12) << "target group" << setw(10) << "D" << setw(10) << "Sigma_r";
-      os << setw(22) << "Sigma_s" << endl; 
+      int gto_width = 12;
+      int number_width = 9+matprop.output_precision;
+      int total_width = gto_width + number_width*2 + number_width*matprop.G;
+
+      os << setw(12) << "target group" << setw(number_width) << "D" << setw(number_width) << "Sigma_r";
+      os << setw(number_width) << "Sigma_s" << endl;
       
       MaterialPropertyMap1::const_iterator data_elem = matprop.Sigma_r.begin();
       for ( ; data_elem != matprop.Sigma_r.end(); ++data_elem)
       {
         std::string mat = data_elem->first;
         
-        os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
-        os << setw(40) << mat << endl;
-        os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+        os << setw(total_width) << setfill('-') << '-' << endl << setfill(' ');
+        os << setw(total_width/2+mat.length()/2) << mat << endl;
+        os << setw(total_width) << setfill('-') << '-' << endl << setfill(' ');
         for (unsigned int gto = 0; gto < matprop.G; gto++)
         {
-          os << setw(6) << gto << setw(6) << ' ';
-          os << setw(10) << matprop.get_D(mat)[gto];
-          os << setw(10) << matprop.get_Sigma_r(mat)[gto];
+          os << setw(gto_width/2) << gto << setw(gto_width/2) << ' ';
+          os << setw(number_width) << matprop.get_D(mat)[gto];
+          os << setw(number_width) << matprop.get_Sigma_r(mat)[gto];
           
           for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
-            os << setw(8) << matprop.get_Sigma_s(mat)[gto][gfrom];
+            os << setw(number_width) << matprop.get_Sigma_s(mat)[gto][gfrom];
           
           os << endl;
         }
       }
       
-      os << setw(80) << setfill('-') << ' ' << endl << setfill(' ');
+      os << total_width << setfill('-') << '-' << endl << setfill(' ');
       os << "All-region scattering spectrum: " << endl;
       for (unsigned int gto = 0; gto < matprop.G; gto++)
       {
         for (unsigned int gfrom = 0; gfrom < matprop.G; gfrom++)
-          os << setw(10) << matprop.get_scattering_nonzero_structure()[gto][gfrom];
+          os << setw(number_width) << matprop.get_scattering_nonzero_structure()[gto][gfrom];
         os << endl;
       }
       
@@ -1185,7 +1197,8 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       os << static_cast<const Common::MaterialProperties::MaterialPropertyMaps&>(matprop) << endl;
       
       int gto_width = 12;
-      int elem_width = 14;
+      int number_width = 9+matprop.output_precision;
+      int elem_width = std::max(14, number_width);
       int total_width = 2*gto_width + 2*elem_width*matprop.G;          
                           
       MaterialPropertyMap3::const_iterator Srn_elem = matprop.Sigma_rn.begin();
@@ -1196,7 +1209,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         rank3 Srn_moments = Srn_elem->second;
         rank3 Srn_inv_moments = Srn_inv_elem->second;
         
-        os << setw(total_width) << setfill('_') << ' ' << endl << setfill(' ');
+        os << setw(total_width) << setfill('-') << '-' << endl << setfill(' ');
         os << setw(total_width/2+mat.length()/2) << mat << endl << endl;
                
         os << setw(gto_width)  << "trgt group";
@@ -1366,8 +1379,9 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
       os << static_cast<const Common::MaterialProperties::MaterialPropertyMaps&>(matprop) << endl;
       
       int gto_width = 12;
-      int elem_width = 14;
-      int total_width = 2*gto_width + elem_width*(matprop.G);          
+      int number_width = 9+matprop.output_precision;
+      int elem_width = std::max(14, number_width);
+      int total_width = 2*gto_width + elem_width*(matprop.G);
 
       MaterialPropertyMap1::const_iterator St_elem = matprop.Sigma_t.begin();
       MaterialPropertyMap3::const_iterator Ssn_elem = matprop.Sigma_sn.begin();
@@ -1376,7 +1390,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         std::string mat = St_elem->first;
         rank1 St = St_elem->second;
         
-        os << setw(total_width) << setfill('_') << ' ' << endl << setfill(' ');
+        os << setw(total_width) << setfill('-') << '-' << endl << setfill(' ');
         os << setw(total_width/2+mat.length()/2) << mat << endl << endl;
         
         os << setw(gto_width)  << "trgt group";

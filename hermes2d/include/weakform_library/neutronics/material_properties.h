@@ -91,6 +91,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         Hermes::vector<std::string> fission_regions;
         
         unsigned int G;
+        unsigned int output_precision;
         
         bool1 fission_nonzero_structure;
         
@@ -225,6 +226,7 @@ namespace Hermes { namespace Hermes2D { namespace Neutronics
         
         unsigned int get_G() const { return G; } 
         
+        void set_output_precision(unsigned int prec) { output_precision = prec; }
         friend std::ostream & operator<< (std::ostream& os, const MaterialPropertyMaps& matprop);
         virtual void save_PARCS(const std::string& folder) const;
     };
