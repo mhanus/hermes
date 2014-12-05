@@ -76,7 +76,7 @@ const MaterialPropertyMap3 Ssn = material_property_map<rank3>
 //////  Reference solutions.  /////////////////////////////////////////////////////////////////
 
 const int n_pins = 10;
-Hermes::vector<string> edit_regions = HermesMultiArray<string>
+Hermes::vector<std::string> edit_regions = HermesMultiArray<std::string>
   ("pin 0")
   ("pin 1")
   ("pin 2")

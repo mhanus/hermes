@@ -42,37 +42,38 @@ const double INIT_COND_CONST = 1.0;
 
 MatrixSolverType matrix_solver_type = SOLVER_UMFPACK;
 
+
 int main(int argc, char* args[])
 {
   // Set the number of threads used in Hermes.
-  
+
   Hermes::HermesCommonApi.set_integral_param_value(Hermes::matrixSolverType, matrix_solver_type);
   //Hermes::HermesCommonApi.set_integral_param_value(Hermes::numThreads, 2);
-  
+
   // Time measurement.
   TimeMeasurable cpu_time;
   cpu_time.tick();
-  
+
   Hermes::vector<MeshSharedPtr > meshes;
   for (int i = 0; i < M; i++)
     meshes.push_back(MeshSharedPtr(new Mesh()));
-  
+
   MeshReaderH2D mloader;
   mloader.load(mesh_file.c_str(), meshes[0]);
-  
+
   if (MULTIMESH)
-  {  
-    for (int i = 1; i < M; i++) 
+  {
+    for (int i = 1; i < M; i++)
     {
       // Obtain meshes for the subsequent components by cloning the mesh loaded for the 1st one.
       meshes[i]->copy(meshes[0]);
-          
+
       // Initial uniform refinements.
-      for (int j = 0; j < INIT_REF_NUM; j++) 
+      for (int j = 0; j < INIT_REF_NUM; j++)
         meshes[i]->refine_all_elements();
     }
   }
-  for (int j = 0; j < INIT_REF_NUM; j++) 
+  for (int j = 0; j < INIT_REF_NUM; j++)
     meshes[0]->refine_all_elements();
 
   if (HERMES_MESH_VISUALIZATION)
@@ -81,20 +82,20 @@ int main(int argc, char* args[])
     mview.show(meshes[0]);
     Views::View::wait();
   }
-  
+
   Loggable::Static::info("%d elements, %d vertices", meshes[0]->get_num_active_elements(), meshes[0]->get_num_vertex_nodes() );
-  
+
   Hermes::vector<MeshFunctionSharedPtr<double> > slns;
   for (int i = 0; i < M; i++)
     slns.push_back(new ConstantSolution<double>(MULTIMESH ? meshes[i] : meshes[0], INIT_COND_CONST));
-  
+
     // Load material data.
   MaterialProperties::MaterialPropertyMaps matprop(N_GROUPS, std::set<std::string>(materials.begin(), materials.end()));
   matprop.set_Sigma_t(St);
   matprop.set_Sigma_sn(Ssn);
   matprop.set_iso_src(src);
   matprop.validate();
-  
+
   // Print material data.
   std::cout << matprop;
 
@@ -103,41 +104,41 @@ int main(int argc, char* args[])
   reflective_boundaries.push_back("reflective");
   Hermes::vector<std::string> vacuum_boundaries(1);
   vacuum_boundaries.push_back("vacuum");
-  
+
   if (argc > 1)
   {
     bool assemble_matrix = strcmp(args[1], "Q");
     bool assemble_Q = !strcmp(args[1], "Q") || !strcmp(args[1], "LQ");
-    
+
     WeakForm<double> *wf;
     Hermes::vector<SpaceSharedPtr<double> > spaces;
-    
+
     if (!strcmp(args[1], "S") || !strcmp(args[1], "F"))
     {
       wf = new IsotropicScatteringAndFissionMatrixForms(matprop, args[1]);
       SupportClasses::AngleGroupFlattener ag(N_GROUPS);
       for (int g = 0; g < N_GROUPS; g++)
-        spaces.push_back(new H1Space<double>(MULTIMESH ? meshes[ag(0,g)] : meshes[0], P_INIT));
+        spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[ag(0,g)] : meshes[0], P_INIT));
     }
     else
     {
-      wf = new SNWeakForm(N, matprop, reflective_boundaries, vacuum_boundaries, args[1]);  
+      wf = new SNWeakForm(N, matprop, reflective_boundaries, vacuum_boundaries, args[1]);
       for (int n = 0; n < M; n++)
-        spaces.push_back(new H1Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+        spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
     }
-    
+
     Loggable::Static::info("Saving %s. NDOF = %d", args[1], Space<double>::get_num_dofs(spaces));
-    
+
     DiscreteProblem<double> dp(wf, spaces);
     SourceIteration solver(&dp);
-    
+
     // Perform the source iteration (by Picard's method with Anderson acceleration).
     solver.set_max_allowed_iterations(1);
-    
-    if (assemble_Q)  
+
+    if (assemble_Q)
     {
       solver.output_rhs(1);
-      solver.set_rhs_E_matrix_dump_format(DF_HERMES_BIN);;
+      solver.set_rhs_export_format(EXPORT_FORMAT_MATLAB_MATIO);
       solver.set_rhs_filename("Q");
       solver.set_rhs_number_format("%1.15f");
       solver.set_rhs_varname("Q");
@@ -145,35 +146,35 @@ int main(int argc, char* args[])
     if (assemble_matrix)
     {
       solver.output_matrix(1);
-      solver.set_matrix_E_matrix_dump_format(DF_HERMES_BIN);
+      solver.set_matrix_export_format(EXPORT_FORMAT_MATLAB_MATIO);
       solver.set_matrix_filename(!strcmp(args[1], "LQ") ? "L" : args[1]);
       solver.set_matrix_number_format("%1.15f");
       solver.set_matrix_varname(!strcmp(args[1], "LQ") ? "L" : args[1]);
     }
-    
-    try 
-    { 
-      solver.solve(); 
-    } 
+
+    try
+    {
+      solver.solve();
+    }
     catch(std::exception& e) { }
-    
+
     delete wf;
-    
+
     return 0;
   }
-  
+
   SNWeakForm wf(N, matprop, reflective_boundaries, vacuum_boundaries);
- 
+
   // Initialize the FE problem.
-  
+
   // Approximation spaces.
   Hermes::vector<SpaceSharedPtr<double> > spaces;
-  
+
   for (int n = 0; n < M; n++)
-    spaces.push_back(new H1Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
-  
+    spaces.push_back(new L2Space<double>(MULTIMESH ? meshes[n] : meshes[0], P_INIT));
+
   int ndof =  Space<double>::get_num_dofs(spaces);
-  
+
   // Display the mesh.
 //  OrderView oview("Coarse mesh", new WinGeom(0, 0, 440, 350));
 //  oview.show(spaces[0]);
@@ -182,12 +183,12 @@ int main(int argc, char* args[])
 
   // Discrete formulation.
   DiscreteProblem<double> dp(&wf, spaces);
-  
+
   // Algebraic solver.
   SourceIteration solver(&dp);
-  
+
   solver.use_Anderson_acceleration(false);
-  solver.set_tolerance(PICARD_TOL);
+  solver.set_tolerance(PICARD_TOL, Solvers::NonlinearConvergenceMeasurementType::SolutionChangeRelative);
   solver.set_max_allowed_iterations(PICARD_MAX_ITER);
   solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);

@@ -60,5 +60,5 @@ const MaterialPropertyMap3 Ssn = material_property_map<rank3>
   "Void", page(matrix(row(0.0)))
 );
 
-Hermes::vector<string> edit_regions = HermesMultiArray<string>
+Hermes::vector<std::string> edit_regions = HermesMultiArray<std::string>
   ("III")("IV");

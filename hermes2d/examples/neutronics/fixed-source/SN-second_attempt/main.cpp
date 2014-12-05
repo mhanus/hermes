@@ -136,7 +136,7 @@ int main(int argc, char* args[])
       if (assemble_Q)  
       {
         solver.output_rhs(1);
-        solver.set_rhs_E_matrix_dump_format(DF_HERMES_BIN);;
+        solver.set_rhs_export_format(EXPORT_FORMAT_MATLAB_MATIO);;
         solver.set_rhs_filename("Q");
         solver.set_rhs_number_format("%1.15f");
         solver.set_rhs_varname("Q");
@@ -144,7 +144,7 @@ int main(int argc, char* args[])
       else
       {
         solver.output_matrix(1);
-        solver.set_matrix_E_matrix_dump_format(DF_HERMES_BIN);
+        solver.set_matrix_export_format(EXPORT_FORMAT_MATLAB_MATIO);
         solver.set_matrix_filename(args[1]);
         solver.set_matrix_number_format("%1.15f");
         solver.set_matrix_varname(args[1]);
@@ -233,7 +233,7 @@ int main(int argc, char* args[])
   SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);
-  solver.set_tolerance(PICARD_TOL);
+  solver.set_tolerance(PICARD_TOL, Solvers::SolutionChangeRelative);
   solver.set_max_allowed_iterations(PICARD_MAX_ITER);
   solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);

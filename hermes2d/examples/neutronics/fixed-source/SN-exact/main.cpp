@@ -254,7 +254,7 @@ int main(int argc, char* args[])
   SourceIteration solver(&dp);
   
   solver.use_Anderson_acceleration(false);
-  solver.set_tolerance(PICARD_TOL);
+  solver.set_tolerance(PICARD_TOL, Solvers::NonlinearConvergenceMeasurementType::SolutionChangeRelative);
   solver.set_max_allowed_iterations(PICARD_MAX_ITER);
   solver.set_num_last_vector_used(PICARD_NUM_LAST_ITER_USED);
   solver.set_anderson_beta(PICARD_ANDERSON_BETA);

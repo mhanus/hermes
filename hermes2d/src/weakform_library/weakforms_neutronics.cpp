@@ -182,7 +182,8 @@ bool StationaryPicardSolver::converged()
 	double solution_change_norm = this->get_parameter_value(this->p_solution_change_norms).back();
 	this->info("\t\tsolution norm: %g,", solution_norm);
 	this->info("\t\tsolution change norm: %g.", solution_change_norm);
-	this->info("\t\trelative solution change: %g.", solution_change_norm / previous_solution_norm);
+	rel_err = solution_change_norm / previous_solution_norm;
+	this->info("\t\trelative solution change: %g.", rel_err);
 
 	bool measure_convergence_by_relative_error = this->tolerance_set[6];
 	bool conv = false;

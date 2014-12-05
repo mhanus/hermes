@@ -25,7 +25,7 @@ const RegionMaterialMap rm_map = region_material_map
   ("obstacleTR", "weak_pure_absorber")
   ("medium", "vacuum");
 
-Hermes::vector<string> edit_regions = HermesMultiArray<string>
+Hermes::vector<std::string> edit_regions = HermesMultiArray<std::string>
   ("boxTR")("boxTL");
   
 //////  Physical parameters.  /////////////////////////////////////////////////////////////////
